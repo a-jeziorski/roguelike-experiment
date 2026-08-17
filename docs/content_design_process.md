@@ -2,8 +2,53 @@
 
 How dungeon content gets designed for this project, captured from the
 "dungeon deepening" pass that extended `level_03` into `level_04`/`level_05`
-and reframed the whole run as one narrative arc. Read this before authoring
-new levels or retuning existing ones.
+and reframed the whole run as one narrative arc, and extended again when the
+project moved from one dungeon to a multi-dungeon system. Read this before
+authoring new levels or retuning existing ones.
+
+## 0. Multiple dungeons
+
+Content is organized as one or more independent *dungeons*, not a single
+global level pool - built this way specifically so a future overworld could
+enumerate and cross between them. Each dungeon is a directory under
+`data/dungeons/`:
+
+```
+data/dungeons/<dungeon_id>/
+  dungeon.yaml       # id, name, starting_level, description
+  levels/
+    level_01.lvl
+    ...
+```
+
+`content/loader.py` has three layers, matching this structure:
+- `load_levels(levels_dir, catalog)` - loads and cross-validates one
+  directory of `.lvl` files (a dungeon's own internal stairway references).
+- `load_dungeon(dungeon_dir, catalog)` - one dungeon: its manifest plus
+  `load_levels` on its `levels/` subdirectory, checking `starting_level`
+  actually exists among them.
+- `load_dungeon_registry(dungeons_dir, catalog)` - discovers and loads
+  every dungeon under `data/dungeons/`, rejecting duplicate ids. This is
+  what `main.py` calls at startup, and what a future overworld/dungeon-select
+  screen would enumerate.
+
+**The monster/item catalog (`data/entities.yaml`/`data/items.yaml`) is
+global, not per-dungeon** - a deliberate simplification, not an oversight.
+A dungeon references catalog ids the same way a level does; nothing yet
+needs a dungeon-exclusive monster/item badly enough to justify per-dungeon
+catalogs and the id-namespacing that would require. Reuse generic items
+freely across dungeons (`rusty_key`/`healing_potion` work equally in a ruin
+or a prison); keep flavor text that names one dungeon's setting specifically
+(`bone_plate`'s "ossuary" description) out of the others, or write it more
+generically if it needs to travel.
+
+Level ids only need to be unique *within* a dungeon - `load_levels`
+validates that scope, not across dungeons, so two dungeons can both have a
+`level_01` with no conflict; they're never loaded together.
+
+Shipped dungeons: `forgotten_ruins` (the original run - kept intact, saved
+for later use, not currently the default) and `prison_tower` (the current
+default starting dungeon - `main.py`'s `STARTING_DUNGEON_ID`).
 
 ## 1. Narrative framing
 
@@ -30,6 +75,19 @@ progressively older ruins beneath a manor's basement:
 Each name alone should signal escalating age/depth even out of context. If a
 new level's name doesn't obviously slot into the arc, the arc needs
 revisiting before the level does.
+
+A second worked example, `prison_tower` - framed to fit the engine as it
+exists (only a `stairs_down` tile type exists, there's no "climb up", and
+adding one would be an engine change, not a content one) by making the
+descent itself the escape - start deep/high in solitary, descend through
+less-secure floors toward the exit:
+
+| Level | Name | Beat |
+|---|---|---|
+| `level_01` | The Solitary Cell | starting cell, already broken open |
+| `level_02` | The Guard Barracks | guards, a reward-gated armory |
+| `level_03` | The Lower Cellblock | feral prisoners, vermin, resupply |
+| `level_04` | The Gatehouse | the warden, then freedom (terminal) |
 
 ## 2. Balance methodology
 
@@ -118,25 +176,36 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
   (e.g. an antechamber before the room with the real fight, an L-shaped or
   multi-chamber throne room instead of one rectangle). Treat "single open
   room" as a deliberate, occasional choice, not the fallback when a level
-  needs to feel big.
+  needs to feel big. First applied throughout `prison_tower` (a narrow
+  cell-exit corridor forcing a chokepoint, a reward room reachable only
+  through a locked door, a four-cell cellblock, a gatehouse broken up by
+  interior pillars instead of one bare rectangle) - `forgotten_ruins`'
+  `level_03`/`level_05` are still the un-revisited single-open-room
+  originals this feedback was about; a future pass through that dungeon
+  specifically should fix them the same way.
 
 ## 4. Authoring checklist
 
-1. **Layout**: reuse proven row geometry from an existing `data/levels/*.lvl`
-   file - copying known-good rows and only substituting symbols at specific
-   positions avoids the width-mismatch mistakes hand-drawing a grid from
-   scratch invites. Default to multi-room/corridor composition (per the
-   geometry-variety note above); reach for a single open room only when the
-   level specifically wants an "arena" beat, not as the easy default.
+1. **Layout**: reuse proven row geometry from an existing
+   `data/dungeons/*/levels/*.lvl` file, or build new rows programmatically
+   (concatenate segments of known length, assert the total is 24 before
+   writing the file - this is what caught every width mistake made while
+   authoring `prison_tower`, faster than hand-counting characters). Default
+   to multi-room/corridor composition (per the geometry-variety note above);
+   reach for a single open room only when the level specifically wants an
+   "arena" beat, not as the easy default.
 2. **Placements**: exactly one `player_start`, at least one `stairs_down`,
    monsters (with AI chosen deliberately per the pacing guidance above),
    items (checked against the balance methodology above).
 3. **Flavor text**: level `name` and every entity/item `description` fit
    the narrative arc - these are the only things the player actually reads.
-4. **Validate**: `python tools/preview.py data/levels` - reviews the whole
-   dungeon's rendering, stairway destinations, and door/key pairings at
-   once, and is how loader validation errors (bad references, ragged rows,
-   missing stairs) get caught before anything runs.
+4. **Validate**: `python tools/preview.py data/dungeons` - reviews every
+   shipped dungeon's rendering, stairway destinations, and door/key pairings
+   at once (or point it at one `data/dungeons/<id>` while iterating on a
+   single dungeon), and is how loader validation errors (bad references,
+   ragged rows, missing stairs) get caught before anything runs.
 5. **Test and playtest**: `pytest`, then `python main.py` to actually feel
    out pacing and difficulty - the math in step 2 is a sanity check, not a
-   substitute for playing it.
+   substitute for playing it. `main.py` always starts
+   `STARTING_DUNGEON_ID`; edit that constant (or use `load_dungeon_registry`
+   directly) to playtest a dungeon that isn't the current default.

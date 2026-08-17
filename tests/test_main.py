@@ -8,7 +8,7 @@ swallowing the SystemExit that EscapeAction.perform() would otherwise raise."""
 
 from pathlib import Path
 
-from content.loader import load_catalog, load_dungeon
+from content.loader import load_catalog, load_levels
 from engine.actions import EscapeAction, RestartAction, WaitAction
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
@@ -16,11 +16,12 @@ from engine.game_map import build_game_map
 from main import dispatch_action, fire_mode_gate
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
 
 
 def make_engine() -> Engine:
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
     game_map, player = build_game_map(level_01, catalog)
     return Engine(

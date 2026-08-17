@@ -53,3 +53,45 @@ ogre:
   defense: 3
   ai: hostile_basic
   description: A hulking brute that guards the deepest halls.
+
+guard:
+  name: Guard
+  glyph: G
+  color: [90, 100, 130]
+  hp: 14
+  attack: 5
+  defense: 2
+  ai: hostile_basic
+  description: A prison guard in scuffed leather armor, club in hand.
+
+feral_prisoner:
+  name: Feral Prisoner
+  glyph: p
+  color: [130, 110, 90]
+  hp: 8
+  attack: 3
+  defense: 0
+  ai: skittish
+  flee_hp_pct: 0.4
+  description: A prisoner broken by years in the dark. Lashes out, then flees.
+
+crossbow_guard:
+  name: Crossbow Guard
+  glyph: C
+  color: [110, 90, 60]
+  hp: 10
+  attack: 4
+  defense: 1
+  ai: ranged_basic
+  ranged_range: 5
+  description: A guard with a loaded crossbow, watching the halls from a distance.
+
+warden:
+  name: Warden
+  glyph: W
+  color: [140, 40, 40]
+  hp: 26
+  attack: 7
+  defense: 3
+  ai: hostile_basic
+  description: The tower's warden. Not eager to let his prize escape.

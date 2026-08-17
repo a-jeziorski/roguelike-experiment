@@ -12,6 +12,7 @@ from engine.game_map import GameMap, build_game_map
 from engine.render import describe_tile, render_all, render_look_frame, render_target_frame
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
 
 
 def make_game_map(width: int = 3, height: int = 3) -> GameMap:
@@ -40,7 +41,7 @@ def console_text(console: tcod.console.Console) -> str:
 
 def test_render_all_does_not_raise_for_level_01():
     catalog = load_catalog()
-    level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
     engine = Engine(game_map, player, level.name)
 
@@ -54,7 +55,7 @@ def test_long_monster_description_wraps_instead_of_being_clipped():
     monster description used to have its tail silently dropped in look mode -
     every word of it must now show up somewhere on screen instead."""
     catalog = load_catalog()
-    level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
     engine = Engine(game_map, player, level.name, catalog=catalog)
     game_map.visible[:] = True
@@ -82,7 +83,7 @@ def test_long_monster_description_wraps_instead_of_being_clipped():
 
 def test_render_look_frame_does_not_raise_for_level_01():
     catalog = load_catalog()
-    level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
     engine = Engine(game_map, player, level.name, catalog=catalog)
 
@@ -92,7 +93,7 @@ def test_render_look_frame_does_not_raise_for_level_01():
 
 def test_render_target_frame_does_not_raise_for_level_01():
     catalog = load_catalog()
-    level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
     engine = Engine(game_map, player, level.name, catalog=catalog)
 

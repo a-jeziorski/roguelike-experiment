@@ -1,0 +1,7 @@
+id: prison_tower
+name: The Prison Tower
+starting_level: level_01
+description: >
+  Thrown into a cell at the top of a tower you don't remember entering,
+  escape means descending floor by floor - past guards, the broken, and
+  whoever's left holding the keys - to the gatehouse and the world outside.

@@ -1,0 +1,23 @@
+id: level_03
+name: The Lower Cellblock
+
+map: |
+  ########################
+  #....##....##....##....#
+  #.@..##....##.p..##.!..#
+  #....##....##....##....#
+  #......................#
+  #....##....##....##....#
+  #.A..##.r..##....##..>.#
+  #....##....##....##....#
+  ########################
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": { stairs_down: level_04 }
+  "p": { entity: feral_prisoner }
+  "r": { entity: rat }
+  "!": { item: healing_potion }
+  "A": { item: arrows }

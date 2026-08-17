@@ -1,15 +1,17 @@
 """Standalone content-review tool.
 
-Validates level file(s) against the catalogs and prints an ASCII rendering plus a
-summary, with no engine/game loop involved. This is the fast "does this look right"
-check for a human reviewing hand-authored (or Claude-authored) content.
+Validates level file(s)/dungeon(s) against the catalogs and prints an ASCII
+rendering plus a summary, with no engine/game loop involved. This is the fast
+"does this look right" check for a human reviewing hand-authored (or
+Claude-authored) content. What `target` is determines the mode:
 
 Usage:
-    python tools/preview.py data/levels/level_01.lvl   # single level
-    python tools/preview.py data/levels                # whole dungeon (all .lvl
-                                                         # files), including
-                                                         # cross-checking every
-                                                         # stairway's destination
+    python tools/preview.py data/dungeons/prison_tower/levels/level_01.lvl  # one level
+    python tools/preview.py data/dungeons/prison_tower/levels             # one dungeon's
+                                                                            # levels, no manifest
+    python tools/preview.py data/dungeons/prison_tower                    # one dungeon
+                                                                            # (manifest + levels)
+    python tools/preview.py data/dungeons                                 # every dungeon
 """
 
 from __future__ import annotations
@@ -20,7 +22,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from content.loader import ContentValidationError, load_catalog, load_dungeon, load_level
+from content.loader import (
+    ContentValidationError,
+    Dungeon,
+    load_catalog,
+    load_dungeon,
+    load_dungeon_registry,
+    load_level,
+    load_levels,
+)
 
 TILE_GLYPHS = {
     "wall": "#",
@@ -81,23 +91,48 @@ def preview_one(level) -> None:
     print(summarize(level))
 
 
+def preview_dungeon(dungeon: Dungeon) -> None:
+    print(f"=== Dungeon: {dungeon.name} (id: {dungeon.id}) ===")
+    if dungeon.description:
+        print(dungeon.description.strip())
+    print(f"starting_level: {dungeon.starting_level}")
+    for i, level_id in enumerate(sorted(dungeon.levels)):
+        print("\n" + "-" * 40 + "\n")
+        preview_one(dungeon.levels[level_id])
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        print(f"usage: python {argv[0]} <level_file.lvl | levels_dir>", file=sys.stderr)
+        print(
+            f"usage: python {argv[0]} <level_file.lvl | levels_dir | dungeon_dir | dungeons_dir>",
+            file=sys.stderr,
+        )
         return 2
 
     target = Path(argv[1])
 
     try:
         catalog = load_catalog()
-        if target.is_dir():
-            levels = load_dungeon(target, catalog)
+
+        if not target.is_dir():
+            preview_one(load_level(target, catalog))
+        elif (target / "dungeon.yaml").exists():
+            preview_dungeon(load_dungeon(target, catalog))
+        elif any(target.glob("*.lvl")):
+            levels = load_levels(target, catalog)
             for i, level_id in enumerate(sorted(levels)):
                 if i > 0:
                     print("\n" + "=" * 40 + "\n")
                 preview_one(levels[level_id])
+        elif any((p / "dungeon.yaml").exists() for p in target.iterdir() if p.is_dir()):
+            registry = load_dungeon_registry(target, catalog)
+            for i, dungeon_id in enumerate(sorted(registry)):
+                if i > 0:
+                    print("\n" + "=" * 40 + "\n")
+                preview_dungeon(registry[dungeon_id])
         else:
-            preview_one(load_level(target, catalog))
+            print(f"{target}: no .lvl files or dungeon.yaml found", file=sys.stderr)
+            return 2
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1

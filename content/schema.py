@@ -158,3 +158,16 @@ class LevelDef(BaseModel):
     @classmethod
     def normalize_legend(cls, v: dict) -> dict[str, LegendEntry]:
         return {symbol: LegendEntry.from_raw(raw) for symbol, raw in v.items()}
+
+
+class DungeonDef(BaseModel):
+    """A dungeon's manifest: identifies it and declares where a fresh run
+    begins. Lives at data/dungeons/<dungeon_id>/dungeon.yaml, sitting
+    alongside that dungeon's own levels/ directory. The catalog
+    (entities.yaml/items.yaml) is global, not per-dungeon - a dungeon just
+    references ids from it, the same way a level does."""
+
+    id: str
+    name: str
+    starting_level: str
+    description: str = ""

@@ -5,7 +5,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 
 from pathlib import Path
 
-from content.loader import load_catalog, load_dungeon
+from content.loader import load_catalog, load_levels
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.engine import Engine
 from engine.entity import (
@@ -19,6 +19,8 @@ from engine.entity import (
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
+PRISON_TOWER_LEVELS_DIR = DATA_DIR / "dungeons" / "prison_tower" / "levels"
 
 
 def make_open_map(width: int, height: int) -> GameMap:
@@ -556,7 +558,7 @@ def test_reaching_stairs_wins():
 
 def test_descending_stairs_swaps_level_and_preserves_player():
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
     game_map, player = build_game_map(level_01, catalog)
     engine = Engine(game_map, player, level_01.name, catalog=catalog, levels=levels)
@@ -582,7 +584,7 @@ def test_full_dungeon_chain_is_completable():
     every hop resolves and the run actually reaches "won" - not just that
     each transition works in isolation."""
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
     game_map, player = build_game_map(level_01, catalog)
     engine = Engine(game_map, player, level_01.name, catalog=catalog, levels=levels)
@@ -596,9 +598,27 @@ def test_full_dungeon_chain_is_completable():
     assert engine.game_state == "won"
 
 
+def test_full_prison_tower_chain_is_completable():
+    """Same end-to-end shape as the Forgotten Ruins chain test, for the
+    other shipped dungeon - a linear escape, no branch to pick between."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog, levels=levels)
+
+    for next_level_id in ("level_02", "level_03", "level_04"):
+        engine.on_player_reach_stairs(next_level_id)
+        assert engine.game_state == "playing"
+        assert engine.player is player
+
+    engine.on_player_reach_stairs(None)  # level_04's terminal stairs (the gatehouse exit)
+    assert engine.game_state == "won"
+
+
 def test_level_01_branches_to_two_different_levels():
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     game_map, _player = build_game_map(levels["level_01"], catalog)
 
     destinations = set(game_map.stairs.values())
@@ -607,7 +627,7 @@ def test_level_01_branches_to_two_different_levels():
 
 def test_restart_after_death_gives_a_fresh_run():
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
     game_map, player = build_game_map(level_01, catalog)
     engine = Engine(
@@ -697,7 +717,7 @@ def test_use_item_action_never_consumes_a_key():
 
 def test_restart_after_win_returns_to_starting_level():
     catalog = load_catalog()
-    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
     game_map, player = build_game_map(level_01, catalog)
     engine = Engine(

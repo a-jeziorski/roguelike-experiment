@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from content.schema import EntityDef, ItemDef, LevelDef
+from content.schema import DungeonDef, EntityDef, ItemDef, LevelDef
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -250,10 +250,11 @@ def load_level(
     )
 
 
-def load_dungeon(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
+def load_levels(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
     """Loads and validates every `.lvl` file in a directory as one connected
-    dungeon. Two passes: first collect every level's id (so stairway destinations
-    can be checked), then fully validate each level against that known-id set."""
+    set of levels. Two passes: first collect every level's id (so stairway
+    destinations can be checked), then fully validate each level against
+    that known-id set."""
     paths = sorted(levels_dir.glob("*.lvl"))
     if not paths:
         raise ContentValidationError(str(levels_dir), ["no .lvl files found"])
@@ -286,3 +287,72 @@ def load_dungeon(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
         raise ContentValidationError(str(levels_dir), errors)
 
     return levels
+
+
+@dataclass
+class Dungeon:
+    """A validated dungeon: its manifest plus every level it contains."""
+
+    id: str
+    name: str
+    starting_level: str
+    description: str
+    levels: dict[str, ParsedLevel]
+
+
+def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
+    """Loads one dungeon: its manifest (`dungeon_dir/dungeon.yaml`) plus
+    every level under `dungeon_dir/levels/`."""
+    manifest_path = dungeon_dir / "dungeon.yaml"
+    raw = _load_yaml(manifest_path)
+    try:
+        manifest = DungeonDef(**(raw or {}))
+    except ValidationError as e:
+        raise ContentValidationError(str(manifest_path), [str(e)]) from e
+
+    levels = load_levels(dungeon_dir / "levels", catalog)
+
+    if manifest.starting_level not in levels:
+        raise ContentValidationError(
+            str(manifest_path),
+            [
+                f"starting_level '{manifest.starting_level}' is not among "
+                "this dungeon's levels"
+            ],
+        )
+
+    return Dungeon(
+        id=manifest.id,
+        name=manifest.name,
+        starting_level=manifest.starting_level,
+        description=manifest.description,
+        levels=levels,
+    )
+
+
+def load_dungeon_registry(dungeons_dir: Path, catalog: Catalog) -> dict[str, Dungeon]:
+    """Discovers and loads every dungeon under `dungeons_dir` - each an
+    immediate subdirectory containing its own `dungeon.yaml` + `levels/`.
+    This is what a dungeon-select screen (or a future overworld) would
+    enumerate."""
+    dungeon_dirs = sorted(p for p in dungeons_dir.iterdir() if p.is_dir())
+    if not dungeon_dirs:
+        raise ContentValidationError(str(dungeons_dir), ["no dungeon subdirectories found"])
+
+    registry: dict[str, Dungeon] = {}
+    errors: list[str] = []
+    for dungeon_dir in dungeon_dirs:
+        try:
+            dungeon = load_dungeon(dungeon_dir, catalog)
+        except ContentValidationError as e:
+            errors.extend(f"{dungeon_dir}: {err}" for err in e.errors)
+            continue
+        if dungeon.id in registry:
+            errors.append(f"{dungeon_dir}: duplicate dungeon id '{dungeon.id}'")
+            continue
+        registry[dungeon.id] = dungeon
+
+    if errors:
+        raise ContentValidationError(str(dungeons_dir), errors)
+
+    return registry

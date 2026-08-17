@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from content.schema import EntityDef, ItemDef, LegendEntry, LevelDef
+from content.schema import DungeonDef, EntityDef, ItemDef, LegendEntry, LevelDef
 
 
 def test_entity_def_valid():
@@ -138,6 +138,17 @@ def test_item_def_accepts_ammo_with_quantity():
     )
     assert arrows.is_ammo is True
     assert arrows.quantity == 5
+
+
+def test_dungeon_def_valid():
+    dungeon = DungeonDef(id="prison_tower", name="The Prison Tower", starting_level="level_01")
+    assert dungeon.starting_level == "level_01"
+    assert dungeon.description == ""
+
+
+def test_dungeon_def_requires_starting_level():
+    with pytest.raises(ValidationError):
+        DungeonDef(id="prison_tower", name="The Prison Tower")
 
 
 def test_level_def_normalizes_legend():

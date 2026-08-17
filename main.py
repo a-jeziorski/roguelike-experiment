@@ -1,4 +1,4 @@
-"""Entry point: loads level_01 from content files and runs the game."""
+"""Entry point: loads the dungeon registry and starts a run in the default dungeon."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import tcod
 import tcod.event
 
-from content.loader import ContentValidationError, load_catalog, load_dungeon
+from content.loader import ContentValidationError, load_catalog, load_dungeon_registry
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
     EscapeAction,
@@ -24,8 +24,8 @@ from engine.input_handlers import handle_event, handle_look_event, handle_target
 from engine.render import render_all, render_look_frame, render_target_frame
 from engine.targeting import find_nearest_target
 
-LEVELS_DIR = Path(__file__).resolve().parent / "data" / "levels"
-STARTING_LEVEL_ID = "level_01"
+DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
+STARTING_DUNGEON_ID = "prison_tower"
 
 TILE_SIZE = 14
 CONSOLE_COLUMNS = 70
@@ -131,12 +131,14 @@ def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, 
 def main() -> int:
     try:
         catalog = load_catalog()
-        levels = load_dungeon(LEVELS_DIR, catalog)
+        dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
 
-    starting_level = levels[STARTING_LEVEL_ID]
+    dungeon = dungeon_registry[STARTING_DUNGEON_ID]
+    levels = dungeon.levels
+    starting_level = levels[dungeon.starting_level]
     game_map, player = build_game_map(starting_level, catalog)
     engine = Engine(
         game_map,
