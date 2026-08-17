@@ -10,7 +10,7 @@ import tcod
 import tcod.event
 
 from content.loader import ContentValidationError, load_catalog, load_dungeon
-from engine.actions import RestartAction
+from engine.actions import EscapeAction, RestartAction
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event
@@ -37,6 +37,26 @@ def load_tileset() -> tcod.tileset.Tileset:
         "No usable monospace TTF font found. Tried: "
         + ", ".join(str(c) for c in FONT_CANDIDATES)
     )
+
+
+def dispatch_action(engine: Engine, action) -> bool:
+    """Routes a raw input Action to the engine. Returns True if the caller
+    should quit.
+
+    Escape and Restart are handled outside Engine.process_turn on purpose:
+    process_turn no-ops once the game is no longer "playing" (so normal
+    actions are ignored after death/win), which would otherwise silently
+    swallow both quitting and restarting once the run has ended.
+    """
+    if isinstance(action, EscapeAction):
+        return True
+    if isinstance(action, RestartAction):
+        if engine.game_state != "playing":
+            engine.restart()
+        return False
+    if action is not None:
+        engine.process_turn(action)
+    return False
 
 
 def main() -> int:
@@ -79,11 +99,8 @@ def main() -> int:
                 except SystemExit:
                     return 0
 
-                if isinstance(action, RestartAction):
-                    if engine.game_state != "playing":
-                        engine.restart()
-                elif action is not None:
-                    engine.process_turn(action)
+                if dispatch_action(engine, action):
+                    return 0
 
 
 if __name__ == "__main__":
