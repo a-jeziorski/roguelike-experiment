@@ -26,6 +26,7 @@ class Fighter:
 class ItemEffect:
     heal_amount: int | None = None
     attack_bonus: int | None = None
+    key_id: str | None = None
 
 
 class Entity:

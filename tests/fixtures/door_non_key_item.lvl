@@ -1,0 +1,14 @@
+id: door_non_key_item
+name: Door Non-Key Item Fixture
+
+map: |
+  ######
+  #@.D>#
+  ######
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": stairs_down
+  "D": { door: healing_potion }

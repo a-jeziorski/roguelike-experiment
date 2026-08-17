@@ -1,0 +1,14 @@
+id: door_unknown_key
+name: Door Unknown Key Fixture
+
+map: |
+  ######
+  #@.D>#
+  ######
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": stairs_down
+  "D": { door: no_such_item }

@@ -38,7 +38,10 @@ def test_level_01_content():
     assert entity_names == ["Goblin", "Rat", "Rat"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Healing Potion", "Rusty Dagger"]
+    assert item_names == ["Healing Potion", "Healing Potion", "Rusty Dagger", "Rusty Key"]
+
+    door_keys = sorted(d.requires_key for d in level.doors)
+    assert door_keys == ["rusty_key"]
 
 
 def test_broken_level_reports_all_errors():
@@ -89,3 +92,15 @@ def test_load_dungeon_loads_and_links_all_four_levels():
     assert [s.next_level for s in levels["level_02a"].stairs] == ["level_03"]
     assert [s.next_level for s in levels["level_02b"].stairs] == ["level_03"]
     assert [s.next_level for s in levels["level_03"].stairs] == [None]
+
+
+def test_door_referencing_unknown_item_is_rejected():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="no_such_item"):
+        load_level(FIXTURES_DIR / "door_unknown_key.lvl", catalog)
+
+
+def test_door_referencing_non_key_item_is_rejected():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="not a key item"):
+        load_level(FIXTURES_DIR / "door_non_key_item.lvl", catalog)

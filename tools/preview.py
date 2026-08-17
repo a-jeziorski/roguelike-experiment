@@ -27,6 +27,7 @@ TILE_GLYPHS = {
     "floor": ".",
     "stairs_down": ">",
     "player_start": "@",
+    "door": "+",
 }
 
 
@@ -61,6 +62,11 @@ def summarize(level) -> str:
     for stairs in level.stairs:
         destination = stairs.next_level if stairs.next_level is not None else "WIN (terminal)"
         lines.append(f"  ({stairs.x}, {stairs.y}) -> {destination}")
+
+    if level.doors:
+        lines.append("doors:")
+        for door in level.doors:
+            lines.append(f"  ({door.x}, {door.y}) -> requires '{door.requires_key}'")
 
     lines.append("monsters:")
     lines += [f"  {count}x {name}" for name, count in entity_counts.items()] or ["  (none)"]

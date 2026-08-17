@@ -60,6 +60,15 @@ def make_potion(x: int, y: int, heal_amount=10) -> Entity:
     )
 
 
+def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
+    return Entity(
+        x, y, "-", (200, 170, 60), name,
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(key_id=key_id),
+    )
+
+
 def test_movement_into_open_floor():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -231,6 +240,56 @@ def test_restart_after_death_gives_a_fresh_run():
 
     monster_names = sorted(e.name for e in engine.game_map.entities if e.ai is not None)
     assert monster_names == ["Goblin", "Rat", "Rat"]  # killed monster is back
+
+
+def test_locked_door_blocks_movement_without_key():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "door"
+    game_map.walkable[2, 1] = False
+    game_map.transparent[2, 1] = False
+    game_map.locked_doors[(2, 1)] = "rusty_key"
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # blocked
+    assert (2, 1) in game_map.locked_doors  # still locked
+
+
+def test_locked_door_unlocks_and_consumes_matching_key():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "door"
+    game_map.walkable[2, 1] = False
+    game_map.transparent[2, 1] = False
+    game_map.locked_doors[(2, 1)] = "rusty_key"
+    player = make_player(1, 1)
+    key = make_key(0, 0)
+    player.inventory.append(key)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (2, 1)  # moved through the now-open door
+    assert (2, 1) not in game_map.locked_doors
+    assert game_map.walkable[2, 1]
+    assert key not in player.inventory
+
+
+def test_use_item_action_never_consumes_a_key():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    key = make_key(0, 0)
+    player.inventory.append(key)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(UseItemAction())
+
+    assert key in player.inventory  # not consumed
+    assert engine.message_log.messages[-1] == "You have nothing to use."
 
 
 def test_restart_after_win_returns_to_starting_level():

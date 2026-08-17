@@ -35,6 +35,8 @@ class GameMap:
         self.visible = np.zeros((width, height), dtype=bool, order="F")
         # Coordinate -> destination level id, or None for a terminal (winning) stairway.
         self.stairs: dict[tuple[int, int], str | None] = {}
+        # Coordinate -> required key item id, for tiles not yet unlocked.
+        self.locked_doors: dict[tuple[int, int], str] = {}
         self.entities: list[Entity] = []
 
     def in_bounds(self, x: int, y: int) -> bool:
@@ -42,6 +44,12 @@ class GameMap:
 
     def is_walkable(self, x: int, y: int) -> bool:
         return self.in_bounds(x, y) and bool(self.walkable[x, y])
+
+    def unlock_door(self, x: int, y: int) -> None:
+        self.walkable[x, y] = True
+        self.transparent[x, y] = True
+        self.kinds[x, y] = "floor"
+        self.locked_doors.pop((x, y), None)
 
     def blocking_entity_at(self, x: int, y: int) -> Entity | None:
         for entity in self.entities:
@@ -75,11 +83,15 @@ def build_game_map(
         for x, tile in enumerate(row):
             kind = "floor" if tile == "player_start" else tile
             game_map.kinds[x, y] = kind
-            game_map.walkable[x, y] = kind != "wall"
-            game_map.transparent[x, y] = kind != "wall"
+            # Doors start closed: impassable and opaque, like a wall, until unlocked.
+            game_map.walkable[x, y] = kind not in ("wall", "door")
+            game_map.transparent[x, y] = kind not in ("wall", "door")
 
     for stairs_spawn in level.stairs:
         game_map.stairs[(stairs_spawn.x, stairs_spawn.y)] = stairs_spawn.next_level
+
+    for door_spawn in level.doors:
+        game_map.locked_doors[(door_spawn.x, door_spawn.y)] = door_spawn.requires_key
 
     for spawn in level.entity_spawns:
         edef = spawn.entity
@@ -108,7 +120,11 @@ def build_game_map(
             idef.name,
             blocks_movement=False,
             render_priority=RENDER_PRIORITY_ITEM,
-            item=ItemEffect(heal_amount=idef.heal_amount, attack_bonus=idef.attack_bonus),
+            item=ItemEffect(
+                heal_amount=idef.heal_amount,
+                attack_bonus=idef.attack_bonus,
+                key_id=idef.id if idef.is_key else None,
+            ),
         )
         game_map.entities.append(entity)
 

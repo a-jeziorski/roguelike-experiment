@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-TileType = Literal["wall", "floor", "stairs_down", "player_start"]
+TileType = Literal["wall", "floor", "stairs_down", "player_start", "door"]
 
 Color = tuple[int, int, int]
 
@@ -49,6 +49,7 @@ class ItemDef(BaseModel):
     color: Color
     heal_amount: int | None = None
     attack_bonus: int | None = None
+    is_key: bool = False
     description: str = ""
 
     @field_validator("glyph")
@@ -64,19 +65,23 @@ class LegendEntry(BaseModel):
     which entity/item spawns there, or which level a stairway leads to.
 
     Level files may write a legend value as a plain tile-type string (e.g. "wall"),
-    or as a mapping. Two mapping shorthands exist:
+    or as a mapping. Shorthands:
       - {entity: rat} / {item: healing_potion}: a floor tile with that entity/item
         on it.
       - {stairs_down: level_02a}: a stairway tile leading to that level id. A bare
         "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
         wins the game. A level can have multiple differently-symboled stairway
         tiles leading to different destinations (branching).
+      - {door: rusty_key}: a locked door tile, impassable until the player holds
+        an item whose id matches (i.e. a key with that id), which is consumed to
+        open it permanently.
     """
 
     tile: TileType
     entity: str | None = None
     item: str | None = None
     next_level: str | None = None
+    requires_key: str | None = None
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
@@ -89,12 +94,15 @@ class LegendEntry(BaseModel):
                 return cls(tile="floor", item=raw["item"])
             if "stairs_down" in raw:
                 return cls(tile="stairs_down", next_level=raw["stairs_down"])
+            if "door" in raw:
+                return cls(tile="door", requires_key=raw["door"])
             tile = raw.get("tile", "floor")
             return cls(
                 tile=tile,
                 entity=raw.get("entity"),
                 item=raw.get("item"),
                 next_level=raw.get("next_level"),
+                requires_key=raw.get("requires_key"),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

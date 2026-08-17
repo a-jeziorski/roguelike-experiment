@@ -20,3 +20,10 @@ iron_sword:
   color: [200, 200, 215]
   attack_bonus: 4
   description: A well-balanced blade, heavier and sharper than any dagger.
+
+rusty_key:
+  name: Rusty Key
+  glyph: "-"
+  color: [200, 170, 60]
+  is_key: true
+  description: A tarnished brass key. It might fit a nearby lock.

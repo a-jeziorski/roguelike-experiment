@@ -43,6 +43,22 @@ class MovementAction(Action):
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         dest_x, dest_y = entity.x + self.dx, entity.y + self.dy
+
+        required_key_id = engine.game_map.locked_doors.get((dest_x, dest_y))
+        if required_key_id is not None:
+            matching_key = next(
+                (it for it in entity.inventory if it.item and it.item.key_id == required_key_id),
+                None,
+            )
+            if matching_key is None:
+                if entity is engine.player:
+                    engine.message_log.add("The door is locked.")
+                return
+            entity.inventory.remove(matching_key)
+            engine.game_map.unlock_door(dest_x, dest_y)
+            if entity is engine.player:
+                engine.message_log.add(f"You use the {matching_key.name} to unlock the door.")
+
         if not engine.game_map.is_walkable(dest_x, dest_y):
             return
         if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
@@ -102,12 +118,17 @@ class PickupAction(Action):
 
 
 class UseItemAction(Action):
+    """Drinks the first usable (healing) item in inventory. Keys are never
+    selected here - they're consumed automatically when unlocking a matching
+    door (see MovementAction), not "used" on demand."""
+
     def perform(self, engine: "Engine", entity: "Entity") -> None:
-        if not entity.inventory:
+        item_entity = next((it for it in entity.inventory if it.item.heal_amount), None)
+        if item_entity is None:
             engine.message_log.add("You have nothing to use.")
             return
 
-        item_entity = entity.inventory.pop(0)
-        heal = item_entity.item.heal_amount or 0
+        entity.inventory.remove(item_entity)
+        heal = item_entity.item.heal_amount
         entity.fighter.hp = min(entity.fighter.max_hp, entity.fighter.hp + heal)
         engine.message_log.add(f"You drink the {item_entity.name} and recover {heal} HP.")

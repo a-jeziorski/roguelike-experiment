@@ -14,6 +14,7 @@ TILE_VISUALS = {
     "wall": {"glyph": "#", "dark": (35, 35, 55), "light": (100, 100, 130)},
     "floor": {"glyph": ".", "dark": (25, 25, 35), "light": (75, 75, 95)},
     "stairs_down": {"glyph": ">", "dark": (65, 45, 15), "light": (210, 160, 60)},
+    "door": {"glyph": "+", "dark": (70, 45, 15), "light": (170, 110, 40)},
 }
 
 HUD_FG = (220, 220, 220)
@@ -42,13 +43,17 @@ def render_entities(console: "Console", game_map: "GameMap") -> None:
 
 def render_hud(console: "Console", engine: "Engine", y: int) -> None:
     fighter = engine.player.fighter
+    inventory = engine.player.inventory
+    potions = sum(1 for it in inventory if it.item.heal_amount)
+    keys = sum(1 for it in inventory if it.item.key_id)
+
     console.print(0, y, f"{engine.level_name}", fg=HUD_FG)
     console.print(0, y + 1, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG)
     console.print(0, y + 2, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG)
     console.print(
         0,
         y + 3,
-        f"Potions: {len(engine.player.inventory)}  "
+        f"Potions: {potions}  Keys: {keys}  "
         "[arrows] move  [g] pick up  [u] use potion  [esc] quit",
         fg=HUD_FG,
     )

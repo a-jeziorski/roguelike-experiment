@@ -39,6 +39,17 @@ def test_legend_entry_from_item_mapping():
     assert entry.item == "healing_potion"
 
 
+def test_legend_entry_from_door_mapping():
+    entry = LegendEntry.from_raw({"door": "rusty_key"})
+    assert entry.tile == "door"
+    assert entry.requires_key == "rusty_key"
+
+
+def test_item_def_is_key_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.is_key is False
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",

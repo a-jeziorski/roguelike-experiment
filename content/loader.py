@@ -60,6 +60,13 @@ class StairsSpawn:
 
 
 @dataclass
+class DoorSpawn:
+    x: int
+    y: int
+    requires_key: str  # id of the key item that unlocks this door
+
+
+@dataclass
 class ParsedLevel:
     """A validated level, decoupled from any engine/rendering data structures.
     tiles[y][x] gives the TileType string for that cell. A level may have multiple
@@ -74,6 +81,7 @@ class ParsedLevel:
     entity_spawns: list[EntitySpawn]
     item_spawns: list[ItemSpawn]
     stairs: list[StairsSpawn]
+    doors: list[DoorSpawn]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -155,6 +163,7 @@ def load_level(
     item_spawns: list[ItemSpawn] = []
     player_starts: list[tuple[int, int]] = []
     stairs: list[StairsSpawn] = []
+    doors: list[DoorSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -177,6 +186,21 @@ def load_level(
                             f"unknown level '{entry.next_level}'"
                         )
                 stairs.append(StairsSpawn(x=x, y=y, next_level=entry.next_level))
+
+            if entry.tile == "door":
+                key_item = catalog.items.get(entry.requires_key)
+                if key_item is None:
+                    errors.append(
+                        f"legend symbol '{symbol}' door references unknown item "
+                        f"'{entry.requires_key}'"
+                    )
+                elif not key_item.is_key:
+                    errors.append(
+                        f"legend symbol '{symbol}' door requires '{entry.requires_key}', "
+                        "which is not a key item (is_key: true)"
+                    )
+                else:
+                    doors.append(DoorSpawn(x=x, y=y, requires_key=entry.requires_key))
 
             if entry.entity is not None:
                 if entry.entity not in catalog.entities:
@@ -222,6 +246,7 @@ def load_level(
         entity_spawns=entity_spawns,
         item_spawns=item_spawns,
         stairs=stairs,
+        doors=doors,
     )
 
 
