@@ -61,34 +61,52 @@ class ItemDef(BaseModel):
 
 class LegendEntry(BaseModel):
     """A normalized legend entry: what tile a symbol represents, and optionally
-    which entity/item spawns there.
+    which entity/item spawns there, or which level a stairway leads to.
 
     Level files may write a legend value as a plain tile-type string (e.g. "wall"),
-    or as a mapping referencing an entity/item by id (e.g. {entity: rat}), which
-    implicitly means "floor tile with this entity standing on it".
+    or as a mapping. Two mapping shorthands exist:
+      - {entity: rat} / {item: healing_potion}: a floor tile with that entity/item
+        on it.
+      - {stairs_down: level_02a}: a stairway tile leading to that level id. A bare
+        "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
+        wins the game. A level can have multiple differently-symboled stairway
+        tiles leading to different destinations (branching).
     """
 
     tile: TileType
     entity: str | None = None
     item: str | None = None
+    next_level: str | None = None
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
         if isinstance(raw, str):
             return cls(tile=raw)
         if isinstance(raw, dict):
+            if "entity" in raw:
+                return cls(tile="floor", entity=raw["entity"])
+            if "item" in raw:
+                return cls(tile="floor", item=raw["item"])
+            if "stairs_down" in raw:
+                return cls(tile="stairs_down", next_level=raw["stairs_down"])
             tile = raw.get("tile", "floor")
-            return cls(tile=tile, entity=raw.get("entity"), item=raw.get("item"))
+            return cls(
+                tile=tile,
+                entity=raw.get("entity"),
+                item=raw.get("item"),
+                next_level=raw.get("next_level"),
+            )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 
 
 class LevelDef(BaseModel):
     """A hand-authored level file: an ASCII map plus a legend mapping symbols to
-    tiles/entities/items."""
+    tiles/entities/items. Stairway destinations live per-symbol in the legend
+    (see LegendEntry), not as a single level-wide field, since a level can branch
+    into multiple stairways."""
 
     id: str
     name: str
-    next_level: str | None = None
     map: str
     legend: dict[str, LegendEntry]
 

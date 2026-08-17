@@ -9,13 +9,14 @@ from pathlib import Path
 import tcod
 import tcod.event
 
-from content.loader import load_catalog, load_level, ContentValidationError
+from content.loader import ContentValidationError, load_catalog, load_dungeon
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event
 from engine.render import render_all
 
-LEVEL_PATH = Path(__file__).resolve().parent / "data" / "levels" / "level_01.lvl"
+LEVELS_DIR = Path(__file__).resolve().parent / "data" / "levels"
+STARTING_LEVEL_ID = "level_01"
 
 TILE_SIZE = 14
 CONSOLE_COLUMNS = 70
@@ -40,13 +41,14 @@ def load_tileset() -> tcod.tileset.Tileset:
 def main() -> int:
     try:
         catalog = load_catalog()
-        level = load_level(LEVEL_PATH, catalog)
+        levels = load_dungeon(LEVELS_DIR, catalog)
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
 
-    game_map, player = build_game_map(level, catalog)
-    engine = Engine(game_map, player, level.name)
+    starting_level = levels[STARTING_LEVEL_ID]
+    game_map, player = build_game_map(starting_level, catalog)
+    engine = Engine(game_map, player, starting_level.name, catalog=catalog, levels=levels)
 
     tileset = load_tileset()
 

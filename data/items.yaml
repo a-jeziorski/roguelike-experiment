@@ -13,3 +13,10 @@ rusty_dagger:
   color: [180, 180, 190]
   attack_bonus: 2
   description: Better than fists.
+
+iron_sword:
+  name: Iron Sword
+  glyph: ")"
+  color: [200, 200, 215]
+  attack_bonus: 4
+  description: A well-balanced blade, heavier and sharper than any dagger.

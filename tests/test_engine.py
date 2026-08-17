@@ -1,6 +1,11 @@
-"""Engine/action/combat logic tests, built directly against engine world-objects
-(no content files involved) so game rules are verified independently of parsing."""
+"""Engine/action/combat logic tests. Most are built directly against engine
+world-objects (no content files involved) so game rules are verified independently
+of parsing; a few level-transition tests use the real shipped dungeon content to
+verify the loader and engine agree on level ids and player_start positions."""
 
+from pathlib import Path
+
+from content.loader import load_catalog, load_dungeon
 from engine.actions import BumpAction, PickupAction, UseItemAction, WaitAction
 from engine.engine import Engine
 from engine.entity import (
@@ -11,7 +16,9 @@ from engine.entity import (
     Fighter,
     ItemEffect,
 )
-from engine.game_map import GameMap
+from engine.game_map import GameMap, build_game_map
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def make_open_map(width: int, height: int) -> GameMap:
@@ -146,7 +153,7 @@ def test_pickup_and_use_healing_potion():
 def test_reaching_stairs_wins():
     game_map = make_open_map(3, 3)
     game_map.kinds[2, 1] = "stairs_down"
-    game_map.stairs_down = (2, 1)
+    game_map.stairs[(2, 1)] = None
     player = make_player(1, 1)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")
@@ -154,3 +161,34 @@ def test_reaching_stairs_wins():
     engine.process_turn(BumpAction(1, 0))
 
     assert engine.game_state == "won"
+
+
+def test_descending_stairs_swaps_level_and_preserves_player():
+    catalog = load_catalog()
+    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog, levels=levels)
+
+    player.fighter.hp = 20
+    player.inventory.append(make_potion(0, 0))
+    old_game_map = engine.game_map
+
+    engine.on_player_reach_stairs("level_02a")
+
+    assert engine.player is player  # same object: hp/inventory/attack carry over
+    assert engine.game_map is not old_game_map
+    assert engine.level_name == "The Flooded Crypt"
+    assert engine.game_state == "playing"
+    assert player.fighter.hp == 20
+    assert len(player.inventory) == 1
+    assert (player.x, player.y) == levels["level_02a"].player_start
+
+
+def test_level_01_branches_to_two_different_levels():
+    catalog = load_catalog()
+    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    game_map, _player = build_game_map(levels["level_01"], catalog)
+
+    destinations = set(game_map.stairs.values())
+    assert destinations == {"level_02a", "level_02b"}

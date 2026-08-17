@@ -3,10 +3,15 @@ so Engine itself stays testable without an SDL window."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from engine.actions import Action, MovementAction
 from engine.combat import resolve_attack
 from engine.entity import Entity
-from engine.game_map import GameMap
+from engine.game_map import GameMap, build_game_map
+
+if TYPE_CHECKING:
+    from content.loader import Catalog, ParsedLevel
 
 HOSTILE_BASIC_AI = "hostile_basic"
 
@@ -20,12 +25,24 @@ class MessageLog:
 
 
 class Engine:
-    def __init__(self, game_map: GameMap, player: Entity, level_name: str):
+    def __init__(
+        self,
+        game_map: GameMap,
+        player: Entity,
+        level_name: str,
+        *,
+        catalog: "Catalog | None" = None,
+        levels: "dict[str, ParsedLevel] | None" = None,
+    ):
         self.game_map = game_map
         self.player = player
         self.level_name = level_name
         self.message_log = MessageLog()
         self.game_state = "playing"  # "playing" | "dead" | "won"
+        # Needed to resolve a stairway's destination id into content when
+        # descending; only required if the dungeon actually branches/continues.
+        self.catalog = catalog
+        self.levels = levels
 
         self.game_map.update_fov((player.x, player.y))
         self.message_log.add(f"You enter {level_name}.")
@@ -39,9 +56,17 @@ class Engine:
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
 
-    def on_player_reach_stairs(self) -> None:
-        self.message_log.add("You descend the stairs and escape the dungeon. You win!")
-        self.game_state = "won"
+    def on_player_reach_stairs(self, next_level_id: str | None) -> None:
+        if next_level_id is None:
+            self.message_log.add("You ascend the stairs and escape the dungeon. You win!")
+            self.game_state = "won"
+            return
+
+        next_level = self.levels[next_level_id]
+        self.game_map, self.player = build_game_map(next_level, self.catalog, player=self.player)
+        self.level_name = next_level.name
+        self.message_log.add(f"You descend into {next_level.name}.")
+        self.game_map.update_fov((self.player.x, self.player.y))
 
     def _perform_ai(self, entity: Entity) -> None:
         if entity.ai != HOSTILE_BASIC_AI:

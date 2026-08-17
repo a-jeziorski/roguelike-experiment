@@ -33,7 +33,8 @@ class GameMap:
         self.kinds = np.full((width, height), "floor", dtype=object, order="F")
         self.explored = np.zeros((width, height), dtype=bool, order="F")
         self.visible = np.zeros((width, height), dtype=bool, order="F")
-        self.stairs_down: tuple[int, int] | None = None
+        # Coordinate -> destination level id, or None for a terminal (winning) stairway.
+        self.stairs: dict[tuple[int, int], str | None] = {}
         self.entities: list[Entity] = []
 
     def in_bounds(self, x: int, y: int) -> bool:
@@ -58,9 +59,16 @@ class GameMap:
         self.explored |= self.visible
 
 
-def build_game_map(level: ParsedLevel, catalog: Catalog) -> tuple[GameMap, Entity]:
+def build_game_map(
+    level: ParsedLevel, catalog: Catalog, player: Entity | None = None
+) -> tuple[GameMap, Entity]:
     """Builds a runtime GameMap and spawns entities from a validated level.
-    Returns (game_map, player_entity)."""
+
+    `player`, when given, is an existing player Entity to reuse (repositioned to
+    this level's player_start, hp/inventory/attack carried over) instead of
+    creating a fresh one - used when descending from one level to the next.
+    Returns (game_map, player_entity).
+    """
     game_map = GameMap(level.width, level.height)
 
     for y, row in enumerate(level.tiles):
@@ -69,8 +77,9 @@ def build_game_map(level: ParsedLevel, catalog: Catalog) -> tuple[GameMap, Entit
             game_map.kinds[x, y] = kind
             game_map.walkable[x, y] = kind != "wall"
             game_map.transparent[x, y] = kind != "wall"
-            if kind == "stairs_down":
-                game_map.stairs_down = (x, y)
+
+    for stairs_spawn in level.stairs:
+        game_map.stairs[(stairs_spawn.x, stairs_spawn.y)] = stairs_spawn.next_level
 
     for spawn in level.entity_spawns:
         edef = spawn.entity
@@ -104,18 +113,24 @@ def build_game_map(level: ParsedLevel, catalog: Catalog) -> tuple[GameMap, Entit
         game_map.entities.append(entity)
 
     px, py = level.player_start
-    player = Entity(
-        px,
-        py,
-        "@",
-        (255, 255, 255),
-        "Player",
-        blocks_movement=True,
-        render_priority=RENDER_PRIORITY_PLAYER,
-        fighter=Fighter(
-            max_hp=PLAYER_MAX_HP, hp=PLAYER_MAX_HP, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE
-        ),
-    )
+    if player is None:
+        player = Entity(
+            px,
+            py,
+            "@",
+            (255, 255, 255),
+            "Player",
+            blocks_movement=True,
+            render_priority=RENDER_PRIORITY_PLAYER,
+            fighter=Fighter(
+                max_hp=PLAYER_MAX_HP,
+                hp=PLAYER_MAX_HP,
+                attack=PLAYER_ATTACK,
+                defense=PLAYER_DEFENSE,
+            ),
+        )
+    else:
+        player.x, player.y = px, py
     game_map.entities.append(player)
 
     return game_map, player

@@ -1,0 +1,14 @@
+id: dangling_stairs
+name: Dangling Stairs Fixture
+
+map: |
+  #####
+  #@..#
+  #..x#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "x": { stairs_down: level_nonexistent }

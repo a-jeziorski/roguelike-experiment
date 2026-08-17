@@ -39,8 +39,8 @@ class MovementAction(Action):
         if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
             return
         entity.x, entity.y = dest_x, dest_y
-        if entity is engine.player and engine.game_map.stairs_down == (dest_x, dest_y):
-            engine.on_player_reach_stairs()
+        if entity is engine.player and (dest_x, dest_y) in engine.game_map.stairs:
+            engine.on_player_reach_stairs(engine.game_map.stairs[(dest_x, dest_y)])
 
 
 class MeleeAction(Action):

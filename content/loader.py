@@ -53,19 +53,27 @@ class ItemSpawn:
 
 
 @dataclass
+class StairsSpawn:
+    x: int
+    y: int
+    next_level: str | None  # None = terminal stairway (reaching it wins the game)
+
+
+@dataclass
 class ParsedLevel:
     """A validated level, decoupled from any engine/rendering data structures.
-    tiles[y][x] gives the TileType string for that cell."""
+    tiles[y][x] gives the TileType string for that cell. A level may have multiple
+    stairways (branching), each with its own destination."""
 
     id: str
     name: str
-    next_level: str | None
     width: int
     height: int
     tiles: list[list[str]]
     player_start: tuple[int, int]
     entity_spawns: list[EntitySpawn]
     item_spawns: list[ItemSpawn]
+    stairs: list[StairsSpawn]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -103,7 +111,16 @@ def load_catalog(
     return Catalog(entities=entities, items=items)
 
 
-def load_level(path: Path, catalog: Catalog) -> ParsedLevel:
+def load_level(
+    path: Path, catalog: Catalog, known_level_ids: set[str] | None = None
+) -> ParsedLevel:
+    """Parses and validates a single level file.
+
+    `known_level_ids`, when provided, is the full set of level ids that exist in
+    the dungeon; any stairway's `next_level` not in that set is reported as an
+    error. Pass None (the default) to skip that cross-file check, e.g. when
+    previewing a single level file in isolation.
+    """
     raw = _load_yaml(path)
     errors: list[str] = []
 
@@ -137,6 +154,7 @@ def load_level(path: Path, catalog: Catalog) -> ParsedLevel:
     entity_spawns: list[EntitySpawn] = []
     item_spawns: list[ItemSpawn] = []
     player_starts: list[tuple[int, int]] = []
+    stairs: list[StairsSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -150,6 +168,15 @@ def load_level(path: Path, catalog: Catalog) -> ParsedLevel:
 
             if entry.tile == "player_start":
                 player_starts.append((x, y))
+
+            if entry.tile == "stairs_down":
+                if entry.next_level is not None and known_level_ids is not None:
+                    if entry.next_level not in known_level_ids:
+                        errors.append(
+                            f"legend symbol '{symbol}' stairs_down references "
+                            f"unknown level '{entry.next_level}'"
+                        )
+                stairs.append(StairsSpawn(x=x, y=y, next_level=entry.next_level))
 
             if entry.entity is not None:
                 if entry.entity not in catalog.entities:
@@ -179,17 +206,58 @@ def load_level(path: Path, catalog: Catalog) -> ParsedLevel:
             f"map must contain exactly one player_start tile, found {len(player_starts)}"
         )
 
+    if not stairs:
+        errors.append("map must contain at least one stairs_down tile, found 0")
+
     if errors:
         raise ContentValidationError(str(path), errors)
 
     return ParsedLevel(
         id=level.id,
         name=level.name,
-        next_level=level.next_level,
         width=width,
         height=height,
         tiles=tiles,
         player_start=player_starts[0],
         entity_spawns=entity_spawns,
         item_spawns=item_spawns,
+        stairs=stairs,
     )
+
+
+def load_dungeon(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
+    """Loads and validates every `.lvl` file in a directory as one connected
+    dungeon. Two passes: first collect every level's id (so stairway destinations
+    can be checked), then fully validate each level against that known-id set."""
+    paths = sorted(levels_dir.glob("*.lvl"))
+    if not paths:
+        raise ContentValidationError(str(levels_dir), ["no .lvl files found"])
+
+    known_level_ids: set[str] = set()
+    errors: list[str] = []
+    for path in paths:
+        raw = _load_yaml(path)
+        level_id = raw.get("id") if isinstance(raw, dict) else None
+        if not level_id:
+            errors.append(f"{path}: missing required 'id' field")
+            continue
+        if level_id in known_level_ids:
+            errors.append(f"{path}: duplicate level id '{level_id}'")
+        known_level_ids.add(level_id)
+
+    if errors:
+        raise ContentValidationError(str(levels_dir), errors)
+
+    levels: dict[str, ParsedLevel] = {}
+    for path in paths:
+        try:
+            level = load_level(path, catalog, known_level_ids=known_level_ids)
+        except ContentValidationError as e:
+            errors.extend(f"{path}: {err}" for err in e.errors)
+            continue
+        levels[level.id] = level
+
+    if errors:
+        raise ContentValidationError(str(levels_dir), errors)
+
+    return levels

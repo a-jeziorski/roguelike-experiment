@@ -1,0 +1,12 @@
+id: no_stairs
+name: No Stairs Fixture
+
+map: |
+  #####
+  #@..#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start

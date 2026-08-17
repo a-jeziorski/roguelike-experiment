@@ -20,3 +20,23 @@ goblin:
   defense: 1
   ai: hostile_basic
   description: A snarling green raider with a rusty blade.
+
+skeleton:
+  name: Skeleton
+  glyph: s
+  color: [210, 210, 190]
+  hp: 16
+  attack: 5
+  defense: 2
+  ai: hostile_basic
+  description: Bones held together by old, grim magic. Clatters when it moves.
+
+ogre:
+  name: Ogre
+  glyph: O
+  color: [110, 80, 50]
+  hp: 28
+  attack: 8
+  defense: 3
+  ai: hostile_basic
+  description: A hulking brute that guards the deepest halls.
