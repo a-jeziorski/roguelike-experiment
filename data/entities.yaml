@@ -33,6 +33,17 @@ skeleton:
   alert_radius: 4
   description: Bones held together by old, grim magic. Stands motionless until disturbed.
 
+skeleton_archer:
+  name: Skeleton Archer
+  glyph: S
+  color: [190, 190, 170]
+  hp: 12
+  attack: 4
+  defense: 1
+  ai: ranged_basic
+  ranged_range: 5
+  description: An animated skeleton archer, notched arrow ready. Keeps its distance.
+
 ogre:
   name: Ogre
   glyph: O

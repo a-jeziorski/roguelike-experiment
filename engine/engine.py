@@ -5,18 +5,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from content.schema import AI_HOSTILE_BASIC, AI_SKITTISH, AI_SLEEPING_GUARD
+from content.schema import AI_HOSTILE_BASIC, AI_RANGED_BASIC, AI_SKITTISH, AI_SLEEPING_GUARD
 from engine.actions import Action, MovementAction
-from engine.combat import resolve_attack
+from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
 from engine.game_map import GameMap, build_game_map
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
 
-# Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct.
+# Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct/
+# ranged_range.
 DEFAULT_ALERT_RADIUS = 4
 DEFAULT_FLEE_HP_PCT = 0.3
+DEFAULT_MONSTER_RANGED_RANGE = 4
 
 
 class MessageLog:
@@ -108,6 +110,17 @@ class Engine:
                 self._flee(entity, dx, dy)
             else:
                 self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_RANGED_BASIC:
+            ranged_range = entity.ranged_range or DEFAULT_MONSTER_RANGED_RANGE
+            if distance <= 1:
+                resolve_attack(self, attacker=entity, defender=self.player)
+            elif distance <= ranged_range:
+                resolve_ranged_attack(self, attacker=entity, defender=self.player)
+            else:
+                step_x = (dx > 0) - (dx < 0)
+                step_y = (dy > 0) - (dy < 0)
+                MovementAction(step_x, step_y).perform(self, entity)
 
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:

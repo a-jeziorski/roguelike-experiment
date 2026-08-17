@@ -24,7 +24,8 @@ Color = tuple[int, int, int]
 AI_HOSTILE_BASIC = "hostile_basic"
 AI_SLEEPING_GUARD = "sleeping_guard"
 AI_SKITTISH = "skittish"
-AIType = Literal[AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH]
+AI_RANGED_BASIC = "ranged_basic"
+AIType = Literal[AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC]
 
 
 class EntityDef(BaseModel):
@@ -40,9 +41,11 @@ class EntityDef(BaseModel):
     defense: int = Field(ge=0)
     ai: AIType = AI_HOSTILE_BASIC
     # Only meaningful for the AI type that uses them (sleeping_guard /
-    # skittish respectively); engine-level defaults apply when omitted.
+    # skittish / ranged_basic respectively); engine-level defaults apply
+    # when omitted.
     alert_radius: int | None = Field(default=None, gt=0)
     flee_hp_pct: float | None = Field(default=None, gt=0, le=1)
+    ranged_range: int | None = Field(default=None, gt=0)
     description: str = ""
 
     @field_validator("glyph")

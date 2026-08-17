@@ -50,6 +50,7 @@ class Entity:
         ai: str | None = None,
         alert_radius: int | None = None,
         flee_hp_pct: float | None = None,
+        ranged_range: int | None = None,
         description: str = "",
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
@@ -67,6 +68,7 @@ class Entity:
         self.ai = ai
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
+        self.ranged_range = ranged_range
         self.description = description
         self.inventory: list[Entity] = []
         # The Entity currently equipped in each slot (so its name/bonus stay

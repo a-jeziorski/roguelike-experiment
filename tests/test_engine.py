@@ -42,7 +42,8 @@ def make_player(x: int, y: int, hp: int = 30, attack: int = 5, defense: int = 1)
 
 
 def make_monster(
-    x: int, y: int, hp=5, attack=2, defense=0, ai=None, alert_radius=None, flee_hp_pct=None
+    x: int, y: int, hp=5, attack=2, defense=0, ai=None,
+    alert_radius=None, flee_hp_pct=None, ranged_range=None,
 ) -> Entity:
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
@@ -52,6 +53,7 @@ def make_monster(
         ai=ai,
         alert_radius=alert_radius,
         flee_hp_pct=flee_hp_pct,
+        ranged_range=ranged_range,
     )
 
 
@@ -243,6 +245,62 @@ def test_skittish_holds_position_when_flee_is_blocked():
 
     assert (monster.x, monster.y) == (1, 1)  # blocked - held position, did not crash
     assert player.fighter.hp == player.fighter.max_hp  # still did not attack
+
+
+def test_ranged_basic_fires_when_in_range_but_not_adjacent():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    archer = make_monster(3, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (archer.x, archer.y) == (3, 1)  # held position, did not close in
+    assert player.fighter.hp == 30 - 4
+    assert "shoots" in engine.message_log.messages[-1]
+
+
+def test_ranged_basic_melees_when_adjacent():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    archer = make_monster(1, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4
+    assert "hits" in engine.message_log.messages[-1]
+
+
+def test_ranged_basic_approaches_when_out_of_range():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1)
+    archer = make_monster(7, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (archer.x, archer.y) == (6, 1)  # stepped toward the player, distance was 7 > 5
+    assert player.fighter.hp == player.fighter.max_hp
+
+
+def test_ranged_basic_ignores_player_when_not_visible():
+    game_map = make_open_map(10, 3)
+    for y in range(3):
+        game_map.walkable[5, y] = False
+        game_map.transparent[5, y] = False  # a wall column blocking line of sight
+    player = make_player(0, 1)
+    archer = make_monster(8, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (archer.x, archer.y) == (8, 1)  # never acted, out of sight
+    assert player.fighter.hp == player.fighter.max_hp
 
 
 def test_player_death_sets_game_state_dead():

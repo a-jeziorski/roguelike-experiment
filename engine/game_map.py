@@ -109,6 +109,7 @@ def build_game_map(
             ai=edef.ai,
             alert_radius=edef.alert_radius,
             flee_hp_pct=edef.flee_hp_pct,
+            ranged_range=edef.ranged_range,
             description=edef.description,
         )
         game_map.entities.append(entity)

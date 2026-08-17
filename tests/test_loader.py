@@ -105,7 +105,7 @@ def test_level_04_content():
     level = load_level(DATA_DIR / "levels" / "level_04.lvl", catalog)
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
-    assert entity_names == ["Rat", "Skeleton", "Skeleton"]
+    assert entity_names == ["Rat", "Skeleton", "Skeleton", "Skeleton Archer"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
     assert item_names == ["Arrows", "Bone Plate", "Healing Potion", "Iron Sword", "Rusty Key"]

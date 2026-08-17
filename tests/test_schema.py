@@ -41,6 +41,12 @@ def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     )
     assert skittish.flee_hp_pct == 0.5
 
+    archer = EntityDef(
+        id="skeleton_archer", name="Skeleton Archer", glyph="S", color=(1, 2, 3),
+        hp=12, attack=4, defense=1, ai="ranged_basic", ranged_range=5,
+    )
+    assert archer.ranged_range == 5
+
 
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
