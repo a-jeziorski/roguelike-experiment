@@ -9,14 +9,24 @@ if TYPE_CHECKING:
     from engine.entity import Entity
 
 
-def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
-    damage = max(0, attacker.effective_attack - defender.effective_defense)
+def _apply_damage(
+    engine: "Engine", attacker: "Entity", defender: "Entity", attack_value: int, verb: str
+) -> None:
+    damage = max(0, attack_value - defender.effective_defense)
 
     if damage > 0:
         defender.fighter.hp -= damage
-        engine.message_log.add(f"{attacker.name} hits {defender.name} for {damage} damage.")
+        engine.message_log.add(f"{attacker.name} {verb} {defender.name} for {damage} damage.")
     else:
-        engine.message_log.add(f"{attacker.name} attacks {defender.name} but does no damage.")
+        engine.message_log.add(f"{attacker.name} {verb} {defender.name} but does no damage.")
 
     if defender.fighter.hp <= 0:
         engine.on_entity_death(defender)
+
+
+def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    _apply_damage(engine, attacker, defender, attacker.effective_attack, "hits")
+
+
+def resolve_ranged_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    _apply_damage(engine, attacker, defender, attacker.effective_ranged_attack, "shoots")

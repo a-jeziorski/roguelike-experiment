@@ -16,6 +16,8 @@ from __future__ import annotations
 import textwrap
 from typing import TYPE_CHECKING
 
+from engine.targeting import is_valid_target
+
 if TYPE_CHECKING:
     from tcod.console import Console
 
@@ -41,6 +43,8 @@ LOG_FG = (190, 190, 190)
 DEAD_FG = (220, 50, 50)
 WIN_FG = (60, 220, 90)
 CURSOR_BG = (90, 90, 20)
+TARGET_VALID_BG = (40, 120, 40)
+TARGET_INVALID_BG = (110, 40, 40)
 
 MESSAGE_LOG_HEIGHT = 5
 
@@ -71,8 +75,10 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     inventory = player.inventory
     potions = sum(1 for it in inventory if it.item.heal_amount)
     keys = sum(1 for it in inventory if it.item.key_id)
+    ammo = sum(it.item.quantity for it in inventory if it.item.is_ammo)
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
     armor_name = player.equipped_armor.name if player.equipped_armor else "none"
+    ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
@@ -84,13 +90,19 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         width=width,
     )
     y += console.print(
-        0, y, f"Weapon: {weapon_name}  Armor: {armor_name}", fg=HUD_FG, width=width
+        0,
+        y,
+        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}",
+        fg=HUD_FG,
+        width=width,
     )
-    y += console.print(0, y, f"Potions: {potions}  Keys: {keys}", fg=HUD_FG, width=width)
+    y += console.print(
+        0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}", fg=HUD_FG, width=width
+    )
     y += console.print(
         0,
         y,
-        "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [esc] quit",
+        "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [f] fire  [esc] quit",
         fg=HUD_FG,
         width=width,
     )
@@ -178,6 +190,7 @@ def render_look_hud(
     fighter = player.fighter
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
     armor_name = player.equipped_armor.name if player.equipped_armor else "none"
+    ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
@@ -189,7 +202,11 @@ def render_look_hud(
         width=width,
     )
     y += console.print(
-        0, y, f"Weapon: {weapon_name}  Armor: {armor_name}", fg=HUD_FG, width=width
+        0,
+        y,
+        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}",
+        fg=HUD_FG,
+        width=width,
     )
 
     for line in describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y):
@@ -209,4 +226,48 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
 
     hud_y = engine.game_map.height + 1
     log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
+    render_message_log(console, engine.message_log, 0, log_y)
+
+
+def render_target_hud(
+    console: "Console",
+    engine: "Engine",
+    cursor_x: int,
+    cursor_y: int,
+    max_range: int,
+    y: int,
+) -> int:
+    """Mirrors render_hud's contract: prints starting at y, wraps long lines,
+    and returns the row just past the last line printed."""
+    width = console.width
+    fighter = engine.player.fighter
+
+    y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
+    y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+
+    if is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range):
+        target = engine.game_map.blocking_entity_at(cursor_x, cursor_y)
+        status = f"Target: {target.name} (HP: {target.fighter.hp}/{target.fighter.max_hp})"
+    else:
+        status = "No valid target there."
+    y += console.print(0, y, status, fg=HUD_FG, width=width)
+
+    y += console.print(
+        0, y, "[arrows/numpad] aim  [f] fire  [esc] cancel", fg=HUD_FG, width=width
+    )
+    return y
+
+
+def render_target_frame(
+    console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, max_range: int
+) -> None:
+    console.clear()
+    render_map(console, engine.game_map)
+    render_entities(console, engine.game_map)
+
+    valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
+    console.rgb[cursor_x, cursor_y]["bg"] = TARGET_VALID_BG if valid else TARGET_INVALID_BG
+
+    hud_y = engine.game_map.height + 1
+    log_y = render_target_hud(console, engine, cursor_x, cursor_y, max_range, hud_y) + 1
     render_message_log(console, engine.message_log, 0, log_y)

@@ -4,8 +4,8 @@ directly without any window/context, so this is testable headlessly."""
 import pytest
 import tcod.event
 
-from engine.actions import BumpAction, EscapeAction, LookAction, RestartAction, WaitAction
-from engine.input_handlers import handle_event, handle_look_event
+from engine.actions import BumpAction, EscapeAction, FireModeAction, LookAction, RestartAction, WaitAction
+from engine.input_handlers import handle_event, handle_look_event, handle_target_event
 
 NUMPAD_DIRECTIONS = [
     (tcod.event.KeySym.KP_7, (-1, -1)),
@@ -77,3 +77,33 @@ def test_handle_look_event_unmapped_key_returns_none():
 def test_handle_look_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_look_event(tcod.event.Quit(sdl_event=None))
+
+
+def test_handle_event_f_returns_fire_mode_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.F)), FireModeAction)
+
+
+def test_handle_target_event_arrow_key_returns_cursor_delta():
+    assert handle_target_event(key_down(tcod.event.KeySym.UP)) == (0, -1)
+
+
+@pytest.mark.parametrize("sym,delta", NUMPAD_DIRECTIONS)
+def test_handle_target_event_numpad_key_returns_diagonal_cursor_delta(sym, delta):
+    assert handle_target_event(key_down(sym)) == delta
+
+
+def test_handle_target_event_f_returns_fire():
+    assert handle_target_event(key_down(tcod.event.KeySym.F)) == "fire"
+
+
+def test_handle_target_event_escape_returns_cancel():
+    assert handle_target_event(key_down(tcod.event.KeySym.ESCAPE)) == "cancel"
+
+
+def test_handle_target_event_unmapped_key_returns_none():
+    assert handle_target_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_target_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_target_event(tcod.event.Quit(sdl_event=None))

@@ -27,7 +27,11 @@ class ItemEffect:
     heal_amount: int | None = None
     attack_bonus: int | None = None
     defense_bonus: int | None = None
+    ranged_attack_bonus: int | None = None
+    range: int | None = None
     key_id: str | None = None
+    is_ammo: bool = False
+    quantity: int = 1
 
 
 class Entity:
@@ -49,6 +53,7 @@ class Entity:
         description: str = "",
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
+        equipped_ranged_weapon: "Entity | None" = None,
     ):
         self.x = x
         self.y = y
@@ -68,6 +73,7 @@ class Entity:
         # available), not just a bare number - see effective_attack/defense.
         self.equipped_weapon = equipped_weapon
         self.equipped_armor = equipped_armor
+        self.equipped_ranged_weapon = equipped_ranged_weapon
 
     @property
     def is_alive(self) -> bool:
@@ -83,6 +89,16 @@ class Entity:
     def effective_defense(self) -> int:
         base = self.fighter.defense if self.fighter else 0
         bonus = self.equipped_armor.item.defense_bonus if self.equipped_armor else None
+        return base + (bonus or 0)
+
+    @property
+    def effective_ranged_attack(self) -> int:
+        base = self.fighter.attack if self.fighter else 0
+        bonus = (
+            self.equipped_ranged_weapon.item.ranged_attack_bonus
+            if self.equipped_ranged_weapon
+            else None
+        )
         return base + (bonus or 0)
 
     def __repr__(self) -> str:

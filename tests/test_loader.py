@@ -38,7 +38,9 @@ def test_level_01_content():
     assert entity_names == ["Goblin", "Rat", "Rat"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Healing Potion", "Healing Potion", "Rusty Dagger", "Rusty Key"]
+    assert item_names == [
+        "Arrows", "Healing Potion", "Healing Potion", "Hunting Bow", "Rusty Dagger", "Rusty Key",
+    ]
 
     door_keys = sorted(d.requires_key for d in level.doors)
     assert door_keys == ["rusty_key"]
@@ -106,7 +108,7 @@ def test_level_04_content():
     assert entity_names == ["Rat", "Skeleton", "Skeleton"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Bone Plate", "Healing Potion", "Iron Sword", "Rusty Key"]
+    assert item_names == ["Arrows", "Bone Plate", "Healing Potion", "Iron Sword", "Rusty Key"]
 
     door_keys = sorted(d.requires_key for d in level.doors)
     assert door_keys == ["rusty_key"]

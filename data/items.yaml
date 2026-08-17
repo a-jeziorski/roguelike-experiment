@@ -41,3 +41,19 @@ bone_plate:
   color: [220, 220, 200]
   defense_bonus: 3
   description: Armor fashioned from the ossuary's dead. Unsettling, but it holds.
+
+hunting_bow:
+  name: Hunting Bow
+  glyph: "}"
+  color: [160, 120, 70]
+  ranged_attack_bonus: 3
+  range: 5
+  description: A worn hunting bow. Strike from a distance before they close in.
+
+arrows:
+  name: Arrows
+  glyph: "|"
+  color: [190, 170, 140]
+  is_ammo: true
+  quantity: 5
+  description: A bundle of fletched arrows.

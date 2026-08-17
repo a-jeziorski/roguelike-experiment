@@ -5,11 +5,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from engine.combat import resolve_attack
+from engine.combat import resolve_attack, resolve_ranged_attack
+from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
     from engine.engine import Engine
     from engine.entity import Entity
+
+DEFAULT_RANGED_RANGE = 5
 
 
 class Action:
@@ -44,6 +47,54 @@ class LookAction(Action):
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         pass
+
+
+class FireModeAction(Action):
+    """Enters targeting mode: an aiming cursor for firing a ranged weapon.
+    main.py recognizes this before it would ever reach Engine.process_turn
+    (aiming itself costs no turn, only the shot does) and runs its own
+    nested input loop instead - perform() is never actually called in
+    practice, kept only so FireModeAction satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
+class FireAction(Action):
+    """Fires the equipped ranged weapon at (target_x, target_y). Unlike
+    FireModeAction, this is a real turn action - dispatched through the
+    normal Engine.process_turn path once a target is confirmed."""
+
+    def __init__(self, target_x: int, target_y: int):
+        self.target_x = target_x
+        self.target_y = target_y
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        weapon = entity.equipped_ranged_weapon
+        if weapon is None:
+            if entity is engine.player:
+                engine.message_log.add("You have no ranged weapon equipped.")
+            return
+
+        ammo = next((it for it in entity.inventory if it.item.is_ammo), None)
+        if ammo is None:
+            if entity is engine.player:
+                engine.message_log.add("You have no ammo.")
+            return
+
+        max_range = weapon.item.range or DEFAULT_RANGED_RANGE
+        if not is_valid_target(engine.game_map, entity, self.target_x, self.target_y, max_range):
+            if entity is engine.player:
+                engine.message_log.add("No clear target there.")
+            return
+
+        target = engine.game_map.blocking_entity_at(self.target_x, self.target_y)
+
+        ammo.item.quantity -= 1
+        if ammo.item.quantity <= 0:
+            entity.inventory.remove(ammo)
+
+        resolve_ranged_attack(engine, attacker=entity, defender=target)
 
 
 class MovementAction(Action):
@@ -106,6 +157,23 @@ class BumpAction(Action):
             MovementAction(self.dx, self.dy).perform(engine, entity)
 
 
+_SLOT_ENTITY_ATTR = {
+    "weapon": "equipped_weapon",
+    "armor": "equipped_armor",
+    "ranged": "equipped_ranged_weapon",
+}
+_SLOT_BONUS_ATTR = {
+    "weapon": "attack_bonus",
+    "armor": "defense_bonus",
+    "ranged": "ranged_attack_bonus",
+}
+_SLOT_BONUS_WORD = {
+    "weapon": "attack",
+    "armor": "defense",
+    "ranged": "ranged attack",
+}
+
+
 class PickupAction(Action):
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         for candidate in list(engine.game_map.entities):
@@ -116,6 +184,10 @@ class PickupAction(Action):
                 self._equip(engine, entity, candidate, slot="weapon")
             elif candidate.item.defense_bonus:
                 self._equip(engine, entity, candidate, slot="armor")
+            elif candidate.item.ranged_attack_bonus:
+                self._equip(engine, entity, candidate, slot="ranged")
+            elif candidate.item.is_ammo:
+                self._stack_ammo(engine, entity, candidate)
             else:
                 entity.inventory.append(candidate)
                 engine.game_map.entities.remove(candidate)
@@ -125,14 +197,15 @@ class PickupAction(Action):
         engine.message_log.add("There is nothing here to pick up.")
 
     def _equip(self, engine: "Engine", entity: "Entity", candidate: "Entity", slot: str) -> None:
-        """Equips `candidate` into `slot` ("weapon" or "armor") if it's better
-        than what's already there, dropping the replaced item back onto the
-        map (visible, re-collectible) rather than destroying it. If it's not
-        better, `candidate` is left untouched on the ground."""
-        bonus_attr = "attack_bonus" if slot == "weapon" else "defense_bonus"
+        """Equips `candidate` into `slot` ("weapon"/"armor"/"ranged") if it's
+        better than what's already there, dropping the replaced item back
+        onto the map (visible, re-collectible) rather than destroying it. If
+        it's not better, `candidate` is left untouched on the ground."""
+        entity_attr = _SLOT_ENTITY_ATTR[slot]
+        bonus_attr = _SLOT_BONUS_ATTR[slot]
         new_bonus = getattr(candidate.item, bonus_attr)
 
-        current = entity.equipped_weapon if slot == "weapon" else entity.equipped_armor
+        current = getattr(entity, entity_attr)
         current_bonus = getattr(current.item, bonus_attr) if current is not None else 0
 
         if current is not None and new_bonus <= current_bonus:
@@ -140,18 +213,32 @@ class PickupAction(Action):
             return
 
         engine.game_map.entities.remove(candidate)
-        if slot == "weapon":
-            entity.equipped_weapon = candidate
-        else:
-            entity.equipped_armor = candidate
+        setattr(entity, entity_attr, candidate)
 
-        bonus_word = "attack" if slot == "weapon" else "defense"
+        bonus_word = _SLOT_BONUS_WORD[slot]
         engine.message_log.add(f"You equip the {candidate.name} (+{new_bonus} {bonus_word}).")
 
         if current is not None:
             current.x, current.y = entity.x, entity.y
             engine.game_map.entities.append(current)
             engine.message_log.add(f"You drop your old {slot}, the {current.name}.")
+
+    def _stack_ammo(self, engine: "Engine", entity: "Entity", candidate: "Entity") -> None:
+        """Merges a new ammo pickup into an existing stack in inventory
+        (adding quantities) instead of cluttering inventory with a separate
+        entry per pickup."""
+        existing = next((it for it in entity.inventory if it.item.is_ammo), None)
+        engine.game_map.entities.remove(candidate)
+
+        if existing is not None:
+            existing.item.quantity += candidate.item.quantity
+            engine.message_log.add(
+                f"You pick up {candidate.item.quantity} more {candidate.name} "
+                f"({existing.item.quantity} total)."
+            )
+        else:
+            entity.inventory.append(candidate)
+            engine.message_log.add(f"You picked up {candidate.item.quantity}x {candidate.name}.")
 
 
 class UseItemAction(Action):

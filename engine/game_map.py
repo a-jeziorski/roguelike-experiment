@@ -127,7 +127,11 @@ def build_game_map(
                 heal_amount=idef.heal_amount,
                 attack_bonus=idef.attack_bonus,
                 defense_bonus=idef.defense_bonus,
+                ranged_attack_bonus=idef.ranged_attack_bonus,
+                range=idef.range,
                 key_id=idef.id if idef.is_key else None,
+                is_ammo=idef.is_ammo,
+                quantity=idef.quantity,
             ),
             description=idef.description,
         )

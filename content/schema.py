@@ -64,7 +64,12 @@ class ItemDef(BaseModel):
     heal_amount: int | None = None
     attack_bonus: int | None = None
     defense_bonus: int | None = None
+    ranged_attack_bonus: int | None = None
+    range: int | None = Field(default=None, gt=0)
     is_key: bool = False
+    # An ammo item stacks: one pickup can be worth several shots.
+    is_ammo: bool = False
+    quantity: int = Field(default=1, gt=0)
     description: str = ""
 
     @field_validator("glyph")
@@ -75,11 +80,15 @@ class ItemDef(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def not_both_weapon_and_armor(self) -> "ItemDef":
-        if self.attack_bonus is not None and self.defense_bonus is not None:
+    def not_multiple_equipment_slots(self) -> "ItemDef":
+        slots_set = sum(
+            bonus is not None
+            for bonus in (self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus)
+        )
+        if slots_set > 1:
             raise ValueError(
-                "an item can't set both attack_bonus and defense_bonus "
-                "(ambiguous which equipment slot it belongs in)"
+                "an item can only set one of attack_bonus/defense_bonus/"
+                "ranged_attack_bonus (ambiguous which equipment slot it belongs in)"
             )
         return self
 

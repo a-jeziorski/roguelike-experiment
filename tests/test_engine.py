@@ -6,7 +6,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon
-from engine.actions import BumpAction, PickupAction, UseItemAction, WaitAction
+from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.engine import Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -86,6 +86,24 @@ def make_armor(x: int, y: int, defense_bonus: int = 1, name: str = "Leather Armo
         x, y, "[", (150, 110, 60), name,
         render_priority=RENDER_PRIORITY_ITEM,
         item=ItemEffect(defense_bonus=defense_bonus),
+    )
+
+
+def make_ranged_weapon(
+    x: int, y: int, ranged_attack_bonus: int = 3, range_: int = 5, name: str = "Hunting Bow"
+) -> Entity:
+    return Entity(
+        x, y, "}", (160, 120, 70), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(ranged_attack_bonus=ranged_attack_bonus, range=range_),
+    )
+
+
+def make_ammo(x: int, y: int, quantity: int = 5, name: str = "Arrows") -> Entity:
+    return Entity(
+        x, y, "|", (190, 170, 140), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(is_ammo=True, quantity=quantity),
     )
 
 
@@ -333,6 +351,136 @@ def test_combat_damage_reflects_equipped_weapon_and_armor():
 
     # player attack 5+4=9 vs monster defense 0+3=3 -> 6 damage
     assert monster.fighter.hp == 20 - 6
+
+
+def test_first_ranged_weapon_pickup_equips_directly():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    bow = make_ranged_weapon(1, 1, ranged_attack_bonus=3, name="Hunting Bow")
+    game_map.entities.extend([player, bow])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_ranged_weapon is bow
+    assert bow not in game_map.entities
+    assert player.effective_ranged_attack == player.fighter.attack + 3
+
+
+def test_picking_up_better_ranged_weapon_swaps_and_drops_old_one():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, ranged_attack_bonus=2, name="Sling")
+    better = make_ranged_weapon(1, 1, ranged_attack_bonus=3, name="Hunting Bow")
+    game_map.entities.extend([player, better])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_ranged_weapon is better
+    dropped = [e for e in game_map.entities if e.name == "Sling"]
+    assert len(dropped) == 1
+    assert (dropped[0].x, dropped[0].y) == (1, 1)
+
+
+def test_ammo_pickup_creates_a_stack():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    ammo = make_ammo(1, 1, quantity=5)
+    game_map.entities.extend([player, ammo])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert len(player.inventory) == 1
+    assert player.inventory[0].item.quantity == 5
+    assert ammo not in game_map.entities
+
+
+def test_second_ammo_pickup_merges_into_existing_stack():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.inventory.append(make_ammo(0, 0, quantity=3))
+    more_ammo = make_ammo(1, 1, quantity=5)
+    game_map.entities.extend([player, more_ammo])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert len(player.inventory) == 1  # merged, not a second entry
+    assert player.inventory[0].item.quantity == 8
+    assert more_ammo not in game_map.entities
+
+
+def test_fire_action_without_ranged_weapon_does_nothing():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1)
+    monster = make_monster(3, 1, hp=6, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    assert monster.fighter.hp == 6
+
+
+def test_fire_action_without_ammo_does_nothing():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0)
+    monster = make_monster(3, 1, hp=6, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    assert monster.fighter.hp == 6
+
+
+def test_fire_action_at_invalid_target_does_nothing_and_keeps_ammo():
+    game_map = make_open_map(10, 3)
+    player = make_player(1, 1)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, range_=3)
+    player.inventory.append(make_ammo(0, 0, quantity=5))
+    game_map.entities.append(player)
+    monster = make_monster(9, 1, hp=6, ai=None)  # 8 tiles away, beyond range 3
+    game_map.entities.append(monster)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(9, 1))
+
+    assert monster.fighter.hp == 6
+    assert player.inventory[0].item.quantity == 5
+
+
+def test_fire_action_hits_target_and_consumes_ammo():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, ranged_attack_bonus=3)
+    player.inventory.append(make_ammo(0, 0, quantity=5))
+    monster = make_monster(3, 1, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    # 5 base + 3 bow bonus - 0 defense = 8 damage
+    assert monster.fighter.hp == 20 - 8
+    assert player.inventory[0].item.quantity == 4
+
+
+def test_fire_action_removes_ammo_stack_when_it_reaches_zero():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0)
+    player.inventory.append(make_ammo(0, 0, quantity=1))
+    monster = make_monster(3, 1, hp=20, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    assert player.inventory == []
 
 
 def test_reaching_stairs_wins():

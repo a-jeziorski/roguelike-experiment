@@ -11,8 +11,9 @@ from pathlib import Path
 from content.loader import load_catalog, load_dungeon
 from engine.actions import EscapeAction, RestartAction, WaitAction
 from engine.engine import Engine
+from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
 from engine.game_map import build_game_map
-from main import dispatch_action
+from main import dispatch_action, fire_mode_gate
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -74,3 +75,35 @@ def test_normal_action_is_processed_while_playing():
 def test_none_action_is_a_noop():
     engine = make_engine()
     assert dispatch_action(engine, None) is False
+
+
+def test_fire_mode_gate_blocks_without_a_ranged_weapon():
+    engine = make_engine()
+    assert fire_mode_gate(engine) == "You have no ranged weapon equipped."
+
+
+def test_fire_mode_gate_blocks_without_ammo():
+    engine = make_engine()
+    engine.player.equipped_ranged_weapon = Entity(
+        0, 0, "}", (160, 120, 70), "Hunting Bow",
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(ranged_attack_bonus=3, range=5),
+    )
+    assert fire_mode_gate(engine) == "You have no ammo."
+
+
+def test_fire_mode_gate_allows_when_armed_and_stocked():
+    engine = make_engine()
+    engine.player.equipped_ranged_weapon = Entity(
+        0, 0, "}", (160, 120, 70), "Hunting Bow",
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(ranged_attack_bonus=3, range=5),
+    )
+    engine.player.inventory.append(
+        Entity(
+            0, 0, "|", (190, 170, 140), "Arrows",
+            render_priority=RENDER_PRIORITY_ITEM,
+            item=ItemEffect(is_ammo=True, quantity=5),
+        )
+    )
+    assert fire_mode_gate(engine) is None

@@ -46,6 +46,20 @@ consumed on use, not equipped. Current tiers: weapons `rusty_dagger` (+2),
 this two-tier shape for any new equipment rather than inventing a third
 tier casually, to keep the gear curve legible.
 
+A ranged weapon is a *third*, independent slot (`equipped_ranged_weapon`,
+`effective_ranged_attack`) - carried alongside a melee weapon, not instead
+of one - and its ammo (`is_ammo`/`quantity` on the item) is a separate
+consumable resource from everything above, tracked as a stack rather than
+one entity per shot. `hunting_bow` (+3, range 5) is the only ranged weapon
+so far; if more are added, keep them to the same two-tier discipline as
+melee/armor. Ranged weapons change encounter design more than a straight
+stat bump would: they let the player soften or kill a target *before*
+melee range, which specifically undercuts `sleeping_guard`'s whole premise
+(the guard never gets to wake up and close the distance) and reduces
+`skittish`'s flee window (no need to chase a fleeing target down at all).
+Account for this when placing guard/skittish encounters near or after a
+point in the dungeon where the player likely has a bow equipped.
+
 **Work out hits-to-kill in both directions** before placing a monster:
 `player_attack - monster.defense` and `monster.attack - player.defense`,
 against current `data/entities.yaml` stats. This is what caught the ogre

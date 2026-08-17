@@ -10,11 +10,19 @@ import tcod
 import tcod.event
 
 from content.loader import ContentValidationError, load_catalog, load_dungeon
-from engine.actions import EscapeAction, LookAction, RestartAction
+from engine.actions import (
+    DEFAULT_RANGED_RANGE,
+    EscapeAction,
+    FireAction,
+    FireModeAction,
+    LookAction,
+    RestartAction,
+)
 from engine.engine import Engine
 from engine.game_map import build_game_map
-from engine.input_handlers import handle_event, handle_look_event
-from engine.render import render_all, render_look_frame
+from engine.input_handlers import handle_event, handle_look_event, handle_target_event
+from engine.render import render_all, render_look_frame, render_target_frame
+from engine.targeting import find_nearest_target
 
 LEVELS_DIR = Path(__file__).resolve().parent / "data" / "levels"
 STARTING_LEVEL_ID = "level_01"
@@ -57,6 +65,46 @@ def dispatch_action(engine: Engine, action) -> bool:
     if action is not None:
         engine.process_turn(action)
     return False
+
+
+def fire_mode_gate(engine: Engine) -> str | None:
+    """Whether targeting mode can currently be entered. Returns an error
+    message to log if not, or None if run_target_mode should run - pulled
+    out for testability without SDL, same reasoning as dispatch_action."""
+    if engine.player.equipped_ranged_weapon is None:
+        return "You have no ranged weapon equipped."
+    if not any(it.item.is_ammo for it in engine.player.inventory):
+        return "You have no ammo."
+    return None
+
+
+def run_target_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> tuple[int, int] | None:
+    """Nested event loop for targeting: aims a cursor (starting on the
+    nearest valid target) and re-renders until the player fires or cancels.
+    Never touches Engine.process_turn - aiming costs no turn, only a
+    confirmed shot does. Returns the chosen (x, y) to fire at, or None if
+    cancelled."""
+    weapon = engine.player.equipped_ranged_weapon
+    max_range = weapon.item.range or DEFAULT_RANGED_RANGE
+    nearest = find_nearest_target(engine.game_map, engine.player, max_range)
+    cursor_x, cursor_y = (nearest.x, nearest.y) if nearest else (engine.player.x, engine.player.y)
+
+    while True:
+        render_target_frame(console, engine, cursor_x, cursor_y, max_range)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_target_event(event)
+
+            if result == "cancel":
+                return None
+            if result == "fire":
+                return (cursor_x, cursor_y)
+            if isinstance(result, tuple):
+                dx, dy = result
+                cursor_x = max(0, min(engine.game_map.width - 1, cursor_x + dx))
+                cursor_y = max(0, min(engine.game_map.height - 1, cursor_y + dy))
 
 
 def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
@@ -123,6 +171,17 @@ def main() -> int:
                 if isinstance(action, LookAction):
                     if engine.game_state == "playing":
                         run_look_mode(console, context, engine)
+                    continue
+
+                if isinstance(action, FireModeAction):
+                    if engine.game_state == "playing":
+                        error = fire_mode_gate(engine)
+                        if error:
+                            engine.message_log.add(error)
+                        else:
+                            target = run_target_mode(console, context, engine)
+                            if target is not None:
+                                dispatch_action(engine, FireAction(*target))
                     continue
 
                 if dispatch_action(engine, action):

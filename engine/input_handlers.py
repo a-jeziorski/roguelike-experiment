@@ -8,6 +8,7 @@ from engine.actions import (
     Action,
     BumpAction,
     EscapeAction,
+    FireModeAction,
     LookAction,
     PickupAction,
     RestartAction,
@@ -59,8 +60,33 @@ def handle_event(event: tcod.event.Event) -> Action | None:
         if sym == tcod.event.KeySym.L:
             return LookAction()
 
+        if sym == tcod.event.KeySym.F:
+            return FireModeAction()
+
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()
+
+    return None
+
+
+def handle_target_event(event: tcod.event.Event) -> tuple[int, int] | str | None:
+    """Input while inside targeting mode: arrow/numpad keys move the aiming
+    cursor, F confirms the shot, Escape cancels without firing. Returns a
+    (dx, dy) cursor delta, "fire", "cancel", or None."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in MOVE_KEYS:
+            return MOVE_KEYS[sym]
+
+        if sym == tcod.event.KeySym.F:
+            return "fire"
+
+        if sym == tcod.event.KeySym.ESCAPE:
+            return "cancel"
 
     return None
 

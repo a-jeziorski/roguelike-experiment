@@ -95,6 +95,45 @@ def test_item_def_rejects_both_attack_and_defense_bonus():
         )
 
 
+def test_item_def_accepts_ranged_attack_bonus_and_range():
+    bow = ItemDef(
+        id="hunting_bow", name="Hunting Bow", glyph="}", color=(1, 2, 3),
+        ranged_attack_bonus=3, range=5,
+    )
+    assert bow.ranged_attack_bonus == 3
+    assert bow.range == 5
+
+
+def test_item_def_rejects_ranged_attack_bonus_combined_with_attack_bonus():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            attack_bonus=2, ranged_attack_bonus=3,
+        )
+
+
+def test_item_def_rejects_ranged_attack_bonus_combined_with_defense_bonus():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            defense_bonus=1, ranged_attack_bonus=3,
+        )
+
+
+def test_item_def_ammo_defaults():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.is_ammo is False
+    assert item.quantity == 1
+
+
+def test_item_def_accepts_ammo_with_quantity():
+    arrows = ItemDef(
+        id="arrows", name="Arrows", glyph="|", color=(1, 2, 3), is_ammo=True, quantity=5
+    )
+    assert arrows.is_ammo is True
+    assert arrows.quantity == 5
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",
