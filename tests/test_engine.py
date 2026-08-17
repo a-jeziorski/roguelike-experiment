@@ -263,6 +263,30 @@ def test_ranged_basic_fires_when_in_range_but_not_adjacent():
     assert "shoots" in engine.message_log.messages[-1]
 
 
+def test_ranged_basic_shot_records_a_ranged_attack_event():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    archer = make_monster(3, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert engine.ranged_attack_events == [(3, 1, 0, 1)]
+
+
+def test_melee_attack_does_not_record_a_ranged_attack_event():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=6, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert engine.ranged_attack_events == []
+
+
 def test_ranged_basic_melees_when_adjacent():
     game_map = make_open_map(10, 3)
     player = make_player(0, 1, hp=30, defense=0)
@@ -527,6 +551,38 @@ def test_fire_action_hits_target_and_consumes_ammo():
     # 5 base + 3 bow bonus - 0 defense = 8 damage
     assert monster.fighter.hp == 20 - 8
     assert player.inventory[0].item.quantity == 4
+
+
+def test_fire_action_records_a_ranged_attack_event():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, ranged_attack_bonus=3)
+    player.inventory.append(make_ammo(0, 0, quantity=5))
+    monster = make_monster(3, 1, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    assert engine.ranged_attack_events == [(1, 1, 3, 1)]
+
+
+def test_ranged_attack_events_do_not_persist_across_process_turn_calls():
+    """main.py drains and clears this list every turn; a stale event from a
+    prior turn must never leak into a turn where nothing was fired."""
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, ranged_attack_bonus=3)
+    player.inventory.append(make_ammo(0, 0, quantity=5))
+    monster = make_monster(3, 1, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+    engine.ranged_attack_events = []  # main.py's drain, simulated
+    engine.process_turn(WaitAction())
+
+    assert engine.ranged_attack_events == []
 
 
 def test_fire_action_removes_ammo_stack_when_it_reaches_zero():

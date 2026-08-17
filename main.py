@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import tcod
@@ -21,7 +22,15 @@ from engine.actions import (
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event, handle_look_event, handle_target_event
-from engine.render import render_all, render_look_frame, render_target_frame
+from engine.render import (
+    flash_impact,
+    projectile_glyph,
+    projectile_path,
+    render_all,
+    render_look_frame,
+    render_projectile,
+    render_target_frame,
+)
 from engine.targeting import find_nearest_target
 
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
@@ -30,6 +39,9 @@ STARTING_DUNGEON_ID = "prison_tower"
 TILE_SIZE = 14
 CONSOLE_COLUMNS = 70
 CONSOLE_ROWS = 40
+
+PROJECTILE_FRAME_SECONDS = 0.035
+IMPACT_FLASH_SECONDS = 0.09
 
 FONT_CANDIDATES = [
     Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Fonts" / "consola.ttf",
@@ -128,6 +140,33 @@ def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, 
                 cursor_y = max(0, min(engine.game_map.height - 1, cursor_y + dy))
 
 
+def animate_ranged_attacks(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine
+) -> None:
+    """Plays a brief flying-projectile-then-impact-flash animation for every
+    ranged attack Engine resolved during the last dispatched turn (player-
+    fired via FireAction, or monster-fired via a ranged_basic AI's shot) and
+    discards the events. Damage is already fully applied by the time this
+    runs - Engine resolves combat synchronously and has no concept of
+    animation frames - so this is pure visual flavor layered on top of
+    already-final game state, not a step in Engine.process_turn."""
+    events = engine.ranged_attack_events
+    engine.ranged_attack_events = []
+
+    for fx, fy, tx, ty in events:
+        glyph = projectile_glyph(fx, fy, tx, ty)
+        for x, y in projectile_path(fx, fy, tx, ty):
+            render_all(console, engine)
+            render_projectile(console, x, y, glyph)
+            context.present(console)
+            time.sleep(PROJECTILE_FRAME_SECONDS)
+
+        render_all(console, engine)
+        flash_impact(console, tx, ty)
+        context.present(console)
+        time.sleep(IMPACT_FLASH_SECONDS)
+
+
 def main() -> int:
     try:
         catalog = load_catalog()
@@ -184,10 +223,12 @@ def main() -> int:
                             target = run_target_mode(console, context, engine)
                             if target is not None:
                                 dispatch_action(engine, FireAction(*target))
+                                animate_ranged_attacks(console, context, engine)
                     continue
 
                 if dispatch_action(engine, action):
                     return 0
+                animate_ranged_attacks(console, context, engine)
 
 
 if __name__ == "__main__":

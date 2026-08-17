@@ -29,4 +29,5 @@ def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> 
 
 
 def resolve_ranged_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    engine.ranged_attack_events.append((attacker.x, attacker.y, defender.x, defender.y))
     _apply_damage(engine, attacker, defender, attacker.effective_ranged_attack, "shoots")

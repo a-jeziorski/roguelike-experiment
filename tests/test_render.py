@@ -9,7 +9,14 @@ from content.loader import load_catalog, load_level
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ACTOR, RENDER_PRIORITY_ITEM, Entity, Fighter, ItemEffect
 from engine.game_map import GameMap, build_game_map
-from engine.render import describe_tile, render_all, render_look_frame, render_target_frame
+from engine.render import (
+    describe_tile,
+    projectile_glyph,
+    projectile_path,
+    render_all,
+    render_look_frame,
+    render_target_frame,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -166,6 +173,24 @@ def test_describe_tile_visible_item_shows_name_and_description_without_hp():
 
     lines = describe_tile(game_map, catalog, 1, 1)
     assert lines == ["Bare floor.", "Healing Potion: A vial of crimson liquid."]
+
+
+def test_projectile_glyph_picks_direction():
+    assert projectile_glyph(1, 1, 1, 5) == "|"  # straight down
+    assert projectile_glyph(1, 1, 5, 1) == "-"  # straight right
+    assert projectile_glyph(1, 1, 5, 5) == "\\"  # down-right
+    assert projectile_glyph(5, 1, 1, 5) == "/"  # down-left
+
+
+def test_projectile_path_excludes_shooter_and_includes_target():
+    path = projectile_path(1, 1, 4, 1)
+    assert path[0] != (1, 1)
+    assert path[-1] == (4, 1)
+    assert path == [(2, 1), (3, 1), (4, 1)]
+
+
+def test_projectile_path_adjacent_shot_is_just_the_target():
+    assert projectile_path(1, 1, 2, 1) == [(2, 1)]
 
 
 def test_describe_tile_locked_door_resolves_key_name():

@@ -52,6 +52,13 @@ class Engine:
         # The level a fresh run begins at, kept so restart() can rebuild from
         # scratch; only required if restarting is supported for this Engine.
         self.starting_level = starting_level
+        # (from_x, from_y, to_x, to_y) for every ranged attack resolved during
+        # the last process_turn() call - combat.py appends here, main.py
+        # drains it to drive a projectile animation. Engine itself never reads
+        # it back; this is purely a mailbox to the SDL-dependent render layer,
+        # which is why it lives here instead of forcing Engine to know about
+        # rendering.
+        self.ranged_attack_events: list[tuple[int, int, int, int]] = []
 
         self.game_map.update_fov((player.x, player.y))
         self.message_log.add(f"You enter {level_name}.")
@@ -85,6 +92,7 @@ class Engine:
         self.level_name = self.starting_level.name
         self.game_state = "playing"
         self.message_log = MessageLog()
+        self.ranged_attack_events = []
         self.game_map.update_fov((self.player.x, self.player.y))
         self.message_log.add(f"You enter {self.level_name}.")
 

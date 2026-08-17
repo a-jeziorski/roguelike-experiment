@@ -16,6 +16,8 @@ from __future__ import annotations
 import textwrap
 from typing import TYPE_CHECKING
 
+import tcod.los
+
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -45,6 +47,8 @@ WIN_FG = (60, 220, 90)
 CURSOR_BG = (90, 90, 20)
 TARGET_VALID_BG = (40, 120, 40)
 TARGET_INVALID_BG = (110, 40, 40)
+PROJECTILE_FG = (255, 230, 120)
+IMPACT_BG = (200, 60, 30)
 
 MESSAGE_LOG_HEIGHT = 5
 
@@ -63,6 +67,32 @@ def render_entities(console: "Console", game_map: "GameMap") -> None:
     for entity in sorted(game_map.entities, key=lambda e: e.render_priority):
         if game_map.visible[entity.x, entity.y]:
             console.print(entity.x, entity.y, entity.glyph, fg=entity.color)
+
+
+def projectile_glyph(fx: int, fy: int, tx: int, ty: int) -> str:
+    """Picks a glyph matching a shot's line of travel, so a flying arrow/bolt
+    reads as a directional streak rather than a generic marker."""
+    dx, dy = tx - fx, ty - fy
+    if dx == 0:
+        return "|"
+    if dy == 0:
+        return "-"
+    return "\\" if (dx > 0) == (dy > 0) else "/"
+
+
+def projectile_path(fx: int, fy: int, tx: int, ty: int) -> list[tuple[int, int]]:
+    """Cells a projectile crosses, from just past the shooter through the
+    target. The shooter's own tile is excluded so the glyph never draws on
+    top of them."""
+    return [(int(x), int(y)) for x, y in tcod.los.bresenham((fx, fy), (tx, ty)).tolist()[1:]]
+
+
+def render_projectile(console: "Console", x: int, y: int, glyph: str) -> None:
+    console.print(x, y, glyph, fg=PROJECTILE_FG)
+
+
+def flash_impact(console: "Console", x: int, y: int) -> None:
+    console.rgb[x, y]["bg"] = IMPACT_BG
 
 
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
