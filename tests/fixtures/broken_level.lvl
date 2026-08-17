@@ -1,0 +1,14 @@
+id: broken_level
+name: Broken Level
+next_level: null
+
+map: |
+  #####
+  #.x.#
+  #...
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "x": { entity: nonexistent_monster }

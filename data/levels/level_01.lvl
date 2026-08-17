@@ -1,0 +1,27 @@
+id: level_01
+name: The Rotting Cellar
+next_level: null  # terminal level for v1: reaching the stairs down wins the game
+
+map: |
+  ########################
+  #..........#...........#
+  #..r.......#.....g.....#
+  #..........#...........#
+  #..........#...........#
+  #..........#......./...#
+  #....@.................#
+  #..........#.....r.....#
+  #....!.....#...........#
+  #..........#.....>.....#
+  #..........#...........#
+  ########################
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": stairs_down
+  "r": { entity: rat }
+  "g": { entity: goblin }
+  "!": { item: healing_potion }
+  "/": { item: rusty_dagger }

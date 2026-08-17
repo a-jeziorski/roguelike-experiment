@@ -1,0 +1,22 @@
+# Monster catalog. Referenced by id from level files' legends (e.g. {entity: rat}).
+# Edit stats here to rebalance every level that uses this monster at once.
+
+rat:
+  name: Rat
+  glyph: r
+  color: [140, 90, 60]
+  hp: 5
+  attack: 2
+  defense: 0
+  ai: hostile_basic
+  description: A mangy sewer rat. Weak alone, dangerous in numbers.
+
+goblin:
+  name: Goblin
+  glyph: g
+  color: [60, 140, 60]
+  hp: 12
+  attack: 4
+  defense: 1
+  ai: hostile_basic
+  description: A snarling green raider with a rusty blade.

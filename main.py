@@ -1,0 +1,77 @@
+"""Entry point: loads level_01 from content files and runs the game."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import tcod
+import tcod.event
+
+from content.loader import load_catalog, load_level, ContentValidationError
+from engine.engine import Engine
+from engine.game_map import build_game_map
+from engine.input_handlers import handle_event
+from engine.render import render_all
+
+LEVEL_PATH = Path(__file__).resolve().parent / "data" / "levels" / "level_01.lvl"
+
+TILE_SIZE = 14
+CONSOLE_COLUMNS = 70
+CONSOLE_ROWS = 40
+
+FONT_CANDIDATES = [
+    Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Fonts" / "consola.ttf",
+    Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Fonts" / "cour.ttf",
+]
+
+
+def load_tileset() -> tcod.tileset.Tileset:
+    for candidate in FONT_CANDIDATES:
+        if candidate.exists():
+            return tcod.tileset.load_truetype_font(str(candidate), TILE_SIZE, TILE_SIZE)
+    raise RuntimeError(
+        "No usable monospace TTF font found. Tried: "
+        + ", ".join(str(c) for c in FONT_CANDIDATES)
+    )
+
+
+def main() -> int:
+    try:
+        catalog = load_catalog()
+        level = load_level(LEVEL_PATH, catalog)
+    except ContentValidationError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+
+    tileset = load_tileset()
+
+    with tcod.context.new(
+        columns=CONSOLE_COLUMNS,
+        rows=CONSOLE_ROWS,
+        tileset=tileset,
+        title="Claude-Authored Roguelike",
+    ) as context:
+        console = tcod.console.Console(CONSOLE_COLUMNS, CONSOLE_ROWS, order="F")
+
+        while True:
+            render_all(console, engine)
+            context.present(console)
+
+            for event in tcod.event.wait():
+                context.convert_event(event)
+                try:
+                    action = handle_event(event)
+                except SystemExit:
+                    return 0
+
+                if action is not None:
+                    engine.process_turn(action)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

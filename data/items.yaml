@@ -1,0 +1,15 @@
+# Item catalog. Referenced by id from level files' legends (e.g. {item: healing_potion}).
+
+healing_potion:
+  name: Healing Potion
+  glyph: "!"
+  color: [220, 40, 100]
+  heal_amount: 10
+  description: A vial of crimson liquid that mends wounds.
+
+rusty_dagger:
+  name: Rusty Dagger
+  glyph: "/"
+  color: [180, 180, 190]
+  attack_bonus: 2
+  description: Better than fists.
