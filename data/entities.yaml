@@ -5,7 +5,7 @@ rat:
   name: Rat
   glyph: r
   color: [140, 90, 60]
-  hp: 5
+  hp: 6
   attack: 2
   defense: 0
   ai: skittish
