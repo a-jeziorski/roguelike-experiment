@@ -24,6 +24,20 @@ def make_game_map(width: int = 3, height: int = 3) -> GameMap:
     return game_map
 
 
+def console_text(console: tcod.console.Console) -> str:
+    """Reconstructs every row of a console as text, for asserting on what
+    actually made it to screen."""
+    rows = []
+    for y in range(console.height):
+        rows.append(
+            "".join(
+                chr(console.rgb[x, y]["ch"]) if console.rgb[x, y]["ch"] else " "
+                for x in range(console.width)
+            )
+        )
+    return "\n".join(rows)
+
+
 def test_render_all_does_not_raise_for_level_01():
     catalog = load_catalog()
     level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
@@ -32,6 +46,38 @@ def test_render_all_does_not_raise_for_level_01():
 
     console = tcod.console.Console(70, 40, order="F")
     render_all(console, engine)  # should not raise
+
+
+def test_long_monster_description_wraps_instead_of_being_clipped():
+    """Regression test: console.print() silently truncates text past the
+    console's right edge unless given an explicit width. A long, free-form
+    monster description used to have its tail silently dropped in look mode -
+    every word of it must now show up somewhere on screen instead."""
+    catalog = load_catalog()
+    level = load_level(DATA_DIR / "levels" / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, catalog=catalog)
+    game_map.visible[:] = True
+    game_map.explored[:] = True
+
+    long_description = (
+        "This creature has an unusually long and rambling description that is "
+        "deliberately far too wide to fit on a single console row without wrapping."
+    )
+    boss = Entity(
+        player.x, player.y, "B", (255, 0, 0), "Test Boss",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=1),
+        description=long_description,
+    )
+    game_map.entities.append(boss)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_look_frame(console, engine, player.x, player.y)
+
+    text = console_text(console)
+    for word in long_description.split():
+        assert word in text, f"{word!r} missing from rendered output - description got clipped"
 
 
 def test_render_look_frame_does_not_raise_for_level_01():

@@ -1,7 +1,19 @@
-"""Draws the game map, entities, HUD, and message log onto a tcod Console."""
+"""Draws the game map, entities, HUD, and message log onto a tcod Console.
+
+Text that might run longer than the console is wide (monster/item descriptions
+especially - they're free-form authored content, length isn't controlled) must
+never be handed to console.print() without an explicit width: tcod does not
+wrap by default, it silently clips at the console's right edge. Every print in
+this module that isn't a single map glyph goes through a width= bound (either
+directly via console.print's own wrapping, which returns how many lines it
+used, or via textwrap for the message log's "does this still fit" trimming
+logic) and every multi-line region uses a running y cursor instead of
+hardcoded offsets, so the layout still holds together when something wraps to
+more than one line."""
 
 from __future__ import annotations
 
+import textwrap
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -49,33 +61,60 @@ def render_entities(console: "Console", game_map: "GameMap") -> None:
             console.print(entity.x, entity.y, entity.glyph, fg=entity.color)
 
 
-def render_hud(console: "Console", engine: "Engine", y: int) -> None:
+def render_hud(console: "Console", engine: "Engine", y: int) -> int:
+    """Prints the HUD starting at row y, wrapping any line too long for the
+    console. Returns the row just past the last line printed, so callers can
+    place whatever comes next without assuming a fixed HUD height."""
+    width = console.width
     fighter = engine.player.fighter
     inventory = engine.player.inventory
     potions = sum(1 for it in inventory if it.item.heal_amount)
     keys = sum(1 for it in inventory if it.item.key_id)
 
-    console.print(0, y, f"{engine.level_name}", fg=HUD_FG)
-    console.print(0, y + 1, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG)
-    console.print(0, y + 2, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG)
-    console.print(
+    y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
+    y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    y += console.print(
+        0, y, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG, width=width
+    )
+    y += console.print(0, y, f"Potions: {potions}  Keys: {keys}", fg=HUD_FG, width=width)
+    y += console.print(
         0,
-        y + 3,
-        f"Potions: {potions}  Keys: {keys}  "
-        "[arrows] move  [g] pick up  [u] use potion  [esc] quit",
+        y,
+        "[arrows] move  [g] pick up  [u] use potion  [l] look  [esc] quit",
         fg=HUD_FG,
+        width=width,
     )
 
     if engine.game_state == "dead":
-        console.print(0, y + 4, "You have died. [r] play again  [esc] quit", fg=DEAD_FG)
+        y += console.print(
+            0, y, "You have died. [r] play again  [esc] quit", fg=DEAD_FG, width=width
+        )
     elif engine.game_state == "won":
-        console.print(0, y + 4, "You escaped the dungeon! [r] play again  [esc] quit", fg=WIN_FG)
+        y += console.print(
+            0, y, "You escaped the dungeon! [r] play again  [esc] quit", fg=WIN_FG, width=width
+        )
+
+    return y
 
 
 def render_message_log(console: "Console", message_log: "MessageLog", x: int, y: int) -> None:
-    recent = message_log.messages[-MESSAGE_LOG_HEIGHT:]
-    for i, message in enumerate(recent):
-        console.print(x, y + i, message, fg=LOG_FG)
+    """Fills whatever vertical space remains below y (up to MESSAGE_LOG_HEIGHT
+    lines) with the most recent messages, wrapping each to fit and dropping
+    older messages that no longer fit rather than clipping any single one."""
+    width = max(console.width - x, 1)
+    max_lines = min(MESSAGE_LOG_HEIGHT, max(console.height - y, 0))
+    if max_lines == 0:
+        return
+
+    lines: list[str] = []
+    for message in reversed(message_log.messages):
+        wrapped = textwrap.wrap(message, width) or [message]
+        if len(lines) + len(wrapped) > max_lines:
+            break
+        lines = wrapped + lines
+
+    for i, line in enumerate(lines):
+        console.print(x, y + i, line, fg=LOG_FG, width=width)
 
 
 def render_all(console: "Console", engine: "Engine") -> None:
@@ -84,8 +123,8 @@ def render_all(console: "Console", engine: "Engine") -> None:
     render_entities(console, engine.game_map)
 
     hud_y = engine.game_map.height + 1
-    render_hud(console, engine, hud_y)
-    render_message_log(console, engine.message_log, 0, hud_y + 5)
+    log_y = render_hud(console, engine, hud_y) + 1
+    render_message_log(console, engine.message_log, 0, log_y)
 
 
 def describe_tile(game_map: "GameMap", catalog: "Catalog", x: int, y: int) -> list[str]:
@@ -121,15 +160,22 @@ def describe_tile(game_map: "GameMap", catalog: "Catalog", x: int, y: int) -> li
 
 def render_look_hud(
     console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, y: int
-) -> None:
+) -> int:
+    """Mirrors render_hud's contract: prints starting at y, wraps long lines,
+    and returns the row just past the last line printed."""
+    width = console.width
     fighter = engine.player.fighter
-    console.print(0, y, f"{engine.level_name}", fg=HUD_FG)
-    console.print(0, y + 1, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG)
-    console.print(0, y + 2, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG)
+    y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
+    y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    y += console.print(
+        0, y, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG, width=width
+    )
 
-    description = " | ".join(describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y))
-    console.print(0, y + 3, description, fg=HUD_FG)
-    console.print(0, y + 4, "[arrows] move cursor  [l/esc] exit look", fg=HUD_FG)
+    for line in describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y):
+        y += console.print(0, y, line, fg=HUD_FG, width=width)
+
+    y += console.print(0, y, "[arrows] move cursor  [l/esc] exit look", fg=HUD_FG, width=width)
+    return y
 
 
 def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, cursor_y: int) -> None:
@@ -139,5 +185,5 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
     console.rgb[cursor_x, cursor_y]["bg"] = CURSOR_BG
 
     hud_y = engine.game_map.height + 1
-    render_look_hud(console, engine, cursor_x, cursor_y, hud_y)
-    render_message_log(console, engine.message_log, 0, hud_y + 5)
+    log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
+    render_message_log(console, engine.message_log, 0, log_y)
