@@ -8,6 +8,7 @@ from engine.actions import (
     Action,
     BumpAction,
     EscapeAction,
+    LookAction,
     PickupAction,
     RestartAction,
     UseItemAction,
@@ -45,7 +46,29 @@ def handle_event(event: tcod.event.Event) -> Action | None:
         if sym == tcod.event.KeySym.R:
             return RestartAction()
 
+        if sym == tcod.event.KeySym.L:
+            return LookAction()
+
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()
+
+    return None
+
+
+def handle_look_event(event: tcod.event.Event) -> tuple[int, int] | str | None:
+    """Input while inside look mode: arrow keys move the cursor, Escape/L exit
+    back to normal play (not "quit the game" - that's what Escape means outside
+    look mode). Returns a (dx, dy) cursor delta, the string "exit", or None."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in MOVE_KEYS:
+            return MOVE_KEYS[sym]
+
+        if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.L):
+            return "exit"
 
     return None

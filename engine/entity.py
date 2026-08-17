@@ -43,6 +43,7 @@ class Entity:
         fighter: Fighter | None = None,
         item: ItemEffect | None = None,
         ai: str | None = None,
+        description: str = "",
     ):
         self.x = x
         self.y = y
@@ -54,6 +55,7 @@ class Entity:
         self.fighter = fighter
         self.item = item
         self.ai = ai
+        self.description = description
         self.inventory: list[Entity] = []
 
     @property

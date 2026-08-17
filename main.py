@@ -10,11 +10,11 @@ import tcod
 import tcod.event
 
 from content.loader import ContentValidationError, load_catalog, load_dungeon
-from engine.actions import EscapeAction, RestartAction
+from engine.actions import EscapeAction, LookAction, RestartAction
 from engine.engine import Engine
 from engine.game_map import build_game_map
-from engine.input_handlers import handle_event
-from engine.render import render_all
+from engine.input_handlers import handle_event, handle_look_event
+from engine.render import render_all, render_look_frame
 
 LEVELS_DIR = Path(__file__).resolve().parent / "data" / "levels"
 STARTING_LEVEL_ID = "level_01"
@@ -59,6 +59,27 @@ def dispatch_action(engine: Engine, action) -> bool:
     return False
 
 
+def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+    """Nested event loop for look mode: moves a cursor and re-renders until the
+    player exits. Never touches Engine.process_turn, so it costs no game turn."""
+    cursor_x, cursor_y = engine.player.x, engine.player.y
+
+    while True:
+        render_look_frame(console, engine, cursor_x, cursor_y)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_look_event(event)
+
+            if result == "exit":
+                return
+            if isinstance(result, tuple):
+                dx, dy = result
+                cursor_x = max(0, min(engine.game_map.width - 1, cursor_x + dx))
+                cursor_y = max(0, min(engine.game_map.height - 1, cursor_y + dy))
+
+
 def main() -> int:
     try:
         catalog = load_catalog()
@@ -98,6 +119,11 @@ def main() -> int:
                     action = handle_event(event)
                 except SystemExit:
                     return 0
+
+                if isinstance(action, LookAction):
+                    if engine.game_state == "playing":
+                        run_look_mode(console, context, engine)
+                    continue
 
                 if dispatch_action(engine, action):
                     return 0

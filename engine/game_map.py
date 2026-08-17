@@ -107,6 +107,7 @@ def build_game_map(
                 max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
             ),
             ai=edef.ai,
+            description=edef.description,
         )
         game_map.entities.append(entity)
 
@@ -125,6 +126,7 @@ def build_game_map(
                 attack_bonus=idef.attack_bonus,
                 key_id=idef.id if idef.is_key else None,
             ),
+            description=idef.description,
         )
         game_map.entities.append(entity)
 

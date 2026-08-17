@@ -36,6 +36,16 @@ class RestartAction(Action):
         engine.restart()
 
 
+class LookAction(Action):
+    """Enters look mode: a free cursor for inspecting tiles that costs no turn.
+    main.py recognizes this before it would ever reach Engine.process_turn and
+    runs its own nested input loop instead - perform() is never actually called
+    in practice, kept only so LookAction satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class MovementAction(Action):
     def __init__(self, dx: int, dy: int):
         self.dx = dx
