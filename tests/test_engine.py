@@ -16,7 +16,7 @@ from engine.entity import (
     Fighter,
     ItemEffect,
 )
-from engine.game_map import GameMap, build_game_map
+from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -192,3 +192,66 @@ def test_level_01_branches_to_two_different_levels():
 
     destinations = set(game_map.stairs.values())
     assert destinations == {"level_02a", "level_02b"}
+
+
+def test_restart_after_death_gives_a_fresh_run():
+    catalog = load_catalog()
+    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map,
+        player,
+        level_01.name,
+        catalog=catalog,
+        levels=levels,
+        starting_level=level_01,
+    )
+
+    # Simulate a run in progress: damaged, geared up, and one monster killed.
+    player.fighter.hp = 1
+    player.fighter.attack += 10
+    player.inventory.append(make_potion(0, 0))
+    killed_monster = next(e for e in game_map.entities if e.name == "Rat")
+    game_map.entities.remove(killed_monster)
+    engine.on_entity_death(player)
+    assert engine.game_state == "dead"
+
+    old_game_map = engine.game_map
+    engine.restart()
+
+    assert engine.game_state == "playing"
+    assert engine.game_map is not old_game_map
+    assert engine.player is not player  # fresh entity, not the one that died
+    assert engine.player.fighter.hp == engine.player.fighter.max_hp
+    assert engine.player.fighter.attack == PLAYER_ATTACK
+    assert engine.player.inventory == []
+    assert (engine.player.x, engine.player.y) == level_01.player_start
+    assert len(engine.message_log.messages) == 1  # log cleared to just the entry message
+
+    monster_names = sorted(e.name for e in engine.game_map.entities if e.ai is not None)
+    assert monster_names == ["Goblin", "Rat", "Rat"]  # killed monster is back
+
+
+def test_restart_after_win_returns_to_starting_level():
+    catalog = load_catalog()
+    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map,
+        player,
+        level_01.name,
+        catalog=catalog,
+        levels=levels,
+        starting_level=level_01,
+    )
+
+    engine.on_player_reach_stairs("level_02a")  # progress deeper into the dungeon
+    engine.game_state = "won"  # simulate reaching the final terminal stairway
+
+    engine.restart()
+
+    assert engine.game_state == "playing"
+    assert engine.level_name == "The Rotting Cellar"
+    assert (engine.player.x, engine.player.y) == level_01.player_start

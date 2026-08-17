@@ -27,6 +27,15 @@ class WaitAction(Action):
         pass
 
 
+class RestartAction(Action):
+    """Begins a fresh run. Only meaningful when the game has ended (dead/won);
+    main.py is responsible for gating that, since a normal turn action would be
+    silently dropped by Engine.process_turn once the game is no longer playing."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        engine.restart()
+
+
 class MovementAction(Action):
     def __init__(self, dx: int, dy: int):
         self.dx = dx

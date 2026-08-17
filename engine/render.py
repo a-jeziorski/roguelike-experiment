@@ -54,9 +54,9 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> None:
     )
 
     if engine.game_state == "dead":
-        console.print(0, y + 4, "You have died. Close the window to exit.", fg=DEAD_FG)
+        console.print(0, y + 4, "You have died. [r] play again  [esc] quit", fg=DEAD_FG)
     elif engine.game_state == "won":
-        console.print(0, y + 4, "You escaped the dungeon! Close the window to exit.", fg=WIN_FG)
+        console.print(0, y + 4, "You escaped the dungeon! [r] play again  [esc] quit", fg=WIN_FG)
 
 
 def render_message_log(console: "Console", message_log: "MessageLog", x: int, y: int) -> None:

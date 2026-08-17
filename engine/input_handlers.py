@@ -9,6 +9,7 @@ from engine.actions import (
     BumpAction,
     EscapeAction,
     PickupAction,
+    RestartAction,
     UseItemAction,
     WaitAction,
 )
@@ -40,6 +41,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.U:
             return UseItemAction()
+
+        if sym == tcod.event.KeySym.R:
+            return RestartAction()
 
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()

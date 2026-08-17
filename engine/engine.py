@@ -33,6 +33,7 @@ class Engine:
         *,
         catalog: "Catalog | None" = None,
         levels: "dict[str, ParsedLevel] | None" = None,
+        starting_level: "ParsedLevel | None" = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -43,6 +44,9 @@ class Engine:
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog
         self.levels = levels
+        # The level a fresh run begins at, kept so restart() can rebuild from
+        # scratch; only required if restarting is supported for this Engine.
+        self.starting_level = starting_level
 
         self.game_map.update_fov((player.x, player.y))
         self.message_log.add(f"You enter {level_name}.")
@@ -67,6 +71,17 @@ class Engine:
         self.level_name = next_level.name
         self.message_log.add(f"You descend into {next_level.name}.")
         self.game_map.update_fov((self.player.x, self.player.y))
+
+    def restart(self) -> None:
+        """Begins a fresh run from the starting level: a brand-new player (full
+        hp, no inventory or picked-up attack bonus), a freshly built map (killed
+        monsters and taken items restored), and a cleared message log."""
+        self.game_map, self.player = build_game_map(self.starting_level, self.catalog)
+        self.level_name = self.starting_level.name
+        self.game_state = "playing"
+        self.message_log = MessageLog()
+        self.game_map.update_fov((self.player.x, self.player.y))
+        self.message_log.add(f"You enter {self.level_name}.")
 
     def _perform_ai(self, entity: Entity) -> None:
         if entity.ai != HOSTILE_BASIC_AI:

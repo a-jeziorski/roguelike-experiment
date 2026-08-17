@@ -10,6 +10,7 @@ import tcod
 import tcod.event
 
 from content.loader import ContentValidationError, load_catalog, load_dungeon
+from engine.actions import RestartAction
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event
@@ -48,7 +49,14 @@ def main() -> int:
 
     starting_level = levels[STARTING_LEVEL_ID]
     game_map, player = build_game_map(starting_level, catalog)
-    engine = Engine(game_map, player, starting_level.name, catalog=catalog, levels=levels)
+    engine = Engine(
+        game_map,
+        player,
+        starting_level.name,
+        catalog=catalog,
+        levels=levels,
+        starting_level=starting_level,
+    )
 
     tileset = load_tileset()
 
@@ -71,7 +79,10 @@ def main() -> int:
                 except SystemExit:
                     return 0
 
-                if action is not None:
+                if isinstance(action, RestartAction):
+                    if engine.game_state != "playing":
+                        engine.restart()
+                elif action is not None:
                     engine.process_turn(action)
 
 
