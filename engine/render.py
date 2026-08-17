@@ -49,7 +49,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> None:
         0,
         y + 3,
         f"Potions: {len(engine.player.inventory)}  "
-        "[arrows] move/attack  [g] pick up  [u] use potion  [esc] quit",
+        "[arrows] move  [g] pick up  [u] use potion  [esc] quit",
         fg=HUD_FG,
     )
 
