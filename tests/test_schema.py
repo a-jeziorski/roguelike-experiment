@@ -80,6 +80,21 @@ def test_item_def_is_key_defaults_false():
     assert item.is_key is False
 
 
+def test_item_def_accepts_defense_bonus():
+    armor = ItemDef(
+        id="leather_armor", name="Leather Armor", glyph="[", color=(1, 2, 3), defense_bonus=1
+    )
+    assert armor.defense_bonus == 1
+
+
+def test_item_def_rejects_both_attack_and_defense_bonus():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            attack_bonus=2, defense_bonus=1,
+        )
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",

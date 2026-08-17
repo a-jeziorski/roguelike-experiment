@@ -33,10 +33,18 @@ revisiting before the level does.
 
 ## 2. Balance methodology
 
-Damage is `max(0, attacker.attack - defender.defense)`
+Damage is `max(0, attacker.effective_attack - defender.effective_defense)`
 (`engine/combat.py`). Player baseline is `PLAYER_MAX_HP`/`PLAYER_ATTACK`/
-`PLAYER_DEFENSE` in `engine/game_map.py` (30/5/1 as of this writing), before
-any picked-up weapon (`attack_bonus` items) or potions (`heal_amount`).
+`PLAYER_DEFENSE` in `engine/game_map.py` (30/5/1 as of this writing).
+`effective_attack`/`effective_defense` (`engine/entity.py`) add the
+equipped weapon's `attack_bonus` / equipped armor's `defense_bonus` on top
+of that baseline - equipment is one weapon and one armor slot, swap-if-
+better (picking up a worse item leaves it on the ground; a better one
+replaces and drops the old one), not a stack. Potions (`heal_amount`) are
+consumed on use, not equipped. Current tiers: weapons `rusty_dagger` (+2),
+`iron_sword` (+4); armor `leather_armor` (+1), `bone_plate` (+3) - mirror
+this two-tier shape for any new equipment rather than inventing a third
+tier casually, to keep the gear curve legible.
 
 **Work out hits-to-kill in both directions** before placing a monster:
 `player_attack - monster.defense` and `monster.attack - player.defense`,
@@ -85,14 +93,27 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
   critical path, guarding a bonus item, so a level is always completable
   without finding the key. Every door/key pair used so far follows this
   (`level_01`, `level_04`).
+- **Geometry variety, not just encounter variety** (playtest feedback on the
+  6-level dungeon): `level_03` and `level_05` are a single open room each -
+  noticeably less interesting than the multi-room `level_01`/`02a`/`02b`/
+  `04` layouts, which force sequential encounters and give monsters
+  somewhere to be a sleeping guard *around a corner* rather than just
+  standing in an open field. A single open room is fine as an occasional
+  "arena" beat but shouldn't be the default template - favor multiple
+  connected rooms, corridors, and chokepoints even for "boss room" levels
+  (e.g. an antechamber before the room with the real fight, an L-shaped or
+  multi-chamber throne room instead of one rectangle). Treat "single open
+  room" as a deliberate, occasional choice, not the fallback when a level
+  needs to feel big.
 
 ## 4. Authoring checklist
 
-1. **Layout**: reuse a proven template from an existing `data/levels/*.lvl`
-   file where the composition fits (two-room-plus-vault, single open room,
-   etc.) - copying known-good row geometry and only substituting the symbols
-   at specific positions avoids the width-mismatch mistakes hand-drawing a
-   grid from scratch invites.
+1. **Layout**: reuse proven row geometry from an existing `data/levels/*.lvl`
+   file - copying known-good rows and only substituting symbols at specific
+   positions avoids the width-mismatch mistakes hand-drawing a grid from
+   scratch invites. Default to multi-room/corridor composition (per the
+   geometry-variety note above); reach for a single open room only when the
+   level specifically wants an "arena" beat, not as the easy default.
 2. **Placements**: exactly one `player_start`, at least one `stairs_down`,
    monsters (with AI chosen deliberately per the pacing guidance above),
    items (checked against the balance methodology above).

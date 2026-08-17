@@ -26,6 +26,7 @@ class Fighter:
 class ItemEffect:
     heal_amount: int | None = None
     attack_bonus: int | None = None
+    defense_bonus: int | None = None
     key_id: str | None = None
 
 
@@ -46,6 +47,8 @@ class Entity:
         alert_radius: int | None = None,
         flee_hp_pct: float | None = None,
         description: str = "",
+        equipped_weapon: "Entity | None" = None,
+        equipped_armor: "Entity | None" = None,
     ):
         self.x = x
         self.y = y
@@ -61,10 +64,26 @@ class Entity:
         self.flee_hp_pct = flee_hp_pct
         self.description = description
         self.inventory: list[Entity] = []
+        # The Entity currently equipped in each slot (so its name/bonus stay
+        # available), not just a bare number - see effective_attack/defense.
+        self.equipped_weapon = equipped_weapon
+        self.equipped_armor = equipped_armor
 
     @property
     def is_alive(self) -> bool:
         return self.fighter is not None and self.fighter.hp > 0
+
+    @property
+    def effective_attack(self) -> int:
+        base = self.fighter.attack if self.fighter else 0
+        bonus = self.equipped_weapon.item.attack_bonus if self.equipped_weapon else None
+        return base + (bonus or 0)
+
+    @property
+    def effective_defense(self) -> int:
+        base = self.fighter.defense if self.fighter else 0
+        bonus = self.equipped_armor.item.defense_bonus if self.equipped_armor else None
+        return base + (bonus or 0)
 
     def __repr__(self) -> str:
         return f"Entity({self.name!r} at ({self.x},{self.y}))"

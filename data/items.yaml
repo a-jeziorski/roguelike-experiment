@@ -27,3 +27,17 @@ rusty_key:
   color: [200, 170, 60]
   is_key: true
   description: A tarnished brass key. It might fit a nearby lock.
+
+leather_armor:
+  name: Leather Armor
+  glyph: "["
+  color: [150, 110, 60]
+  defense_bonus: 1
+  description: Cracked but serviceable hide armor, better than bare skin.
+
+bone_plate:
+  name: Bone Plate
+  glyph: "]"
+  color: [220, 220, 200]
+  defense_bonus: 3
+  description: Armor fashioned from the ossuary's dead. Unsettling, but it holds.

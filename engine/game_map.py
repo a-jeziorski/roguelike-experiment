@@ -126,6 +126,7 @@ def build_game_map(
             item=ItemEffect(
                 heal_amount=idef.heal_amount,
                 attack_bonus=idef.attack_bonus,
+                defense_bonus=idef.defense_bonus,
                 key_id=idef.id if idef.is_key else None,
             ),
             description=idef.description,

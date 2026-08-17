@@ -66,15 +66,25 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     console. Returns the row just past the last line printed, so callers can
     place whatever comes next without assuming a fixed HUD height."""
     width = console.width
-    fighter = engine.player.fighter
-    inventory = engine.player.inventory
+    player = engine.player
+    fighter = player.fighter
+    inventory = player.inventory
     potions = sum(1 for it in inventory if it.item.heal_amount)
     keys = sum(1 for it in inventory if it.item.key_id)
+    weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
+    armor_name = player.equipped_armor.name if player.equipped_armor else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
     y += console.print(
-        0, y, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG, width=width
+        0,
+        y,
+        f"ATK: {player.effective_attack}  DEF: {player.effective_defense}",
+        fg=HUD_FG,
+        width=width,
+    )
+    y += console.print(
+        0, y, f"Weapon: {weapon_name}  Armor: {armor_name}", fg=HUD_FG, width=width
     )
     y += console.print(0, y, f"Potions: {potions}  Keys: {keys}", fg=HUD_FG, width=width)
     y += console.print(
@@ -164,11 +174,22 @@ def render_look_hud(
     """Mirrors render_hud's contract: prints starting at y, wraps long lines,
     and returns the row just past the last line printed."""
     width = console.width
-    fighter = engine.player.fighter
+    player = engine.player
+    fighter = player.fighter
+    weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
+    armor_name = player.equipped_armor.name if player.equipped_armor else "none"
+
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
     y += console.print(
-        0, y, f"ATK: {fighter.attack}  DEF: {fighter.defense}", fg=HUD_FG, width=width
+        0,
+        y,
+        f"ATK: {player.effective_attack}  DEF: {player.effective_defense}",
+        fg=HUD_FG,
+        width=width,
+    )
+    y += console.print(
+        0, y, f"Weapon: {weapon_name}  Armor: {armor_name}", fg=HUD_FG, width=width
     )
 
     for line in describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y):

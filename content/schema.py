@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 TileType = Literal["wall", "floor", "stairs_down", "player_start", "door"]
 
@@ -63,6 +63,7 @@ class ItemDef(BaseModel):
     color: Color
     heal_amount: int | None = None
     attack_bonus: int | None = None
+    defense_bonus: int | None = None
     is_key: bool = False
     description: str = ""
 
@@ -72,6 +73,15 @@ class ItemDef(BaseModel):
         if len(v) != 1:
             raise ValueError(f"glyph must be a single character, got {v!r}")
         return v
+
+    @model_validator(mode="after")
+    def not_both_weapon_and_armor(self) -> "ItemDef":
+        if self.attack_bonus is not None and self.defense_bonus is not None:
+            raise ValueError(
+                "an item can't set both attack_bonus and defense_bonus "
+                "(ambiguous which equipment slot it belongs in)"
+            )
+        return self
 
 
 class LegendEntry(BaseModel):

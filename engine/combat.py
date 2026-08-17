@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
-    damage = max(0, attacker.fighter.attack - defender.fighter.defense)
+    damage = max(0, attacker.effective_attack - defender.effective_defense)
 
     if damage > 0:
         defender.fighter.hp -= damage

@@ -73,6 +73,22 @@ def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key")
     )
 
 
+def make_weapon(x: int, y: int, attack_bonus: int = 2, name: str = "Rusty Dagger") -> Entity:
+    return Entity(
+        x, y, "/", (180, 180, 190), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(attack_bonus=attack_bonus),
+    )
+
+
+def make_armor(x: int, y: int, defense_bonus: int = 1, name: str = "Leather Armor") -> Entity:
+    return Entity(
+        x, y, "[", (150, 110, 60), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(defense_bonus=defense_bonus),
+    )
+
+
 def test_movement_into_open_floor():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -229,6 +245,85 @@ def test_pickup_and_use_healing_potion():
     assert len(player.inventory) == 0
 
 
+def test_first_weapon_pickup_equips_directly():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    weapon = make_weapon(1, 1, attack_bonus=2, name="Rusty Dagger")
+    game_map.entities.extend([player, weapon])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_weapon is weapon
+    assert weapon not in game_map.entities
+    assert player.effective_attack == 5 + 2
+
+
+def test_picking_up_better_weapon_swaps_and_drops_old_one():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_weapon = make_weapon(0, 0, attack_bonus=2, name="Rusty Dagger")
+    better_weapon = make_weapon(1, 1, attack_bonus=4, name="Iron Sword")
+    game_map.entities.extend([player, better_weapon])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_weapon is better_weapon
+    assert player.effective_attack == 5 + 4
+    dropped = [e for e in game_map.entities if e.name == "Rusty Dagger"]
+    assert len(dropped) == 1
+    assert (dropped[0].x, dropped[0].y) == (1, 1)  # dropped at the player's feet
+
+
+def test_picking_up_worse_weapon_is_left_on_the_ground():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    current_weapon = make_weapon(0, 0, attack_bonus=4, name="Iron Sword")
+    player.equipped_weapon = current_weapon
+    worse_weapon = make_weapon(1, 1, attack_bonus=2, name="Rusty Dagger")
+    game_map.entities.extend([player, worse_weapon])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_weapon is current_weapon  # unchanged
+    assert worse_weapon in game_map.entities  # left untouched on the ground
+    assert (worse_weapon.x, worse_weapon.y) == (1, 1)
+
+
+def test_armor_pickup_swaps_the_same_way_as_weapons():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, defense=1)
+    player.equipped_armor = make_armor(0, 0, defense_bonus=1, name="Leather Armor")
+    better_armor = make_armor(1, 1, defense_bonus=3, name="Bone Plate")
+    game_map.entities.extend([player, better_armor])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_armor is better_armor
+    assert player.effective_defense == 1 + 3
+    dropped = [e for e in game_map.entities if e.name == "Leather Armor"]
+    assert len(dropped) == 1
+    assert (dropped[0].x, dropped[0].y) == (1, 1)
+
+
+def test_combat_damage_reflects_equipped_weapon_and_armor():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_weapon = make_weapon(0, 0, attack_bonus=4)
+    monster = make_monster(2, 1, hp=20, attack=8, defense=0, ai=None)
+    monster.equipped_armor = make_armor(0, 0, defense_bonus=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    # player attack 5+4=9 vs monster defense 0+3=3 -> 6 damage
+    assert monster.fighter.hp == 20 - 6
+
+
 def test_reaching_stairs_wins():
     game_map = make_open_map(3, 3)
     game_map.kinds[2, 1] = "stairs_down"
@@ -309,7 +404,7 @@ def test_restart_after_death_gives_a_fresh_run():
 
     # Simulate a run in progress: damaged, geared up, and one monster killed.
     player.fighter.hp = 1
-    player.fighter.attack += 10
+    player.equipped_weapon = make_weapon(0, 0, attack_bonus=10)
     player.inventory.append(make_potion(0, 0))
     killed_monster = next(e for e in game_map.entities if e.name == "Rat")
     game_map.entities.remove(killed_monster)
@@ -323,7 +418,8 @@ def test_restart_after_death_gives_a_fresh_run():
     assert engine.game_map is not old_game_map
     assert engine.player is not player  # fresh entity, not the one that died
     assert engine.player.fighter.hp == engine.player.fighter.max_hp
-    assert engine.player.fighter.attack == PLAYER_ATTACK
+    assert engine.player.effective_attack == PLAYER_ATTACK
+    assert engine.player.equipped_weapon is None
     assert engine.player.inventory == []
     assert (engine.player.x, engine.player.y) == level_01.player_start
     assert len(engine.message_log.messages) == 1  # log cleared to just the entry message

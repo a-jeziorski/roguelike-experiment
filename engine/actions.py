@@ -113,11 +113,9 @@ class PickupAction(Action):
                 continue
 
             if candidate.item.attack_bonus:
-                entity.fighter.attack += candidate.item.attack_bonus
-                engine.message_log.add(
-                    f"You equip the {candidate.name} (+{candidate.item.attack_bonus} attack)."
-                )
-                engine.game_map.entities.remove(candidate)
+                self._equip(engine, entity, candidate, slot="weapon")
+            elif candidate.item.defense_bonus:
+                self._equip(engine, entity, candidate, slot="armor")
             else:
                 entity.inventory.append(candidate)
                 engine.game_map.entities.remove(candidate)
@@ -125,6 +123,35 @@ class PickupAction(Action):
             return
 
         engine.message_log.add("There is nothing here to pick up.")
+
+    def _equip(self, engine: "Engine", entity: "Entity", candidate: "Entity", slot: str) -> None:
+        """Equips `candidate` into `slot` ("weapon" or "armor") if it's better
+        than what's already there, dropping the replaced item back onto the
+        map (visible, re-collectible) rather than destroying it. If it's not
+        better, `candidate` is left untouched on the ground."""
+        bonus_attr = "attack_bonus" if slot == "weapon" else "defense_bonus"
+        new_bonus = getattr(candidate.item, bonus_attr)
+
+        current = entity.equipped_weapon if slot == "weapon" else entity.equipped_armor
+        current_bonus = getattr(current.item, bonus_attr) if current is not None else 0
+
+        if current is not None and new_bonus <= current_bonus:
+            engine.message_log.add(f"Your current {slot} is already at least as good.")
+            return
+
+        engine.game_map.entities.remove(candidate)
+        if slot == "weapon":
+            entity.equipped_weapon = candidate
+        else:
+            entity.equipped_armor = candidate
+
+        bonus_word = "attack" if slot == "weapon" else "defense"
+        engine.message_log.add(f"You equip the {candidate.name} (+{new_bonus} {bonus_word}).")
+
+        if current is not None:
+            current.x, current.y = entity.x, entity.y
+            engine.game_map.entities.append(current)
+            engine.message_log.add(f"You drop your old {slot}, the {current.name}.")
 
 
 class UseItemAction(Action):
