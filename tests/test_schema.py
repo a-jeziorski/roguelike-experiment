@@ -20,6 +20,36 @@ def test_entity_def_rejects_nonpositive_hp():
         EntityDef(id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=0, attack=2, defense=0)
 
 
+def test_entity_def_rejects_unknown_ai():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+            ai="berserker",
+        )
+
+
+def test_entity_def_accepts_known_ai_types_with_optional_tuning():
+    guard = EntityDef(
+        id="skeleton", name="Skeleton", glyph="s", color=(1, 2, 3), hp=16, attack=5, defense=2,
+        ai="sleeping_guard", alert_radius=6,
+    )
+    assert guard.alert_radius == 6
+
+    skittish = EntityDef(
+        id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+        ai="skittish", flee_hp_pct=0.5,
+    )
+    assert skittish.flee_hp_pct == 0.5
+
+
+def test_entity_def_rejects_out_of_range_flee_hp_pct():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+            ai="skittish", flee_hp_pct=1.5,
+        )
+
+
 def test_legend_entry_from_plain_string():
     entry = LegendEntry.from_raw("wall")
     assert entry.tile == "wall"

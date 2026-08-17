@@ -16,6 +16,16 @@ TileType = Literal["wall", "floor", "stairs_down", "player_start", "door"]
 
 Color = tuple[int, int, int]
 
+# Known monster AI behaviors. Defined once here (rather than a bare str on
+# EntityDef) so an unrecognized value fails loudly at content-load time
+# instead of silently producing a monster that never acts; engine/engine.py
+# imports these same constants for its dispatch, so validation and dispatch
+# can't drift out of sync.
+AI_HOSTILE_BASIC = "hostile_basic"
+AI_SLEEPING_GUARD = "sleeping_guard"
+AI_SKITTISH = "skittish"
+AIType = Literal[AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH]
+
 
 class EntityDef(BaseModel):
     """A monster type, as defined once in data/entities.yaml and referenced by id
@@ -28,7 +38,11 @@ class EntityDef(BaseModel):
     hp: int = Field(gt=0)
     attack: int = Field(ge=0)
     defense: int = Field(ge=0)
-    ai: str = "hostile_basic"
+    ai: AIType = AI_HOSTILE_BASIC
+    # Only meaningful for the AI type that uses them (sleeping_guard /
+    # skittish respectively); engine-level defaults apply when omitted.
+    alert_radius: int | None = Field(default=None, gt=0)
+    flee_hp_pct: float | None = Field(default=None, gt=0, le=1)
     description: str = ""
 
     @field_validator("glyph")

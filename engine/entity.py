@@ -43,6 +43,8 @@ class Entity:
         fighter: Fighter | None = None,
         item: ItemEffect | None = None,
         ai: str | None = None,
+        alert_radius: int | None = None,
+        flee_hp_pct: float | None = None,
         description: str = "",
     ):
         self.x = x
@@ -55,6 +57,8 @@ class Entity:
         self.fighter = fighter
         self.item = item
         self.ai = ai
+        self.alert_radius = alert_radius
+        self.flee_hp_pct = flee_hp_pct
         self.description = description
         self.inventory: list[Entity] = []
 

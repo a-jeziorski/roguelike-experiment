@@ -107,6 +107,8 @@ def build_game_map(
                 max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
             ),
             ai=edef.ai,
+            alert_radius=edef.alert_radius,
+            flee_hp_pct=edef.flee_hp_pct,
             description=edef.description,
         )
         game_map.entities.append(entity)

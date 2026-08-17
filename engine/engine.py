@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from content.schema import AI_HOSTILE_BASIC, AI_SKITTISH, AI_SLEEPING_GUARD
 from engine.actions import Action, MovementAction
 from engine.combat import resolve_attack
 from engine.entity import Entity
@@ -13,7 +14,9 @@ from engine.game_map import GameMap, build_game_map
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
 
-HOSTILE_BASIC_AI = "hostile_basic"
+# Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct.
+DEFAULT_ALERT_RADIUS = 4
+DEFAULT_FLEE_HP_PCT = 0.3
 
 
 class MessageLog:
@@ -84,8 +87,6 @@ class Engine:
         self.message_log.add(f"You enter {self.level_name}.")
 
     def _perform_ai(self, entity: Entity) -> None:
-        if entity.ai != HOSTILE_BASIC_AI:
-            return
         if not self.game_map.visible[entity.x, entity.y]:
             return
 
@@ -93,12 +94,36 @@ class Engine:
         dy = self.player.y - entity.y
         distance = max(abs(dx), abs(dy))
 
+        if entity.ai == AI_HOSTILE_BASIC:
+            self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_SLEEPING_GUARD:
+            alert_radius = entity.alert_radius or DEFAULT_ALERT_RADIUS
+            if distance <= alert_radius:
+                self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_SKITTISH:
+            flee_hp_pct = entity.flee_hp_pct or DEFAULT_FLEE_HP_PCT
+            if entity.fighter.hp / entity.fighter.max_hp <= flee_hp_pct:
+                self._flee(entity, dx, dy)
+            else:
+                self._chase_and_attack(entity, dx, dy, distance)
+
+    def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
         else:
             step_x = (dx > 0) - (dx < 0)
             step_y = (dy > 0) - (dy < 0)
             MovementAction(step_x, step_y).perform(self, entity)
+
+    def _flee(self, entity: Entity, dx: int, dy: int) -> None:
+        """Steps directly away from the player. If that's blocked (wall,
+        another entity, a corner), MovementAction's own checks just no-op -
+        the entity holds position rather than being forced to fight."""
+        step_x = -((dx > 0) - (dx < 0))
+        step_y = -((dy > 0) - (dy < 0))
+        MovementAction(step_x, step_y).perform(self, entity)
 
     def _handle_enemy_turns(self) -> None:
         for entity in list(self.game_map.entities):

@@ -8,8 +8,9 @@ rat:
   hp: 5
   attack: 2
   defense: 0
-  ai: hostile_basic
-  description: A mangy sewer rat. Weak alone, dangerous in numbers.
+  ai: skittish
+  flee_hp_pct: 0.4
+  description: A mangy sewer rat. Weak alone, dangerous in numbers - and quick to bolt once wounded.
 
 goblin:
   name: Goblin
@@ -28,8 +29,9 @@ skeleton:
   hp: 16
   attack: 5
   defense: 2
-  ai: hostile_basic
-  description: Bones held together by old, grim magic. Clatters when it moves.
+  ai: sleeping_guard
+  alert_radius: 4
+  description: Bones held together by old, grim magic. Stands motionless until disturbed.
 
 ogre:
   name: Ogre

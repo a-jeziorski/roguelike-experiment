@@ -41,13 +41,17 @@ def make_player(x: int, y: int, hp: int = 30, attack: int = 5, defense: int = 1)
     )
 
 
-def make_monster(x: int, y: int, hp=5, attack=2, defense=0, ai=None) -> Entity:
+def make_monster(
+    x: int, y: int, hp=5, attack=2, defense=0, ai=None, alert_radius=None, flee_hp_pct=None
+) -> Entity:
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
         blocks_movement=True,
         render_priority=RENDER_PRIORITY_ACTOR,
         fighter=Fighter(max_hp=hp, hp=hp, attack=attack, defense=defense),
         ai=ai,
+        alert_radius=alert_radius,
+        flee_hp_pct=flee_hp_pct,
     )
 
 
@@ -128,6 +132,72 @@ def test_hostile_monster_attacks_player_on_its_turn():
     engine.process_turn(WaitAction())
 
     assert player.fighter.hp == 30 - 4
+
+
+def test_sleeping_guard_ignores_player_outside_alert_radius():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1)
+    guard = make_monster(6, 1, hp=16, attack=5, ai="sleeping_guard", alert_radius=3)
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (guard.x, guard.y) == (6, 1)  # stayed put, player is out of range
+    assert player.fighter.hp == player.fighter.max_hp
+
+
+def test_sleeping_guard_wakes_once_player_within_alert_radius():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1)
+    guard = make_monster(2, 1, hp=16, attack=5, ai="sleeping_guard", alert_radius=3)
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (guard.x, guard.y) == (1, 1)  # chased toward the player
+
+
+def test_skittish_behaves_normally_above_flee_threshold():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=10, attack=4, ai="skittish", flee_hp_pct=0.3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # full hp (10/10), above threshold: attacks as usual
+
+
+def test_skittish_flees_instead_of_attacking_when_hurt():
+    game_map = make_open_map(5, 3)
+    player = make_player(2, 1)
+    monster = make_monster(3, 1, hp=10, attack=4, ai="skittish", flee_hp_pct=0.3)
+    monster.fighter.hp = 2  # 20%, below the 30% threshold
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (monster.x, monster.y) == (4, 1)  # stepped away, even though adjacent
+    assert player.fighter.hp == player.fighter.max_hp  # did not attack
+
+
+def test_skittish_holds_position_when_flee_is_blocked():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[2, 1] = False  # wall directly behind the monster's escape route
+    player = make_player(0, 1)
+    monster = make_monster(1, 1, hp=10, attack=4, ai="skittish", flee_hp_pct=0.5)
+    monster.fighter.hp = 1
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (monster.x, monster.y) == (1, 1)  # blocked - held position, did not crash
+    assert player.fighter.hp == player.fighter.max_hp  # still did not attack
 
 
 def test_player_death_sets_game_state_dead():
