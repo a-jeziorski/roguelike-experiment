@@ -20,6 +20,16 @@ MOVE_KEYS = {
     tcod.event.KeySym.DOWN: (0, 1),
     tcod.event.KeySym.LEFT: (-1, 0),
     tcod.event.KeySym.RIGHT: (1, 0),
+    # Numpad: classic roguelike 8-directional layout (KP_5 = wait, handled
+    # separately below since it's not a movement delta).
+    tcod.event.KeySym.KP_7: (-1, -1),
+    tcod.event.KeySym.KP_8: (0, -1),
+    tcod.event.KeySym.KP_9: (1, -1),
+    tcod.event.KeySym.KP_4: (-1, 0),
+    tcod.event.KeySym.KP_6: (1, 0),
+    tcod.event.KeySym.KP_1: (-1, 1),
+    tcod.event.KeySym.KP_2: (0, 1),
+    tcod.event.KeySym.KP_3: (1, 1),
 }
 
 
@@ -34,7 +44,7 @@ def handle_event(event: tcod.event.Event) -> Action | None:
             dx, dy = MOVE_KEYS[sym]
             return BumpAction(dx, dy)
 
-        if sym == tcod.event.KeySym.PERIOD:
+        if sym in (tcod.event.KeySym.PERIOD, tcod.event.KeySym.KP_5):
             return WaitAction()
 
         if sym == tcod.event.KeySym.G:

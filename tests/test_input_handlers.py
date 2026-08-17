@@ -4,8 +4,19 @@ directly without any window/context, so this is testable headlessly."""
 import pytest
 import tcod.event
 
-from engine.actions import BumpAction, EscapeAction, LookAction, RestartAction
+from engine.actions import BumpAction, EscapeAction, LookAction, RestartAction, WaitAction
 from engine.input_handlers import handle_event, handle_look_event
+
+NUMPAD_DIRECTIONS = [
+    (tcod.event.KeySym.KP_7, (-1, -1)),
+    (tcod.event.KeySym.KP_8, (0, -1)),
+    (tcod.event.KeySym.KP_9, (1, -1)),
+    (tcod.event.KeySym.KP_4, (-1, 0)),
+    (tcod.event.KeySym.KP_6, (1, 0)),
+    (tcod.event.KeySym.KP_1, (-1, 1)),
+    (tcod.event.KeySym.KP_2, (0, 1)),
+    (tcod.event.KeySym.KP_3, (1, 1)),
+]
 
 
 def key_down(sym: tcod.event.KeySym) -> tcod.event.KeyDown:
@@ -16,6 +27,17 @@ def test_handle_event_arrow_key_returns_bump_action():
     action = handle_event(key_down(tcod.event.KeySym.UP))
     assert isinstance(action, BumpAction)
     assert (action.dx, action.dy) == (0, -1)
+
+
+@pytest.mark.parametrize("sym,delta", NUMPAD_DIRECTIONS)
+def test_handle_event_numpad_key_returns_bump_action_with_diagonal_delta(sym, delta):
+    action = handle_event(key_down(sym))
+    assert isinstance(action, BumpAction)
+    assert (action.dx, action.dy) == delta
+
+
+def test_handle_event_kp5_returns_wait_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.KP_5)), WaitAction)
 
 
 def test_handle_event_l_returns_look_action():
@@ -36,6 +58,11 @@ def test_handle_event_unmapped_key_returns_none():
 
 def test_handle_look_event_arrow_key_returns_cursor_delta():
     assert handle_look_event(key_down(tcod.event.KeySym.RIGHT)) == (1, 0)
+
+
+@pytest.mark.parametrize("sym,delta", NUMPAD_DIRECTIONS)
+def test_handle_look_event_numpad_key_returns_diagonal_cursor_delta(sym, delta):
+    assert handle_look_event(key_down(sym)) == delta
 
 
 @pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.L])

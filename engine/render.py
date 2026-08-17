@@ -90,7 +90,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     y += console.print(
         0,
         y,
-        "[arrows] move  [g] pick up  [u] use potion  [l] look  [esc] quit",
+        "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [esc] quit",
         fg=HUD_FG,
         width=width,
     )
@@ -195,7 +195,9 @@ def render_look_hud(
     for line in describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y):
         y += console.print(0, y, line, fg=HUD_FG, width=width)
 
-    y += console.print(0, y, "[arrows] move cursor  [l/esc] exit look", fg=HUD_FG, width=width)
+    y += console.print(
+        0, y, "[arrows/numpad] move cursor  [l/esc] exit look", fg=HUD_FG, width=width
+    )
     return y
 
 

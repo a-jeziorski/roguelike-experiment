@@ -100,6 +100,17 @@ def test_movement_into_open_floor():
     assert (player.x, player.y) == (2, 1)
 
 
+def test_diagonal_movement_into_open_floor():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 1))
+
+    assert (player.x, player.y) == (2, 2)
+
+
 def test_movement_blocked_by_wall():
     game_map = make_open_map(3, 3)
     game_map.walkable[2, 1] = False
