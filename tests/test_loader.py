@@ -80,18 +80,49 @@ def test_dangling_stairs_reference_ignored_without_known_ids():
     assert level.stairs[0].next_level == "level_nonexistent"
 
 
-def test_load_dungeon_loads_and_links_all_four_levels():
+def test_load_dungeon_loads_and_links_all_six_levels():
     catalog = load_catalog()
     levels = load_dungeon(DATA_DIR / "levels", catalog)
 
-    assert set(levels) == {"level_01", "level_02a", "level_02b", "level_03"}
+    assert set(levels) == {
+        "level_01", "level_02a", "level_02b", "level_03", "level_04", "level_05",
+    }
 
     level_01_destinations = sorted(s.next_level for s in levels["level_01"].stairs)
     assert level_01_destinations == ["level_02a", "level_02b"]
 
     assert [s.next_level for s in levels["level_02a"].stairs] == ["level_03"]
     assert [s.next_level for s in levels["level_02b"].stairs] == ["level_03"]
-    assert [s.next_level for s in levels["level_03"].stairs] == [None]
+    assert [s.next_level for s in levels["level_03"].stairs] == ["level_04"]
+    assert [s.next_level for s in levels["level_04"].stairs] == ["level_05"]
+    assert [s.next_level for s in levels["level_05"].stairs] == [None]
+
+
+def test_level_04_content():
+    catalog = load_catalog()
+    level = load_level(DATA_DIR / "levels" / "level_04.lvl", catalog)
+
+    entity_names = sorted(s.entity.name for s in level.entity_spawns)
+    assert entity_names == ["Rat", "Skeleton", "Skeleton"]
+
+    item_names = sorted(s.item.name for s in level.item_spawns)
+    assert item_names == ["Healing Potion", "Iron Sword", "Rusty Key"]
+
+    door_keys = sorted(d.requires_key for d in level.doors)
+    assert door_keys == ["rusty_key"]
+
+
+def test_level_05_content():
+    catalog = load_catalog()
+    level = load_level(DATA_DIR / "levels" / "level_05.lvl", catalog)
+
+    entity_names = sorted(s.entity.name for s in level.entity_spawns)
+    assert entity_names == ["Ogre", "Skeleton"]
+
+    item_names = sorted(s.item.name for s in level.item_spawns)
+    assert item_names == ["Healing Potion", "Healing Potion"]
+
+    assert [s.next_level for s in level.stairs] == [None]  # terminal - wins the game
 
 
 def test_door_referencing_unknown_item_is_rejected():

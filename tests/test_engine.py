@@ -264,6 +264,26 @@ def test_descending_stairs_swaps_level_and_preserves_player():
     assert (player.x, player.y) == levels["level_02a"].player_start
 
 
+def test_full_dungeon_chain_is_completable():
+    """End-to-end regression: walks the whole shipped dungeon via
+    on_player_reach_stairs (one path through the 02a/02b branch), confirming
+    every hop resolves and the run actually reaches "won" - not just that
+    each transition works in isolation."""
+    catalog = load_catalog()
+    levels = load_dungeon(DATA_DIR / "levels", catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog, levels=levels)
+
+    for next_level_id in ("level_02a", "level_03", "level_04", "level_05"):
+        engine.on_player_reach_stairs(next_level_id)
+        assert engine.game_state == "playing"
+        assert engine.player is player
+
+    engine.on_player_reach_stairs(None)  # level_05's terminal stairs
+    assert engine.game_state == "won"
+
+
 def test_level_01_branches_to_two_different_levels():
     catalog = load_catalog()
     levels = load_dungeon(DATA_DIR / "levels", catalog)

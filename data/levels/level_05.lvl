@@ -1,5 +1,5 @@
-id: level_03
-name: The Sunless Throne
+id: level_05
+name: The First Ruin
 
 map: |
   ########################
@@ -7,7 +7,7 @@ map: |
   #..@...................#
   #......................#
   #...........s..........#
-  #......................#
+  #.......!..............#
   #......................#
   #...................O..#
   #......................#
@@ -19,7 +19,7 @@ legend:
   "#": wall
   ".": floor
   "@": player_start
-  ">": { stairs_down: level_04 }
+  ">": stairs_down
   "O": { entity: ogre }
   "s": { entity: skeleton }
   "!": { item: healing_potion }
