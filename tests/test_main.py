@@ -150,6 +150,19 @@ def test_resolve_transition_first_overworld_visit_lands_at_matched_entrance():
     assert (new_engine.player.x, new_engine.player.y) == _entrance_for(overworld_level, "prison_tower")
 
 
+def test_resolve_transition_builds_overworld_engine_with_dungeon_inspect_text():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    _, overworld_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert overworld_engine.dungeon_inspect_text["prison_tower"] == dungeon_registry["prison_tower"].inspect_text
+    assert overworld_engine.dungeon_inspect_text["forgotten_ruins"] == dungeon_registry["forgotten_ruins"].inspect_text
+
+
 def test_resolve_transition_each_dungeons_departure_lands_at_its_own_entrance():
     catalog, dungeon_registry, overworld_level = _world()
     active_engines: dict = {}

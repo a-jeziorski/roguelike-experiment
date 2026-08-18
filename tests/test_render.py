@@ -166,6 +166,31 @@ def test_describe_tile_terrain():
     assert describe_tile(game_map, catalog, 1, 1) == ["Stairs leading down."]
 
 
+def test_describe_tile_dungeon_entrance_falls_back_to_generic_text_without_inspect_text():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "dungeon_entrance"
+    game_map.dungeon_entrances[(1, 1)] = "prison_tower"
+    catalog = load_catalog()
+
+    assert describe_tile(game_map, catalog, 1, 1) == ["An entrance leading underground."]
+
+
+def test_describe_tile_dungeon_entrance_uses_dungeon_specific_inspect_text():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "dungeon_entrance"
+    game_map.dungeon_entrances[(1, 1)] = "prison_tower"
+    catalog = load_catalog()
+
+    lines = describe_tile(
+        game_map, catalog, 1, 1,
+        dungeon_inspect_text={"prison_tower": "A black stone tower.", "forgotten_ruins": "Ruins."},
+    )
+
+    assert lines == ["A black stone tower."]
+
+
 def test_describe_tile_explored_but_not_visible_hides_entities():
     game_map = make_game_map()
     game_map.explored[1, 1] = True

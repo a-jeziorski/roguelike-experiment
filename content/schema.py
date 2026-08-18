@@ -189,3 +189,9 @@ class DungeonDef(BaseModel):
     name: str
     starting_level: str
     description: str = ""
+    # Shown when the player inspects this dungeon's entrance tile on the
+    # overworld (look mode) - distinct from `description` above, which is a
+    # longer dev-facing summary for tools/preview.py, not in-game text.
+    # Falls back to a generic line (engine/render.py TILE_DESCRIPTIONS) when
+    # left blank.
+    inspect_text: str = ""

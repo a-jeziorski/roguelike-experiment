@@ -184,6 +184,7 @@ def test_load_dungeon_loads_manifest_and_levels():
     assert dungeon.id == "forgotten_ruins"
     assert dungeon.name == "The Forgotten Ruins"
     assert dungeon.starting_level == "level_01"
+    assert dungeon.inspect_text != ""  # shown when its overworld entrance is inspected
     assert set(dungeon.levels) == {
         "level_01", "level_02a", "level_02b", "level_03", "level_04", "level_05",
     }

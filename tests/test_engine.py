@@ -1048,3 +1048,24 @@ def test_movement_onto_dungeon_entrance_sets_pending_dungeon_entry():
 
     assert engine.pending_dungeon_entry == "prison_tower"
     assert engine.wants_overworld is False  # the two mailboxes are independent
+
+
+def test_engine_defaults_dungeon_inspect_text_to_empty_dict():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.dungeon_inspect_text == {}
+
+
+def test_engine_stores_given_dungeon_inspect_text():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(
+        game_map, player, "Test Level",
+        dungeon_inspect_text={"prison_tower": "A black stone tower."},
+    )
+
+    assert engine.dungeon_inspect_text == {"prison_tower": "A black stone tower."}

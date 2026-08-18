@@ -40,6 +40,7 @@ class Engine:
         levels: "dict[str, ParsedLevel] | None" = None,
         starting_level: "ParsedLevel | None" = None,
         is_overworld: bool = False,
+        dungeon_inspect_text: dict[str, str] | None = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -50,6 +51,11 @@ class Engine:
         # HUD can hide dungeon-only control hints (pickup/potion/fire) without
         # coupling that to an unrelated invariant that could change later.
         self.is_overworld = is_overworld
+        # dungeon_id -> flavor text shown when a dungeon_entrance tile is
+        # inspected in look mode (see engine/render.py describe_tile). Only
+        # ever populated for the overworld Engine - every other Engine has no
+        # dungeon_entrance tiles to describe, so an empty dict is correct.
+        self.dungeon_inspect_text = dungeon_inspect_text or {}
         # Needed to resolve a stairway's destination id into content when
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog

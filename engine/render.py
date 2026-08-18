@@ -232,7 +232,13 @@ def render_all(console: "Console", engine: "Engine") -> None:
     render_message_log(console, engine.message_log, 0, log_y)
 
 
-def describe_tile(game_map: "GameMap", catalog: "Catalog", x: int, y: int) -> list[str]:
+def describe_tile(
+    game_map: "GameMap",
+    catalog: "Catalog",
+    x: int,
+    y: int,
+    dungeon_inspect_text: "dict[str, str] | None" = None,
+) -> list[str]:
     """The lines of text look mode shows for a map coordinate. Pure data in,
     strings out - no console/rendering dependency, so it's unit-testable on
     its own."""
@@ -244,6 +250,10 @@ def describe_tile(game_map: "GameMap", catalog: "Catalog", x: int, y: int) -> li
         key_id = game_map.locked_doors.get((x, y))
         key_name = catalog.items[key_id].name if key_id in catalog.items else key_id
         lines = [f"Locked door. Requires: {key_name}."]
+    elif kind == "dungeon_entrance":
+        dungeon_id = game_map.dungeon_entrances.get((x, y))
+        custom_text = (dungeon_inspect_text or {}).get(dungeon_id) if dungeon_id else None
+        lines = [custom_text or TILE_DESCRIPTIONS.get(kind, f"{kind.capitalize()}.")]
     else:
         lines = [TILE_DESCRIPTIONS.get(kind, f"{kind.capitalize()}.")]
 
@@ -292,7 +302,9 @@ def render_look_hud(
         width=width,
     )
 
-    for line in describe_tile(engine.game_map, engine.catalog, cursor_x, cursor_y):
+    for line in describe_tile(
+        engine.game_map, engine.catalog, cursor_x, cursor_y, engine.dungeon_inspect_text
+    ):
         y += console.print(0, y, line, fg=HUD_FG, width=width)
 
     y += console.print(

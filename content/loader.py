@@ -459,6 +459,7 @@ class Dungeon:
     name: str
     starting_level: str
     description: str
+    inspect_text: str
     levels: dict[str, ParsedLevel]
 
 
@@ -488,6 +489,7 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         name=manifest.name,
         starting_level=manifest.starting_level,
         description=manifest.description,
+        inspect_text=manifest.inspect_text,
         levels=levels,
     )
 

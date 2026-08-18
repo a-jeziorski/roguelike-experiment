@@ -156,6 +156,15 @@ def test_dungeon_def_valid():
     dungeon = DungeonDef(id="prison_tower", name="The Prison Tower", starting_level="level_01")
     assert dungeon.starting_level == "level_01"
     assert dungeon.description == ""
+    assert dungeon.inspect_text == ""
+
+
+def test_dungeon_def_accepts_inspect_text():
+    dungeon = DungeonDef(
+        id="prison_tower", name="The Prison Tower", starting_level="level_01",
+        inspect_text="A black stone tower.",
+    )
+    assert dungeon.inspect_text == "A black stone tower."
 
 
 def test_dungeon_def_requires_starting_level():

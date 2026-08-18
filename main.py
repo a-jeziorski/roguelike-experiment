@@ -253,7 +253,11 @@ def resolve_transition(
         if target is None:
             game_map, _ = build_game_map(overworld_level, catalog, player=player)
             player.x, player.y = _match_entrance(game_map, active_key) or overworld_level.player_start
-            target = Engine(game_map, player, overworld_level.name, catalog=catalog, is_overworld=True)
+            dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
+            target = Engine(
+                game_map, player, overworld_level.name,
+                catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
+            )
             active_engines[OVERWORLD_KEY] = target
         else:
             position = _match_entrance(target.game_map, active_key) or overworld_level.player_start
