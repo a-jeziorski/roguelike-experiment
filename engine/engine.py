@@ -3,9 +3,16 @@ so Engine itself stays testable without an SDL window."""
 
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING
 
-from content.schema import AI_HOSTILE_BASIC, AI_RANGED_BASIC, AI_SKITTISH, AI_SLEEPING_GUARD
+from content.schema import (
+    AI_HOSTILE_BASIC,
+    AI_RANGED_BASIC,
+    AI_SKITTISH,
+    AI_SLEEPING_GUARD,
+    AI_VILLAGER,
+)
 from engine.actions import Action, MovementAction
 from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
@@ -19,6 +26,13 @@ if TYPE_CHECKING:
 DEFAULT_ALERT_RADIUS = 4
 DEFAULT_FLEE_HP_PCT = 0.3
 DEFAULT_MONSTER_RANGED_RANGE = 4
+
+# Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
+# "stay put" repeated 8 times, so a wandering villager holds position about
+# as often as it moves - reads as puttering around rather than skittering.
+_WANDER_MOVES = [(0, 0)] * 8 + [
+    (dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)
+]
 
 
 class MessageLog:
@@ -244,6 +258,16 @@ class Engine:
                 step_y = (dy > 0) - (dy < 0)
                 MovementAction(step_x, step_y).perform(self, entity)
 
+        elif entity.ai == AI_VILLAGER:
+            # Never fights back - there's no branch here that ever calls
+            # resolve_attack. hp < max_hp is a reliable "has been attacked"
+            # proxy since nothing ever heals a non-player entity, so this
+            # can't falsely reset once triggered.
+            if entity.fighter.hp < entity.fighter.max_hp:
+                self._flee(entity, dx, dy)
+            else:
+                self._wander(entity)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -258,6 +282,14 @@ class Engine:
         the entity holds position rather than being forced to fight."""
         step_x = -((dx > 0) - (dx < 0))
         step_y = -((dy > 0) - (dy < 0))
+        MovementAction(step_x, step_y).perform(self, entity)
+
+    def _wander(self, entity: Entity) -> None:
+        """Idle movement untargeted at the player - "going about their
+        business." Picks a random adjacent tile or holds position;
+        MovementAction already no-ops safely if the destination is blocked
+        or occupied, the same free behavior _flee relies on."""
+        step_x, step_y = random.choice(_WANDER_MOVES)
         MovementAction(step_x, step_y).perform(self, entity)
 
     def _handle_enemy_turns(self) -> None:

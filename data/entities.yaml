@@ -95,3 +95,17 @@ warden:
   defense: 3
   ai: hostile_basic
   description: The tower's warden. Not eager to let his prize escape.
+
+villager:
+  name: Villager
+  glyph: v
+  color: [170, 140, 90]
+  # hp is deliberately above the player's base attack (5) so a first hit is
+  # survivable and the flee behavior is actually visible, not just "villager
+  # dies before it can react" - still low enough to die to a couple of hits
+  # or any real weapon, since they're not meant to be fought at length.
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  description: A local going about their day. Won't raise a hand against you - but won't stick around if you raise one against them.

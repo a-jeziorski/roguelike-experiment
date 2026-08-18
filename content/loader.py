@@ -168,7 +168,10 @@ def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:
 
 
 def load_level(
-    path: Path, catalog: Catalog, known_level_ids: set[str] | None = None
+    path: Path,
+    catalog: Catalog,
+    known_level_ids: set[str] | None = None,
+    require_stairs_down: bool = True,
 ) -> ParsedLevel:
     """Parses and validates a single level file.
 
@@ -176,6 +179,10 @@ def load_level(
     the dungeon; any stairway's `next_level` not in that set is reported as an
     error. Pass None (the default) to skip that cross-file check, e.g. when
     previewing a single level file in isolation.
+
+    `require_stairs_down` is False for a peaceful, non-progression dungeon
+    (a settlement) - see DungeonDef.requires_stairs_down; every real dungeon
+    keeps the default.
     """
     raw = _load_yaml(path)
     errors: list[str] = []
@@ -281,8 +288,14 @@ def load_level(
             f"map must contain exactly one player_start tile, found {len(player_starts)}"
         )
 
-    if not any(s.kind == "stairs_down" for s in stairs):
-        errors.append("map must contain at least one stairs_down tile, found 0")
+    if require_stairs_down:
+        if not any(s.kind == "stairs_down" for s in stairs):
+            errors.append("map must contain at least one stairs_down tile, found 0")
+    elif not stairs:
+        errors.append(
+            "map has requires_stairs_down: false but contains no stairway "
+            "(stairs_up or stairs_down) - there would be no way to leave"
+        )
 
     next_level_targets: dict[str, list[tuple[int, int]]] = {}
     for s in stairs:
@@ -412,11 +425,14 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
     )
 
 
-def load_levels(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
+def load_levels(
+    levels_dir: Path, catalog: Catalog, require_stairs_down: bool = True
+) -> dict[str, ParsedLevel]:
     """Loads and validates every `.lvl` file in a directory as one connected
     set of levels. Two passes: first collect every level's id (so stairway
     destinations can be checked), then fully validate each level against
-    that known-id set."""
+    that known-id set. `require_stairs_down` is forwarded to every
+    `load_level` call - see its docstring."""
     paths = sorted(levels_dir.glob("*.lvl"))
     if not paths:
         raise ContentValidationError(str(levels_dir), ["no .lvl files found"])
@@ -439,7 +455,10 @@ def load_levels(levels_dir: Path, catalog: Catalog) -> dict[str, ParsedLevel]:
     levels: dict[str, ParsedLevel] = {}
     for path in paths:
         try:
-            level = load_level(path, catalog, known_level_ids=known_level_ids)
+            level = load_level(
+                path, catalog, known_level_ids=known_level_ids,
+                require_stairs_down=require_stairs_down,
+            )
         except ContentValidationError as e:
             errors.extend(f"{path}: {err}" for err in e.errors)
             continue
@@ -460,6 +479,7 @@ class Dungeon:
     starting_level: str
     description: str
     inspect_text: str
+    requires_stairs_down: bool
     levels: dict[str, ParsedLevel]
 
 
@@ -473,7 +493,9 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
     except ValidationError as e:
         raise ContentValidationError(str(manifest_path), [str(e)]) from e
 
-    levels = load_levels(dungeon_dir / "levels", catalog)
+    levels = load_levels(
+        dungeon_dir / "levels", catalog, require_stairs_down=manifest.requires_stairs_down
+    )
 
     if manifest.starting_level not in levels:
         raise ContentValidationError(
@@ -490,6 +512,7 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         starting_level=manifest.starting_level,
         description=manifest.description,
         inspect_text=manifest.inspect_text,
+        requires_stairs_down=manifest.requires_stairs_down,
         levels=levels,
     )
 

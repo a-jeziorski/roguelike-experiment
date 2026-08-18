@@ -1,0 +1,9 @@
+id: millhaven
+name: Millhaven
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A small waypoint settlement along the road, its people keeping to
+  themselves and their work. No dungeon to descend, no fight to pick -
+  just a place to pass through, or not.
+inspect_text: A cluster of thatched roofs behind a low wall, smoke rising from a chimney or two.

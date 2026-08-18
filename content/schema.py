@@ -28,7 +28,10 @@ AI_HOSTILE_BASIC = "hostile_basic"
 AI_SLEEPING_GUARD = "sleeping_guard"
 AI_SKITTISH = "skittish"
 AI_RANGED_BASIC = "ranged_basic"
-AIType = Literal[AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC]
+AI_VILLAGER = "villager"
+AIType = Literal[
+    AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER,
+]
 
 
 class EntityDef(BaseModel):
@@ -195,3 +198,8 @@ class DungeonDef(BaseModel):
     # Falls back to a generic line (engine/render.py TILE_DESCRIPTIONS) when
     # left blank.
     inspect_text: str = ""
+    # False for a peaceful, non-progression place (a settlement) that only
+    # ever needs a terminal stairs_up to leave - every real dungeon keeps
+    # the default, which requires at least one stairs_down somewhere so a
+    # level always either goes deeper or is a deliberate ending.
+    requires_stairs_down: bool = True

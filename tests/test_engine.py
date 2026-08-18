@@ -3,6 +3,7 @@ world-objects (no content files involved) so game rules are verified independent
 of parsing; a few level-transition tests use the real shipped dungeon content to
 verify the loader and engine agree on level ids and player_start positions."""
 
+import random
 from pathlib import Path
 
 from content.loader import load_catalog, load_levels, load_overworld
@@ -248,6 +249,93 @@ def test_skittish_holds_position_when_flee_is_blocked():
 
     assert (monster.x, monster.y) == (1, 1)  # blocked - held position, did not crash
     assert player.fighter.hp == player.fighter.max_hp  # still did not attack
+
+
+def test_villager_wanders_when_undamaged(monkeypatch):
+    monkeypatch.setattr(random, "choice", lambda seq: (1, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    villager = make_monster(2, 1, hp=4, attack=0, ai="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (3, 1)  # moved per the pinned random choice
+    assert player.fighter.hp == 30  # never attacked
+
+
+def test_villager_holds_position_when_wander_pick_is_stay_put(monkeypatch):
+    monkeypatch.setattr(random, "choice", lambda seq: (0, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    villager = make_monster(2, 1, hp=4, attack=0, ai="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (2, 1)
+
+
+def test_villager_flees_once_damaged():
+    game_map = make_open_map(5, 3)
+    player = make_player(2, 1, hp=30)
+    villager = make_monster(3, 1, hp=4, attack=0, ai="villager")
+    villager.fighter.hp = 3  # any damage at all, not a percentage threshold
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (4, 1)  # stepped directly away
+    assert player.fighter.hp == 30  # never attacked, even though adjacent
+
+
+def test_villager_holds_position_when_flee_is_blocked():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[2, 1] = False  # wall directly behind the villager's escape route
+    player = make_player(0, 1, hp=30)
+    villager = make_monster(1, 1, hp=4, attack=0, ai="villager")
+    villager.fighter.hp = 1
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (1, 1)  # blocked - held position, did not crash
+    assert player.fighter.hp == 30
+
+
+def test_villager_never_attacks_even_when_wander_picks_the_players_tile(monkeypatch):
+    # (-1, 0) would step the villager directly onto the adjacent player.
+    monkeypatch.setattr(random, "choice", lambda seq: (-1, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(2, 1, hp=30)
+    villager = make_monster(3, 1, hp=4, attack=0, ai="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30
+    assert engine.melee_attack_events == []
+    assert (villager.x, villager.y) == (3, 1)  # held position - MovementAction no-ops, blocked by player
+
+
+def test_villager_ignores_player_when_not_visible():
+    game_map = make_open_map(10, 3)
+    for y in range(3):
+        game_map.walkable[5, y] = False
+        game_map.transparent[5, y] = False  # a wall column blocking line of sight
+    player = make_player(0, 1, hp=30)
+    villager = make_monster(8, 1, hp=4, attack=0, ai="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (8, 1)  # never acted at all - not even a wander step
 
 
 def test_ranged_basic_fires_when_in_range_but_not_adjacent():

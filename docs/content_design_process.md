@@ -88,6 +88,50 @@ dungeon-to-overworld direction (land on whichever overworld tile's
 all on the reverse direction (re-entering a dungeon just resumes wherever
 the player last stood in it).
 
+## 0c. Non-combat outdoor dungeons
+
+A settlement (`data/dungeons/millhaven/`) is a "dungeon" only in the
+registry sense - a `data/dungeons/<id>/` entry, entered/exited exactly like
+Prison Tower or Forgotten Ruins. Nothing in `main.py`/`engine/engine.py`
+needs to know or care what kind of place it is: `resolve_transition`, the
+`wants_overworld`/`pending_dungeon_entry` mailbox flags, and
+`depart_player`/`arrive_player` are all fully generic over any dungeon-
+registry entry. Two things make it "peaceful" instead of a normal dungeon,
+both content-only:
+
+- `dungeon.yaml` sets `requires_stairs_down: false`. Every real dungeon
+  keeps the default (`true`), which requires at least one `stairs_down`
+  somewhere so a level always either goes deeper or is a deliberate
+  ending. A settlement has no "deeper" - it only ever needs a single
+  terminal `stairs_up` near `player_start` to leave. This is per-*dungeon*
+  (the manifest), not per-level - `content/loader.py` threads it from
+  `load_dungeon` through `load_levels` down to the one place it's actually
+  checked in `load_level`. Setting it `false` still requires *some*
+  stairway to exist (a level with none at all is rejected as a soft-lock -
+  nothing would ever let the player leave); it only removes the
+  `stairs_down`-specifically requirement.
+- Its levels use outdoor terrain (`plains`/`road`, plus `wall` for simple
+  building exteriors - no interiors, out of scope for a first pass) instead
+  of dungeon `wall`/`floor`, and spawn `villager`-AI entities instead of
+  monsters. Nothing about the loader restricts which `TileType`s can appear
+  in an ordinary dungeon level - the overworld's terrain kinds were never
+  exclusive to `load_overworld`, so this needed no schema change at all.
+
+`inspect_text` in `dungeon.yaml` (see 0b) is functionally load-bearing here,
+not just polish: without it, inspecting the entrance falls back to
+`"An entrance leading underground."`, which reads wrong for a town.
+
+**`AI_VILLAGER`** (`content/schema.py`/`engine/engine.py` `_perform_ai`):
+never fights back - no branch of it ever calls `resolve_attack`. While at
+full HP it wanders (`Engine._wander`, untargeted random movement, unlike
+every other AI type which moves at/away from the player); the moment it's
+taken any damage at all (`fighter.hp < fighter.max_hp`), it flees and keeps
+fleeing permanently. Contrast with `AI_SKITTISH`, which flees only *below*
+a configurable `flee_hp_pct` threshold and otherwise fights normally -
+skittish is "cowardly," villager is "never a combatant in the first
+place." Don't reach for skittish when what's wanted is a true
+non-combatant.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine only exposes

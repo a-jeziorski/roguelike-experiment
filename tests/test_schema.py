@@ -47,6 +47,12 @@ def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     )
     assert archer.ranged_range == 5
 
+    villager = EntityDef(
+        id="villager", name="Villager", glyph="v", color=(1, 2, 3),
+        hp=4, attack=0, defense=0, ai="villager",
+    )
+    assert villager.ai == "villager"
+
 
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
@@ -170,6 +176,19 @@ def test_dungeon_def_accepts_inspect_text():
 def test_dungeon_def_requires_starting_level():
     with pytest.raises(ValidationError):
         DungeonDef(id="prison_tower", name="The Prison Tower")
+
+
+def test_dungeon_def_requires_stairs_down_defaults_true():
+    dungeon = DungeonDef(id="prison_tower", name="The Prison Tower", starting_level="level_01")
+    assert dungeon.requires_stairs_down is True
+
+
+def test_dungeon_def_accepts_requires_stairs_down_false():
+    dungeon = DungeonDef(
+        id="millhaven", name="Millhaven", starting_level="level_01",
+        requires_stairs_down=False,
+    )
+    assert dungeon.requires_stairs_down is False
 
 
 def test_level_def_normalizes_legend():
