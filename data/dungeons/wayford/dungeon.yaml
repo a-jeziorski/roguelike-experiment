@@ -1,0 +1,14 @@
+id: wayford
+name: Wayford
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  The largest settlement the Long Quiet has managed to rebuild - a
+  crossroads town where three or four old Kingdom roads still meet, even
+  if none of them lead anywhere in particular anymore. Where Millhaven is
+  one quiet green behind a low wall, Wayford is a working town: a market
+  square, several distinct clusters of houses and storehouses, and enough
+  people about that it feels like routine rather than survival. Same
+  Settler stock as Millhaven, just further along in proving that
+  something ordinary can be rebuilt and kept, not merely held onto.
+inspect_text: A real town behind its walls - rooflines in every direction, and the low murmur of a market that never quite stops.

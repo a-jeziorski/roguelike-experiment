@@ -1,0 +1,30 @@
+id: level_01
+name: The Outer Yard
+
+map: |
+  ########################
+  ######...####.........##
+  ##...#...####.........##
+  ##.[.Db..####.........##
+  ##...#...####..##b....##
+  ######...####..##.....##
+  #.....................##
+  #......k..............##
+  #........####.....##..##
+  #...r....####.....##..##
+  #x.......####.......>.##
+  #.@......####.........##
+  #........####.........##
+  ########################
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "x": { stairs_up: null, description: "A gap where the outer wall gave way - the quickest way back out to open country." }
+  ">": { stairs_down: level_02, description: "A stair down into the watchtower proper, torchlight flickering at the bottom." }
+  "D": { door: rusty_key }
+  "k": { item: rusty_key }
+  "[": { item: leather_armor }
+  "b": { entity: bandit }
+  "r": { entity: rat }

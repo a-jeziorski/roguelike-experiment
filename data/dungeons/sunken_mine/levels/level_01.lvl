@@ -1,0 +1,32 @@
+id: level_01
+name: The Upper Shaft
+
+map: |
+  #######################
+  #@#...........#r....#/#
+  #.#.#.#M#####.#M#.#.#.#
+  #.#r#.......M.....#...#
+  #.#####.###.#########.#
+  #.....#!#...#.........#
+  #####.###.###.##M######
+  #..r#....g..#.#c......#
+  #.#########.#.#######.#
+  #.#.....D[#...#......g#
+  #.#.###.###.###.#####.#
+  #....-#.........#>....#
+  #######################
+
+legend:
+  "#": wall
+  "M": mountain
+  ".": floor
+  "@": player_start
+  "r": { entity: rat }
+  "g": { entity: goblin }
+  "/": { item: rusty_dagger }
+  "!": { item: healing_potion }
+  "-": { item: rusty_key }
+  "[": { item: leather_armor }
+  "D": { door: rusty_key }
+  "c": { tile: floor, description: "A side-crawl chokes off in a wall of loose shale. No way through here, not without a pick and a week to spare." }
+  ">": { stairs_down: level_02 }

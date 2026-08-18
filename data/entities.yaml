@@ -109,3 +109,43 @@ villager:
   defense: 0
   ai: villager
   description: A local going about their day. Won't raise a hand against you - but won't stick around if you raise one against them.
+
+bandit:
+  name: Bandit
+  glyph: b
+  color: [150, 60, 50]
+  hp: 13
+  attack: 5
+  defense: 1
+  ai: hostile_basic
+  description: A ragged raider squatting in what used to be Kingdom infrastructure. Fights for what's in your pockets, not for a cause.
+
+bandit_captain:
+  name: Bandit Captain
+  glyph: B
+  color: [175, 45, 30]
+  hp: 20
+  attack: 7
+  defense: 2
+  ai: hostile_basic
+  description: Whoever's left standing at the top of the watchtower's rickety hierarchy. Wears looted Kingdom mail like it was always his.
+
+drowned_wretch:
+  name: Drowned Wretch
+  glyph: d
+  color: [80, 120, 110]
+  hp: 11
+  attack: 4
+  defense: 0
+  ai: hostile_basic
+  description: Once someone was posted here, before the sea came in. What's left doesn't remember that, or much else.
+
+stone_sentinel:
+  name: Stone Sentinel
+  glyph: Q
+  color: [130, 130, 140]
+  hp: 30
+  attack: 5
+  defense: 3
+  ai: hostile_basic
+  description: A construct of seamless, grown stone, posted at the Cairn since before anyone kept records. Slow. Patient. Still on duty.

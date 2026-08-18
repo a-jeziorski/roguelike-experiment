@@ -1,0 +1,25 @@
+id: level_03
+name: The Captain's Watch
+
+map: |
+  #######################
+  #.......###......#....#
+  #.......###......#....#
+  #...!...###......#....#
+  #............##..#....#
+  #<@..........##.....B.#
+  #.......###......#....#
+  #....b..###......#..>.#
+  #.......###......#....#
+  #.......###......#....#
+  #######################
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "<": { stairs_up: level_02 }
+  ">": { stairs_down: null, description: "A stair up into open air - the last stretch of wall before the road outside." }
+  "!": { item: healing_potion }
+  "b": { entity: bandit }
+  "B": { entity: bandit_captain }

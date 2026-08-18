@@ -1,0 +1,13 @@
+id: elder_cairn
+name: The Elder Cairn
+starting_level: level_01
+description: >
+  A low mound of fitted stone standing alone in the empty grass north of
+  anywhere with a road, days from the nearest walled town. Its stones show
+  no mortar, no right angles, no mason's mark - grown into their shapes,
+  if anything, rather than cut and stacked. Nothing about it belongs to
+  the Kingdom that built the roads; nothing about it is Kingdom-old at
+  all. It has stood since before there was a word for what stood here,
+  and whatever set the last of its watch is, by all evidence, still on
+  duty.
+inspect_text: A mound of pale stone half-swallowed by grass, its curves too smooth and too deliberate to be a hill. No door that you can see - only an opening where the stone simply stopped.

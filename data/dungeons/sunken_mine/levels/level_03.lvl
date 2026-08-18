@@ -1,0 +1,30 @@
+id: level_03
+name: The Collapsed Vein
+
+map: |
+  #####################
+  #@#r.g..#!....#..g..#
+  #.M##.#.###.M.#.#.#.#
+  #.#...#.....#.#|#.#c#
+  #.#.##M###M.M.###.###
+  #.#.Ms..#...#...#...#
+  #.#.###.#.#.###.#M#.#
+  #...#...#.#.....#..>#
+  #####.##M.#######.#.#
+  #..r#g..#.........#.#
+  #.###.#.M##########.#
+  #.....#.............#
+  #####################
+
+legend:
+  "#": wall
+  "M": mountain
+  ".": floor
+  "@": player_start
+  "r": { entity: rat }
+  "g": { entity: goblin }
+  "s": { entity: skeleton }
+  "!": { item: healing_potion }
+  "|": { item: arrows }
+  "c": { tile: floor, description: "The vein plays out in a wall of shattered stone - whatever ore this tunnel was chasing, it isn't here anymore." }
+  ">": stairs_down

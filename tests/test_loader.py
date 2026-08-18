@@ -29,6 +29,26 @@ def test_load_catalog_loads_real_data():
 
 
 @pytest.mark.parametrize(
+    "entity_id,hp,attack,defense,ai",
+    [
+        ("bandit", 13, 5, 1, "hostile_basic"),
+        ("bandit_captain", 20, 7, 2, "hostile_basic"),
+        ("drowned_wretch", 11, 4, 0, "hostile_basic"),
+        ("stone_sentinel", 30, 5, 3, "hostile_basic"),
+    ],
+)
+def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):
+    catalog = load_catalog()
+    entity = catalog.entities[entity_id]
+
+    assert entity.hp == hp
+    assert entity.attack == attack
+    assert entity.defense == defense
+    assert entity.ai == ai
+    assert entity.description
+
+
+@pytest.mark.parametrize(
     "level_file,require_stairs_down",
     [(p, True) for p in sorted(FORGOTTEN_RUINS_LEVELS_DIR.glob("*.lvl"))]
     + [(p, True) for p in sorted(PRISON_TOWER_LEVELS_DIR.glob("*.lvl"))]
@@ -294,14 +314,62 @@ def test_load_level_collects_custom_tile_descriptions():
     assert level.tile_descriptions == []  # no legend entry sets description there
 
 
+SHIPPED_DUNGEON_IDS = {
+    "forgotten_ruins",
+    "prison_tower",
+    "millhaven",
+    "broken_watch",
+    "drowned_waystation",
+    "elder_cairn",
+    "sunken_mine",
+    "wayford",
+    "stonebridge",
+    "saltmarsh",
+}
+
+COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine"]
+SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh"]
+
+
 def test_load_dungeon_registry_finds_all_shipped_dungeons():
     catalog = load_catalog()
     registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
 
-    assert set(registry) == {"forgotten_ruins", "prison_tower", "millhaven"}
-    assert registry["forgotten_ruins"].starting_level == "level_01"
-    assert registry["prison_tower"].starting_level == "level_01"
-    assert registry["millhaven"].starting_level == "level_01"
+    assert set(registry) == SHIPPED_DUNGEON_IDS
+    for dungeon_id in SHIPPED_DUNGEON_IDS:
+        assert registry[dungeon_id].starting_level == "level_01"
+
+
+@pytest.mark.parametrize("dungeon_id", COMBAT_DUNGEON_IDS)
+def test_new_combat_dungeon_content(dungeon_id):
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / dungeon_id, catalog)
+
+    assert dungeon.requires_stairs_down is True
+    assert dungeon.id == dungeon_id
+    assert dungeon.description
+    assert dungeon.inspect_text
+
+    all_stairs = [s for level in dungeon.levels.values() for s in level.stairs]
+    assert any(s.kind == "stairs_down" and s.next_level is None for s in all_stairs)
+
+    all_entities = [s.entity.name for level in dungeon.levels.values() for s in level.entity_spawns]
+    assert len(all_entities) > 0
+
+
+@pytest.mark.parametrize("dungeon_id", SETTLEMENT_DUNGEON_IDS)
+def test_new_settlement_dungeon_content(dungeon_id):
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / dungeon_id, catalog)
+
+    assert dungeon.requires_stairs_down is False
+    assert dungeon.id == dungeon_id
+    assert dungeon.description
+    assert dungeon.inspect_text
+
+    all_entities = [s.entity for level in dungeon.levels.values() for s in level.entity_spawns]
+    assert len(all_entities) > 0
+    assert all(e.ai == "villager" for e in all_entities)
 
 
 def test_prison_tower_level_01_content():

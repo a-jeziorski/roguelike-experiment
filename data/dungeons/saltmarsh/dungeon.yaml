@@ -1,0 +1,14 @@
+id: saltmarsh
+name: Saltmarsh
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A handful of shacks and drying racks above the tideline, home to fewer
+  than a dozen souls who make their living off the sea rather than out of
+  it. The Drowned Waystation broods just offshore, a squat shape of Old
+  Kingdom stone the tide never fully covers - proof of what the Sundering
+  did to this coast, close enough to smell the salt off its walls on a
+  still day. Saltmarsh isn't built despite the ruin; it's built within
+  sight of it, by people who decided a flooded waystation wasn't reason
+  enough to leave a good stretch of water.
+inspect_text: A knot of weathered shacks hunched behind low dunes, nets strung out to dry and a narrow dock reaching over grey water.

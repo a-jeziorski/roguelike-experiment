@@ -46,9 +46,37 @@ Level ids only need to be unique *within* a dungeon - `load_levels`
 validates that scope, not across dungeons, so two dungeons can both have a
 `level_01` with no conflict; they're never loaded together.
 
-Shipped dungeons: `forgotten_ruins` (the original run - kept intact, saved
-for later use, not currently the default) and `prison_tower` (the current
-default starting dungeon - `main.py`'s `STARTING_DUNGEON_ID`).
+**Shipped dungeons (10, as of the "Populating the Sundered Realm" pass)**:
+
+Combat dungeons:
+- `prison_tower` - the current default starting dungeon (`main.py`'s
+  `STARTING_DUNGEON_ID`); Old Kingdom remnants gone feral.
+- `forgotten_ruins` - the original run, kept intact; Elder Age halls buried
+  beneath an Old Kingdom manor.
+- `broken_watch` - an Old Kingdom border garrison squatted by Opportunist
+  bandits; fortified-compound geometry.
+- `drowned_waystation` - a flooded Old Kingdom road-station; `sea` tiles
+  mixed into dungeon rooms force route-around detours.
+- `elder_cairn` - a standalone, deliberately vague Elder Age monument;
+  sparse, symmetric geometry, `stone_sentinel`'s tank archetype.
+- `sunken_mine` - a collapsed Old Kingdom mine; genuine winding-tunnel maze
+  geometry, reuses the existing rat/goblin/skeleton roster with no new
+  monsters.
+
+Settlements (`requires_stairs_down: false`, `villager`-only, per 0c below):
+- `millhaven` - the original settlement, a small waypoint green.
+- `wayford` - a larger crossroads hub town, several building clusters.
+- `stonebridge` - a fortified border town near `broken_watch`; tension
+  lives entirely in flavor text, not mechanics.
+- `saltmarsh` - a small coastal fishing hamlet near `drowned_waystation`.
+
+This roster (and the world bible it's built from, `docs/world_history.md`)
+came out of dispatching seven parallel subagents - one per new
+dungeon/town - each briefed with the world bible and this document, and
+scoped to write only inside its own `data/dungeons/<id>/` directory (see
+that document's "Authoring convention" section for how independently-
+authored content stayed consistent without the agents seeing each other's
+work).
 
 ## 0b. The overworld
 

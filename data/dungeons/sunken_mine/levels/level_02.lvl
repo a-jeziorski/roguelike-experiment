@@ -1,0 +1,37 @@
+id: level_02
+name: The Buckled Gallery
+
+map: |
+  ###########################
+  #<@.#.......#.............#
+  ###.#.#.###.#.#######.###.#
+  #...#.#.#rM.#g.....-M...#!#
+  #.###.#.#.#.#D####M##.#.###
+  #.....#.#.#.#)#.....#.#...#
+  #.#.#M#.#.#.###.###.#.###.#
+  #.#r#...#.#...#.#c#.M...#.#
+  #.###.###.###.#.#.#.###.#.#
+  #.....#..g|}#.#.#.#.#....r#
+  #######.#M###.#.#.#.#.###.#
+  #...#..g....#...#.#.#.#...#
+  #.#.#.#####.#####.#.#.#.###
+  #.#......>#...........#..d#
+  ###########################
+
+legend:
+  "#": wall
+  "M": mountain
+  ".": floor
+  "@": player_start
+  "<": { stairs_up: level_01 }
+  ">": { stairs_down: level_03 }
+  "D": { door: rusty_key }
+  "g": { entity: goblin }
+  "r": { entity: rat }
+  ")": { item: iron_sword }
+  "-": { item: rusty_key }
+  "!": { item: healing_potion }
+  "}": { item: hunting_bow }
+  "|": { item: arrows }
+  "c": { tile: floor, description: "The floor buckled here when the ceiling gave. Whatever the tunnel used to reach, it's rubble now." }
+  "d": { tile: floor, description: "A dead-end cut, the rock at its far end slumped into a solid wall. Water beads down the stone but pools nowhere." }

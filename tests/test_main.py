@@ -263,3 +263,38 @@ def test_resolve_transition_round_trip_preserves_dungeon_state():
     assert active_key == "prison_tower"
     assert prison_engine_2 is prison_engine
     assert guard not in prison_engine_2.game_map.entities  # still dead after the detour
+
+
+def test_overworld_has_all_ten_shipped_entrances_mutually_reachable():
+    """Every dungeon_entrance on the real overworld map must be reachable from
+    player_start via ordinary 8-directional movement, and vice versa - a
+    location an entrance leads to that nothing can walk to would be shippable
+    content nobody could ever reach."""
+    catalog, dungeon_registry, overworld_level = _world()
+
+    assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry)
+    assert len(overworld_level.dungeon_entrances) == 10
+
+    game_map, _ = build_game_map(overworld_level, catalog)
+
+    from collections import deque
+
+    start = overworld_level.player_start
+    seen = {start}
+    queue = deque([start])
+    while queue:
+        x, y = queue.popleft()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nx, ny = x + dx, y + dy
+                if (nx, ny) not in seen and game_map.is_walkable(nx, ny):
+                    seen.add((nx, ny))
+                    queue.append((nx, ny))
+
+    for entrance in overworld_level.dungeon_entrances:
+        assert (entrance.x, entrance.y) in seen, (
+            f"{entrance.dungeon_id} entrance at ({entrance.x}, {entrance.y}) "
+            "is unreachable from player_start"
+        )

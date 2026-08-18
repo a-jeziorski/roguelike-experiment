@@ -1,0 +1,11 @@
+id: broken_watch
+name: The Broken Watch
+starting_level: level_01
+description: >
+  An Old Kingdom border garrison, raised in the Kingdom's confident years to
+  watch the western approach and left to nobody in particular once the
+  lines of command went quiet. Its walls are still sound enough to hold -
+  which is exactly why a band of Opportunists calls it home now, holding
+  the yard and barracks with looted Kingdom steel and answering to
+  whichever bandit captain last proved it.
+inspect_text: A squat stone watchtower over a walled yard, its gate hanging on one hinge. Firelight moves behind the arrow-slits.

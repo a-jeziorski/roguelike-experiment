@@ -1,0 +1,14 @@
+id: sunken_mine
+name: The Sunken Mine
+starting_level: level_01
+description: >
+  An Old Kingdom mining operation, sunk into the hillside for ore long before
+  anyone thought to wonder what else might be underground. It was never
+  anything more than that - timber, tunnels, and a ledger of quotas - until
+  the Sundering cut it off from whatever office once kept the shoring
+  maintained. Left untended, the galleries have been failing by degrees ever
+  since, caving in section by section. What didn't collapse outright now
+  belongs to whatever found its own way into the dark: vermin first, and
+  after them, squatters willing to dig past the rubble for a roof over their
+  heads.
+inspect_text: A timbered mine entrance, half-swallowed by an old rockslide. The shaft beyond still looks passable, if you don't mind the dark.

@@ -1,0 +1,26 @@
+id: level_01
+name: Saltmarsh Shore
+
+map: |
+  ##################
+  #x@,,,,,,,,,,,,~~~
+  #,,##,,,,,##,,,~~~
+  #,,##,,,,,##,,,~~~
+  #,,,,,.,,,,,,,,~~~
+  #,,,v.,,##,,,,,~~~
+  #,,,,.,,##,v,,,~~~
+  #,,,,.,,,,,,,,.~~~
+  #,,,,.,,,,!,v,.~~~
+  #,,,,,,,,,,,,,.~~~
+  #,,,,,,,,,,,,,...~
+  ##################
+
+legend:
+  "#": wall
+  ",": plains
+  ".": road
+  "~": sea
+  "@": player_start
+  "x": { stairs_up: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes." }
+  "v": { entity: villager }
+  "!": { item: healing_potion }

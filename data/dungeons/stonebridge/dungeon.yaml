@@ -1,0 +1,14 @@
+id: stonebridge
+name: Stonebridge
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A Long Quiet settlement on the western scrub, held together by people who
+  chose to rebuild within sight of the Broken Watch rather than move
+  downroad and pretend the old bandit-held tower isn't there. Stonebridge
+  isn't a garrison and never claimed the Kingdom's authority - it's a
+  town, ordinary in every way that matters, that happens to keep its gate
+  barred, its wall manned, and a lookout posted toward the hills. Nothing
+  here is looking for a fight; everything here is built assuming one
+  might come anyway.
+inspect_text: A stone-walled town crouched behind a single barred gate, its wall-walk manned, shutters closed toward the hills.

@@ -1,0 +1,12 @@
+id: drowned_waystation
+name: The Drowned Waystation
+starting_level: level_01
+description: >
+  An Old Kingdom road-station, built to shelter travelers and couriers along
+  the coastal stretch of the messenger road - nothing grand, nothing
+  magical, just a mundane waypoint doing a mundane job. Since the
+  Sundering, the sea has crept in where the road used to run, and the
+  station has sat half-flooded ever since, one more piece of a network
+  that no longer connects to anything. Whoever was posted here when the
+  water rose never left.
+inspect_text: A squat stone waystation, its lower windows dark with standing water. The sea has come further inland than it should.
