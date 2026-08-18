@@ -167,6 +167,29 @@ def animate_ranged_attacks(
         time.sleep(IMPACT_FLASH_SECONDS)
 
 
+def animate_melee_attacks(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine
+) -> None:
+    """Same idea as animate_ranged_attacks but for melee hits: no travel to
+    show, just the same impact flash on the struck tile, so a sword hit
+    reads as an event on the map instead of only a message-log line."""
+    events = engine.melee_attack_events
+    engine.melee_attack_events = []
+
+    for x, y in events:
+        render_all(console, engine)
+        flash_impact(console, x, y)
+        context.present(console)
+        time.sleep(IMPACT_FLASH_SECONDS)
+
+
+def animate_combat_feedback(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine
+) -> None:
+    animate_melee_attacks(console, context, engine)
+    animate_ranged_attacks(console, context, engine)
+
+
 def main() -> int:
     try:
         catalog = load_catalog()
@@ -223,12 +246,12 @@ def main() -> int:
                             target = run_target_mode(console, context, engine)
                             if target is not None:
                                 dispatch_action(engine, FireAction(*target))
-                                animate_ranged_attacks(console, context, engine)
+                                animate_combat_feedback(console, context, engine)
                     continue
 
                 if dispatch_action(engine, action):
                     return 0
-                animate_ranged_attacks(console, context, engine)
+                animate_combat_feedback(console, context, engine)
 
 
 if __name__ == "__main__":

@@ -287,6 +287,42 @@ def test_melee_attack_does_not_record_a_ranged_attack_event():
     assert engine.ranged_attack_events == []
 
 
+def test_melee_attack_records_a_melee_attack_event_at_the_defender():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=6, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())  # monster is adjacent, so it melees the player
+
+    assert engine.melee_attack_events == [(1, 1)]  # the player's tile
+
+
+def test_ranged_basic_shot_does_not_record_a_melee_attack_event():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    archer = make_monster(3, 1, hp=12, attack=4, ai="ranged_basic", ranged_range=5)
+    game_map.entities.extend([player, archer])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert engine.melee_attack_events == []
+
+
+def test_player_bump_attack_records_a_melee_attack_event_at_the_monster():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=6, attack=2, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.melee_attack_events == [(2, 1)]  # the monster's tile
+
+
 def test_ranged_basic_melees_when_adjacent():
     game_map = make_open_map(10, 3)
     player = make_player(0, 1, hp=30, defense=0)

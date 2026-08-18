@@ -25,6 +25,7 @@ def _apply_damage(
 
 
 def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    engine.melee_attack_events.append((defender.x, defender.y))
     _apply_damage(engine, attacker, defender, attacker.effective_attack, "hits")
 
 
