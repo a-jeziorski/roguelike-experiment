@@ -184,6 +184,16 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
   originals this feedback was about; a future pass through that dungeon
   specifically should fix them the same way.
 
+- **Level size is no longer console-bound**: rendering goes through a
+  scrolling camera viewport (`engine/render.py` `compute_camera`,
+  `VIEWPORT_WIDTH`/`VIEWPORT_HEIGHT`) that follows the player and clamps at
+  the map's edges, with the HUD/message log anchored at a fixed row below
+  it. A level can be wider or taller than the console now - the viewport
+  scrolls to it - so row width no longer needs to target a specific console
+  size, just whatever the layout actually needs. (Small levels render
+  exactly as before: the camera never scrolls for a map no bigger than the
+  viewport.)
+
 ## 4. Authoring checklist
 
 1. **Layout**: reuse proven row geometry from an existing

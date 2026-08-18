@@ -9,7 +9,15 @@ directly via console.print's own wrapping, which returns how many lines it
 used, or via textwrap for the message log's "does this still fit" trimming
 logic) and every multi-line region uses a running y cursor instead of
 hardcoded offsets, so the layout still holds together when something wraps to
-more than one line."""
+more than one line.
+
+The map itself is drawn through a fixed-size camera viewport (VIEWPORT_WIDTH x
+VIEWPORT_HEIGHT) rather than 1:1 onto the console: a level's dimensions are
+authored content and can exceed the console's size in either direction, so map
+coordinates always go through compute_camera() + a `- cam_x, - cam_y`
+translation before hitting console.print()/console.rgb - never printed at raw
+map coordinates. The HUD/log area is anchored at the fixed row VIEWPORT_HEIGHT
++ 1, independent of the map's actual height, for the same reason."""
 
 from __future__ import annotations
 
@@ -52,21 +60,48 @@ IMPACT_BG = (200, 60, 30)
 
 MESSAGE_LOG_HEIGHT = 5
 
+# The map is drawn into this fixed-size window regardless of a level's actual
+# size; VIEWPORT_HEIGHT leaves room below it for the HUD (up to ~7 lines) plus
+# a blank separator plus MESSAGE_LOG_HEIGHT lines within main.py's CONSOLE_ROWS.
+VIEWPORT_WIDTH = 70
+VIEWPORT_HEIGHT = 26
 
-def render_map(console: "Console", game_map: "GameMap") -> None:
-    for x in range(game_map.width):
-        for y in range(game_map.height):
+
+def compute_camera(
+    map_width: int, map_height: int, viewport_width: int, viewport_height: int, focus_x: int, focus_y: int
+) -> tuple[int, int]:
+    """Top-left map coordinate the viewport should render from, centered on
+    (focus_x, focus_y) and clamped so the camera never scrolls past the map's
+    edges - or, for a map no bigger than the viewport, never scrolls at all,
+    reproducing the old fixed full-map render as the small-map special case."""
+    cam_x = focus_x - viewport_width // 2
+    cam_y = focus_y - viewport_height // 2
+    cam_x = max(0, min(cam_x, max(0, map_width - viewport_width)))
+    cam_y = max(0, min(cam_y, max(0, map_height - viewport_height)))
+    return cam_x, cam_y
+
+
+def render_map(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int) -> None:
+    visible_width = min(VIEWPORT_WIDTH, game_map.width - cam_x)
+    visible_height = min(VIEWPORT_HEIGHT, game_map.height - cam_y)
+    for sx in range(visible_width):
+        x = cam_x + sx
+        for sy in range(visible_height):
+            y = cam_y + sy
             visual = TILE_VISUALS[game_map.kinds[x, y]]
             if game_map.visible[x, y]:
-                console.print(x, y, visual["glyph"], fg=visual["light"])
+                console.print(sx, sy, visual["glyph"], fg=visual["light"])
             elif game_map.explored[x, y]:
-                console.print(x, y, visual["glyph"], fg=visual["dark"])
+                console.print(sx, sy, visual["glyph"], fg=visual["dark"])
 
 
-def render_entities(console: "Console", game_map: "GameMap") -> None:
+def render_entities(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int) -> None:
     for entity in sorted(game_map.entities, key=lambda e: e.render_priority):
-        if game_map.visible[entity.x, entity.y]:
-            console.print(entity.x, entity.y, entity.glyph, fg=entity.color)
+        if not game_map.visible[entity.x, entity.y]:
+            continue
+        sx, sy = entity.x - cam_x, entity.y - cam_y
+        if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
+            console.print(sx, sy, entity.glyph, fg=entity.color)
 
 
 def projectile_glyph(fx: int, fy: int, tx: int, ty: int) -> str:
@@ -87,12 +122,16 @@ def projectile_path(fx: int, fy: int, tx: int, ty: int) -> list[tuple[int, int]]
     return [(int(x), int(y)) for x, y in tcod.los.bresenham((fx, fy), (tx, ty)).tolist()[1:]]
 
 
-def render_projectile(console: "Console", x: int, y: int, glyph: str) -> None:
-    console.print(x, y, glyph, fg=PROJECTILE_FG)
+def render_projectile(console: "Console", cam_x: int, cam_y: int, x: int, y: int, glyph: str) -> None:
+    sx, sy = x - cam_x, y - cam_y
+    if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
+        console.print(sx, sy, glyph, fg=PROJECTILE_FG)
 
 
-def flash_impact(console: "Console", x: int, y: int) -> None:
-    console.rgb[x, y]["bg"] = IMPACT_BG
+def flash_impact(console: "Console", cam_x: int, cam_y: int, x: int, y: int) -> None:
+    sx, sy = x - cam_x, y - cam_y
+    if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
+        console.rgb[sx, sy]["bg"] = IMPACT_BG
 
 
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
@@ -171,10 +210,14 @@ def render_message_log(console: "Console", message_log: "MessageLog", x: int, y:
 
 def render_all(console: "Console", engine: "Engine") -> None:
     console.clear()
-    render_map(console, engine.game_map)
-    render_entities(console, engine.game_map)
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        engine.player.x, engine.player.y,
+    )
+    render_map(console, engine.game_map, cam_x, cam_y)
+    render_entities(console, engine.game_map, cam_x, cam_y)
 
-    hud_y = engine.game_map.height + 1
+    hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_hud(console, engine, hud_y) + 1
     render_message_log(console, engine.message_log, 0, log_y)
 
@@ -249,12 +292,19 @@ def render_look_hud(
 
 
 def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, cursor_y: int) -> None:
+    """Centers the camera on the cursor rather than the player: look mode's
+    cursor can roam anywhere on the map, unlike targeting's range-limited one,
+    so it - not the player - is what must stay in view here."""
     console.clear()
-    render_map(console, engine.game_map)
-    render_entities(console, engine.game_map)
-    console.rgb[cursor_x, cursor_y]["bg"] = CURSOR_BG
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        cursor_x, cursor_y,
+    )
+    render_map(console, engine.game_map, cam_x, cam_y)
+    render_entities(console, engine.game_map, cam_x, cam_y)
+    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = CURSOR_BG
 
-    hud_y = engine.game_map.height + 1
+    hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
     render_message_log(console, engine.message_log, 0, log_y)
 
@@ -292,12 +342,18 @@ def render_target_frame(
     console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, max_range: int
 ) -> None:
     console.clear()
-    render_map(console, engine.game_map)
-    render_entities(console, engine.game_map)
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        cursor_x, cursor_y,
+    )
+    render_map(console, engine.game_map, cam_x, cam_y)
+    render_entities(console, engine.game_map, cam_x, cam_y)
 
     valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
-    console.rgb[cursor_x, cursor_y]["bg"] = TARGET_VALID_BG if valid else TARGET_INVALID_BG
+    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = (
+        TARGET_VALID_BG if valid else TARGET_INVALID_BG
+    )
 
-    hud_y = engine.game_map.height + 1
+    hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_target_hud(console, engine, cursor_x, cursor_y, max_range, hud_y) + 1
     render_message_log(console, engine.message_log, 0, log_y)

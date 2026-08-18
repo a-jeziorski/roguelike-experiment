@@ -23,6 +23,9 @@ from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event, handle_look_event, handle_target_event
 from engine.render import (
+    VIEWPORT_HEIGHT,
+    VIEWPORT_WIDTH,
+    compute_camera,
     flash_impact,
     projectile_glyph,
     projectile_path,
@@ -37,7 +40,10 @@ DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
 STARTING_DUNGEON_ID = "prison_tower"
 
 TILE_SIZE = 14
-CONSOLE_COLUMNS = 70
+# The console must be at least as wide as the map viewport (no horizontal HUD
+# sidebar); its extra rows below VIEWPORT_HEIGHT are the HUD/message log area,
+# sized independently of any level's actual height - see engine/render.py.
+CONSOLE_COLUMNS = VIEWPORT_WIDTH
 CONSOLE_ROWS = 40
 
 PROJECTILE_FRAME_SECONDS = 0.035
@@ -152,17 +158,21 @@ def animate_ranged_attacks(
     already-final game state, not a step in Engine.process_turn."""
     events = engine.ranged_attack_events
     engine.ranged_attack_events = []
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        engine.player.x, engine.player.y,
+    )
 
     for fx, fy, tx, ty in events:
         glyph = projectile_glyph(fx, fy, tx, ty)
         for x, y in projectile_path(fx, fy, tx, ty):
             render_all(console, engine)
-            render_projectile(console, x, y, glyph)
+            render_projectile(console, cam_x, cam_y, x, y, glyph)
             context.present(console)
             time.sleep(PROJECTILE_FRAME_SECONDS)
 
         render_all(console, engine)
-        flash_impact(console, tx, ty)
+        flash_impact(console, cam_x, cam_y, tx, ty)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 
@@ -175,10 +185,14 @@ def animate_melee_attacks(
     reads as an event on the map instead of only a message-log line."""
     events = engine.melee_attack_events
     engine.melee_attack_events = []
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        engine.player.x, engine.player.y,
+    )
 
     for x, y in events:
         render_all(console, engine)
-        flash_impact(console, x, y)
+        flash_impact(console, cam_x, cam_y, x, y)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 

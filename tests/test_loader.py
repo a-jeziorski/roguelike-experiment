@@ -212,12 +212,17 @@ def test_prison_tower_level_01_content():
     assert item_names == ["Hunting Bow", "Rusty Dagger"]
 
 
-def test_prison_tower_chain_links_all_four_levels():
+def test_prison_tower_chain_links_all_levels():
     catalog = load_catalog()
     levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
 
-    assert set(levels) == {"level_01", "level_02", "level_03", "level_04"}
-    assert [s.next_level for s in levels["level_01"].stairs] == ["level_02"]
+    # level_01 branches: the normal path to level_02, plus a side path into
+    # level_01_large (an oversized version of the same cell, used to exercise
+    # the camera/viewport system on a map far bigger than the console) which
+    # rejoins the main chain at level_02.
+    assert set(levels) == {"level_01", "level_01_large", "level_02", "level_03", "level_04"}
+    assert [s.next_level for s in levels["level_01"].stairs] == ["level_01_large", "level_02"]
+    assert [s.next_level for s in levels["level_01_large"].stairs] == ["level_02"]
     assert [s.next_level for s in levels["level_02"].stairs] == ["level_03"]
     assert [s.next_level for s in levels["level_03"].stairs] == ["level_04"]
     assert [s.next_level for s in levels["level_04"].stairs] == [None]

@@ -7,14 +7,26 @@ import tcod.console
 
 from content.loader import load_catalog, load_level
 from engine.engine import Engine
-from engine.entity import RENDER_PRIORITY_ACTOR, RENDER_PRIORITY_ITEM, Entity, Fighter, ItemEffect
+from engine.entity import (
+    RENDER_PRIORITY_ACTOR,
+    RENDER_PRIORITY_ITEM,
+    RENDER_PRIORITY_PLAYER,
+    Entity,
+    Fighter,
+    ItemEffect,
+)
 from engine.game_map import GameMap, build_game_map
 from engine.render import (
+    VIEWPORT_HEIGHT,
+    VIEWPORT_WIDTH,
+    compute_camera,
     describe_tile,
     projectile_glyph,
     projectile_path,
     render_all,
+    render_entities,
     render_look_frame,
+    render_map,
     render_target_frame,
 )
 
@@ -173,6 +185,98 @@ def test_describe_tile_visible_item_shows_name_and_description_without_hp():
 
     lines = describe_tile(game_map, catalog, 1, 1)
     assert lines == ["Bare floor.", "Healing Potion: A vial of crimson liquid."]
+
+
+def test_compute_camera_small_map_never_scrolls():
+    """A map no bigger than the viewport must render exactly like the old
+    fixed full-map behavior: camera pinned at the origin no matter where the
+    focus point is."""
+    assert compute_camera(20, 15, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 5, 5) == (0, 0)
+    assert compute_camera(20, 15, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 19, 14) == (0, 0)
+
+
+def test_compute_camera_centers_on_focus_within_a_large_map():
+    cam_x, cam_y = compute_camera(200, 100, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 100, 50)
+    assert cam_x == 100 - VIEWPORT_WIDTH // 2
+    assert cam_y == 50 - VIEWPORT_HEIGHT // 2
+
+
+def test_compute_camera_clamps_at_map_edges():
+    assert compute_camera(200, 100, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 0, 0) == (0, 0)
+    cam_x, cam_y = compute_camera(200, 100, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, 199, 99)
+    assert (cam_x, cam_y) == (200 - VIEWPORT_WIDTH, 100 - VIEWPORT_HEIGHT)
+
+
+def test_render_map_translates_by_camera_offset():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_down"
+    game_map.visible[5, 5] = True
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=2, cam_y=3)
+
+    assert chr(console.rgb[3, 2]["ch"]) == ">"  # (5,5) minus camera (2,3)
+
+
+def test_render_entities_translates_by_camera_offset():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    player = Entity(
+        5, 5, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+    )
+    game_map.entities.append(player)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=2, cam_y=3)
+
+    assert chr(console.rgb[3, 2]["ch"]) == "@"
+
+
+def test_render_entities_hides_entities_scrolled_outside_the_viewport():
+    game_map = make_game_map(10, 10)
+    game_map.visible[9, 9] = True
+    player = Entity(
+        9, 9, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+    )
+    game_map.entities.append(player)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=50, cam_y=50)  # camera far from (9,9)
+
+    text = console_text(console)
+    assert "@" not in text
+
+
+def test_render_all_places_hud_at_a_fixed_row_regardless_of_map_height():
+    """Regression test: the HUD used to be anchored at game_map.height + 1,
+    which pushed it below the console (and off screen) for any map taller
+    than the console. A map far larger than the console in both directions
+    must still render its HUD/HP line somewhere on screen."""
+    game_map = GameMap(200, 120)
+    for x in range(200):
+        for y in range(120):
+            game_map.kinds[x, y] = "floor"
+            game_map.walkable[x, y] = True
+            game_map.transparent[x, y] = True
+    player = Entity(
+        100, 110, "@", (255, 255, 255), "Player",
+        blocks_movement=True,
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=30, hp=30, attack=5, defense=1),
+    )
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Huge Level")
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "HP: 30/30" in text
+    assert "@" in text  # player stays visible - the camera followed them
 
 
 def test_projectile_glyph_picks_direction():
