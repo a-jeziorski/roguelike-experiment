@@ -1,5 +1,5 @@
-id: stairs_up_no_destination
-name: Stairs Up No Destination Fixture
+id: terminal_stairs_both_kinds
+name: Terminal Stairs Both Kinds Fixture
 
 map: |
   #####

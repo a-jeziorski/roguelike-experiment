@@ -87,6 +87,12 @@ def test_legend_entry_from_door_mapping():
     assert entry.requires_key == "rusty_key"
 
 
+def test_legend_entry_from_dungeon_entrance_mapping():
+    entry = LegendEntry.from_raw({"dungeon_entrance": "forgotten_ruins"})
+    assert entry.tile == "dungeon_entrance"
+    assert entry.dungeon_id == "forgotten_ruins"
+
+
 def test_item_def_is_key_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.is_key is False

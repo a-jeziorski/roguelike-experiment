@@ -30,6 +30,7 @@ from content.loader import (
     load_dungeon_registry,
     load_level,
     load_levels,
+    load_overworld,
 )
 
 TILE_GLYPHS = {
@@ -39,6 +40,13 @@ TILE_GLYPHS = {
     "stairs_up": "<",
     "player_start": "@",
     "door": "+",
+    "dungeon_entrance": "O",
+    "mountain": "^",
+    "sea": "~",
+    "forest": "T",
+    "road": ".",
+    "plains": ",",
+    "town": "n",
 }
 
 
@@ -68,17 +76,23 @@ def summarize(level) -> str:
         f"name: {level.name}",
         f"size: {level.width}x{level.height}",
         f"player_start: {level.player_start}",
-        "stairways:",
     ]
-    for stairs in level.stairs:
-        destination = stairs.next_level if stairs.next_level is not None else "WIN (terminal)"
-        direction = "up" if stairs.kind == "stairs_up" else "down"
-        lines.append(f"  ({stairs.x}, {stairs.y}) [{direction}] -> {destination}")
+    if level.stairs:
+        lines.append("stairways:")
+        for stairs in level.stairs:
+            destination = stairs.next_level if stairs.next_level is not None else "OVERWORLD (terminal)"
+            direction = "up" if stairs.kind == "stairs_up" else "down"
+            lines.append(f"  ({stairs.x}, {stairs.y}) [{direction}] -> {destination}")
 
     if level.doors:
         lines.append("doors:")
         for door in level.doors:
             lines.append(f"  ({door.x}, {door.y}) -> requires '{door.requires_key}'")
+
+    if level.dungeon_entrances:
+        lines.append("dungeon_entrances:")
+        for entrance in level.dungeon_entrances:
+            lines.append(f"  ({entrance.x}, {entrance.y}) -> {entrance.dungeon_id}")
 
     lines.append("monsters:")
     lines += [f"  {count}x {name}" for name, count in entity_counts.items()] or ["  (none)"]
@@ -116,7 +130,12 @@ def main(argv: list[str]) -> int:
     try:
         catalog = load_catalog()
 
-        if not target.is_dir():
+        if not target.is_dir() and target.name == "overworld.lvl":
+            # The overworld always lives alongside data/dungeons/ - load the
+            # registry from there to validate dungeon_entrance references.
+            dungeon_ids = set(load_dungeon_registry(target.parent / "dungeons", catalog))
+            preview_one(load_overworld(target, catalog, known_dungeon_ids=dungeon_ids))
+        elif not target.is_dir():
             preview_one(load_level(target, catalog))
         elif (target / "dungeon.yaml").exists():
             preview_dungeon(load_dungeon(target, catalog))

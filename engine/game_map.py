@@ -22,6 +22,18 @@ PLAYER_DEFENSE = 1
 
 FOV_RADIUS = 8
 
+# kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
+# ordinary open ground - which is why every walkable kind (floor, stairs,
+# dungeon_entrance, road/plains/town/sea's line-of-sight...) needs no entry
+# here unless it's actually impassable and/or opaque.
+TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
+    "wall": (False, False),
+    "door": (False, False),  # closed; unlock_door() overrides both to True at runtime
+    "mountain": (False, False),
+    "sea": (False, True),  # can't cross it, but can see across it
+    "forest": (True, False),  # can walk through, can't see far through/across it
+}
+
 
 class GameMap:
     def __init__(self, width: int, height: int):
@@ -33,10 +45,13 @@ class GameMap:
         self.kinds = np.full((width, height), "floor", dtype=object, order="F")
         self.explored = np.zeros((width, height), dtype=bool, order="F")
         self.visible = np.zeros((width, height), dtype=bool, order="F")
-        # Coordinate -> destination level id, or None for a terminal (winning) stairway.
+        # Coordinate -> destination level id, or None for a terminal stairway
+        # (leaves the dungeon, returns to the overworld).
         self.stairs: dict[tuple[int, int], str | None] = {}
         # Coordinate -> required key item id, for tiles not yet unlocked.
         self.locked_doors: dict[tuple[int, int], str] = {}
+        # Overworld-only: coordinate -> dungeon registry id to enter.
+        self.dungeon_entrances: dict[tuple[int, int], str] = {}
         self.entities: list[Entity] = []
 
     def in_bounds(self, x: int, y: int) -> bool:
@@ -83,15 +98,18 @@ def build_game_map(
         for x, tile in enumerate(row):
             kind = "floor" if tile == "player_start" else tile
             game_map.kinds[x, y] = kind
-            # Doors start closed: impassable and opaque, like a wall, until unlocked.
-            game_map.walkable[x, y] = kind not in ("wall", "door")
-            game_map.transparent[x, y] = kind not in ("wall", "door")
+            walkable, transparent = TILE_PASSABILITY.get(kind, (True, True))
+            game_map.walkable[x, y] = walkable
+            game_map.transparent[x, y] = transparent
 
     for stairs_spawn in level.stairs:
         game_map.stairs[(stairs_spawn.x, stairs_spawn.y)] = stairs_spawn.next_level
 
     for door_spawn in level.doors:
         game_map.locked_doors[(door_spawn.x, door_spawn.y)] = door_spawn.requires_key
+
+    for entrance_spawn in level.dungeon_entrances:
+        game_map.dungeon_entrances[(entrance_spawn.x, entrance_spawn.y)] = entrance_spawn.dungeon_id
 
     for spawn in level.entity_spawns:
         edef = spawn.entity

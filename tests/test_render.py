@@ -68,6 +68,35 @@ def test_render_all_does_not_raise_for_level_01():
     render_all(console, engine)  # should not raise
 
 
+def test_render_hud_shows_reduced_controls_on_the_overworld():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, is_overworld=True)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "[l] look  [esc] quit" in text
+    assert "pick up" not in text
+    assert "fire" not in text
+
+
+def test_render_hud_shows_full_controls_in_a_dungeon():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, is_overworld=False)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "pick up" in text
+    assert "fire" in text
+
+
 def test_long_monster_description_wraps_instead_of_being_clipped():
     """Regression test: console.print() silently truncates text past the
     console's right edge unless given an explicit width. A long, free-form

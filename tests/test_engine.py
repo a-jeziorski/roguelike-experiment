@@ -5,7 +5,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 
 from pathlib import Path
 
-from content.loader import load_catalog, load_levels
+from content.loader import load_catalog, load_levels, load_overworld
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.engine import Engine
 from engine.entity import (
@@ -21,6 +21,7 @@ from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
 PRISON_TOWER_LEVELS_DIR = DATA_DIR / "dungeons" / "prison_tower" / "levels"
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
 def make_open_map(width: int, height: int) -> GameMap:
@@ -635,7 +636,7 @@ def test_fire_action_removes_ammo_stack_when_it_reaches_zero():
     assert player.inventory == []
 
 
-def test_reaching_stairs_wins():
+def test_reaching_terminal_stairs_down_signals_wants_overworld():
     game_map = make_open_map(3, 3)
     game_map.kinds[2, 1] = "stairs_down"
     game_map.stairs[(2, 1)] = None
@@ -645,7 +646,23 @@ def test_reaching_stairs_wins():
 
     engine.process_turn(BumpAction(1, 0))
 
-    assert engine.game_state == "won"
+    assert engine.wants_overworld is True
+    assert engine.game_state == "playing"  # the run continues, just on a different Engine
+
+
+def test_reaching_terminal_stairs_up_also_signals_wants_overworld():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "stairs_up"
+    game_map.stairs[(2, 1)] = None
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.wants_overworld is True
+    assert engine.game_state == "playing"
+    assert "retreat" in engine.message_log.messages[-1]
 
 
 def test_descending_stairs_swaps_level_and_preserves_player():
@@ -673,8 +690,8 @@ def test_descending_stairs_swaps_level_and_preserves_player():
 def test_full_dungeon_chain_is_completable():
     """End-to-end regression: walks the whole shipped dungeon via
     on_player_reach_stairs (one path through the 02a/02b branch), confirming
-    every hop resolves and the run actually reaches "won" - not just that
-    each transition works in isolation."""
+    every hop resolves and the run actually reaches its terminal stairs - not
+    just that each transition works in isolation."""
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
@@ -687,7 +704,8 @@ def test_full_dungeon_chain_is_completable():
         assert engine.player is player
 
     engine.on_player_reach_stairs(None)  # level_05's terminal stairs
-    assert engine.game_state == "won"
+    assert engine.wants_overworld is True
+    assert engine.game_state == "playing"
 
 
 def test_full_prison_tower_chain_is_completable():
@@ -705,7 +723,8 @@ def test_full_prison_tower_chain_is_completable():
         assert engine.player is player
 
     engine.on_player_reach_stairs(None)  # level_04's terminal stairs (the gatehouse exit)
-    assert engine.game_state == "won"
+    assert engine.wants_overworld is True
+    assert engine.game_state == "playing"
 
 
 def test_ascending_returns_to_the_same_cached_map_with_state_preserved():
@@ -810,7 +829,10 @@ def test_level_01_branches_to_two_different_levels():
     levels = load_levels(LEVELS_DIR, catalog)
     game_map, _player = build_game_map(levels["level_01"], catalog)
 
-    destinations = set(game_map.stairs.values())
+    # None is the terminal retreat stairs_up (leaves to the overworld), not
+    # a branch destination - excluded here since this test is specifically
+    # about the two different *level* destinations.
+    destinations = set(game_map.stairs.values()) - {None}
     assert destinations == {"level_02a", "level_02b"}
 
 
@@ -904,7 +926,7 @@ def test_use_item_action_never_consumes_a_key():
     assert engine.message_log.messages[-1] == "You have nothing to use."
 
 
-def test_restart_after_win_returns_to_starting_level():
+def test_restart_after_reaching_terminal_stairs_returns_to_starting_level():
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)
     level_01 = levels["level_01"]
@@ -919,10 +941,110 @@ def test_restart_after_win_returns_to_starting_level():
     )
 
     engine.on_player_reach_stairs("level_02a")  # progress deeper into the dungeon
-    engine.game_state = "won"  # simulate reaching the final terminal stairway
+    engine.on_player_reach_stairs(None)  # reach a terminal stairway, wants_overworld set
 
     engine.restart()
 
     assert engine.game_state == "playing"
+    assert engine.wants_overworld is False  # cleared, not carried into the fresh run
     assert engine.level_name == "The Rotting Cellar"
     assert (engine.player.x, engine.player.y) == level_01.player_start
+
+
+def test_build_game_map_assigns_terrain_passability():
+    catalog = load_catalog()
+    level = load_overworld(
+        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+    )
+    game_map, _player = build_game_map(level, catalog)
+
+    # "#" -> mountain: impassable and opaque, like a dungeon wall.
+    assert not game_map.walkable[0, 0]
+    assert not game_map.transparent[0, 0]
+    # "." -> plains: ordinary open ground.
+    assert game_map.walkable[2, 1]
+    assert game_map.transparent[2, 1]
+
+
+def test_build_game_map_populates_dungeon_entrances():
+    catalog = load_catalog()
+    level = load_overworld(
+        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+    )
+    game_map, _player = build_game_map(level, catalog)
+
+    assert game_map.dungeon_entrances == {(3, 1): "prison_tower"}
+
+
+def test_depart_player_removes_and_caches_and_clears_mailbox():
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name, catalog=catalog, levels=levels, starting_level=level_01,
+    )
+    engine.wants_overworld = True
+    engine.pending_dungeon_entry = "forgotten_ruins"
+
+    returned = engine.depart_player()
+
+    assert returned is player
+    assert player not in engine.game_map.entities
+    assert engine.visited_maps["level_01"] is engine.game_map
+    assert engine.wants_overworld is False
+    assert engine.pending_dungeon_entry is None
+
+
+def test_arrive_player_with_explicit_position_repositions():
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog)
+    engine.game_map.entities.remove(player)
+
+    engine.arrive_player(player, position=(4, 4))
+
+    assert (player.x, player.y) == (4, 4)
+    assert player in engine.game_map.entities
+    assert engine.message_log.messages[-1] == f"You enter {level_01.name}."
+
+
+def test_arrive_player_with_no_position_resumes_last_departure_spot():
+    """arrive_player(position=None) must restore *this* Engine's own
+    remembered last_position, not just whatever the player Entity's current
+    x/y happen to be - those get overwritten by every other map the player
+    visits in between (typically the overworld), so trusting the entity's
+    live position instead of last_position was a real bug."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog)
+    player.x, player.y = 7, 9
+
+    engine.depart_player()  # records last_position = (7, 9)
+    player.x, player.y = 99, 99  # simulate the player moving on some other map
+
+    engine.arrive_player(player)  # no position -> resume exactly where they left
+
+    assert (player.x, player.y) == (7, 9)
+    assert player in engine.game_map.entities
+
+
+def test_movement_onto_dungeon_entrance_sets_pending_dungeon_entry():
+    catalog = load_catalog()
+    level = load_overworld(
+        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+    )
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, catalog=catalog)
+
+    engine.process_turn(BumpAction(1, 0))  # (1,1) -> (2,1), open plains, no trigger
+    assert engine.pending_dungeon_entry is None
+
+    engine.process_turn(BumpAction(1, 0))  # (2,1) -> (3,1), the dungeon_entrance tile
+
+    assert engine.pending_dungeon_entry == "prison_tower"
+    assert engine.wants_overworld is False  # the two mailboxes are independent

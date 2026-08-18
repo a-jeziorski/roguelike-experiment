@@ -1,0 +1,15 @@
+id: level_with_dungeon_entrance
+name: Level With Dungeon Entrance Fixture
+
+map: |
+  #####
+  #@.x#
+  #.>.#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": stairs_down
+  "x": { dungeon_entrance: prison_tower }

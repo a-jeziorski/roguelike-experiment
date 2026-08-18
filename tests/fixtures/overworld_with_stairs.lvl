@@ -1,0 +1,14 @@
+id: overworld_with_stairs
+name: Overworld With Stairs Fixture
+
+map: |
+  #####
+  #@xP#
+  #####
+
+legend:
+  "#": mountain
+  ".": plains
+  "@": player_start
+  "x": stairs_down
+  "P": { dungeon_entrance: prison_tower }

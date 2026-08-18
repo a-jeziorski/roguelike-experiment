@@ -3,7 +3,7 @@ name: The Solitary Cell
 
 map: |
   ########################
-  #......#################
+  #....x.#################
   #.@..a.#################
   #......#################
   #......#################
@@ -22,6 +22,7 @@ legend:
   "#": wall
   ".": floor
   "@": player_start
+  "x": stairs_up
   "a": { stairs_down: level_01_large }
   ">": { stairs_down: level_02 }
   "G": { entity: guard }

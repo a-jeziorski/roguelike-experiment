@@ -41,6 +41,14 @@ TILE_VISUALS = {
     "stairs_down": {"glyph": ">", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "stairs_up": {"glyph": "<", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "door": {"glyph": "+", "dark": (70, 45, 15), "light": (170, 110, 40)},
+    # Overworld terrain.
+    "mountain": {"glyph": "^", "dark": (70, 65, 60), "light": (150, 140, 130)},
+    "sea": {"glyph": "~", "dark": (15, 40, 80), "light": (60, 110, 200)},
+    "forest": {"glyph": "T", "dark": (20, 50, 25), "light": (60, 140, 60)},
+    "road": {"glyph": ".", "dark": (60, 50, 30), "light": (150, 130, 80)},
+    "plains": {"glyph": ",", "dark": (35, 45, 20), "light": (120, 150, 70)},
+    "town": {"glyph": "n", "dark": (80, 60, 25), "light": (210, 170, 90)},
+    "dungeon_entrance": {"glyph": "O", "dark": (90, 60, 10), "light": (255, 200, 60)},
 }
 
 TILE_DESCRIPTIONS = {
@@ -48,12 +56,18 @@ TILE_DESCRIPTIONS = {
     "floor": "Bare floor.",
     "stairs_down": "Stairs leading down.",
     "stairs_up": "Stairs leading up.",
+    "mountain": "Impassable mountains.",
+    "sea": "Open water, too deep to cross.",
+    "forest": "Dense woodland.",
+    "road": "A worn dirt road.",
+    "plains": "Open grassland.",
+    "town": "A small settlement.",
+    "dungeon_entrance": "An entrance leading underground.",
 }
 
 HUD_FG = (220, 220, 220)
 LOG_FG = (190, 190, 190)
 DEAD_FG = (220, 50, 50)
-WIN_FG = (60, 220, 90)
 CURSOR_BG = (90, 90, 20)
 TARGET_VALID_BG = (40, 120, 40)
 TARGET_INVALID_BG = (110, 40, 40)
@@ -170,21 +184,15 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     y += console.print(
         0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}", fg=HUD_FG, width=width
     )
-    y += console.print(
-        0,
-        y,
-        "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [f] fire  [esc] quit",
-        fg=HUD_FG,
-        width=width,
-    )
+    if engine.is_overworld:
+        controls = "[arrows/numpad] move  [l] look  [esc] quit"
+    else:
+        controls = "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [f] fire  [esc] quit"
+    y += console.print(0, y, controls, fg=HUD_FG, width=width)
 
     if engine.game_state == "dead":
         y += console.print(
             0, y, "You have died. [r] play again  [esc] quit", fg=DEAD_FG, width=width
-        )
-    elif engine.game_state == "won":
-        y += console.print(
-            0, y, "You escaped the dungeon! [r] play again  [esc] quit", fg=WIN_FG, width=width
         )
 
     return y

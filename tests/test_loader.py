@@ -9,6 +9,7 @@ from content.loader import (
     load_dungeon_registry,
     load_level,
     load_levels,
+    load_overworld,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -44,8 +45,10 @@ def test_level_01_content():
 
     assert level.id == "level_01"
 
-    destinations = sorted(s.next_level for s in level.stairs)
+    # None is the terminal retreat stairs_up (leaves to the overworld).
+    destinations = sorted(s.next_level for s in level.stairs if s.next_level is not None)
     assert destinations == ["level_02a", "level_02b"]
+    assert sum(1 for s in level.stairs if s.kind == "stairs_up" and s.next_level is None) == 1
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
     assert entity_names == ["Goblin", "Rat", "Rat"]
@@ -95,10 +98,12 @@ def test_dangling_stairs_reference_ignored_without_known_ids():
     assert level.stairs[0].next_level == "level_nonexistent"
 
 
-def test_stairs_up_without_destination_is_rejected():
+def test_terminal_stairs_up_is_valid_and_means_leave_to_overworld():
     catalog = load_catalog()
-    with pytest.raises(ContentValidationError, match="stairs_up must specify a destination"):
-        load_level(FIXTURES_DIR / "stairs_up_no_destination.lvl", catalog)
+    level = load_level(FIXTURES_DIR / "terminal_stairs_both_kinds.lvl", catalog)
+
+    stairs_up = next(s for s in level.stairs if s.kind == "stairs_up")
+    assert stairs_up.next_level is None
 
 
 def test_level_with_only_stairs_up_still_requires_stairs_down():
@@ -121,7 +126,9 @@ def test_load_levels_loads_and_links_all_six_forgotten_ruins_levels():
         "level_01", "level_02a", "level_02b", "level_03", "level_04", "level_05",
     }
 
-    level_01_destinations = sorted(s.next_level for s in levels["level_01"].stairs)
+    level_01_destinations = sorted(
+        s.next_level for s in levels["level_01"].stairs if s.next_level is not None
+    )
     assert level_01_destinations == ["level_02a", "level_02b"]
 
     assert [s.next_level for s in levels["level_02a"].stairs] == ["level_03"]
@@ -239,9 +246,65 @@ def test_prison_tower_chain_links_all_levels():
     # the camera/viewport system on a map far bigger than the console) which
     # rejoins the main chain at level_02.
     assert set(levels) == {"level_01", "level_01_large", "level_02", "level_03", "level_04"}
-    assert [s.next_level for s in levels["level_01"].stairs] == ["level_01_large", "level_02"]
+    # level_01's first stairway is now its retreat stairs_up (terminal, leaves
+    # to the overworld), scanned before the two stairs_down branches below it.
+    assert [s.next_level for s in levels["level_01"].stairs] == [None, "level_01_large", "level_02"]
     assert [s.next_level for s in levels["level_01_large"].stairs] == ["level_02"]
     # level_02 also has a stairs_up back to level_01 (the return-trip example).
     assert [s.next_level for s in levels["level_02"].stairs] == ["level_01", "level_03"]
     assert [s.next_level for s in levels["level_03"].stairs] == ["level_04"]
     assert [s.next_level for s in levels["level_04"].stairs] == [None]
+
+
+def test_load_overworld_happy_path():
+    catalog = load_catalog()
+    level = load_overworld(
+        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+    )
+
+    assert level.id == "overworld_valid"
+    assert level.player_start == (1, 1)
+    assert [e.dungeon_id for e in level.dungeon_entrances] == ["prison_tower"]
+    assert level.stairs == []
+    assert level.entity_spawns == []
+    assert level.item_spawns == []
+
+
+def test_load_overworld_rejects_unknown_dungeon_id():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="unknown dungeon 'no_such_dungeon'"):
+        load_overworld(
+            FIXTURES_DIR / "overworld_unknown_dungeon.lvl", catalog,
+            known_dungeon_ids={"prison_tower"},
+        )
+
+
+def test_load_overworld_rejects_ambiguous_entrances_to_the_same_dungeon():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="ambiguous which one is the return path"):
+        load_overworld(
+            FIXTURES_DIR / "overworld_ambiguous_entrances.lvl", catalog,
+            known_dungeon_ids={"prison_tower"},
+        )
+
+
+def test_load_overworld_requires_at_least_one_dungeon_entrance():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="at least one dungeon_entrance"):
+        load_overworld(
+            FIXTURES_DIR / "overworld_no_entrance.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        )
+
+
+def test_load_overworld_rejects_stairs_tiles():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="stairs_down.*has no meaning on the overworld"):
+        load_overworld(
+            FIXTURES_DIR / "overworld_with_stairs.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        )
+
+
+def test_load_level_rejects_dungeon_entrance_tiles():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="dungeon_entrance.*has no meaning inside a dungeon"):
+        load_level(FIXTURES_DIR / "level_with_dungeon_entrance.lvl", catalog)

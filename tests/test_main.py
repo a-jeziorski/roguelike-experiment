@@ -8,12 +8,12 @@ swallowing the SystemExit that EscapeAction.perform() would otherwise raise."""
 
 from pathlib import Path
 
-from content.loader import load_catalog, load_levels
-from engine.actions import EscapeAction, RestartAction, WaitAction
+from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
+from engine.actions import BumpAction, EscapeAction, RestartAction, WaitAction
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
 from engine.game_map import build_game_map
-from main import dispatch_action, fire_mode_gate
+from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -45,9 +45,9 @@ def test_escape_quits_after_death():
     assert dispatch_action(engine, EscapeAction()) is True
 
 
-def test_escape_quits_after_win():
+def test_escape_quits_regardless_of_game_state():
     engine = make_engine()
-    engine.game_state = "won"
+    engine.game_state = "some-future-state"  # dispatch_action must not special-case values
     assert dispatch_action(engine, EscapeAction()) is True
 
 
@@ -108,3 +108,145 @@ def test_fire_mode_gate_allows_when_armed_and_stocked():
         )
     )
     assert fire_mode_gate(engine) is None
+
+
+def _world():
+    """Real shipped content: catalog, dungeon registry, and the overworld -
+    what resolve_transition actually needs at runtime."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    overworld_level = load_overworld(
+        OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+    )
+    return catalog, dungeon_registry, overworld_level
+
+
+def _entrance_for(overworld_level, dungeon_id: str) -> tuple[int, int]:
+    entrance = next(e for e in overworld_level.dungeon_entrances if e.dungeon_id == dungeon_id)
+    return (entrance.x, entrance.y)
+
+
+def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str) -> Engine:
+    dungeon = dungeon_registry[dungeon_id]
+    starting_level = dungeon.levels[dungeon.starting_level]
+    game_map, player = build_game_map(starting_level, catalog)
+    return Engine(
+        game_map, player, starting_level.name,
+        catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+    )
+
+
+def test_resolve_transition_first_overworld_visit_lands_at_matched_entrance():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.on_player_reach_stairs(None, "stairs_up")  # the retreat stairs near player_start
+
+    active_key, new_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.is_overworld is True
+    assert (new_engine.player.x, new_engine.player.y) == _entrance_for(overworld_level, "prison_tower")
+
+
+def test_resolve_transition_each_dungeons_departure_lands_at_its_own_entrance():
+    catalog, dungeon_registry, overworld_level = _world()
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+    _, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    ruins_engine = _dungeon_engine(dungeon_registry, catalog, "forgotten_ruins")
+    ruins_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["forgotten_ruins"] = ruins_engine
+    active_key, same_overworld_engine = resolve_transition(
+        "forgotten_ruins", ruins_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert same_overworld_engine is overworld_engine  # cached, not rebuilt
+    assert (same_overworld_engine.player.x, same_overworld_engine.player.y) == _entrance_for(
+        overworld_level, "forgotten_ruins"
+    )
+
+
+def test_resolve_transition_reentering_a_dungeon_resumes_the_exact_retreat_spot():
+    catalog, dungeon_registry, overworld_level = _world()
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    original_map = prison_engine.game_map
+    retreat_spot = (prison_engine.player.x, prison_engine.player.y)
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+
+    active_key, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+    assert active_key == OVERWORLD_KEY
+
+    # Walk onto the prison_tower entrance tile on the overworld to trigger re-entry.
+    overworld_engine.pending_dungeon_entry = "prison_tower"
+    active_key, back_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == "prison_tower"
+    assert back_engine.game_map is original_map  # same cached map, not rebuilt
+    assert (back_engine.player.x, back_engine.player.y) == retreat_spot
+
+
+def test_resolve_transition_does_nothing_when_not_playing():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.wants_overworld = True
+    engine.game_state = "dead"  # e.g. killed the same turn a leave-tile was reached
+
+    active_key, same_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == "prison_tower"
+    assert same_engine is engine
+    assert engine.wants_overworld is True  # untouched - the death screen takes priority
+
+
+def test_resolve_transition_round_trip_preserves_dungeon_state():
+    catalog, dungeon_registry, overworld_level = _world()
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    guard = next(e for e in prison_engine.game_map.entities if e.name == "Guard")
+    prison_engine.on_entity_death(guard)
+    assert guard not in prison_engine.game_map.entities
+
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+    active_key, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    # Detour: overworld -> forgotten_ruins -> overworld -> back to prison_tower.
+    overworld_engine.pending_dungeon_entry = "forgotten_ruins"
+    active_key, ruins_engine = resolve_transition(
+        active_key, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+    ruins_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine_2 = resolve_transition(
+        active_key, ruins_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+    assert overworld_engine_2 is overworld_engine  # still the one cached overworld Engine
+
+    overworld_engine_2.pending_dungeon_entry = "prison_tower"
+    active_key, prison_engine_2 = resolve_transition(
+        active_key, overworld_engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == "prison_tower"
+    assert prison_engine_2 is prison_engine
+    assert guard not in prison_engine_2.game_map.entities  # still dead after the detour

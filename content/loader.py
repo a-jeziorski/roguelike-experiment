@@ -57,8 +57,10 @@ class ItemSpawn:
 class StairsSpawn:
     x: int
     y: int
-    # None = terminal stairway (reaching it wins the game) - stairs_down only,
-    # stairs_up always names a real destination level.
+    # None = terminal stairway - reaching it leaves the dungeon and returns to
+    # the overworld (either kind can now be terminal: a stairs_down terminal
+    # is a dungeon's usual "completed it" exit, a stairs_up terminal is a
+    # retreat point near the entrance).
     next_level: str | None
     kind: Literal["stairs_down", "stairs_up"]
 
@@ -71,10 +73,19 @@ class DoorSpawn:
 
 
 @dataclass
+class DungeonEntranceSpawn:
+    x: int
+    y: int
+    dungeon_id: str  # overworld-only: a dungeon registry id, not a level id
+
+
+@dataclass
 class ParsedLevel:
     """A validated level, decoupled from any engine/rendering data structures.
     tiles[y][x] gives the TileType string for that cell. A level may have multiple
-    stairways (branching), each with its own destination."""
+    stairways (branching), each with its own destination. dungeon_entrances is
+    only ever populated for the overworld (see load_overworld) - every dungeon
+    level leaves it empty."""
 
     id: str
     name: str
@@ -86,6 +97,7 @@ class ParsedLevel:
     item_spawns: list[ItemSpawn]
     stairs: list[StairsSpawn]
     doors: list[DoorSpawn]
+    dungeon_entrances: list[DungeonEntranceSpawn]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -123,6 +135,38 @@ def load_catalog(
     return Catalog(entities=entities, items=items)
 
 
+def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:
+    """Splits a level/overworld file's raw `map` block into rows and validates
+    the purely textual concerns shared by every kind of ASCII map, regardless
+    of what the tiles mean: trimming the leading/trailing blank line a YAML
+    block scalar commonly introduces, every row being the same width, and
+    every symbol used actually being defined in the legend. Returns
+    (rows, errors) - what each symbol's tile *means* is caller-specific
+    (dungeon vs. overworld), so that dispatch stays in load_level/
+    load_overworld rather than here."""
+    rows = raw_map.split("\n")
+    if rows and rows[0] == "":
+        rows = rows[1:]
+    if rows and rows[-1] == "":
+        rows = rows[:-1]
+    width = len(rows[0]) if rows else 0
+
+    errors: list[str] = []
+    for y, row in enumerate(rows):
+        if len(row) != width:
+            errors.append(
+                f"map row {y} has length {len(row)}, expected {width} "
+                "(all rows must be the same length)"
+            )
+
+    used_symbols = {ch for row in rows for ch in row}
+    undefined_symbols = used_symbols - set(legend.keys())
+    for symbol in sorted(undefined_symbols):
+        errors.append(f"symbol '{symbol}' used in map but not defined in legend")
+
+    return rows, errors
+
+
 def load_level(
     path: Path, catalog: Catalog, known_level_ids: set[str] | None = None
 ) -> ParsedLevel:
@@ -141,26 +185,10 @@ def load_level(
     except ValidationError as e:
         raise ContentValidationError(str(path), [str(e)]) from e
 
-    rows = level.map.split("\n")
-    # Drop a leading/trailing blank line that YAML block scalars commonly introduce.
-    if rows and rows[0] == "":
-        rows = rows[1:]
-    if rows and rows[-1] == "":
-        rows = rows[:-1]
+    rows, row_errors = _parse_map_rows(level.map, level.legend)
+    errors.extend(row_errors)
     width = len(rows[0]) if rows else 0
     height = len(rows)
-
-    for y, row in enumerate(rows):
-        if len(row) != width:
-            errors.append(
-                f"map row {y} has length {len(row)}, expected {width} "
-                "(all rows must be the same length)"
-            )
-
-    used_symbols = {ch for row in rows for ch in row}
-    undefined_symbols = used_symbols - set(level.legend.keys())
-    for symbol in sorted(undefined_symbols):
-        errors.append(f"symbol '{symbol}' used in map but not defined in legend")
 
     tiles: list[list[str]] = []
     entity_spawns: list[EntitySpawn] = []
@@ -194,18 +222,20 @@ def load_level(
                 )
 
             if entry.tile == "stairs_up":
-                if entry.next_level is None:
-                    errors.append(
-                        f"legend symbol '{symbol}' stairs_up must specify a destination "
-                        "level (a terminal stairs_up has no meaning)"
-                    )
-                elif known_level_ids is not None and entry.next_level not in known_level_ids:
-                    errors.append(
-                        f"legend symbol '{symbol}' stairs_up references "
-                        f"unknown level '{entry.next_level}'"
-                    )
+                if entry.next_level is not None and known_level_ids is not None:
+                    if entry.next_level not in known_level_ids:
+                        errors.append(
+                            f"legend symbol '{symbol}' stairs_up references "
+                            f"unknown level '{entry.next_level}'"
+                        )
                 stairs.append(
                     StairsSpawn(x=x, y=y, next_level=entry.next_level, kind="stairs_up")
+                )
+
+            if entry.tile == "dungeon_entrance":
+                errors.append(
+                    f"legend symbol '{symbol}' is a dungeon_entrance tile, which has no "
+                    "meaning inside a dungeon - use a terminal stairs_up to leave instead"
                 )
 
             if entry.tile == "door":
@@ -280,6 +310,105 @@ def load_level(
         item_spawns=item_spawns,
         stairs=stairs,
         doors=doors,
+        dungeon_entrances=[],
+    )
+
+
+def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) -> ParsedLevel:
+    """Parses and validates the overworld file - a single, standalone map (no
+    directory of levels, no manifest; there is exactly one overworld). Reuses
+    the same ParsedLevel shape as a dungeon level so build_game_map/Engine can
+    treat it identically, but its own tile vocabulary is deliberately smaller:
+    no entities, items, doors, or stairs (this is not a dungeon), only
+    terrain and dungeon_entrance tiles leading into a dungeon registry id
+    (not a level id - that's why this doesn't reuse known_level_ids)."""
+    raw = _load_yaml(path)
+    errors: list[str] = []
+
+    try:
+        level = LevelDef(**raw)
+    except ValidationError as e:
+        raise ContentValidationError(str(path), [str(e)]) from e
+
+    rows, row_errors = _parse_map_rows(level.map, level.legend)
+    errors.extend(row_errors)
+    width = len(rows[0]) if rows else 0
+    height = len(rows)
+
+    tiles: list[list[str]] = []
+    player_starts: list[tuple[int, int]] = []
+    dungeon_entrances: list[DungeonEntranceSpawn] = []
+
+    for y, row in enumerate(rows):
+        tile_row: list[str] = []
+        for x, symbol in enumerate(row):
+            entry = level.legend.get(symbol)
+            if entry is None:
+                tile_row.append("floor")
+                continue
+
+            tile_row.append(entry.tile)
+
+            if entry.tile == "player_start":
+                player_starts.append((x, y))
+
+            if entry.tile == "dungeon_entrance":
+                if entry.dungeon_id not in known_dungeon_ids:
+                    errors.append(
+                        f"legend symbol '{symbol}' dungeon_entrance references "
+                        f"unknown dungeon '{entry.dungeon_id}'"
+                    )
+                dungeon_entrances.append(
+                    DungeonEntranceSpawn(x=x, y=y, dungeon_id=entry.dungeon_id)
+                )
+
+            if entry.tile in ("stairs_down", "stairs_up", "door"):
+                errors.append(
+                    f"legend symbol '{symbol}' is a {entry.tile} tile, which has no "
+                    "meaning on the overworld - use dungeon_entrance instead"
+                )
+
+            if entry.entity is not None or entry.item is not None:
+                errors.append(
+                    f"legend symbol '{symbol}' spawns an entity/item, which has no "
+                    "meaning on the overworld - there is no combat or itemization here"
+                )
+        tiles.append(tile_row)
+
+    if len(player_starts) != 1:
+        errors.append(
+            f"map must contain exactly one player_start tile, found {len(player_starts)}"
+        )
+
+    if not dungeon_entrances:
+        errors.append("map must contain at least one dungeon_entrance tile, found 0")
+
+    dungeon_targets: dict[str, list[tuple[int, int]]] = {}
+    for entrance in dungeon_entrances:
+        dungeon_targets.setdefault(entrance.dungeon_id, []).append((entrance.x, entrance.y))
+    for dungeon_id, coords in dungeon_targets.items():
+        if len(coords) > 1:
+            coords_str = " and ".join(f"({x}, {y})" for x, y in coords)
+            errors.append(
+                f"multiple dungeon_entrance tiles target dungeon '{dungeon_id}' at "
+                f"{coords_str} - ambiguous which one is the return path when leaving it"
+            )
+
+    if errors:
+        raise ContentValidationError(str(path), errors)
+
+    return ParsedLevel(
+        id=level.id,
+        name=level.name,
+        width=width,
+        height=height,
+        tiles=tiles,
+        player_start=player_starts[0],
+        entity_spawns=[],
+        item_spawns=[],
+        stairs=[],
+        doors=[],
+        dungeon_entrances=dungeon_entrances,
     )
 
 

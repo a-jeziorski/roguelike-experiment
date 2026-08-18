@@ -1,0 +1,13 @@
+id: overworld_valid
+name: Overworld Valid Fixture
+
+map: |
+  #####
+  #@.P#
+  #####
+
+legend:
+  "#": mountain
+  ".": plains
+  "@": player_start
+  "P": { dungeon_entrance: prison_tower }

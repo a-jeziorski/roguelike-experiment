@@ -1,0 +1,12 @@
+id: overworld_no_entrance
+name: Overworld No Entrance Fixture
+
+map: |
+  #####
+  #@..#
+  #####
+
+legend:
+  "#": mountain
+  ".": plains
+  "@": player_start

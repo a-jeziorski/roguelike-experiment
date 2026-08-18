@@ -128,6 +128,8 @@ class MovementAction(Action):
         if entity is engine.player and (dest_x, dest_y) in engine.game_map.stairs:
             kind = engine.game_map.kinds[dest_x, dest_y]
             engine.on_player_reach_stairs(engine.game_map.stairs[(dest_x, dest_y)], kind)
+        if entity is engine.player and (dest_x, dest_y) in engine.game_map.dungeon_entrances:
+            engine.pending_dungeon_entry = engine.game_map.dungeon_entrances[(dest_x, dest_y)]
 
 
 class MeleeAction(Action):

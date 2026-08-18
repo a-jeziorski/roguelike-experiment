@@ -39,12 +39,17 @@ class Engine:
         catalog: "Catalog | None" = None,
         levels: "dict[str, ParsedLevel] | None" = None,
         starting_level: "ParsedLevel | None" = None,
+        is_overworld: bool = False,
     ):
         self.game_map = game_map
         self.player = player
         self.level_name = level_name
         self.message_log = MessageLog()
-        self.game_state = "playing"  # "playing" | "dead" | "won"
+        self.game_state = "playing"  # "playing" | "dead"
+        # An explicit flag (not inferred from `levels is None`) so render.py's
+        # HUD can hide dungeon-only control hints (pickup/potion/fire) without
+        # coupling that to an unrelated invariant that could change later.
+        self.is_overworld = is_overworld
         # Needed to resolve a stairway's destination id into content when
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog
@@ -71,6 +76,18 @@ class Engine:
         # here instead of forcing Engine to know about rendering.
         self.ranged_attack_events: list[tuple[int, int, int, int]] = []
         self.melee_attack_events: list[tuple[int, int]] = []
+        # Mailbox flags for main.py: Engine only ever sets these to signal "the
+        # player wants to leave this dungeon/enter that dungeon" - it never acts
+        # on them itself, since it has no access to the dungeon registry or the
+        # overworld (only main.py, which owns both, can perform the actual
+        # cross-Engine handoff). Same pattern as ranged_attack_events above.
+        self.wants_overworld = False
+        self.pending_dungeon_entry: str | None = None
+        # Where depart_player last saw the player, for arrive_player's
+        # "resume exactly where they left" path. Set for real the first time
+        # depart_player runs; the initial value just avoids the attribute
+        # not existing yet.
+        self.last_position = (player.x, player.y)
         if self.current_level_id is not None:
             self.visited_maps[self.current_level_id] = self.game_map
 
@@ -98,10 +115,50 @@ class Engine:
                     return (stairs.x, stairs.y)
         return level.player_start
 
+    def depart_player(self) -> Entity:
+        """Removes the player from the current map and caches that map under
+        its level id, so a later return visit resumes it exactly as left
+        (dead monsters, picked-up items, unlocked doors, explored tiles).
+        Records last_position *before* the caller repositions the player
+        elsewhere - the player Entity's x/y is shared and mutable, and will
+        get overwritten by whatever map becomes active next (typically the
+        overworld), so this Engine needs its own memory of where it left the
+        player, independent of where that Entity physically ends up in the
+        meantime. Clears both transition mailbox flags - their lifetime is
+        tied to "the player is currently on this map," so a cached Engine can
+        never re-fire a stale transition the next time it becomes active.
+        Used both for intra-dungeon stairs and for leaving to/entering from
+        the overworld (main.py calls this directly for the latter)."""
+        self.last_position = (self.player.x, self.player.y)
+        self.game_map.entities.remove(self.player)
+        if self.current_level_id is not None:
+            self.visited_maps[self.current_level_id] = self.game_map
+        self.wants_overworld = False
+        self.pending_dungeon_entry = None
+        return self.player
+
+    def arrive_player(self, player: Entity, position: tuple[int, int] | None = None) -> None:
+        """Counterpart to depart_player, for resuming a *cached* Engine (this
+        dungeon/the overworld was already visited). `position` is given when
+        arrival must be matched to a specific tile (the overworld, always);
+        left None to resume exactly where *this* Engine's player last
+        departed from (re-entering an already-visited dungeon) - using
+        self.last_position rather than the player's current x/y, since that
+        may since have been overwritten by whatever map was active in
+        between. First-time creation of a target Engine doesn't use this -
+        the constructor + build_game_map already do the equivalent
+        bootstrapping."""
+        self.player = player
+        player.x, player.y = position if position is not None else self.last_position
+        self.game_map.entities.append(player)
+        self.message_log.add(f"You enter {self.level_name}.")
+        self.game_map.update_fov((player.x, player.y))
+
     def on_player_reach_stairs(self, next_level_id: str | None, kind: str = "stairs_down") -> None:
         if next_level_id is None:
-            self.message_log.add("You ascend the stairs and escape the dungeon. You win!")
-            self.game_state = "won"
+            verb = "retreat back to the surface" if kind == "stairs_up" else "leave the dungeon behind"
+            self.message_log.add(f"You {verb}.")
+            self.wants_overworld = True
             return
 
         if self.current_level_id is not None:
@@ -136,6 +193,9 @@ class Engine:
         self.message_log = MessageLog()
         self.ranged_attack_events = []
         self.melee_attack_events = []
+        self.wants_overworld = False
+        self.pending_dungeon_entry = None
+        self.last_position = (self.player.x, self.player.y)
         # A fresh run discards all progress on every level, not just the one
         # currently live - every previously cached GameMap goes with it.
         self.visited_maps = {}

@@ -1,0 +1,13 @@
+id: overworld_unknown_dungeon
+name: Overworld Unknown Dungeon Fixture
+
+map: |
+  #####
+  #@.P#
+  #####
+
+legend:
+  "#": mountain
+  ".": plains
+  "@": player_start
+  "P": { dungeon_entrance: no_such_dungeon }

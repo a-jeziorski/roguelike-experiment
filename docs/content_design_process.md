@@ -9,8 +9,8 @@ authoring new levels or retuning existing ones.
 ## 0. Multiple dungeons
 
 Content is organized as one or more independent *dungeons*, not a single
-global level pool - built this way specifically so a future overworld could
-enumerate and cross between them. Each dungeon is a directory under
+global level pool - built this way specifically so the overworld (below)
+could enumerate and cross between them. Each dungeon is a directory under
 `data/dungeons/`:
 
 ```
@@ -49,6 +49,44 @@ validates that scope, not across dungeons, so two dungeons can both have a
 Shipped dungeons: `forgotten_ruins` (the original run - kept intact, saved
 for later use, not currently the default) and `prison_tower` (the current
 default starting dungeon - `main.py`'s `STARTING_DUNGEON_ID`).
+
+## 0b. The overworld
+
+`data/overworld.lvl` is a single standalone file (not a directory - there is
+exactly one overworld, unlike dungeons) reusing the ordinary `.lvl`
+ASCII+legend format, loaded via `content/loader.py`'s `load_overworld`
+rather than `load_level`. It has its own, smaller tile vocabulary -
+`mountain`/`sea`/`forest`/`road`/`plains`/`town` terrain plus
+`dungeon_entrance` tiles (`{dungeon_entrance: forgotten_ruins}`) - and
+deliberately cannot contain the things a dungeon level can (entities, items,
+doors, stairs): there is no combat or itemization on the overworld, and
+`dungeon_entrance` is the only interactive tile, leading into a dungeon's
+`starting_level` the same way stepping into the game does at a fresh run's
+start. Symmetrically, a dungeon leaves *to* the overworld via a terminal
+`stairs_down` (finishing it normally) or terminal `stairs_up` (retreating
+early, placed near the entrance level's `player_start`) - both just mean
+"leave this dungeon," differing only in flavor text.
+
+Reuses the engine wholesale rather than a parallel system: `GameMap`/
+`Engine`'s fog-of-war (`explored`/`visible`), the scrolling camera, and
+walkable/transparent collision are exactly what a large hand-authored world
+map needs, and "no combat" falls out for free from an entity-less map - the
+turn loop's enemy-AI pass is already a no-op with nothing to iterate.
+Terrain passability lives in `engine/game_map.py`'s `TILE_PASSABILITY`
+table (kind -> walkable/transparent); a kind absent from it defaults to
+ordinary open ground, so most new terrain needs no entry there at all -
+only the exceptions (`mountain`, `sea`, `forest`) do.
+
+Each dungeon (and the overworld) gets at most one live `Engine`, created on
+first visit and cached thereafter in `main.py`'s `active_engines`, so
+leaving a dungeon and returning later - via the overworld or directly -
+resumes it exactly as left (dead monsters, picked-up items, explored
+tiles), the same guarantee `visited_maps` already gives *within* one
+dungeon, just one level up. Arrival is matched automatically on the
+dungeon-to-overworld direction (land on whichever overworld tile's
+`dungeon_entrance` targets the dungeon just left) and needs no matching at
+all on the reverse direction (re-entering a dungeon just resumes wherever
+the player last stood in it).
 
 ## 1. Narrative framing
 

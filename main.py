@@ -10,7 +10,12 @@ from pathlib import Path
 import tcod
 import tcod.event
 
-from content.loader import ContentValidationError, load_catalog, load_dungeon_registry
+from content.loader import (
+    ContentValidationError,
+    load_catalog,
+    load_dungeon_registry,
+    load_overworld,
+)
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
     EscapeAction,
@@ -37,7 +42,9 @@ from engine.render import (
 from engine.targeting import find_nearest_target
 
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
+OVERWORLD_LEVEL_PATH = Path(__file__).resolve().parent / "data" / "overworld.lvl"
 STARTING_DUNGEON_ID = "prison_tower"
+OVERWORLD_KEY = "overworld"
 
 TILE_SIZE = 14
 # The console must be at least as wide as the map viewport (no horizontal HUD
@@ -71,7 +78,7 @@ def dispatch_action(engine: Engine, action) -> bool:
 
     Escape and Restart are handled outside Engine.process_turn on purpose:
     process_turn no-ops once the game is no longer "playing" (so normal
-    actions are ignored after death/win), which would otherwise silently
+    actions are ignored after death), which would otherwise silently
     swallow both quitting and restarting once the run has ended.
     """
     if isinstance(action, EscapeAction):
@@ -204,10 +211,82 @@ def animate_combat_feedback(
     animate_ranged_attacks(console, context, engine)
 
 
+def _match_entrance(overworld_map, from_dungeon_id: str) -> tuple[int, int] | None:
+    """The overworld tile whose dungeon_entrance targets from_dungeon_id, if
+    one exists - where the player should land after leaving that dungeon.
+    Re-derived on every arrival (never cached) since the player can return
+    via a different dungeon than the one they last left through."""
+    for coord, dungeon_id in overworld_map.dungeon_entrances.items():
+        if dungeon_id == from_dungeon_id:
+            return coord
+    return None
+
+
+def resolve_transition(
+    active_key: str,
+    engine: Engine,
+    active_engines: dict[str, Engine],
+    dungeon_registry: dict,
+    overworld_level,
+    catalog,
+) -> tuple[str, Engine]:
+    """After a dispatch, checks the active engine's transition mailbox
+    (Engine.wants_overworld / Engine.pending_dungeon_entry) and performs the
+    cross-Engine player handoff if one is pending, returning whichever
+    (key, Engine) should be active next - unchanged if nothing is pending.
+
+    Gated on game_state == "playing": if the player also died on the same
+    turn they reached a leave-tile (a monster's retaliation after the move
+    that triggered the transition), the death screen for that dungeon takes
+    priority - the transition simply doesn't fire this turn.
+
+    Each dungeon (and the overworld) gets at most one Engine, lazily created
+    on first visit and cached in active_engines thereafter, so leaving and
+    later returning resumes exactly the state that dungeon was left in.
+    """
+    if engine.game_state != "playing":
+        return active_key, engine
+
+    if engine.wants_overworld:
+        player = engine.depart_player()
+        target = active_engines.get(OVERWORLD_KEY)
+        if target is None:
+            game_map, _ = build_game_map(overworld_level, catalog, player=player)
+            player.x, player.y = _match_entrance(game_map, active_key) or overworld_level.player_start
+            target = Engine(game_map, player, overworld_level.name, catalog=catalog, is_overworld=True)
+            active_engines[OVERWORLD_KEY] = target
+        else:
+            position = _match_entrance(target.game_map, active_key) or overworld_level.player_start
+            target.arrive_player(player, position)
+        return OVERWORLD_KEY, target
+
+    if engine.pending_dungeon_entry is not None:
+        dungeon_id = engine.pending_dungeon_entry
+        player = engine.depart_player()
+        target = active_engines.get(dungeon_id)
+        if target is None:
+            dungeon = dungeon_registry[dungeon_id]
+            starting_level = dungeon.levels[dungeon.starting_level]
+            game_map, _ = build_game_map(starting_level, catalog, player=player)
+            target = Engine(
+                game_map, player, starting_level.name,
+                catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+            )
+            active_engines[dungeon_id] = target
+        else:
+            target.arrive_player(player)  # position=None: resume exactly where they left
+        return dungeon_id, target
+
+    return active_key, engine
+
+
 def main() -> int:
     try:
         catalog = load_catalog()
         dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+        overworld_level = load_overworld(
+            OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        )
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
@@ -224,6 +303,8 @@ def main() -> int:
         levels=levels,
         starting_level=starting_level,
     )
+    active_key = STARTING_DUNGEON_ID
+    active_engines: dict[str, Engine] = {active_key: engine}
 
     tileset = load_tileset()
 
@@ -261,11 +342,18 @@ def main() -> int:
                             if target is not None:
                                 dispatch_action(engine, FireAction(*target))
                                 animate_combat_feedback(console, context, engine)
+                                active_key, engine = resolve_transition(
+                                    active_key, engine, active_engines,
+                                    dungeon_registry, overworld_level, catalog,
+                                )
                     continue
 
                 if dispatch_action(engine, action):
                     return 0
                 animate_combat_feedback(console, context, engine)
+                active_key, engine = resolve_transition(
+                    active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
+                )
 
 
 if __name__ == "__main__":

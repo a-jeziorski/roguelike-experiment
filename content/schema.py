@@ -12,7 +12,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-TileType = Literal["wall", "floor", "stairs_down", "stairs_up", "player_start", "door"]
+TileType = Literal[
+    "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
+    "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
+]
 
 Color = tuple[int, int, int]
 
@@ -106,14 +109,20 @@ class LegendEntry(BaseModel):
         on it.
       - {stairs_down: level_02a}: a stairway tile leading to that level id. A bare
         "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
-        wins the game. A level can have multiple differently-symboled stairway
-        tiles leading to different destinations (branching).
-      - {stairs_up: level_01}: a stairway tile leading back to that level id.
-        Unlike stairs_down, stairs_up has no terminal/bare form - it always
-        names a destination level.
+        leaves the dungeon and returns to the overworld. A level can have multiple
+        differently-symboled stairway tiles leading to different destinations
+        (branching).
+      - {stairs_up: level_01}: a stairway tile leading back to that level id. A
+        bare "stairs_up" string (no mapping) is also terminal - like stairs_down,
+        it leaves the dungeon and returns to the overworld (used for a retreat
+        point near a dungeon's entrance, as opposed to stairs_down's usual role
+        completing the dungeon at its far end).
       - {door: rusty_key}: a locked door tile, impassable until the player holds
         an item whose id matches (i.e. a key with that id), which is consumed to
         open it permanently.
+      - {dungeon_entrance: forgotten_ruins}: overworld-only - a tile leading into
+        that dungeon's registry entry (not a level within the current dungeon;
+        see content/loader.py's load_overworld).
     """
 
     tile: TileType
@@ -121,6 +130,7 @@ class LegendEntry(BaseModel):
     item: str | None = None
     next_level: str | None = None
     requires_key: str | None = None
+    dungeon_id: str | None = None
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
@@ -137,6 +147,8 @@ class LegendEntry(BaseModel):
                 return cls(tile="stairs_up", next_level=raw["stairs_up"])
             if "door" in raw:
                 return cls(tile="door", requires_key=raw["door"])
+            if "dungeon_entrance" in raw:
+                return cls(tile="dungeon_entrance", dungeon_id=raw["dungeon_entrance"])
             tile = raw.get("tile", "floor")
             return cls(
                 tile=tile,
@@ -144,6 +156,7 @@ class LegendEntry(BaseModel):
                 item=raw.get("item"),
                 next_level=raw.get("next_level"),
                 requires_key=raw.get("requires_key"),
+                dungeon_id=raw.get("dungeon_id"),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

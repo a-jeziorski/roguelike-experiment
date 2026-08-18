@@ -1,0 +1,13 @@
+id: overworld_ambiguous_entrances
+name: Overworld Ambiguous Entrances Fixture
+
+map: |
+  #######
+  #@.P.P#
+  #######
+
+legend:
+  "#": mountain
+  ".": plains
+  "@": player_start
+  "P": { dungeon_entrance: prison_tower }
