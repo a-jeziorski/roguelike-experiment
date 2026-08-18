@@ -166,6 +166,29 @@ def test_describe_tile_terrain():
     assert describe_tile(game_map, catalog, 1, 1) == ["Stairs leading down."]
 
 
+def test_describe_tile_custom_description_overrides_the_generic_stairs_text():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "stairs_up"
+    game_map.tile_descriptions[(1, 1)] = "The town gate, leading back out onto the road."
+    catalog = load_catalog()
+
+    assert describe_tile(game_map, catalog, 1, 1) == [
+        "The town gate, leading back out onto the road."
+    ]
+
+
+def test_describe_tile_custom_description_overrides_locked_door_text():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "door"
+    game_map.locked_doors[(1, 1)] = "rusty_key"
+    game_map.tile_descriptions[(1, 1)] = "A heavy iron-bound door."
+    catalog = load_catalog()
+
+    assert describe_tile(game_map, catalog, 1, 1) == ["A heavy iron-bound door."]
+
+
 def test_describe_tile_dungeon_entrance_falls_back_to_generic_text_without_inspect_text():
     game_map = make_game_map()
     game_map.explored[1, 1] = True

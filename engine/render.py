@@ -246,7 +246,12 @@ def describe_tile(
         return ["You haven't explored this area."]
 
     kind = game_map.kinds[x, y]
-    if kind == "door":
+    tile_description = game_map.tile_descriptions.get((x, y))
+    if tile_description:
+        # An author-supplied override (a legend entry's `description`) wins
+        # over every kind-specific default below - most specific wins.
+        lines = [tile_description]
+    elif kind == "door":
         key_id = game_map.locked_doors.get((x, y))
         key_name = catalog.items[key_id].name if key_id in catalog.items else key_id
         lines = [f"Locked door. Requires: {key_name}."]

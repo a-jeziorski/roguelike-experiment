@@ -80,6 +80,13 @@ class DungeonEntranceSpawn:
 
 
 @dataclass
+class TileDescriptionSpawn:
+    x: int
+    y: int
+    text: str  # overrides the tile kind's generic look-mode description
+
+
+@dataclass
 class ParsedLevel:
     """A validated level, decoupled from any engine/rendering data structures.
     tiles[y][x] gives the TileType string for that cell. A level may have multiple
@@ -98,6 +105,7 @@ class ParsedLevel:
     stairs: list[StairsSpawn]
     doors: list[DoorSpawn]
     dungeon_entrances: list[DungeonEntranceSpawn]
+    tile_descriptions: list[TileDescriptionSpawn]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -203,6 +211,7 @@ def load_level(
     player_starts: list[tuple[int, int]] = []
     stairs: list[StairsSpawn] = []
     doors: list[DoorSpawn] = []
+    tile_descriptions: list[TileDescriptionSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -213,6 +222,9 @@ def load_level(
                 continue
 
             tile_row.append(entry.tile)
+
+            if entry.description:
+                tile_descriptions.append(TileDescriptionSpawn(x=x, y=y, text=entry.description))
 
             if entry.tile == "player_start":
                 player_starts.append((x, y))
@@ -324,6 +336,7 @@ def load_level(
         stairs=stairs,
         doors=doors,
         dungeon_entrances=[],
+        tile_descriptions=tile_descriptions,
     )
 
 
@@ -351,6 +364,7 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
     tiles: list[list[str]] = []
     player_starts: list[tuple[int, int]] = []
     dungeon_entrances: list[DungeonEntranceSpawn] = []
+    tile_descriptions: list[TileDescriptionSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -361,6 +375,9 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
                 continue
 
             tile_row.append(entry.tile)
+
+            if entry.description:
+                tile_descriptions.append(TileDescriptionSpawn(x=x, y=y, text=entry.description))
 
             if entry.tile == "player_start":
                 player_starts.append((x, y))
@@ -422,6 +439,7 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
         stairs=[],
         doors=[],
         dungeon_entrances=dungeon_entrances,
+        tile_descriptions=tile_descriptions,
     )
 
 

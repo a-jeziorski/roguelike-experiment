@@ -1064,6 +1064,16 @@ def test_build_game_map_populates_dungeon_entrances():
     assert game_map.dungeon_entrances == {(3, 1): "prison_tower"}
 
 
+def test_build_game_map_populates_tile_descriptions():
+    catalog = load_catalog()
+    level = load_overworld(
+        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+    )
+    game_map, _player = build_game_map(level, catalog)
+
+    assert game_map.tile_descriptions == {(3, 1): "A black stone tower."}
+
+
 def test_depart_player_removes_and_caches_and_clears_mailbox():
     catalog = load_catalog()
     levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)

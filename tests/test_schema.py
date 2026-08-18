@@ -99,6 +99,28 @@ def test_legend_entry_from_dungeon_entrance_mapping():
     assert entry.dungeon_id == "forgotten_ruins"
 
 
+def test_legend_entry_description_defaults_none():
+    entry = LegendEntry.from_raw({"stairs_up": "level_01"})
+    assert entry.description is None
+
+
+def test_legend_entry_stairs_up_accepts_custom_description():
+    entry = LegendEntry.from_raw(
+        {"stairs_up": None, "description": "The town gate, leading back out onto the road."}
+    )
+    assert entry.tile == "stairs_up"
+    assert entry.next_level is None  # still terminal
+    assert entry.description == "The town gate, leading back out onto the road."
+
+
+def test_legend_entry_dungeon_entrance_accepts_custom_description():
+    entry = LegendEntry.from_raw(
+        {"dungeon_entrance": "millhaven", "description": "A cluster of thatched roofs."}
+    )
+    assert entry.dungeon_id == "millhaven"
+    assert entry.description == "A cluster of thatched roofs."
+
+
 def test_item_def_is_key_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.is_key is False

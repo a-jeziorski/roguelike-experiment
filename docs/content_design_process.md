@@ -134,13 +134,20 @@ non-combatant.
 
 ## 1. Narrative framing
 
-Settle the throughline **before** drawing any map. The engine only exposes
-two story surfaces to the player: a level's `name` (shown in the HUD) and an
-entity/item's `description` (shown in look mode, `engine/render.py`
-`describe_tile`). Everything narrative has to work through those two fields
-- there's no separate lore/dialogue system, and there shouldn't be one added
-just to tell a story (see `flee_hp_pct` gotcha below for what happens when
-content assumes mechanics the engine doesn't have).
+Settle the throughline **before** drawing any map. The engine exposes three
+story surfaces to the player: a level's `name` (shown in the HUD), an
+entity/item's `description`, and - for any *tile* worth calling out
+specifically (a stairway, a door, a dungeon entrance) - a per-legend-entry
+`description` that overrides that tile kind's generic look-mode text (e.g.
+`{stairs_up: null, description: "The town gate, leading back out onto the
+road."}` instead of the default "Stairs leading up."). All three are shown
+in look mode via `engine/render.py` `describe_tile`; everything narrative
+has to work through these fields - there's no separate lore/dialogue
+system, and there shouldn't be one added just to tell a story (see
+`flee_hp_pct` gotcha below for what happens when content assumes mechanics
+the engine doesn't have). A tile's custom `description`, when set, always
+wins over its kind's default and over a `dungeon_entrance`'s dungeon-level
+`inspect_text` (0b) - most specific wins.
 
 Current arc, as a worked example - one continuous descent through
 progressively older ruins beneath a manor's basement:

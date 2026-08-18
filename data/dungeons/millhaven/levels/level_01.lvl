@@ -22,5 +22,5 @@ legend:
   ",": plains
   ".": road
   "@": player_start
-  "x": stairs_up
+  "x": { stairs_up: null, description: "The town gate, leading back out onto the road." }
   "v": { entity: villager }

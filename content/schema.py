@@ -126,6 +126,12 @@ class LegendEntry(BaseModel):
       - {dungeon_entrance: forgotten_ruins}: overworld-only - a tile leading into
         that dungeon's registry entry (not a level within the current dungeon;
         see content/loader.py's load_overworld).
+
+    Any mapping form (not the bare-string shorthand) may also carry a
+    `description`, shown in look mode instead of the kind's generic default
+    text (e.g. "Stairs leading up.") - useful for a stairway/entrance that
+    deserves its own flavor: {stairs_up: null, description: "The town gate
+    leading out."}.
     """
 
     tile: TileType
@@ -134,24 +140,28 @@ class LegendEntry(BaseModel):
     next_level: str | None = None
     requires_key: str | None = None
     dungeon_id: str | None = None
+    description: str | None = None
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
         if isinstance(raw, str):
             return cls(tile=raw)
         if isinstance(raw, dict):
+            description = raw.get("description")
             if "entity" in raw:
-                return cls(tile="floor", entity=raw["entity"])
+                return cls(tile="floor", entity=raw["entity"], description=description)
             if "item" in raw:
-                return cls(tile="floor", item=raw["item"])
+                return cls(tile="floor", item=raw["item"], description=description)
             if "stairs_down" in raw:
-                return cls(tile="stairs_down", next_level=raw["stairs_down"])
+                return cls(tile="stairs_down", next_level=raw["stairs_down"], description=description)
             if "stairs_up" in raw:
-                return cls(tile="stairs_up", next_level=raw["stairs_up"])
+                return cls(tile="stairs_up", next_level=raw["stairs_up"], description=description)
             if "door" in raw:
-                return cls(tile="door", requires_key=raw["door"])
+                return cls(tile="door", requires_key=raw["door"], description=description)
             if "dungeon_entrance" in raw:
-                return cls(tile="dungeon_entrance", dungeon_id=raw["dungeon_entrance"])
+                return cls(
+                    tile="dungeon_entrance", dungeon_id=raw["dungeon_entrance"], description=description
+                )
             tile = raw.get("tile", "floor")
             return cls(
                 tile=tile,
@@ -160,6 +170,7 @@ class LegendEntry(BaseModel):
                 next_level=raw.get("next_level"),
                 requires_key=raw.get("requires_key"),
                 dungeon_id=raw.get("dungeon_id"),
+                description=description,
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

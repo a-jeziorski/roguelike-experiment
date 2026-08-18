@@ -280,6 +280,19 @@ def test_millhaven_level_01_content():
     assert level.stairs[0].next_level is None  # terminal - leaves to the overworld
     assert not any(s.kind == "stairs_down" for s in level.stairs)
 
+    assert len(level.tile_descriptions) == 1
+    exit_stairs_x, exit_stairs_y = level.stairs[0].x, level.stairs[0].y
+    desc = next(
+        d for d in level.tile_descriptions if (d.x, d.y) == (exit_stairs_x, exit_stairs_y)
+    )
+    assert desc.text == "The town gate, leading back out onto the road."
+
+
+def test_load_level_collects_custom_tile_descriptions():
+    catalog = load_catalog()
+    level = load_level(FIXTURES_DIR / "only_stairs_up.lvl", catalog, require_stairs_down=False)
+    assert level.tile_descriptions == []  # no legend entry sets description there
+
 
 def test_load_dungeon_registry_finds_all_shipped_dungeons():
     catalog = load_catalog()

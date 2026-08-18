@@ -52,6 +52,10 @@ class GameMap:
         self.locked_doors: dict[tuple[int, int], str] = {}
         # Overworld-only: coordinate -> dungeon registry id to enter.
         self.dungeon_entrances: dict[tuple[int, int], str] = {}
+        # Coordinate -> author-supplied look-mode text overriding the tile
+        # kind's generic default (e.g. "Stairs leading up.") - optional, only
+        # present where a legend entry set `description`.
+        self.tile_descriptions: dict[tuple[int, int], str] = {}
         self.entities: list[Entity] = []
 
     def in_bounds(self, x: int, y: int) -> bool:
@@ -110,6 +114,9 @@ def build_game_map(
 
     for entrance_spawn in level.dungeon_entrances:
         game_map.dungeon_entrances[(entrance_spawn.x, entrance_spawn.y)] = entrance_spawn.dungeon_id
+
+    for desc_spawn in level.tile_descriptions:
+        game_map.tile_descriptions[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
 
     for spawn in level.entity_spawns:
         edef = spawn.entity
