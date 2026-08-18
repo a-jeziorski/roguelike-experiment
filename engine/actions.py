@@ -126,7 +126,8 @@ class MovementAction(Action):
             return
         entity.x, entity.y = dest_x, dest_y
         if entity is engine.player and (dest_x, dest_y) in engine.game_map.stairs:
-            engine.on_player_reach_stairs(engine.game_map.stairs[(dest_x, dest_y)])
+            kind = engine.game_map.kinds[dest_x, dest_y]
+            engine.on_player_reach_stairs(engine.game_map.stairs[(dest_x, dest_y)], kind)
 
 
 class MeleeAction(Action):

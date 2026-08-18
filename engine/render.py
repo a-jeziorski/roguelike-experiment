@@ -39,6 +39,7 @@ TILE_VISUALS = {
     "wall": {"glyph": "#", "dark": (35, 35, 55), "light": (100, 100, 130)},
     "floor": {"glyph": ".", "dark": (25, 25, 35), "light": (75, 75, 95)},
     "stairs_down": {"glyph": ">", "dark": (65, 45, 15), "light": (210, 160, 60)},
+    "stairs_up": {"glyph": "<", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "door": {"glyph": "+", "dark": (70, 45, 15), "light": (170, 110, 40)},
 }
 
@@ -46,6 +47,7 @@ TILE_DESCRIPTIONS = {
     "wall": "Wall.",
     "floor": "Bare floor.",
     "stairs_down": "Stairs leading down.",
+    "stairs_up": "Stairs leading up.",
 }
 
 HUD_FG = (220, 220, 220)

@@ -1,0 +1,15 @@
+id: ambiguous_return_stairs
+name: Ambiguous Return Stairs Fixture
+
+map: |
+  #####
+  #@.u#
+  #.x.#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "u": { stairs_up: level_01 }
+  "x": { stairs_down: level_01 }

@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-TileType = Literal["wall", "floor", "stairs_down", "player_start", "door"]
+TileType = Literal["wall", "floor", "stairs_down", "stairs_up", "player_start", "door"]
 
 Color = tuple[int, int, int]
 
@@ -108,6 +108,9 @@ class LegendEntry(BaseModel):
         "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
         wins the game. A level can have multiple differently-symboled stairway
         tiles leading to different destinations (branching).
+      - {stairs_up: level_01}: a stairway tile leading back to that level id.
+        Unlike stairs_down, stairs_up has no terminal/bare form - it always
+        names a destination level.
       - {door: rusty_key}: a locked door tile, impassable until the player holds
         an item whose id matches (i.e. a key with that id), which is consumed to
         open it permanently.
@@ -130,6 +133,8 @@ class LegendEntry(BaseModel):
                 return cls(tile="floor", item=raw["item"])
             if "stairs_down" in raw:
                 return cls(tile="stairs_down", next_level=raw["stairs_down"])
+            if "stairs_up" in raw:
+                return cls(tile="stairs_up", next_level=raw["stairs_up"])
             if "door" in raw:
                 return cls(tile="door", requires_key=raw["door"])
             tile = raw.get("tile", "floor")

@@ -75,6 +75,12 @@ def test_legend_entry_from_item_mapping():
     assert entry.item == "healing_potion"
 
 
+def test_legend_entry_from_stairs_up_mapping():
+    entry = LegendEntry.from_raw({"stairs_up": "level_01"})
+    assert entry.tile == "stairs_up"
+    assert entry.next_level == "level_01"
+
+
 def test_legend_entry_from_door_mapping():
     entry = LegendEntry.from_raw({"door": "rusty_key"})
     assert entry.tile == "door"

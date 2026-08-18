@@ -36,6 +36,7 @@ TILE_GLYPHS = {
     "wall": "#",
     "floor": ".",
     "stairs_down": ">",
+    "stairs_up": "<",
     "player_start": "@",
     "door": "+",
 }
@@ -71,7 +72,8 @@ def summarize(level) -> str:
     ]
     for stairs in level.stairs:
         destination = stairs.next_level if stairs.next_level is not None else "WIN (terminal)"
-        lines.append(f"  ({stairs.x}, {stairs.y}) -> {destination}")
+        direction = "up" if stairs.kind == "stairs_up" else "down"
+        lines.append(f"  ({stairs.x}, {stairs.y}) [{direction}] -> {destination}")
 
     if level.doors:
         lines.append("doors:")

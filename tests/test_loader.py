@@ -95,6 +95,24 @@ def test_dangling_stairs_reference_ignored_without_known_ids():
     assert level.stairs[0].next_level == "level_nonexistent"
 
 
+def test_stairs_up_without_destination_is_rejected():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="stairs_up must specify a destination"):
+        load_level(FIXTURES_DIR / "stairs_up_no_destination.lvl", catalog)
+
+
+def test_level_with_only_stairs_up_still_requires_stairs_down():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="at least one stairs_down"):
+        load_level(FIXTURES_DIR / "only_stairs_up.lvl", catalog)
+
+
+def test_two_stairways_to_the_same_level_is_rejected_as_ambiguous():
+    catalog = load_catalog()
+    with pytest.raises(ContentValidationError, match="ambiguous which one is the return path"):
+        load_level(FIXTURES_DIR / "ambiguous_return_stairs.lvl", catalog)
+
+
 def test_load_levels_loads_and_links_all_six_forgotten_ruins_levels():
     catalog = load_catalog()
     levels = load_levels(FORGOTTEN_RUINS_LEVELS_DIR, catalog)
@@ -223,6 +241,7 @@ def test_prison_tower_chain_links_all_levels():
     assert set(levels) == {"level_01", "level_01_large", "level_02", "level_03", "level_04"}
     assert [s.next_level for s in levels["level_01"].stairs] == ["level_01_large", "level_02"]
     assert [s.next_level for s in levels["level_01_large"].stairs] == ["level_02"]
-    assert [s.next_level for s in levels["level_02"].stairs] == ["level_03"]
+    # level_02 also has a stairs_up back to level_01 (the return-trip example).
+    assert [s.next_level for s in levels["level_02"].stairs] == ["level_01", "level_03"]
     assert [s.next_level for s in levels["level_03"].stairs] == ["level_04"]
     assert [s.next_level for s in levels["level_04"].stairs] == [None]

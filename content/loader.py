@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import ValidationError
@@ -56,7 +57,10 @@ class ItemSpawn:
 class StairsSpawn:
     x: int
     y: int
-    next_level: str | None  # None = terminal stairway (reaching it wins the game)
+    # None = terminal stairway (reaching it wins the game) - stairs_down only,
+    # stairs_up always names a real destination level.
+    next_level: str | None
+    kind: Literal["stairs_down", "stairs_up"]
 
 
 @dataclass
@@ -185,7 +189,24 @@ def load_level(
                             f"legend symbol '{symbol}' stairs_down references "
                             f"unknown level '{entry.next_level}'"
                         )
-                stairs.append(StairsSpawn(x=x, y=y, next_level=entry.next_level))
+                stairs.append(
+                    StairsSpawn(x=x, y=y, next_level=entry.next_level, kind="stairs_down")
+                )
+
+            if entry.tile == "stairs_up":
+                if entry.next_level is None:
+                    errors.append(
+                        f"legend symbol '{symbol}' stairs_up must specify a destination "
+                        "level (a terminal stairs_up has no meaning)"
+                    )
+                elif known_level_ids is not None and entry.next_level not in known_level_ids:
+                    errors.append(
+                        f"legend symbol '{symbol}' stairs_up references "
+                        f"unknown level '{entry.next_level}'"
+                    )
+                stairs.append(
+                    StairsSpawn(x=x, y=y, next_level=entry.next_level, kind="stairs_up")
+                )
 
             if entry.tile == "door":
                 key_item = catalog.items.get(entry.requires_key)
@@ -230,8 +251,20 @@ def load_level(
             f"map must contain exactly one player_start tile, found {len(player_starts)}"
         )
 
-    if not stairs:
+    if not any(s.kind == "stairs_down" for s in stairs):
         errors.append("map must contain at least one stairs_down tile, found 0")
+
+    next_level_targets: dict[str, list[tuple[int, int]]] = {}
+    for s in stairs:
+        if s.next_level is not None:
+            next_level_targets.setdefault(s.next_level, []).append((s.x, s.y))
+    for target_id, coords in next_level_targets.items():
+        if len(coords) > 1:
+            coords_str = " and ".join(f"({x}, {y})" for x, y in coords)
+            errors.append(
+                f"multiple stairways target level '{target_id}' at {coords_str} - "
+                "ambiguous which one is the return path when arriving from that level"
+            )
 
     if errors:
         raise ContentValidationError(str(path), errors)

@@ -1,0 +1,15 @@
+id: stairs_up_no_destination
+name: Stairs Up No Destination Fixture
+
+map: |
+  #####
+  #@.x#
+  #.u.#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "x": stairs_down
+  "u": stairs_up

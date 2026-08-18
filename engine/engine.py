@@ -52,6 +52,17 @@ class Engine:
         # The level a fresh run begins at, kept so restart() can rebuild from
         # scratch; only required if restarting is supported for this Engine.
         self.starting_level = starting_level
+        # Which key of self.levels self.game_map currently is, so a stairway
+        # can look up "what level did the player just come from" (for
+        # arrival matching) and so on_player_reach_stairs knows where to
+        # file the outgoing map in the cache below.
+        self.current_level_id = starting_level.id if starting_level is not None else None
+        # GameMaps for every level the player has already visited, keyed by
+        # level id. Reusing the *same* GameMap object on a return visit -
+        # instead of rebuilding one from the static ParsedLevel - is what
+        # makes dead monsters stay dead, picked-up items stay gone, unlocked
+        # doors stay unlocked, and explored tiles stay explored.
+        self.visited_maps: dict[str, GameMap] = {}
         # (from_x, from_y, to_x, to_y) for every ranged attack, and (x, y) for
         # every melee hit, resolved during the last process_turn() call -
         # combat.py appends to these, main.py drains them to drive impact
@@ -60,6 +71,8 @@ class Engine:
         # here instead of forcing Engine to know about rendering.
         self.ranged_attack_events: list[tuple[int, int, int, int]] = []
         self.melee_attack_events: list[tuple[int, int]] = []
+        if self.current_level_id is not None:
+            self.visited_maps[self.current_level_id] = self.game_map
 
         self.game_map.update_fov((player.x, player.y))
         self.message_log.add(f"You enter {level_name}.")
@@ -73,16 +86,44 @@ class Engine:
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
 
-    def on_player_reach_stairs(self, next_level_id: str | None) -> None:
+    def _arrival_position(self, level: "ParsedLevel", from_level_id: str | None) -> tuple[int, int]:
+        """Where the player lands on `level`: the stairway leading back to
+        from_level_id if one exists, else the level's player_start - also
+        the fallback used unconditionally today, since no level yet defines
+        a stairs_up (so every existing dungeon keeps behaving exactly as
+        before this method existed)."""
+        if from_level_id is not None:
+            for stairs in level.stairs:
+                if stairs.next_level == from_level_id:
+                    return (stairs.x, stairs.y)
+        return level.player_start
+
+    def on_player_reach_stairs(self, next_level_id: str | None, kind: str = "stairs_down") -> None:
         if next_level_id is None:
             self.message_log.add("You ascend the stairs and escape the dungeon. You win!")
             self.game_state = "won"
             return
 
+        if self.current_level_id is not None:
+            self.game_map.entities.remove(self.player)
+            self.visited_maps[self.current_level_id] = self.game_map
+
         next_level = self.levels[next_level_id]
-        self.game_map, self.player = build_game_map(next_level, self.catalog, player=self.player)
+        cached_map = self.visited_maps.get(next_level_id)
+        arrival = self._arrival_position(next_level, self.current_level_id)
+
+        if cached_map is not None:
+            self.game_map = cached_map
+            self.player.x, self.player.y = arrival
+            self.game_map.entities.append(self.player)
+        else:
+            self.game_map, self.player = build_game_map(next_level, self.catalog, player=self.player)
+            self.player.x, self.player.y = arrival
+
+        self.current_level_id = next_level_id
         self.level_name = next_level.name
-        self.message_log.add(f"You descend into {next_level.name}.")
+        verb = "ascend to" if kind == "stairs_up" else "descend into"
+        self.message_log.add(f"You {verb} {next_level.name}.")
         self.game_map.update_fov((self.player.x, self.player.y))
 
     def restart(self) -> None:
@@ -95,6 +136,11 @@ class Engine:
         self.message_log = MessageLog()
         self.ranged_attack_events = []
         self.melee_attack_events = []
+        # A fresh run discards all progress on every level, not just the one
+        # currently live - every previously cached GameMap goes with it.
+        self.visited_maps = {}
+        self.current_level_id = self.starting_level.id
+        self.visited_maps[self.current_level_id] = self.game_map
         self.game_map.update_fov((self.player.x, self.player.y))
         self.message_log.add(f"You enter {self.level_name}.")
 

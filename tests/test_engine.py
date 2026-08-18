@@ -708,6 +708,103 @@ def test_full_prison_tower_chain_is_completable():
     assert engine.game_state == "won"
 
 
+def test_ascending_returns_to_the_same_cached_map_with_state_preserved():
+    """The core promise of this feature: a revisited level is the *same*
+    GameMap object, not a respawned copy - so a dead monster stays dead and
+    a picked-up item stays gone across the round trip."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+    original_level_01_map = engine.game_map
+
+    guard = next(e for e in engine.game_map.entities if e.name == "Guard")
+    engine.on_entity_death(guard)
+    assert guard not in engine.game_map.entities
+
+    dagger = next(e for e in engine.game_map.entities if e.name == "Rusty Dagger")
+    engine.game_map.entities.remove(dagger)
+    player.inventory.append(dagger)
+
+    engine.on_player_reach_stairs("level_02")  # down through level_01's ">"
+    assert engine.game_map is not original_level_01_map
+    assert engine.level_name == "The Guard Barracks"
+
+    engine.on_player_reach_stairs("level_01", "stairs_up")  # back up via level_02's "<"
+
+    assert engine.game_map is original_level_01_map  # same object - not rebuilt
+    assert (player.x, player.y) == (20, 12)  # landed on level_01's ">" tile, not player_start
+    assert guard not in engine.game_map.entities  # still dead
+    assert dagger in player.inventory  # still picked up, not respawned
+    assert engine.message_log.messages[-1] == "You ascend to The Solitary Cell."
+
+
+def test_departing_a_level_removes_the_player_from_its_entity_list():
+    """Regression test: build_game_map re-appends the player into the new
+    map but never removed them from the old one - harmless while old maps
+    were always discarded, but would leave a stale duplicate @ behind now
+    that maps get cached and reused."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+    old_map = engine.game_map
+
+    engine.on_player_reach_stairs("level_02")
+
+    assert player not in old_map.entities
+    assert player in engine.game_map.entities
+
+
+def test_arrival_falls_back_to_player_start_when_no_return_stairway():
+    """forgotten_ruins defines no stairs_up anywhere, so every hop there
+    must keep landing at player_start exactly as it did before this
+    feature existed."""
+    catalog = load_catalog()
+    levels = load_levels(LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+
+    engine.on_player_reach_stairs("level_02a")
+
+    assert (player.x, player.y) == levels["level_02a"].player_start
+
+
+def test_restart_clears_the_visited_level_cache():
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+
+    guard = next(e for e in engine.game_map.entities if e.name == "Guard")
+    engine.on_entity_death(guard)
+    engine.on_player_reach_stairs("level_02")
+    engine.on_player_reach_stairs("level_01", "stairs_up")
+    assert guard not in engine.game_map.entities  # confirmed cached (still dead)
+
+    engine.restart()
+    engine.on_player_reach_stairs("level_02")
+    engine.on_player_reach_stairs("level_01", "stairs_up")
+
+    assert any(e.name == "Guard" for e in engine.game_map.entities)  # back - fresh map
+
+
 def test_level_01_branches_to_two_different_levels():
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)

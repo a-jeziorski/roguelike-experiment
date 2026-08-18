@@ -1,0 +1,13 @@
+id: only_stairs_up
+name: Only Stairs Up Fixture
+
+map: |
+  #####
+  #@.u#
+  #####
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  "u": { stairs_up: level_01 }

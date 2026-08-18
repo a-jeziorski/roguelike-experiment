@@ -194,6 +194,27 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
   exactly as before: the camera never scrolls for a map no bigger than the
   viewport.)
 
+- **Stairs can now go both ways** (`content/schema.py`/`content/loader.py`
+  `stairs_up`, arrival matching in `engine/engine.py`
+  `Engine._arrival_position`): a level can place a `{stairs_up: level_id}`
+  tile alongside its `stairs_down` ones. Revisiting a level via either
+  direction is the *same* `GameMap` (dead monsters stay dead, picked-up
+  items stay gone, unlocked doors stay unlocked, explored tiles stay
+  explored) - not a fresh respawn, so a `stairs_up` genuinely means "go
+  back," not "reset." Arrival position is matched automatically: entering a
+  level from level X lands the player on whichever of that level's
+  stairways (up or down) targets X back, not on `player_start` - so a
+  level only needs *one* stairway per neighboring level, authored in
+  whichever direction fits the fiction (the loader rejects two stairways
+  to the same destination as ambiguous). `player_start` still matters for
+  the dungeon's own starting level and as the fallback when no return
+  stairway exists. Not every `stairs_down` needs a matching `stairs_up` -
+  a deliberate one-way level is still a legitimate choice - but when a
+  return trip makes narrative sense (backtracking to a hub, escaping back
+  the way you came), it's now cheap: one legend entry, no other content
+  changes. First used in `prison_tower/level_02`, which added a
+  `stairs_up` back to `level_01`.
+
 ## 4. Authoring checklist
 
 1. **Layout**: reuse proven row geometry from an existing
