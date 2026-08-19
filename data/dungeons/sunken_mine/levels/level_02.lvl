@@ -20,7 +20,7 @@ map: |
 
 legend:
   "#": wall
-  "M": mountain
+  "M": { tile: mountain, description: "Buckled rock and timber, choking the gallery from floor to ceiling." }
   ".": floor
   "@": player_start
   "<": { stairs_up: level_01 }

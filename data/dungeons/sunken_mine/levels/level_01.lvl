@@ -18,7 +18,7 @@ map: |
 
 legend:
   "#": wall
-  "M": mountain
+  "M": { tile: mountain, description: "A wall of fallen rock, packed too tight to dig through by hand." }
   ".": floor
   "@": player_start
   "r": { entity: rat }

@@ -18,7 +18,7 @@ map: |
 
 legend:
   "#": wall
-  "M": mountain
+  "M": { tile: mountain, description: "A total cave-in, floor to ceiling - whatever this vein used to connect to, it doesn't anymore." }
   ".": floor
   "@": player_start
   "r": { entity: rat }

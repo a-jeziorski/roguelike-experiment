@@ -23,7 +23,7 @@ legend:
   ".": floor
   "@": player_start
   "x": stairs_up
-  "~": sea
+  "~": { tile: sea, description: "Standing water, deep enough to swallow the old floor. Better to go around than through." }
   ">": { stairs_down: level_02 }
   "D": { door: rusty_key }
   "d": { entity: drowned_wretch }

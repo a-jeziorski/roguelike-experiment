@@ -20,7 +20,7 @@ legend:
   "@": player_start
   "<": { stairs_up: level_01 }
   ">": stairs_down
-  "~": sea
+  "~": { tile: sea, description: "Black water fills the cellar wall to wall - deep enough that the floor beneath it is only a guess." }
   "d": { entity: drowned_wretch }
   "!": { item: healing_potion }
   "]": { item: bone_plate }
