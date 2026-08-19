@@ -195,6 +195,18 @@ the engine doesn't have). A tile's custom `description`, when set, always
 wins over its kind's default and over a `dungeon_entrance`'s dungeon-level
 `inspect_text` (0b) - most specific wins.
 
+**For a walkable point of interest, use `tile: landmark`, never
+`tile: floor` (or `road`/`plains`/etc.) with a `description` bolted on.**
+A `floor`-kind tile with a custom description still *renders* identically
+to every other floor tile - nothing tells the player to stop and look, so
+the flavor is invisible until they happen to step on that exact cell.
+`landmark` (`engine/render.py` `TILE_VISUALS`) renders with its own
+apostrophe glyph and a muted color distinct from both plain floor and the
+saturated entity/item glyphs, specifically so a point of interest is
+visible on the map before it's read. First added after playtesting the
+Sunken Mine's bible-driven set pieces (the weighing counter, the ledger)
+turned out invisible under `tile: floor`.
+
 Current arc, as a worked example - one continuous descent through
 progressively older ruins beneath a manor's basement:
 
