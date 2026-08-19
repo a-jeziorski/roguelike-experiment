@@ -17,6 +17,7 @@ from engine.entity import (
 )
 from engine.game_map import GameMap, build_game_map
 from engine.render import (
+    TILE_VISUALS,
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
     compute_camera,
@@ -176,6 +177,32 @@ def test_describe_tile_custom_description_overrides_the_generic_stairs_text():
     assert describe_tile(game_map, catalog, 1, 1) == [
         "The town gate, leading back out onto the road."
     ]
+
+
+def test_describe_tile_landmark_generic_default():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "landmark"
+    catalog = load_catalog()
+
+    assert describe_tile(game_map, catalog, 1, 1) == ["Something here catches your eye."]
+
+
+def test_describe_tile_landmark_custom_description():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.kinds[1, 1] = "landmark"
+    game_map.tile_descriptions[(1, 1)] = "A chalk tally board, its hatch-marks stopping mid-quota."
+    catalog = load_catalog()
+
+    assert describe_tile(game_map, catalog, 1, 1) == [
+        "A chalk tally board, its hatch-marks stopping mid-quota."
+    ]
+
+
+def test_landmark_has_a_distinct_glyph_from_floor():
+    assert TILE_VISUALS["landmark"]["glyph"] != TILE_VISUALS["floor"]["glyph"]
+    assert TILE_VISUALS["landmark"]["glyph"] not in {"@", "#"}
 
 
 def test_describe_tile_custom_description_overrides_locked_door_text():

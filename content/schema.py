@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 TileType = Literal[
     "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
+    "landmark",
 ]
 
 Color = tuple[int, int, int]
@@ -132,6 +133,17 @@ class LegendEntry(BaseModel):
     text (e.g. "Stairs leading up.") - useful for a stairway/entrance that
     deserves its own flavor: {stairs_up: null, description: "The town gate
     leading out."}.
+
+    For a walkable point of interest that isn't a stairway/door/entrance -
+    a piece of furniture, a landmark, anything meant to be noticed and read
+    rather than walked past - use `tile: landmark` with a `description`
+    rather than `tile: floor` (or `road`/`plains`/etc.) with one: a floor-
+    kind tile with a custom description still *renders* as plain floor,
+    identical to every other floor tile, so a player has no visual reason
+    to stop and look. `landmark` renders with its own distinct glyph (see
+    `engine/render.py` TILE_VISUALS) specifically so points of interest
+    don't blend into the terrain around them: {tile: landmark, description:
+    "A chalk tally board, its hatch-marks stopping mid-quota."}.
     """
 
     tile: TileType

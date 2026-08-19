@@ -41,6 +41,10 @@ TILE_VISUALS = {
     "stairs_down": {"glyph": ">", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "stairs_up": {"glyph": "<", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "door": {"glyph": "+", "dark": (70, 45, 15), "light": (170, 110, 40)},
+    # A walkable point of interest (furniture, a landmark) - distinct from
+    # both plain floor and from entity/item glyphs so it reads as "look
+    # closer here" without being mistaken for something to fight or pick up.
+    "landmark": {"glyph": "'", "dark": (95, 80, 55), "light": (200, 175, 130)},
     # Overworld terrain.
     "mountain": {"glyph": "^", "dark": (70, 65, 60), "light": (150, 140, 130)},
     "sea": {"glyph": "~", "dark": (15, 40, 80), "light": (60, 110, 200)},
@@ -63,6 +67,7 @@ TILE_DESCRIPTIONS = {
     "plains": "Open grassland.",
     "town": "A small settlement.",
     "dungeon_entrance": "An entrance leading underground.",
+    "landmark": "Something here catches your eye.",
 }
 
 HUD_FG = (220, 220, 220)

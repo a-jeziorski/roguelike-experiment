@@ -30,7 +30,7 @@ legend:
   "}": { item: hunting_bow }
   "|": { item: arrows }
   "D": { door: rusty_key }
-  "e": { tile: floor, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word." }
+  "e": { tile: landmark, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word." }
   ")": { item: iron_sword }
   "~": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
   "!": { item: healing_potion }

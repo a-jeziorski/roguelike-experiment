@@ -47,6 +47,7 @@ TILE_GLYPHS = {
     "road": ".",
     "plains": ",",
     "town": "n",
+    "landmark": "'",
 }
 
 
