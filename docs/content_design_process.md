@@ -160,6 +160,24 @@ skittish is "cowardly," villager is "never a combatant in the first
 place." Don't reach for skittish when what's wanted is a true
 non-combatant.
 
+## 0d. Per-dungeon bibles (trial, `docs/dungeon_bibles/`)
+
+Feedback on the seven-subagent batch (see [[sundered_realm_worldgen_pass_one]]
+memory) was that the results felt mechanically correct but thin - most
+rooms read as "a room with N monsters" rather than as a specific place.
+The working theory: `docs/world_history.md` is realm-level (which era,
+which faction) and this document is mechanical (balance math, geometry
+rules) - neither one forces anyone, agent or human, to decide what's
+*actually in a given room* before drawing it. `docs/dungeon_bibles/`
+holds an experimental middle layer: one short document per dungeon,
+written like a tabletop GM's site key, naming 3-5 specific set pieces
+(what's physically there, why, what it's meant to make the player feel)
+before any ASCII is drawn. `sunken_mine.md` is the first one, and the
+level content in `data/dungeons/sunken_mine/` was rewritten directly
+from it. Not yet proven out across a full batch - if it keeps paying off
+on the next dungeon revisited this way, promote this section out of
+"trial" and fold a bible-writing step into the authoring checklist below.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes three

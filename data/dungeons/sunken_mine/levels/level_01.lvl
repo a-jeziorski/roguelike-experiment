@@ -1,32 +1,33 @@
 id: level_01
-name: The Upper Shaft
+name: The Weighhouse Shaft
 
 map: |
-  #######################
-  #@#...........#r....#/#
-  #.#.#.#M#####.#M#.#.#.#
-  #.#r#.......M.....#...#
-  #.#####.###.#########.#
-  #.....#!#...#.........#
-  #####.###.###.##M######
-  #..r#....g..#.#c......#
-  #.#########.#.#######.#
-  #.#.....D[#...#......g#
-  #.#.###.###.###.#####.#
-  #....-#.........#>....#
-  #######################
+  ###########################
+  #@...####............######
+  #......../.....y.....######
+  #....####..##.###.#..######
+  #########............######
+  #########......b.....######
+  #########............######
+  ###############.###########
+  ###############.########.[#
+  ##########.r...........D..#
+  ##########.#######...g...##
+  ##########.#######.###.####
+  ##########.g.......-##.####
+  ###################.r.>####
+  ###########################
 
 legend:
   "#": wall
-  "M": { tile: mountain, description: "A wall of fallen rock, packed too tight to dig through by hand." }
   ".": floor
   "@": player_start
+  "/": { item: rusty_dagger }
+  "y": { tile: floor, description: "A stone weighing-counter, its scale pan tipped at an angle. A scatter of undersized stones still sits in it - a shortchanged cart, or a thief caught mid-count. Whichever it was, nobody ever came back to sort it out." }
+  "b": { tile: floor, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since." }
   "r": { entity: rat }
   "g": { entity: goblin }
-  "/": { item: rusty_dagger }
-  "!": { item: healing_potion }
   "-": { item: rusty_key }
-  "[": { item: leather_armor }
   "D": { door: rusty_key }
-  "c": { tile: floor, description: "A side-crawl chokes off in a wall of loose shale. No way through here, not without a pick and a week to spare." }
+  "[": { item: leather_armor }
   ">": { stairs_down: level_02 }

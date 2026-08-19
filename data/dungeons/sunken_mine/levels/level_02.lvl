@@ -1,37 +1,36 @@
 id: level_02
-name: The Buckled Gallery
+name: The Foreman's Gallery
 
 map: |
-  ###########################
-  #<@.#.......#.............#
-  ###.#.#.###.#.#######.###.#
-  #...#.#.#rM.#g.....-M...#!#
-  #.###.#.#.#.#D####M##.#.###
-  #.....#.#.#.#)#.....#.#...#
-  #.#.#M#.#.#.###.###.#.###.#
-  #.#r#...#.#...#.#c#.M...#.#
-  #.###.###.###.#.#.#.###.#.#
-  #.....#..g|}#.#.#.#.#....r#
-  #######.#M###.#.#.#.#.###.#
-  #...#..g....#...#.#.#.#...#
-  #.#.#.#####.#####.#.#.#.###
-  #.#......>#...........#..d#
-  ###########################
+  #############################
+  #<@..########################
+  #....########################
+  ####.########################
+  ####.########################
+  ##..r........################
+  ##........g.|################
+  ##.######....}....###########
+  ##.######.####....######..>.#
+  ##.g..-...######..~~~~~~....#
+  ###D############..~~~~~~.####
+  ##.e..##########..~~~~~~.####
+  ##..).##########......g..####
+  ################!........####
+  #############################
 
 legend:
   "#": wall
-  "M": { tile: mountain, description: "Buckled rock and timber, choking the gallery from floor to ceiling." }
   ".": floor
   "@": player_start
   "<": { stairs_up: level_01 }
   ">": { stairs_down: level_03 }
-  "D": { door: rusty_key }
-  "g": { entity: goblin }
   "r": { entity: rat }
-  ")": { item: iron_sword }
+  "g": { entity: goblin }
   "-": { item: rusty_key }
-  "!": { item: healing_potion }
   "}": { item: hunting_bow }
   "|": { item: arrows }
-  "c": { tile: floor, description: "The floor buckled here when the ceiling gave. Whatever the tunnel used to reach, it's rubble now." }
-  "d": { tile: floor, description: "A dead-end cut, the rock at its far end slumped into a solid wall. Water beads down the stone but pools nowhere." }
+  "D": { door: rusty_key }
+  "e": { tile: floor, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word." }
+  ")": { item: iron_sword }
+  "~": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
+  "!": { item: healing_potion }

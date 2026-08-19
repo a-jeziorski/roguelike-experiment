@@ -1,30 +1,34 @@
 id: level_03
-name: The Collapsed Vein
+name: The Last Vein
 
 map: |
-  #####################
-  #@#r.g..#!....#..g..#
-  #.M##.#.###.M.#.#.#.#
-  #.#...#.....#.#|#.#c#
-  #.#.##M###M.M.###.###
-  #.#.Ms..#...#...#...#
-  #.#.###.#.#.###.#M#.#
-  #...#...#.#.....#..>#
-  #####.##M.#######.#.#
-  #..r#g..#.........#.#
-  #.###.#.M##########.#
-  #.....#.............#
-  #####################
+  #########################
+  #<@.#####################
+  #..!#####################
+  ###.#####################
+  ###.#####################
+  ###.#############.MMMMM.#
+  #............####...p...#
+  #..r.....g...####.......#
+  #.....n........|....s...#
+  #............####.......#
+  #...g.....r..####.......#
+  #............####..>....#
+  #################.......#
+  #########################
+  #########################
 
 legend:
   "#": wall
-  "M": { tile: mountain, description: "A total cave-in, floor to ceiling - whatever this vein used to connect to, it doesn't anymore." }
   ".": floor
   "@": player_start
+  "<": { stairs_up: level_02 }
+  ">": stairs_down
+  "!": { item: healing_potion }
   "r": { entity: rat }
   "g": { entity: goblin }
   "s": { entity: skeleton }
-  "!": { item: healing_potion }
+  "n": { tile: floor, description: "A nest built from things that used to belong to someone else - gnawed timber, a stolen glove, a coil of rope chewed to fiber. Rats first, by the look of it. Whatever moved in after never bothered clearing them out." }
   "|": { item: arrows }
-  "c": { tile: floor, description: "The vein plays out in a wall of shattered stone - whatever ore this tunnel was chasing, it isn't here anymore." }
-  ">": stairs_down
+  "M": { tile: mountain, description: "The rock face the mine was cutting toward, sealed by a fall that was never cleared. This is where the last shift stopped - not by choice." }
+  "p": { tile: floor, description: "A pick, still lodged in the rock at chest height, exactly where it was swung and left." }
