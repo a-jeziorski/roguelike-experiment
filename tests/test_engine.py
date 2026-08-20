@@ -19,7 +19,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
-from engine.quest import SEALED_MESSAGE_ID, Quest, QuestLog, create_starting_quest_log
+from engine.quest import GOBLIN_WARNING_ID, Quest, QuestLog, create_starting_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -1434,11 +1434,11 @@ def test_restart_resets_the_shared_quest_log():
         game_map, player, starting_level.name,
         catalog=catalog, levels=levels, starting_level=starting_level, quest_log=quest_log,
     )
-    quest_log.quests[SEALED_MESSAGE_ID].status = "failed"
+    quest_log.quests[GOBLIN_WARNING_ID].status = "failed"
 
     engine.restart()
 
-    assert quest_log.quests[SEALED_MESSAGE_ID].status == "active"
+    assert quest_log.quests[GOBLIN_WARNING_ID].status == "active"
 
 
 def test_shared_quest_log_object_is_visible_across_engines():
@@ -1460,7 +1460,7 @@ def test_shared_quest_log_object_is_visible_across_engines():
 
     dungeon_engine.quest_log.check_talked_to("village_chief")
 
-    assert overworld_engine.quest_log.quests[SEALED_MESSAGE_ID].status == "completed"
+    assert overworld_engine.quest_log.quests[GOBLIN_WARNING_ID].status == "completed"
 
 
 def test_talk_to_adjacent_shows_the_villagers_dialogue():
@@ -1520,7 +1520,7 @@ def test_talk_to_adjacent_completes_a_matching_quest():
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    quest = quest_log.quests[GOBLIN_WARNING_ID]
     assert quest.status == "completed"
     assert quest.completion_message in engine.message_log.messages
 
@@ -1535,7 +1535,7 @@ def test_talk_to_adjacent_does_not_complete_a_non_target_villager():
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    quest = quest_log.quests[GOBLIN_WARNING_ID]
     assert quest.status == "active"
     assert quest.completion_message not in engine.message_log.messages
 
@@ -1551,7 +1551,7 @@ def test_talk_to_adjacent_does_not_repeat_completion_message():
     engine.talk_to_adjacent()
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    quest = quest_log.quests[GOBLIN_WARNING_ID]
     assert engine.message_log.messages.count(quest.completion_message) == 1
 
 
@@ -1565,7 +1565,7 @@ def test_talk_to_adjacent_after_deadline_failure_does_not_complete_the_quest():
     chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
     game_map.entities.extend([player, chief])
     quest_log = create_starting_quest_log()
-    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    quest = quest_log.quests[GOBLIN_WARNING_ID]
     clock = GameClock(year=quest.deadline_year, day=quest.deadline_day + 1, hour=0)
     engine = Engine(game_map, player, "Test Level", clock=clock, quest_log=quest_log)
     engine._check_quest_deadlines()

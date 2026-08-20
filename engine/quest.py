@@ -14,10 +14,10 @@ from engine.clock import GameClock
 
 QuestStatus = Literal["active", "completed", "failed"]
 
-SEALED_MESSAGE_ID = "sealed_message"
-SEALED_MESSAGE_DEADLINE_YEAR = 87
-SEALED_MESSAGE_DEADLINE_DAY = 57
-SEALED_MESSAGE_TARGET_ENTITY = "village_chief"
+GOBLIN_WARNING_ID = "goblin_warning"
+GOBLIN_WARNING_DEADLINE_YEAR = 87
+GOBLIN_WARNING_DEADLINE_DAY = 57
+GOBLIN_WARNING_TARGET_ENTITY = "village_chief"
 
 
 @dataclass
@@ -105,18 +105,18 @@ class QuestLog:
 
 def create_starting_quest_log() -> QuestLog:
     quest = Quest(
-        id=SEALED_MESSAGE_ID,
-        name="The Sealed Message",
+        id=GOBLIN_WARNING_ID,
+        name="The Goblin Warning",
         description=(
-            "Before your capture, you were tasked with delivering a sealed "
-            "message to Millhaven. You still carry the charge, if not the "
-            "letter itself - whatever it said, and whoever it was for, will "
-            "have to wait until you find them and tell it."
+            "Before your capture, you were carrying word to Millhaven: a "
+            "goblin horde is migrating into the region, and the town needs "
+            "warning before it arrives. No letter, no proof - just what "
+            "you were told, and who you can get to listen."
         ),
-        completion_message="The message is delivered, in the only way left to you - by telling it.",
-        failure_message="The deadline for the sealed message has passed. No point delivering it anymore.",
-        deadline_year=SEALED_MESSAGE_DEADLINE_YEAR,
-        deadline_day=SEALED_MESSAGE_DEADLINE_DAY,
-        target_entity_id=SEALED_MESSAGE_TARGET_ENTITY,
+        completion_message="The warning is passed on - what Millhaven does with it now isn't yours to carry anymore.",
+        failure_message="The deadline for the warning has passed. Whatever time Millhaven had to prepare, it's gone now.",
+        deadline_year=GOBLIN_WARNING_DEADLINE_YEAR,
+        deadline_day=GOBLIN_WARNING_DEADLINE_DAY,
+        target_entity_id=GOBLIN_WARNING_TARGET_ENTITY,
     )
     return QuestLog(quests={quest.id: quest})

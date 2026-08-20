@@ -136,18 +136,21 @@ where their small house narrows the street on both sides. Visible,
 central, unavoidable if you walk the green end to end. This is where
 `Talk` completes the starting quest.
 
-*Dialogue* (triggers completion): *"So you're alive after all. I'd
-stopped expecting that message - the letter's gone, isn't it. Tell me
-what you can, then."*
+*Dialogue* (triggers completion): *"So you made it after all. I was
+starting to think that warning was never coming - let's hear it, all
+of it."*
 
 *Why it's positioned this way*: the chief isn't hidden behind a
 formality (a locked door, a waiting room) - Settlers don't have that
 kind of authority structure left, or want it. Being reachable *is* the
-job. The dialogue also does the one piece of real narrative work this
-pass needed: acknowledging, specifically, that the player arrives
-without the physical letter (`engine/quest.py`'s own framing - "you
-still carry the charge, if not the letter itself") rather than treating
-delivery as a simple item handoff that was never actually possible.
+job. The message itself is spoken, not written (`engine/quest.py`'s own
+framing: word of a goblin horde migrating into the region, carried by
+the player, "no letter, no proof") - deliberately verbal from the start,
+so `Talk` completing it is the natural mechanism rather than a
+retrofit. An earlier draft of this quest had the player carrying a
+*sealed* letter that was somehow lost during capture, then "delivering"
+it by talking - a real inconsistency (see this document's Tone notes
+below) fixed by making the message verbal from the start.
 
 ## Roster (unchanged constraint: no new AI, no combat)
 
@@ -177,3 +180,13 @@ creature.
 - Keep the tension entirely in the player's own errand, never in the
   town itself. Millhaven should never need a reason to feel uneasy -
   that instinct belongs to Stonebridge, not here.
+- **Match a quest's completion mechanism to what the quest is actually
+  about.** The original version of this quest had the player carrying a
+  *sealed letter* that was lost during capture, then "delivering" it by
+  talking to the chief - a real inconsistency (how do you verbally
+  deliver a sealed letter you no longer have?) that shipped once before
+  it was caught in review. If a quest completes via `Talk`, its content
+  should be something a person could plausibly *say* (a warning, a
+  report, a request) - not a physical object standing in for one. This
+  applies beyond Millhaven: check this every time a quest's fiction and
+  its completion trigger are designed together.

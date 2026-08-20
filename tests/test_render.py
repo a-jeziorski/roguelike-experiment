@@ -16,7 +16,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import GameMap, build_game_map
-from engine.quest import SEALED_MESSAGE_ID, create_starting_quest_log
+from engine.quest import GOBLIN_WARNING_ID, create_starting_quest_log
 from engine.render import (
     LOG_COLORS,
     TILE_VISUALS,
@@ -138,7 +138,7 @@ def test_render_hud_shows_the_active_quest():
     render_all(console, engine)
 
     text = console_text(console)
-    assert quest_log.quests[SEALED_MESSAGE_ID].format_for_hud() in text
+    assert quest_log.quests[GOBLIN_WARNING_ID].format_for_hud() in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():

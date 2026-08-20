@@ -220,6 +220,20 @@ visible on the map before it's read. First added after playtesting the
 Sunken Mine's bible-driven set pieces (the weighing counter, the ledger)
 turned out invisible under `tile: floor`.
 
+**A quest's completion mechanism has to match what the quest is actually
+about.** The starting quest originally had the player carrying a *sealed
+letter* that was lost during capture, then completing by *talking* to the
+chief - a real inconsistency (a sealed letter can't be verbally
+delivered) that shipped once before being caught in review and rewritten
+into a verbal warning instead (`docs/dungeon_bibles/millhaven.md`'s Tone
+notes has the full story). If a quest completes via `Talk`
+(`QuestLog.check_talked_to`), its content needs to be something a person
+could plausibly *say* - a warning, a report, a request - not a physical
+object standing in for one; if it completes via `check_dungeon_arrival`
+instead, a physical delivery premise is fine again. Check this whenever a
+quest's fiction and its completion trigger are being decided together,
+not just at the writing-the-line stage.
+
 Current arc, as a worked example - one continuous descent through
 progressively older ruins beneath a manor's basement:
 

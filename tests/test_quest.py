@@ -1,9 +1,9 @@
 from engine.clock import GameClock
 from engine.quest import (
-    SEALED_MESSAGE_DEADLINE_DAY,
-    SEALED_MESSAGE_DEADLINE_YEAR,
-    SEALED_MESSAGE_ID,
-    SEALED_MESSAGE_TARGET_ENTITY,
+    GOBLIN_WARNING_DEADLINE_DAY,
+    GOBLIN_WARNING_DEADLINE_YEAR,
+    GOBLIN_WARNING_ID,
+    GOBLIN_WARNING_TARGET_ENTITY,
     Quest,
     QuestLog,
     create_starting_quest_log,
@@ -179,12 +179,12 @@ def test_reset_returns_terminal_quests_to_active():
 def test_create_starting_quest_log_has_the_sealed_message_quest():
     log = create_starting_quest_log()
 
-    assert set(log.quests) == {SEALED_MESSAGE_ID}
-    quest = log.quests[SEALED_MESSAGE_ID]
+    assert set(log.quests) == {GOBLIN_WARNING_ID}
+    quest = log.quests[GOBLIN_WARNING_ID]
     assert quest.status == "active"
-    assert quest.deadline_year == SEALED_MESSAGE_DEADLINE_YEAR == 87
-    assert quest.deadline_day == SEALED_MESSAGE_DEADLINE_DAY == 57
-    assert quest.target_entity_id == SEALED_MESSAGE_TARGET_ENTITY == "village_chief"
+    assert quest.deadline_year == GOBLIN_WARNING_DEADLINE_YEAR == 87
+    assert quest.deadline_day == GOBLIN_WARNING_DEADLINE_DAY == 57
+    assert quest.target_entity_id == GOBLIN_WARNING_TARGET_ENTITY == "village_chief"
     assert quest.target_dungeon_id is None
 
 
@@ -192,15 +192,15 @@ def test_create_starting_quest_log_has_the_sealed_message_quest():
 
 
 def test_format_for_hud_active_shows_deadline():
-    quest = make_quest(name="The Sealed Message", deadline_day=57, status="active")
-    assert quest.format_for_hud() == "Quest: The Sealed Message - active (by Day 57)"
+    quest = make_quest(name="The Goblin Warning", deadline_day=57, status="active")
+    assert quest.format_for_hud() == "Quest: The Goblin Warning - active (by Day 57)"
 
 
 def test_format_for_hud_completed_omits_deadline():
-    quest = make_quest(name="The Sealed Message", status="completed")
-    assert quest.format_for_hud() == "Quest: The Sealed Message - completed"
+    quest = make_quest(name="The Goblin Warning", status="completed")
+    assert quest.format_for_hud() == "Quest: The Goblin Warning - completed"
 
 
 def test_format_for_hud_failed_omits_deadline():
-    quest = make_quest(name="The Sealed Message", status="failed")
-    assert quest.format_for_hud() == "Quest: The Sealed Message - failed"
+    quest = make_quest(name="The Goblin Warning", status="failed")
+    assert quest.format_for_hud() == "Quest: The Goblin Warning - failed"
