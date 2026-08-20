@@ -49,7 +49,7 @@ for:
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep |
+| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner |
 
 ## The named set pieces
 
@@ -152,19 +152,42 @@ retrofit. An earlier draft of this quest had the player carrying a
 it by talking - a real inconsistency (see this document's Tone notes
 below) fixed by making the message verbal from the start.
 
-## Roster (unchanged constraint: no new AI, no combat)
+### 7. The Escaped Prisoner
 
-Six `villager`-AI entities total (five plain `villager` spawns, each
-with its own per-spawn `dialogue`, plus one `village_chief` spawn) -
-a modest increase from the original five, not a jump to Wayford's
-scale. No monsters, no items beyond what already existed, no new
-mechanics - every villager still just wanders at full health and flees
-permanently the instant they're hurt, same as everywhere else in the
-game. The `village_chief` catalog entry is mechanically identical to
-`villager` (same hp/attack/defense/AI) - the only difference is
-identity (glyph, name, per-spawn dialogue), matching the user's own
-framing: "marked with a special symbol," not a different kind of
-creature.
+Tucked into the green's southern stretch, off to one side rather than
+astride the main road - unlike the Chief, this NPC doesn't need to be
+unavoidable, since the quest they offer is a sidequest, not the thing
+the player came to Millhaven for.
+
+*Dialogue*: *"Made it out of that tower same as you, more or less.
+Warden ever come looking for me, or is he still up there thinking he
+runs the place?"*
+
+*Why it's here*: the first questgiver in the game - talking to them
+grants "An Old Debt" (kill the Warden of Prison Tower), no deadline.
+Deliberately paired with the player's own escape: this NPC made the
+same trip through Prison Tower, so the premise passes the same
+knowledge-provenance check the Chief's quest does (see the Tone note
+below) - they're asking a favor of someone they know shares the
+context, not reporting something they were never present for. If the
+Warden already died during the player's own escape, talking to this
+NPC completes the quest immediately instead of granting it, and says
+so explicitly rather than pretending the favor is still owed.
+
+## Roster
+
+Seven `villager`-AI entities total (five plain `villager` spawns each
+with its own per-spawn `dialogue`, one `village_chief` spawn, and one
+`escaped_prisoner` spawn) - a modest increase from the original five,
+not a jump to Wayford's scale. Still no monsters, no combat: every
+villager-AI entity here (chief and escaped prisoner included) wanders
+at full health and flees permanently the instant it's hurt, same as
+everywhere else in the game. The one new mechanic this pass adds is a
+questgiver - a quest that starts hidden until granted via `Talk` -
+which the `escaped_prisoner` entity uses; the entity itself is still
+mechanically identical to `villager` (same hp/attack/defense/AI), the
+same "identity, not a different kind of creature" pattern the
+`village_chief` already established.
 
 ## Tone notes for anyone (agent or human) revising this later
 

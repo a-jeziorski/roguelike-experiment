@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from content.loader import Catalog
     from engine.engine import Engine, MessageLog
     from engine.game_map import GameMap
+    from engine.quest import Quest
 
 TILE_VISUALS = {
     "wall": {"glyph": "#", "dark": (35, 35, 55), "light": (100, 100, 130)},
@@ -181,8 +182,9 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, engine.clock.format_for_hud(), fg=HUD_FG, width=width)
-    for quest in engine.quest_log.quests.values():
-        y += console.print(0, y, quest.format_for_hud(), fg=HUD_FG, width=width)
+    active_quest = engine.quest_log.active_quest()
+    if active_quest is not None:
+        y += console.print(0, y, active_quest.format_for_hud(), fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
     y += console.print(
         0,
@@ -398,3 +400,36 @@ def render_target_frame(
     hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_target_hud(console, engine, cursor_x, cursor_y, max_range, hud_y) + 1
     render_message_log(console, engine.message_log, 0, log_y)
+
+
+def render_quest_log(
+    console: "Console",
+    quests: "list[Quest]",
+    selected: int,
+    active_quest_id: str | None,
+) -> None:
+    """The quest log screen: unlike every other render_* function above, this
+    one draws no map - just a list of known quests (already filtered by the
+    caller to exclude not-given ones), the selected quest's full description,
+    and a footer control hint. `quests` and `selected` together identify the
+    highlighted row; `active_quest_id` marks which one is currently pinned to
+    the HUD."""
+    console.clear()
+    width = console.width
+    y = 0
+    y += console.print(0, y, "Quest Log", fg=HUD_FG, width=width)
+    y += 1
+
+    for i, quest in enumerate(quests):
+        marker = ">" if i == selected else " "
+        tag = " [ACTIVE]" if quest.id == active_quest_id else ""
+        y += console.print(0, y, f"{marker} {quest.format_for_hud()}{tag}", fg=HUD_FG, width=width)
+
+    y += 1
+    if quests:
+        y += console.print(0, y, quests[selected].description, fg=HUD_FG, width=width)
+
+    y = console.height - 1
+    console.print(
+        0, y, "[up/down] select  [enter] set active  [q/esc] exit", fg=HUD_FG, width=width
+    )

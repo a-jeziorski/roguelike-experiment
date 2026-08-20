@@ -16,7 +16,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import GameMap, build_game_map
-from engine.quest import GOBLIN_WARNING_ID, create_starting_quest_log
+from engine.quest import GOBLIN_WARNING_ID, KILL_THE_WARDEN_ID, Quest, create_starting_quest_log
 from engine.render import (
     LOG_COLORS,
     TILE_VISUALS,
@@ -31,6 +31,7 @@ from engine.render import (
     render_look_frame,
     render_map,
     render_message_log,
+    render_quest_log,
     render_target_frame,
 )
 
@@ -139,6 +140,75 @@ def test_render_hud_shows_the_active_quest():
 
     text = console_text(console)
     assert quest_log.quests[GOBLIN_WARNING_ID].format_for_hud() in text
+
+
+def test_render_hud_never_shows_a_not_given_quest():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    quest_log = create_starting_quest_log()  # kill_the_warden starts "not_given"
+    engine = Engine(game_map, player, level.name, quest_log=quest_log)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    kill_quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    assert kill_quest.name not in text
+
+
+def test_render_hud_only_shows_the_pinned_quest_even_with_two_in_progress():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    quest_log = create_starting_quest_log()
+    quest_log.quests[KILL_THE_WARDEN_ID].status = "in_progress"  # both now in progress
+    engine = Engine(game_map, player, level.name, quest_log=quest_log)  # pinned: goblin_warning
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert quest_log.quests[GOBLIN_WARNING_ID].name in text
+    assert quest_log.quests[KILL_THE_WARDEN_ID].name not in text
+
+
+def test_render_quest_log_lists_quests_and_tags_the_active_one():
+    goblin = Quest(
+        id="goblin", name="The Goblin Warning", description="Warn the town.",
+        completion_message="Done.", status="in_progress", deadline_year=87, deadline_day=57,
+    )
+    warden = Quest(
+        id="warden", name="An Old Debt", description="Kill the Warden.",
+        completion_message="Done.", status="in_progress",
+    )
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_quest_log(console, [goblin, warden], selected=0, active_quest_id="goblin")
+
+    text = console_text(console)
+    assert "The Goblin Warning" in text
+    assert "An Old Debt" in text
+    assert "[ACTIVE]" in text
+    assert "Warn the town." in text  # the selected (index 0) quest's description
+
+
+def test_render_quest_log_shows_the_selected_quests_description():
+    goblin = Quest(
+        id="goblin", name="The Goblin Warning", description="Warn the town.",
+        completion_message="Done.", status="in_progress",
+    )
+    warden = Quest(
+        id="warden", name="An Old Debt", description="Kill the Warden of Prison Tower.",
+        completion_message="Done.", status="in_progress",
+    )
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_quest_log(console, [goblin, warden], selected=1, active_quest_id="goblin")
+
+    text = console_text(console)
+    assert "Kill the Warden of Prison Tower." in text
+    assert "Warn the town." not in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():

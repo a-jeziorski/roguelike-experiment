@@ -11,6 +11,7 @@ from engine.actions import (
     FireModeAction,
     LookAction,
     PickupAction,
+    QuestLogAction,
     RestartAction,
     TalkAction,
     UseItemAction,
@@ -67,6 +68,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
         if sym == tcod.event.KeySym.T:
             return TalkAction()
 
+        if sym == tcod.event.KeySym.Q:
+            return QuestLogAction()
+
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()
 
@@ -109,6 +113,32 @@ def handle_look_event(event: tcod.event.Event) -> tuple[int, int] | str | None:
             return MOVE_KEYS[sym]
 
         if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.L):
+            return "exit"
+
+    return None
+
+
+def handle_quest_log_event(event: tcod.event.Event) -> str | None:
+    """Input while inside the quest log screen: up/down (arrows or numpad)
+    move the selection, Enter/KP_Enter pins the selected quest as active,
+    Escape/Q exit back to normal play. Returns "up", "down", "select",
+    "exit", or None."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in (tcod.event.KeySym.UP, tcod.event.KeySym.KP_8):
+            return "up"
+
+        if sym in (tcod.event.KeySym.DOWN, tcod.event.KeySym.KP_2):
+            return "down"
+
+        if sym in (tcod.event.KeySym.RETURN, tcod.event.KeySym.KP_ENTER):
+            return "select"
+
+        if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.Q):
             return "exit"
 
     return None

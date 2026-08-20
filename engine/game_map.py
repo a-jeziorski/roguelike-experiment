@@ -6,7 +6,7 @@ from __future__ import annotations
 import numpy as np
 import tcod.map
 
-from content.loader import Catalog, ParsedLevel
+from content.loader import Catalog, ItemDef, ParsedLevel
 from content.schema import TILE_PASSABILITY
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -75,6 +75,34 @@ class GameMap:
         self.explored |= self.visible
 
 
+def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
+    """Builds a standalone item Entity from a catalog ItemDef - the piece of
+    build_game_map's item-spawn loop that's reusable outside a map spawn
+    (e.g. a quest reward going straight into player.inventory, which never
+    needs real map coordinates - x/y default to 0, 0 and are never read for
+    an inventory-held item)."""
+    return Entity(
+        x,
+        y,
+        idef.glyph,
+        idef.color,
+        idef.name,
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(
+            heal_amount=idef.heal_amount,
+            attack_bonus=idef.attack_bonus,
+            defense_bonus=idef.defense_bonus,
+            ranged_attack_bonus=idef.ranged_attack_bonus,
+            range=idef.range,
+            key_id=idef.id if idef.is_key else None,
+            is_ammo=idef.is_ammo,
+            quantity=idef.quantity,
+        ),
+        description=idef.description,
+    )
+
+
 def build_game_map(
     level: ParsedLevel, catalog: Catalog, player: Entity | None = None
 ) -> tuple[GameMap, Entity]:
@@ -131,27 +159,7 @@ def build_game_map(
         game_map.entities.append(entity)
 
     for spawn in level.item_spawns:
-        idef = spawn.item
-        entity = Entity(
-            spawn.x,
-            spawn.y,
-            idef.glyph,
-            idef.color,
-            idef.name,
-            blocks_movement=False,
-            render_priority=RENDER_PRIORITY_ITEM,
-            item=ItemEffect(
-                heal_amount=idef.heal_amount,
-                attack_bonus=idef.attack_bonus,
-                defense_bonus=idef.defense_bonus,
-                ranged_attack_bonus=idef.ranged_attack_bonus,
-                range=idef.range,
-                key_id=idef.id if idef.is_key else None,
-                is_ammo=idef.is_ammo,
-                quantity=idef.quantity,
-            ),
-            description=idef.description,
-        )
+        entity = item_entity_from_def(spawn.item, spawn.x, spawn.y)
         game_map.entities.append(entity)
 
     px, py = level.player_start

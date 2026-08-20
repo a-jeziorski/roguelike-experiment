@@ -60,6 +60,17 @@ class FireModeAction(Action):
         pass
 
 
+class QuestLogAction(Action):
+    """Enters the quest log screen: a free, non-turn screen for reviewing
+    known quests and changing which one is pinned to the HUD. main.py
+    recognizes this before it would ever reach Engine.process_turn and runs
+    its own nested input loop instead - perform() is never actually called
+    in practice, kept only so QuestLogAction satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class TalkAction(Action):
     """Talks to an adjacent villager-type NPC - free, costs no turn, same
     shape as LookAction. main.py recognizes this before it would ever reach

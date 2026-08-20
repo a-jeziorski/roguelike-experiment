@@ -15,7 +15,7 @@ map: |
   #,###,,,,#.#,,,,###,,#
   #,###4,,,#V#,,,,###,,#
   #,###,,,,,.,,,,,###,,#
-  #,,,,,,,,,.,,,,,,,,,,#
+  #,,,,,,,,,.,,,,,,6,,,#
   ######################
 
 legend:
@@ -32,3 +32,4 @@ legend:
   "4": { entity: villager, dialogue: "Can't talk. This bread won't watch itself." }
   "5": { entity: villager, dialogue: "Chief's been asking after any travelers. You'd best go say hello." }
   "V": { entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it." }
+  "6": { entity: escaped_prisoner, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }

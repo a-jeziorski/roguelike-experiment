@@ -4,8 +4,21 @@ directly without any window/context, so this is testable headlessly."""
 import pytest
 import tcod.event
 
-from engine.actions import BumpAction, EscapeAction, FireModeAction, LookAction, RestartAction, WaitAction
-from engine.input_handlers import handle_event, handle_look_event, handle_target_event
+from engine.actions import (
+    BumpAction,
+    EscapeAction,
+    FireModeAction,
+    LookAction,
+    QuestLogAction,
+    RestartAction,
+    WaitAction,
+)
+from engine.input_handlers import (
+    handle_event,
+    handle_look_event,
+    handle_quest_log_event,
+    handle_target_event,
+)
 
 NUMPAD_DIRECTIONS = [
     (tcod.event.KeySym.KP_7, (-1, -1)),
@@ -50,6 +63,10 @@ def test_handle_event_escape_returns_escape_action():
 
 def test_handle_event_r_returns_restart_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.R)), RestartAction)
+
+
+def test_handle_event_q_returns_quest_log_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.Q)), QuestLogAction)
 
 
 def test_handle_event_unmapped_key_returns_none():
@@ -107,3 +124,29 @@ def test_handle_target_event_unmapped_key_returns_none():
 def test_handle_target_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_target_event(tcod.event.Quit(sdl_event=None))
+
+
+def test_handle_quest_log_event_up_and_down():
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.UP)) == "up"
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.KP_8)) == "up"
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.DOWN)) == "down"
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.KP_2)) == "down"
+
+
+def test_handle_quest_log_event_select():
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.RETURN)) == "select"
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.KP_ENTER)) == "select"
+
+
+@pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.Q])
+def test_handle_quest_log_event_exit_keys(sym):
+    assert handle_quest_log_event(key_down(sym)) == "exit"
+
+
+def test_handle_quest_log_event_unmapped_key_returns_none():
+    assert handle_quest_log_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_quest_log_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_quest_log_event(tcod.event.Quit(sdl_event=None))

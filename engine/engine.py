@@ -17,8 +17,8 @@ from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
-from engine.game_map import GameMap, build_game_map
-from engine.quest import QuestLog
+from engine.game_map import GameMap, build_game_map, item_entity_from_def
+from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
@@ -162,6 +162,8 @@ class Engine:
             self.message_log.add(f"The {entity.name} dies.", category="combat")
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
+            for quest in self.quest_log.record_entity_killed(entity.entity_id):
+                self.complete_quest(quest)
 
     def _arrival_position(self, level: "ParsedLevel", from_level_id: str | None) -> tuple[int, int]:
         """Where the player lands on `level`: the stairway leading back to
@@ -247,10 +249,11 @@ class Engine:
         """Begins a fresh run from the starting level: a brand-new player (full
         hp, no inventory or picked-up attack bonus), a freshly built map (killed
         monsters and taken items restored), a cleared message log, the world
-        clock reset to its starting date, and every quest reset to active -
-        since self.clock/self.quest_log are shared by every cached Engine,
-        this is visible everywhere immediately, which is the intended "clean
-        do-over" behavior for a restart."""
+        clock reset to its starting date, and every quest reset to its own
+        starting status (see QuestLog.reset) - since self.clock/self.quest_log
+        are shared by every cached Engine, this is visible everywhere
+        immediately, which is the intended "clean do-over" behavior for a
+        restart."""
         self.clock.reset()
         self.quest_log.reset()
         self.game_map, self.player = build_game_map(self.starting_level, self.catalog)
@@ -355,7 +358,7 @@ class Engine:
         fighter.hp = min(fighter.max_hp, fighter.hp + 1)
 
     def _check_quest_deadlines(self) -> None:
-        """Sibling to _advance_world_clock, called the same turn: any active
+        """Sibling to _advance_world_clock, called the same turn: any in-progress
         quest whose deadline the clock just crossed gets its failure message
         logged here. A separate method (not folded into _advance_world_clock)
         so deadline logic is testable independent of clock/healing mechanics."""
@@ -377,19 +380,45 @@ class Engine:
                 return entity
         return None
 
+    def complete_quest(self, quest: Quest, message: str | None = None) -> None:
+        """Logs completion and grants quest.reward_item_id if set - the single
+        funnel every completion trigger (kill, Talk, dungeon arrival, a
+        retroactive questgiver grant) routes through, so reward-granting only
+        has to be written once. Never mutates quest.status - that already
+        happened inside whichever QuestLog.check_* call produced this quest;
+        this is purely "log + reward". Never called for a quest that failed -
+        failing a quest never grants a reward."""
+        self.message_log.add(message or quest.completion_message)
+        if quest.reward_item_id is not None and self.catalog is not None:
+            idef = self.catalog.items[quest.reward_item_id]
+            reward = item_entity_from_def(idef)
+            self.player.inventory.append(reward)
+            self.message_log.add(f"You receive a {reward.name}.")
+
     def talk_to_adjacent(self) -> None:
         """Free, non-turn action (see main.py's TalkAction branch): shows an
-        adjacent villager's dialogue line and checks whether talking to them
-        completes a quest (see QuestLog.check_talked_to). Never touches
-        self.clock or calls _handle_enemy_turns - talking costs nothing."""
+        adjacent villager's dialogue line, then checks whether talking to
+        them grants a questgiver's quest (see QuestLog.check_questgiver) or
+        completes one that targets them (see QuestLog.check_talked_to).
+        Never touches self.clock or calls _handle_enemy_turns - talking costs
+        nothing."""
         target = self._find_adjacent_villager()
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
             return
         line = target.dialogue or _DEFAULT_TALK_LINE
         self.message_log.add(f'{target.name}: "{line}"', category="dialogue")
+
+        for quest in self.quest_log.check_questgiver(target.entity_id):
+            if quest.status == "completed":
+                self.complete_quest(quest, message=quest.already_done_message or quest.completion_message)
+            else:
+                self.message_log.add(quest.given_message)
+                if self.quest_log.active_quest_id is None:
+                    self.quest_log.active_quest_id = quest.id
+
         for quest in self.quest_log.check_talked_to(target.entity_id):
-            self.message_log.add(quest.completion_message)
+            self.complete_quest(quest)
 
     def process_turn(self, action: Action) -> None:
         if self.game_state != "playing":

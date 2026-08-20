@@ -195,6 +195,7 @@ def _quest_log_with_dungeon_target(dungeon_id: str) -> QuestLog:
         deadline_year=9999,
         deadline_day=1,
         target_dungeon_id=dungeon_id,
+        status="in_progress",
     )
     return QuestLog(quests={quest.id: quest})
 
@@ -228,6 +229,30 @@ def test_resolve_transition_dungeon_arrival_completes_a_matching_quest():
     )
 
 
+def test_resolve_transition_dungeon_arrival_grants_a_reward():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = _quest_log_with_dungeon_target("millhaven")
+    quest_log.quests["test_quest"].reward_item_id = "healing_potion"
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", quest_log=quest_log)
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+    active_key, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "millhaven"
+    active_key, millhaven_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    assert len(millhaven_engine.player.inventory) == 1
+    assert millhaven_engine.player.inventory[0].name == "Healing Potion"
+
+
 def test_resolve_transition_dungeon_arrival_does_not_complete_a_non_matching_quest():
     catalog, dungeon_registry, overworld_level = _world()
     quest_log = _quest_log_with_dungeon_target("millhaven")
@@ -247,7 +272,7 @@ def test_resolve_transition_dungeon_arrival_does_not_complete_a_non_matching_que
         quest_log=quest_log,
     )
 
-    assert quest_log.quests["test_quest"].status == "active"
+    assert quest_log.quests["test_quest"].status == "in_progress"
 
 
 def test_resolve_transition_without_a_quest_log_still_works():

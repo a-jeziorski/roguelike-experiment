@@ -19,7 +19,15 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
-from engine.quest import GOBLIN_WARNING_ID, Quest, QuestLog, create_starting_quest_log
+from engine.quest import (
+    GOBLIN_WARNING_ID,
+    KILL_THE_WARDEN_ID,
+    KILL_THE_WARDEN_QUESTGIVER,
+    KILL_THE_WARDEN_TARGET,
+    Quest,
+    QuestLog,
+    create_starting_quest_log,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -1388,6 +1396,7 @@ def test_process_turn_logs_quest_failure_once_deadline_crossed_on_the_overworld(
         id="test_quest", name="Test Quest", description="",
         completion_message="done", failure_message="too late",
         deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY, target_dungeon_id="millhaven",
+        status="in_progress",
     )
     quest_log = QuestLog(quests={quest.id: quest})
     clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
@@ -1413,6 +1422,7 @@ def test_process_turn_does_not_touch_quest_state_in_a_dungeon():
         id="test_quest", name="Test Quest", description="",
         completion_message="done", failure_message="too late",
         deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY, target_dungeon_id="millhaven",
+        status="in_progress",
     )
     quest_log = QuestLog(quests={quest.id: quest})
     clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
@@ -1420,7 +1430,7 @@ def test_process_turn_does_not_touch_quest_state_in_a_dungeon():
 
     engine.process_turn(WaitAction())
 
-    assert quest.status == "active"
+    assert quest.status == "in_progress"
     assert engine.message_log.messages == ["You enter Test Level."]
 
 
@@ -1438,7 +1448,7 @@ def test_restart_resets_the_shared_quest_log():
 
     engine.restart()
 
-    assert quest_log.quests[GOBLIN_WARNING_ID].status == "active"
+    assert quest_log.quests[GOBLIN_WARNING_ID].status == "in_progress"
 
 
 def test_shared_quest_log_object_is_visible_across_engines():
@@ -1536,7 +1546,7 @@ def test_talk_to_adjacent_does_not_complete_a_non_target_villager():
     engine.talk_to_adjacent()
 
     quest = quest_log.quests[GOBLIN_WARNING_ID]
-    assert quest.status == "active"
+    assert quest.status == "in_progress"
     assert quest.completion_message not in engine.message_log.messages
 
 
@@ -1591,3 +1601,167 @@ def test_talk_to_adjacent_never_advances_the_clock_or_processes_enemy_turns():
 
     assert engine.clock == GameClock()  # untouched
     assert (rat.x, rat.y) == rat_start  # no enemy turn was processed
+
+
+# --- questgivers, kill-quests, and reward granting ---
+
+
+def make_warden(x: int, y: int, hp: int = 5) -> Entity:
+    return Entity(
+        x, y, "W", (140, 40, 40), "Warden",
+        blocks_movement=True,
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=hp, hp=hp, attack=0, defense=0),
+        entity_id=KILL_THE_WARDEN_TARGET,
+    )
+
+
+def test_on_entity_death_completes_a_kill_quest_and_grants_reward():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    warden = make_warden(2, 1)
+    game_map.entities.extend([player, warden])
+    quest_log = create_starting_quest_log()
+    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest.status = "in_progress"  # simulate having already been granted
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.on_entity_death(warden)
+
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+    assert len(player.inventory) == 1
+    assert player.inventory[0].name == "Healing Potion"
+
+
+def test_on_entity_death_records_kill_before_quest_is_given():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    warden = make_warden(2, 1)
+    game_map.entities.extend([player, warden])
+    quest_log = create_starting_quest_log()  # kill_the_warden still "not_given"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.on_entity_death(warden)
+
+    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    assert quest.status == "not_given"
+    assert KILL_THE_WARDEN_TARGET in quest_log.killed_entity_ids
+    assert player.inventory == []  # no reward - the quest was never completed
+
+
+def test_talk_to_adjacent_grants_a_questgiver_quest():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    assert quest.status == "in_progress"
+    assert quest.given_message in engine.message_log.messages
+    assert player.inventory == []  # not completed yet, no reward
+
+
+def test_talk_to_adjacent_questgiver_already_done_completes_immediately():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)  # already killed before being asked
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    assert quest.status == "completed"
+    assert quest.already_done_message in engine.message_log.messages
+    assert quest.given_message not in engine.message_log.messages
+    assert len(player.inventory) == 1
+    assert player.inventory[0].name == "Healing Potion"
+
+
+def test_talk_to_adjacent_auto_pins_a_granted_quest_when_nothing_was_pinned():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    quest_log.active_quest_id = None
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    assert quest_log.active_quest_id == KILL_THE_WARDEN_ID
+
+
+def test_talk_to_adjacent_does_not_bump_an_already_pinned_quest():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()  # active_quest_id starts as GOBLIN_WARNING_ID
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    assert quest_log.active_quest_id == GOBLIN_WARNING_ID  # unchanged
+
+
+def test_talk_to_adjacent_retroactive_completion_does_not_auto_pin():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    quest_log.active_quest_id = None
+    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    assert quest_log.active_quest_id is None  # a just-finished quest never auto-pins
+
+
+def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    quest = Quest(
+        id="no_reward", name="No Reward", description="",
+        completion_message="Done.", reward_item_id=None,
+    )
+
+    engine.complete_quest(quest)
+
+    assert "Done." in engine.message_log.messages
+    assert player.inventory == []
+
+
+def test_complete_quest_with_no_catalog_does_not_crash():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # catalog defaults to None
+    quest = Quest(
+        id="with_reward", name="With Reward", description="",
+        completion_message="Done.", reward_item_id="healing_potion",
+    )
+
+    engine.complete_quest(quest)  # must not raise
+
+    assert "Done." in engine.message_log.messages
+    assert player.inventory == []

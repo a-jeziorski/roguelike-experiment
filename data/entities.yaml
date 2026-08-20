@@ -111,6 +111,17 @@ villager:
   description: A local going about their day. Won't raise a hand against you - but won't stick around if you raise one against them.
   dialogue: They nod, but don't have much to say.
 
+escaped_prisoner:
+  name: Escaped Prisoner
+  glyph: e
+  color: [150, 130, 110]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  description: Got out of Prison Tower somehow, and has never quite stopped flinching at loud noises since.
+  dialogue: Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?
+
 village_chief:
   name: Village Chief
   glyph: V

@@ -294,7 +294,7 @@ def test_millhaven_level_01_content():
     )
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
-    assert entity_names == ["Village Chief"] + ["Villager"] * 5
+    assert entity_names == ["Escaped Prisoner", "Village Chief"] + ["Villager"] * 5
 
     # every entity spawn carries its own per-spawn dialogue - no un-authored
     # villagers left in Millhaven now that this pass gave each one a line

@@ -22,6 +22,7 @@ from engine.actions import (
     FireAction,
     FireModeAction,
     LookAction,
+    QuestLogAction,
     RestartAction,
     TalkAction,
 )
@@ -29,7 +30,12 @@ from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.quest import QuestLog, create_starting_quest_log
-from engine.input_handlers import handle_event, handle_look_event, handle_target_event
+from engine.input_handlers import (
+    handle_event,
+    handle_look_event,
+    handle_quest_log_event,
+    handle_target_event,
+)
 from engine.render import (
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
@@ -40,6 +46,7 @@ from engine.render import (
     render_all,
     render_look_frame,
     render_projectile,
+    render_quest_log,
     render_target_frame,
 )
 from engine.targeting import find_nearest_target
@@ -154,6 +161,37 @@ def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, 
                 dx, dy = result
                 cursor_x = max(0, min(engine.game_map.width - 1, cursor_x + dx))
                 cursor_y = max(0, min(engine.game_map.height - 1, cursor_y + dy))
+
+
+def run_quest_log_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+    """Nested event loop for the quest log screen: moves a selection and
+    re-renders until the player exits. Never touches Engine.process_turn, so
+    it costs no game turn - only pinning a quest as active is a side effect,
+    and even that isn't a turn action."""
+    quests = [q for q in engine.quest_log.quests.values() if q.status != "not_given"]
+    if not quests:
+        selected = 0
+    else:
+        selected = next(
+            (i for i, q in enumerate(quests) if q.id == engine.quest_log.active_quest_id), 0
+        )
+
+    while True:
+        render_quest_log(console, quests, selected, engine.quest_log.active_quest_id)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_quest_log_event(event)
+
+            if result == "exit":
+                return
+            if result == "up" and quests:
+                selected = (selected - 1) % len(quests)
+            if result == "down" and quests:
+                selected = (selected + 1) % len(quests)
+            if result == "select" and quests:
+                engine.quest_log.set_active_quest(quests[selected].id)
 
 
 def animate_ranged_attacks(
@@ -288,7 +326,7 @@ def resolve_transition(
         else:
             target.arrive_player(player)  # position=None: resume exactly where they left
         for quest in target.quest_log.check_dungeon_arrival(dungeon_id):
-            target.message_log.add(quest.completion_message)
+            target.complete_quest(quest)
         return dungeon_id, target
 
     return active_key, engine
@@ -354,6 +392,11 @@ def main() -> int:
                 if isinstance(action, TalkAction):
                     if engine.game_state == "playing":
                         engine.talk_to_adjacent()
+                    continue
+
+                if isinstance(action, QuestLogAction):
+                    if engine.game_state == "playing":
+                        run_quest_log_mode(console, context, engine)
                     continue
 
                 if isinstance(action, FireModeAction):
