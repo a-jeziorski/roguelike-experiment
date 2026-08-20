@@ -12,6 +12,7 @@ from engine.actions import (
     LookAction,
     PickupAction,
     RestartAction,
+    TalkAction,
     UseItemAction,
     WaitAction,
 )
@@ -62,6 +63,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.F:
             return FireModeAction()
+
+        if sym == tcod.event.KeySym.T:
+            return TalkAction()
 
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()

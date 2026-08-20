@@ -195,7 +195,10 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     if engine.is_overworld:
         controls = "[arrows/numpad] move  [l] look  [esc] quit"
     else:
-        controls = "[arrows/numpad] move  [g] pick up  [u] use potion  [l] look  [f] fire  [esc] quit"
+        controls = (
+            "[arrows/numpad] move  [g] pick up  [u] use potion  [t] talk  "
+            "[l] look  [f] fire  [esc] quit"
+        )
     y += console.print(0, y, controls, fg=HUD_FG, width=width)
 
     if engine.game_state == "dead":

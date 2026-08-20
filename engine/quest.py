@@ -17,7 +17,7 @@ QuestStatus = Literal["active", "completed", "failed"]
 SEALED_MESSAGE_ID = "sealed_message"
 SEALED_MESSAGE_DEADLINE_YEAR = 87
 SEALED_MESSAGE_DEADLINE_DAY = 57
-SEALED_MESSAGE_TARGET_DUNGEON = "millhaven"
+SEALED_MESSAGE_TARGET_ENTITY = "village_chief"
 
 
 @dataclass
@@ -29,7 +29,13 @@ class Quest:
     failure_message: str
     deadline_year: int
     deadline_day: int
-    target_dungeon_id: str
+    # A quest completes via exactly one of two hardcoded trigger shapes:
+    # arriving in a dungeon (target_dungeon_id, checked in main.py's
+    # resolve_transition) or talking to a specific NPC (target_entity_id,
+    # checked in Engine.talk_to_adjacent). Both optional so either shape -
+    # or neither, for a quest with no completion trigger yet - is valid.
+    target_dungeon_id: str | None = None
+    target_entity_id: str | None = None
     status: QuestStatus = "active"
 
     def format_for_hud(self) -> str:
@@ -76,6 +82,19 @@ class QuestLog:
                 changed.append(quest)
         return changed
 
+    def check_talked_to(self, entity_id: str) -> list[Quest]:
+        """Called whenever the player talks to an NPC (Engine.talk_to_adjacent).
+        Marks matching active quests 'completed', same re-fire guard as
+        above (re-talking to an already-completed target NPC is a no-op)."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.status != "active":
+                continue
+            if quest.target_entity_id == entity_id:
+                quest.status = "completed"
+                changed.append(quest)
+        return changed
+
     def reset(self) -> None:
         """All quests back to 'active' - Engine.restart() calls this, since
         a restart is meant to be a clean slate for shared/global state, not
@@ -92,12 +111,12 @@ def create_starting_quest_log() -> QuestLog:
             "Before your capture, you were tasked with delivering a sealed "
             "message to Millhaven. You still carry the charge, if not the "
             "letter itself - whatever it said, and whoever it was for, will "
-            "have to wait until you get there."
+            "have to wait until you find them and tell it."
         ),
-        completion_message="You have reached Millhaven. The sealed message can finally be delivered.",
+        completion_message="The message is delivered, in the only way left to you - by telling it.",
         failure_message="The deadline for the sealed message has passed. No point delivering it anymore.",
         deadline_year=SEALED_MESSAGE_DEADLINE_YEAR,
         deadline_day=SEALED_MESSAGE_DEADLINE_DAY,
-        target_dungeon_id=SEALED_MESSAGE_TARGET_DUNGEON,
+        target_entity_id=SEALED_MESSAGE_TARGET_ENTITY,
     )
     return QuestLog(quests={quest.id: quest})

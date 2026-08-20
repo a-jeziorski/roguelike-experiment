@@ -294,13 +294,18 @@ def test_millhaven_level_01_content():
     )
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
-    assert entity_names == ["Villager"] * 5
+    assert entity_names == ["Village Chief"] + ["Villager"] * 5
+
+    # every entity spawn carries its own per-spawn dialogue - no un-authored
+    # villagers left in Millhaven now that this pass gave each one a line
+    assert all(s.dialogue for s in level.entity_spawns)
 
     assert [s.kind for s in level.stairs] == ["stairs_up"]
     assert level.stairs[0].next_level is None  # terminal - leaves to the overworld
     assert not any(s.kind == "stairs_down" for s in level.stairs)
 
-    assert len(level.tile_descriptions) == 1
+    # the gate + the well and mending-yard landmarks
+    assert len(level.tile_descriptions) == 3
     exit_stairs_x, exit_stairs_y = level.stairs[0].x, level.stairs[0].y
     desc = next(
         d for d in level.tile_descriptions if (d.x, d.y) == (exit_stairs_x, exit_stairs_y)
@@ -312,6 +317,61 @@ def test_load_level_collects_custom_tile_descriptions():
     catalog = load_catalog()
     level = load_level(FIXTURES_DIR / "only_stairs_up.lvl", catalog, require_stairs_down=False)
     assert level.tile_descriptions == []  # no legend entry sets description there
+
+
+def test_load_level_collects_per_spawn_entity_dialogue(tmp_path):
+    level_path = tmp_path / "with_dialogue.lvl"
+    level_path.write_text(
+        "id: with_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, dialogue: "Well held up better than most things." }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.entity_spawns) == 1
+    assert level.entity_spawns[0].dialogue == "Well held up better than most things."
+    # a per-spawn dialogue is not a tile description - the two are independent
+    assert level.tile_descriptions == []
+
+
+def test_load_level_entity_spawn_without_dialogue_leaves_it_none(tmp_path):
+    level_path = tmp_path / "no_dialogue.lvl"
+    level_path.write_text(
+        "id: no_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert level.entity_spawns[0].dialogue is None
 
 
 def test_load_level_rejects_a_door_with_a_second_route_around_it(tmp_path):

@@ -70,6 +70,10 @@ class EntityDef(BaseModel):
     flee_hp_pct: float | None = Field(default=None, gt=0, le=1)
     ranged_range: int | None = Field(default=None, gt=0)
     description: str = ""
+    # Fallback line the Talk action shows for a spawn of this type with no
+    # per-spawn dialogue override (see LegendEntry.dialogue below) - only
+    # meaningful for AI_VILLAGER entities today, but not restricted to them.
+    dialogue: str = ""
 
     @field_validator("glyph")
     @classmethod
@@ -160,6 +164,15 @@ class LegendEntry(BaseModel):
     `engine/render.py` TILE_VISUALS) specifically so points of interest
     don't blend into the terrain around them: {tile: landmark, description:
     "A chalk tally board, its hatch-marks stopping mid-quota."}.
+
+    An `{entity: ...}` mapping may also carry a `dialogue` - the line the
+    Talk action shows for *this specific placement*, distinct from
+    `description` (which, on an entity mapping, is still a *tile*-level
+    look-mode override, not the entity's - see load_level). Don't confuse
+    the two: {entity: villager, dialogue: "Well's held up better than most
+    things built before the Sundering."} gives this one villager a unique
+    line; `description` here would instead override what look-mode says
+    about the ground they're standing on.
     """
 
     tile: TileType
@@ -169,6 +182,7 @@ class LegendEntry(BaseModel):
     requires_key: str | None = None
     dungeon_id: str | None = None
     description: str | None = None
+    dialogue: str | None = None
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
@@ -177,7 +191,10 @@ class LegendEntry(BaseModel):
         if isinstance(raw, dict):
             description = raw.get("description")
             if "entity" in raw:
-                return cls(tile="floor", entity=raw["entity"], description=description)
+                return cls(
+                    tile="floor", entity=raw["entity"], description=description,
+                    dialogue=raw.get("dialogue"),
+                )
             if "item" in raw:
                 return cls(tile="floor", item=raw["item"], description=description)
             if "stairs_down" in raw:
@@ -199,6 +216,7 @@ class LegendEntry(BaseModel):
                 requires_key=raw.get("requires_key"),
                 dungeon_id=raw.get("dungeon_id"),
                 description=description,
+                dialogue=raw.get("dialogue"),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

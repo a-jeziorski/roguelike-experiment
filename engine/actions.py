@@ -60,6 +60,17 @@ class FireModeAction(Action):
         pass
 
 
+class TalkAction(Action):
+    """Talks to an adjacent villager-type NPC - free, costs no turn, same
+    shape as LookAction. main.py recognizes this before it would ever reach
+    Engine.process_turn and calls Engine.talk_to_adjacent() directly instead;
+    perform() is never actually called in practice, kept only so TalkAction
+    satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class FireAction(Action):
     """Fires the equipped ranged weapon at (target_x, target_y). Unlike
     FireModeAction, this is a real turn action - dispatched through the

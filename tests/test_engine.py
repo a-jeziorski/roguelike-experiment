@@ -6,7 +6,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 import random
 from pathlib import Path
 
-from content.loader import load_catalog, load_levels, load_overworld
+from content.loader import load_catalog, load_level, load_levels, load_overworld
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
@@ -60,6 +60,18 @@ def make_monster(
         alert_radius=alert_radius,
         flee_hp_pct=flee_hp_pct,
         ranged_range=ranged_range,
+    )
+
+
+def make_villager(x: int, y: int, dialogue="", entity_id="villager", name="Villager") -> Entity:
+    return Entity(
+        x, y, "v", (170, 140, 90), name,
+        blocks_movement=True,
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=10, hp=10, attack=0, defense=0),
+        ai="villager",
+        dialogue=dialogue,
+        entity_id=entity_id,
     )
 
 
@@ -1076,6 +1088,62 @@ def test_build_game_map_populates_tile_descriptions():
     assert game_map.tile_descriptions == {(3, 1): "A black stone tower."}
 
 
+def test_build_game_map_entity_dialogue_prefers_spawn_override(tmp_path):
+    level_path = tmp_path / "with_dialogue.lvl"
+    level_path.write_text(
+        "id: with_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, dialogue: "A specific line for this one." }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    villager = next(e for e in game_map.entities if e.name == "Villager")
+    assert villager.dialogue == "A specific line for this one."
+    assert villager.entity_id == "villager"
+
+
+def test_build_game_map_entity_dialogue_falls_back_to_catalog_default(tmp_path):
+    level_path = tmp_path / "no_dialogue.lvl"
+    level_path.write_text(
+        "id: no_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    villager = next(e for e in game_map.entities if e.name == "Villager")
+    assert villager.dialogue == catalog.entities["villager"].dialogue
+    assert villager.dialogue  # the real catalog entry sets a non-empty fallback
+
+
 def test_depart_player_removes_and_caches_and_clears_mailbox():
     catalog = load_catalog()
     levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
@@ -1366,6 +1434,136 @@ def test_shared_quest_log_object_is_visible_across_engines():
 
     assert dungeon_engine.quest_log is overworld_engine.quest_log
 
-    dungeon_engine.quest_log.check_dungeon_arrival("millhaven")
+    dungeon_engine.quest_log.check_talked_to("village_chief")
 
     assert overworld_engine.quest_log.quests[SEALED_MESSAGE_ID].status == "completed"
+
+
+def test_talk_to_adjacent_shows_the_villagers_dialogue():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Well held up better than most things.")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "Well held up better than most things."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_falls_back_to_catalog_default_dialogue():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="")  # no per-spawn override
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "They don\'t seem to have anything to say."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_with_no_one_nearby():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert "There's no one here to talk to." in engine.message_log.messages
+
+
+def test_talk_to_adjacent_ignores_hostile_monsters():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    rat = make_monster(2, 1, ai="hostile_basic")
+    game_map.entities.extend([player, rat])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert "There's no one here to talk to." in engine.message_log.messages
+
+
+def test_talk_to_adjacent_completes_a_matching_quest():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
+    game_map.entities.extend([player, chief])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+
+
+def test_talk_to_adjacent_does_not_complete_a_non_target_villager():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Can't talk.", entity_id="villager")
+    game_map.entities.extend([player, villager])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    assert quest.status == "active"
+    assert quest.completion_message not in engine.message_log.messages
+
+
+def test_talk_to_adjacent_does_not_repeat_completion_message():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
+    game_map.entities.extend([player, chief])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    assert engine.message_log.messages.count(quest.completion_message) == 1
+
+
+def test_talk_to_adjacent_after_deadline_failure_does_not_complete_the_quest():
+    """Talk isn't turn-coupled to movement the way dungeon-entry was, so the
+    old same-turn race between deadline-failure and completion can't happen
+    for this trigger - but a quest that already failed on an earlier turn
+    must still stay failed if the player talks to the target NPC afterward."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
+    game_map.entities.extend([player, chief])
+    quest_log = create_starting_quest_log()
+    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    clock = GameClock(year=quest.deadline_year, day=quest.deadline_day + 1, hour=0)
+    engine = Engine(game_map, player, "Test Level", clock=clock, quest_log=quest_log)
+    engine._check_quest_deadlines()
+    assert quest.status == "failed"
+
+    engine.talk_to_adjacent()
+
+    assert quest.status == "failed"
+    assert quest.completion_message not in engine.message_log.messages
+
+
+def test_talk_to_adjacent_never_advances_the_clock_or_processes_enemy_turns():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    rat = make_monster(0, 0, ai="hostile_basic")
+    game_map.entities.extend([player, villager, rat])
+    clock = GameClock()
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, clock=clock)
+    rat_start = (rat.x, rat.y)
+
+    engine.talk_to_adjacent()
+
+    assert engine.clock == GameClock()  # untouched
+    assert (rat.x, rat.y) == rat_start  # no enemy turn was processed

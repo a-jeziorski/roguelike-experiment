@@ -125,6 +125,8 @@ def build_game_map(
             flee_hp_pct=edef.flee_hp_pct,
             ranged_range=edef.ranged_range,
             description=edef.description,
+            dialogue=spawn.dialogue or edef.dialogue,
+            entity_id=edef.id,
         )
         game_map.entities.append(entity)
 

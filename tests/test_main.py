@@ -14,7 +14,7 @@ from engine.clock import HOURS_PER_DAY, GameClock
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
 from engine.game_map import build_game_map
-from engine.quest import SEALED_MESSAGE_ID, QuestLog, create_starting_quest_log
+from engine.quest import Quest, QuestLog
 from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -180,9 +180,28 @@ def test_resolve_transition_without_a_clock_still_works():
     assert new_engine.clock == GameClock()
 
 
-def test_resolve_transition_arriving_in_millhaven_completes_the_quest():
+def _quest_log_with_dungeon_target(dungeon_id: str) -> QuestLog:
+    """A synthetic QuestLog for exercising resolve_transition's wiring to
+    QuestLog.check_dungeon_arrival - still-valid general infrastructure that
+    the real starting quest no longer uses (it completes via Talk instead,
+    see test_engine.py), but is worth keeping covered for a future quest
+    that does complete this way."""
+    quest = Quest(
+        id="test_quest",
+        name="Test Quest",
+        description="",
+        completion_message="Quest complete!",
+        failure_message="Quest failed!",
+        deadline_year=9999,
+        deadline_day=1,
+        target_dungeon_id=dungeon_id,
+    )
+    return QuestLog(quests={quest.id: quest})
+
+
+def test_resolve_transition_dungeon_arrival_completes_a_matching_quest():
     catalog, dungeon_registry, overworld_level = _world()
-    quest_log = create_starting_quest_log()
+    quest_log = _quest_log_with_dungeon_target("millhaven")
     active_engines: dict = {}
 
     prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", quest_log=quest_log)
@@ -200,18 +219,18 @@ def test_resolve_transition_arriving_in_millhaven_completes_the_quest():
     )
 
     assert active_key == "millhaven"
-    assert quest_log.quests[SEALED_MESSAGE_ID].status == "completed"
-    assert quest_log.quests[SEALED_MESSAGE_ID].completion_message in millhaven_engine.message_log.messages
+    assert quest_log.quests["test_quest"].status == "completed"
+    assert quest_log.quests["test_quest"].completion_message in millhaven_engine.message_log.messages
     # the message belongs to the destination engine's log, not the source's
     assert (
-        quest_log.quests[SEALED_MESSAGE_ID].completion_message
+        quest_log.quests["test_quest"].completion_message
         not in overworld_engine.message_log.messages
     )
 
 
-def test_resolve_transition_arriving_elsewhere_does_not_complete_the_quest():
+def test_resolve_transition_dungeon_arrival_does_not_complete_a_non_matching_quest():
     catalog, dungeon_registry, overworld_level = _world()
-    quest_log = create_starting_quest_log()
+    quest_log = _quest_log_with_dungeon_target("millhaven")
     active_engines: dict = {}
 
     prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", quest_log=quest_log)
@@ -228,7 +247,7 @@ def test_resolve_transition_arriving_elsewhere_does_not_complete_the_quest():
         quest_log=quest_log,
     )
 
-    assert quest_log.quests[SEALED_MESSAGE_ID].status == "active"
+    assert quest_log.quests["test_quest"].status == "active"
 
 
 def test_resolve_transition_without_a_quest_log_still_works():
@@ -245,13 +264,19 @@ def test_resolve_transition_without_a_quest_log_still_works():
 
 
 def test_resolve_transition_deadline_failure_wins_a_same_turn_tie_with_arrival():
-    """Documented, accepted edge case: if the very turn the player steps onto
-    Millhaven's entrance tile is also the turn the clock crosses the deadline,
-    the deadline-failure check (which runs inside process_turn, before
-    resolve_transition is ever called) wins the tie."""
+    """Documented, accepted edge case for the dungeon-arrival completion
+    mechanism (still-valid general infrastructure - see
+    _quest_log_with_dungeon_target): if the very turn the player steps onto
+    a dungeon's entrance tile is also the turn the clock crosses the
+    deadline, the deadline-failure check (which runs inside process_turn,
+    before resolve_transition is ever called) wins the tie. The real
+    starting quest no longer uses this trigger (it completes via Talk
+    instead, which isn't turn-coupled to movement the same way - see
+    test_engine.py), but a future dungeon-arrival quest could still hit
+    this race, so it stays covered here."""
     catalog, dungeon_registry, overworld_level = _world()
-    quest_log = create_starting_quest_log()
-    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    quest_log = _quest_log_with_dungeon_target("millhaven")
+    quest = quest_log.quests["test_quest"]
     clock = GameClock(year=quest.deadline_year, day=quest.deadline_day, hour=HOURS_PER_DAY - 1)
 
     overworld_map, overworld_player = build_game_map(overworld_level, catalog)

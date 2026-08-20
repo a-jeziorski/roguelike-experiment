@@ -3,7 +3,7 @@ from engine.quest import (
     SEALED_MESSAGE_DEADLINE_DAY,
     SEALED_MESSAGE_DEADLINE_YEAR,
     SEALED_MESSAGE_ID,
-    SEALED_MESSAGE_TARGET_DUNGEON,
+    SEALED_MESSAGE_TARGET_ENTITY,
     Quest,
     QuestLog,
     create_starting_quest_log,
@@ -125,6 +125,38 @@ def test_check_dungeon_arrival_does_not_refire_on_already_terminal_quest():
     assert changed == []
 
 
+# --- check_talked_to ---
+
+
+def test_check_talked_to_matching_entity_completes_quest():
+    quest = make_quest(target_entity_id="village_chief")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_talked_to("village_chief")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_talked_to_non_matching_entity_is_a_no_op():
+    quest = make_quest(target_entity_id="village_chief")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_talked_to("villager")
+
+    assert changed == []
+    assert quest.status == "active"
+
+
+def test_check_talked_to_does_not_refire_on_already_terminal_quest():
+    quest = make_quest(target_entity_id="village_chief", status="completed")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_talked_to("village_chief")
+
+    assert changed == []
+
+
 # --- reset ---
 
 
@@ -152,7 +184,8 @@ def test_create_starting_quest_log_has_the_sealed_message_quest():
     assert quest.status == "active"
     assert quest.deadline_year == SEALED_MESSAGE_DEADLINE_YEAR == 87
     assert quest.deadline_day == SEALED_MESSAGE_DEADLINE_DAY == 57
-    assert quest.target_dungeon_id == SEALED_MESSAGE_TARGET_DUNGEON == "millhaven"
+    assert quest.target_entity_id == SEALED_MESSAGE_TARGET_ENTITY == "village_chief"
+    assert quest.target_dungeon_id is None
 
 
 # --- Quest.format_for_hud ---

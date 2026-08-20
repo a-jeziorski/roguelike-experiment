@@ -52,6 +52,8 @@ class Entity:
         flee_hp_pct: float | None = None,
         ranged_range: int | None = None,
         description: str = "",
+        dialogue: str = "",
+        entity_id: str = "",
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
         equipped_ranged_weapon: "Entity | None" = None,
@@ -70,6 +72,13 @@ class Entity:
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
         self.description = description
+        # The line the Talk action shows for this specific entity (see
+        # Engine.talk_to_adjacent), and the catalog id it was spawned from
+        # (e.g. "village_chief") - the latter is how the quest system
+        # identifies *which* NPC was talked to, since display names aren't
+        # guaranteed unique/stable the way catalog ids are.
+        self.dialogue = dialogue
+        self.entity_id = entity_id
         self.inventory: list[Entity] = []
         # The Entity currently equipped in each slot (so its name/bonus stay
         # available), not just a bare number - see effective_attack/defense.

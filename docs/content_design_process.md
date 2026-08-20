@@ -160,7 +160,7 @@ skittish is "cowardly," villager is "never a combatant in the first
 place." Don't reach for skittish when what's wanted is a true
 non-combatant.
 
-## 0d. Per-dungeon bibles (trial, `docs/dungeon_bibles/`)
+## 0d. Per-dungeon bibles (`docs/dungeon_bibles/`)
 
 Feedback on the seven-subagent batch (see [[sundered_realm_worldgen_pass_one]]
 memory) was that the results felt mechanically correct but thin - most
@@ -169,31 +169,44 @@ The working theory: `docs/world_history.md` is realm-level (which era,
 which faction) and this document is mechanical (balance math, geometry
 rules) - neither one forces anyone, agent or human, to decide what's
 *actually in a given room* before drawing it. `docs/dungeon_bibles/`
-holds an experimental middle layer: one short document per dungeon,
-written like a tabletop GM's site key, naming 3-5 specific set pieces
-(what's physically there, why, what it's meant to make the player feel)
-before any ASCII is drawn. `sunken_mine.md` is the first one, and the
-level content in `data/dungeons/sunken_mine/` was rewritten directly
-from it. Not yet proven out across a full batch - if it keeps paying off
-on the next dungeon revisited this way, promote this section out of
-"trial" and fold a bible-writing step into the authoring checklist below.
+holds the missing middle layer: one short document per dungeon, written
+like a tabletop GM's site key, naming 3-5 specific set pieces (what's
+physically there, why, what it's meant to make the player feel) before
+any ASCII is drawn. `sunken_mine.md` was the first - rewritten from a
+monster dungeon's own bible - and `millhaven.md` proved the same shape
+works for a peaceful settlement too (set pieces there are NPC placements
+and `landmark` tiles rather than monster encounters). No longer a trial:
+**write the bible before touching a level's content**, whether authoring
+new or revising existing, and fold it into the authoring checklist
+(§4) below.
 
 ## 1. Narrative framing
 
-Settle the throughline **before** drawing any map. The engine exposes three
+Settle the throughline **before** drawing any map. The engine exposes four
 story surfaces to the player: a level's `name` (shown in the HUD), an
-entity/item's `description`, and - for any *tile* worth calling out
-specifically (a stairway, a door, a dungeon entrance) - a per-legend-entry
-`description` that overrides that tile kind's generic look-mode text (e.g.
-`{stairs_up: null, description: "The town gate, leading back out onto the
-road."}` instead of the default "Stairs leading up."). All three are shown
-in look mode via `engine/render.py` `describe_tile`; everything narrative
-has to work through these fields - there's no separate lore/dialogue
-system, and there shouldn't be one added just to tell a story (see
-`flee_hp_pct` gotcha below for what happens when content assumes mechanics
-the engine doesn't have). A tile's custom `description`, when set, always
-wins over its kind's default and over a `dungeon_entrance`'s dungeon-level
-`inspect_text` (0b) - most specific wins.
+entity/item's `description`, a per-legend-entry `description` that
+overrides a *tile*'s generic look-mode text (e.g. `{stairs_up: null,
+description: "The town gate, leading back out onto the road."}` instead of
+the default "Stairs leading up."), and - for an `{entity: ...}` spawn
+specifically - a per-spawn `dialogue`, what the `Talk` action shows for
+*that one placement* (`{entity: villager, dialogue: "Well's held up better
+than most things built before the Sundering."}`), distinct from
+`description` on the same mapping (which is still the *tile's* look-mode
+override, not the entity's - easy to conflate, see `content/schema.py`'s
+`LegendEntry` docstring). The first three are shown in look mode via
+`engine/render.py` `describe_tile`; `dialogue` is shown by pressing `T`
+next to the NPC (`Engine.talk_to_adjacent`) - still no separate lore/
+dialogue *tree* or branching-conversation system, and there shouldn't be
+one added just to tell a story (see `flee_hp_pct` gotcha below for what
+happens when content assumes mechanics the engine doesn't have); `dialogue`
+is one more flat line per NPC, same discipline as everything else here. A
+villager with no per-spawn `dialogue` falls back to its catalog type's own
+default (`EntityDef.dialogue` - `villager`'s is a generic "they don't have
+much to say," so an un-authored NPC elsewhere in the game still says
+*something* sensible rather than nothing). A tile's custom `description`,
+when set, always wins over its kind's default and over a
+`dungeon_entrance`'s dungeon-level `inspect_text` (0b) - most specific
+wins.
 
 **For a walkable point of interest, use `tile: landmark`, never
 `tile: floor` (or `road`/`plains`/etc.) with a `description` bolted on.**
@@ -376,6 +389,10 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
 
 ## 4. Authoring checklist
 
+0. **Bible**: write (or, for a revision, re-read) that dungeon's
+   `docs/dungeon_bibles/<id>.md` before touching any `.lvl` file - see 0d.
+   3-5 named set pieces, tied explicitly to `world_history.md`'s eras/
+   factions, decided before any ASCII is drawn.
 1. **Layout**: reuse proven row geometry from an existing
    `data/dungeons/*/levels/*.lvl` file, or build new rows programmatically
    (concatenate segments of known length, assert the total is 24 before
@@ -389,6 +406,9 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
    items (checked against the balance methodology above).
 3. **Flavor text**: level `name` and every entity/item `description` fit
    the narrative arc - these are the only things the player actually reads.
+   For an `AI_VILLAGER` NPC specifically, also consider a per-spawn
+   `dialogue` (see §1) - not every villager needs one, but a named set
+   piece built around one probably does.
 4. **Validate**: `python tools/preview.py data/dungeons` - reviews every
    shipped dungeon's rendering, stairway destinations, and door/key pairings
    at once (or point it at one `data/dungeons/<id>` while iterating on a

@@ -96,6 +96,7 @@ def test_render_hud_shows_full_controls_in_a_dungeon():
 
     text = console_text(console)
     assert "pick up" in text
+    assert "[t] talk" in text
     assert "fire" in text
 
 

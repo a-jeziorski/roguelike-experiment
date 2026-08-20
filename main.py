@@ -23,6 +23,7 @@ from engine.actions import (
     FireModeAction,
     LookAction,
     RestartAction,
+    TalkAction,
 )
 from engine.clock import GameClock
 from engine.engine import Engine
@@ -348,6 +349,11 @@ def main() -> int:
                 if isinstance(action, LookAction):
                     if engine.game_state == "playing":
                         run_look_mode(console, context, engine)
+                    continue
+
+                if isinstance(action, TalkAction):
+                    if engine.game_state == "playing":
+                        engine.talk_to_adjacent()
                     continue
 
                 if isinstance(action, FireModeAction):

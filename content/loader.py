@@ -45,6 +45,7 @@ class EntitySpawn:
     x: int
     y: int
     entity: EntityDef
+    dialogue: str | None = None
 
 
 @dataclass
@@ -351,7 +352,10 @@ def load_level(
                     )
                 else:
                     entity_spawns.append(
-                        EntitySpawn(x=x, y=y, entity=catalog.entities[entry.entity])
+                        EntitySpawn(
+                            x=x, y=y, entity=catalog.entities[entry.entity],
+                            dialogue=entry.dialogue,
+                        )
                     )
 
             if entry.item is not None:

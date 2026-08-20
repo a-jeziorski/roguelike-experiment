@@ -36,6 +36,11 @@ _WANDER_MOVES = [(0, 0)] * 8 + [
     (dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)
 ]
 
+# Last-resort fallback if a talkable entity somehow has no dialogue at all
+# (no per-spawn override, no catalog-level default either) - should never
+# actually fire for a properly-authored villager, kept only for safety.
+_DEFAULT_TALK_LINE = "They don't seem to have anything to say."
+
 
 class MessageLog:
     def __init__(self) -> None:
@@ -340,6 +345,35 @@ class Engine:
         so deadline logic is testable independent of clock/healing mechanics."""
         for quest in self.quest_log.check_deadlines(self.clock):
             self.message_log.add(quest.failure_message)
+
+    def _find_adjacent_villager(self) -> Entity | None:
+        """The first AI_VILLAGER entity within 8-directional adjacency of
+        the player - matches the project's diagonal-movement model. Hostile
+        monsters are never talkable (filtered by AI type, not a new flag);
+        bumping them still attacks, unchanged."""
+        px, py = self.player.x, self.player.y
+        for entity in self.game_map.entities:
+            if entity.ai != AI_VILLAGER:
+                continue
+            if entity.x == px and entity.y == py:
+                continue
+            if abs(entity.x - px) <= 1 and abs(entity.y - py) <= 1:
+                return entity
+        return None
+
+    def talk_to_adjacent(self) -> None:
+        """Free, non-turn action (see main.py's TalkAction branch): shows an
+        adjacent villager's dialogue line and checks whether talking to them
+        completes a quest (see QuestLog.check_talked_to). Never touches
+        self.clock or calls _handle_enemy_turns - talking costs nothing."""
+        target = self._find_adjacent_villager()
+        if target is None:
+            self.message_log.add("There's no one here to talk to.")
+            return
+        line = target.dialogue or _DEFAULT_TALK_LINE
+        self.message_log.add(f'{target.name}: "{line}"')
+        for quest in self.quest_log.check_talked_to(target.entity_id):
+            self.message_log.add(quest.completion_message)
 
     def process_turn(self, action: Action) -> None:
         if self.game_state != "playing":
