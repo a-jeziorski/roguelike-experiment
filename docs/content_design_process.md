@@ -220,19 +220,26 @@ visible on the map before it's read. First added after playtesting the
 Sunken Mine's bible-driven set pieces (the weighing counter, the ledger)
 turned out invisible under `tile: floor`.
 
-**A quest's completion mechanism has to match what the quest is actually
-about.** The starting quest originally had the player carrying a *sealed
-letter* that was lost during capture, then completing by *talking* to the
-chief - a real inconsistency (a sealed letter can't be verbally
-delivered) that shipped once before being caught in review and rewritten
-into a verbal warning instead (`docs/dungeon_bibles/millhaven.md`'s Tone
-notes has the full story). If a quest completes via `Talk`
-(`QuestLog.check_talked_to`), its content needs to be something a person
-could plausibly *say* - a warning, a report, a request - not a physical
-object standing in for one; if it completes via `check_dungeon_arrival`
-instead, a physical delivery premise is fine again. Check this whenever a
-quest's fiction and its completion trigger are being decided together,
-not just at the writing-the-line stage.
+**A quest's premise has to actually grant the player character access to
+whatever they're meant to convey - independent of which action triggers
+completion.** The starting quest originally had the player carrying a
+*sealed letter* (meaning, by definition, they were never privy to its
+contents) that was then lost during capture, but completed by having them
+*tell* the chief what it said - two compounding errors, not one: no
+object to hand over, and no way to have known the contents even if they
+still had it. Shipped once before being caught in review and rewritten
+into a warning the player was told directly, not sealed
+(`docs/dungeon_bibles/millhaven.md`'s Tone notes has the full story). The
+lesson isn't "`Talk`-completed quests need verbal content and
+dungeon-arrival ones need physical content" - a delivery quest completing
+via `Talk` (handing over an intact letter, say) is entirely fine. The
+actual check: does the player character canonically *know* or *possess*
+what the quest has them convey? A sealed/written document means they
+carry it unopened and hand it over intact, never narrating what's inside;
+something spoken or witnessed directly means they genuinely know it and
+can convey it however the fiction calls for. Run this check whenever a
+quest's premise and its completion beat are being written together, not
+just at the "does this line sound right" stage.
 
 Current arc, as a worked example - one continuous descent through
 progressively older ruins beneath a manor's basement:

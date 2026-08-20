@@ -180,13 +180,19 @@ creature.
 - Keep the tension entirely in the player's own errand, never in the
   town itself. Millhaven should never need a reason to feel uneasy -
   that instinct belongs to Stonebridge, not here.
-- **Match a quest's completion mechanism to what the quest is actually
-  about.** The original version of this quest had the player carrying a
-  *sealed letter* that was lost during capture, then "delivering" it by
-  talking to the chief - a real inconsistency (how do you verbally
-  deliver a sealed letter you no longer have?) that shipped once before
-  it was caught in review. If a quest completes via `Talk`, its content
-  should be something a person could plausibly *say* (a warning, a
-  report, a request) - not a physical object standing in for one. This
-  applies beyond Millhaven: check this every time a quest's fiction and
-  its completion trigger are designed together.
+- **A quest's premise has to actually grant the player character access
+  to whatever they're meant to convey.** The original version of this
+  quest had the player carrying a *sealed letter* - meaning, by
+  definition, they were never privy to its contents - that was then lost
+  during capture, but completed by having them tell the chief what it
+  said. Two compounding errors, not one: no object left to hand over,
+  and no way to have known the contents even with the letter still in
+  hand. This isn't a rule about `Talk` specifically - a delivery quest
+  handing over an intact sealed letter via `Talk` would be entirely
+  fine. The actual check: does the player character canonically *know*
+  or *possess* what the quest has them convey? Sealed/written means
+  carried unopened, handed over intact, never narrated; spoken or
+  witnessed directly means they genuinely know it and can convey it
+  however the fiction calls for. Applies beyond Millhaven - run this
+  check whenever a quest's premise and its completion beat are being
+  written together, not just at the "does this line sound right" stage.
