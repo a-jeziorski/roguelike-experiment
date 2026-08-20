@@ -7,6 +7,7 @@ import numpy as np
 import tcod.map
 
 from content.loader import Catalog, ParsedLevel
+from content.schema import TILE_PASSABILITY
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -21,18 +22,6 @@ PLAYER_ATTACK = 5
 PLAYER_DEFENSE = 1
 
 FOV_RADIUS = 8
-
-# kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
-# ordinary open ground - which is why every walkable kind (floor, stairs,
-# dungeon_entrance, road/plains/town/sea's line-of-sight...) needs no entry
-# here unless it's actually impassable and/or opaque.
-TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
-    "wall": (False, False),
-    "door": (False, False),  # closed; unlock_door() overrides both to True at runtime
-    "mountain": (False, False),
-    "sea": (False, True),  # can't cross it, but can see across it
-    "forest": (True, False),  # can walk through, can't see far through/across it
-}
 
 
 class GameMap:

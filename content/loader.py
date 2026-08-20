@@ -7,6 +7,7 @@ with a clear message, before the engine ever sees it.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -14,7 +15,7 @@ from typing import Literal
 import yaml
 from pydantic import ValidationError
 
-from content.schema import DungeonDef, EntityDef, ItemDef, LevelDef
+from content.schema import TILE_PASSABILITY, DungeonDef, EntityDef, ItemDef, LevelDef
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -175,6 +176,76 @@ def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:
     return rows, errors
 
 
+def _reachable_tiles(
+    tiles: list[list[str]], width: int, height: int, start: tuple[int, int]
+) -> set[tuple[int, int]]:
+    """8-directional walkable-tile BFS from `start`, respecting TILE_PASSABILITY.
+    A door is impassable in that table by default (its closed starting state),
+    so this is exactly "everywhere reachable holding no keys at all" - the
+    baseline `_check_doors_enclose_something` compares against. 8-directional
+    to match the player's actual movement: `MovementAction` (engine/actions.py)
+    never blocks a diagonal step for cutting a wall's corner, so a 4-directional
+    BFS here would call a diagonal bypass "enclosed" when it's actually walkable
+    in real play."""
+    seen = {start}
+    queue = deque([start])
+    while queue:
+        x, y = queue.popleft()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nx, ny = x + dx, y + dy
+                if not (0 <= nx < width and 0 <= ny < height) or (nx, ny) in seen:
+                    continue
+                walkable, _ = TILE_PASSABILITY.get(tiles[ny][nx], (True, True))
+                if walkable:
+                    seen.add((nx, ny))
+                    queue.append((nx, ny))
+    return seen
+
+
+def _check_doors_enclose_something(
+    tiles: list[list[str]],
+    doors: list["DoorSpawn"],
+    player_start: tuple[int, int],
+    width: int,
+    height: int,
+) -> list[str]:
+    """A locked door only makes sense as a reward gate (see
+    docs/content_design_process.md section 3): the point is that whatever is
+    directly behind it is unreachable without the key. If every tile next to
+    a door is already reachable from player_start with *no* doors open, the
+    lock has no effect - almost certainly an accidental second route around
+    it, not a deliberate long-way-around design (a real detour still has to
+    pass through the door eventually to reach what's immediately behind it)."""
+    if not doors:
+        return []
+
+    reachable_with_no_keys = _reachable_tiles(tiles, width, height, player_start)
+
+    errors: list[str] = []
+    for door in doors:
+        far_side = [
+            (door.x + dx, door.y + dy)
+            for dx in (-1, 0, 1)
+            for dy in (-1, 0, 1)
+            if not (dx == 0 and dy == 0)
+            and 0 <= door.x + dx < width
+            and 0 <= door.y + dy < height
+            and TILE_PASSABILITY.get(tiles[door.y + dy][door.x + dx], (True, True))[0]
+            and (door.x + dx, door.y + dy) not in reachable_with_no_keys
+        ]
+        if not far_side:
+            errors.append(
+                f"door at ({door.x}, {door.y}) does not enclose anything - every "
+                "tile next to it is already reachable without a key, so the lock "
+                "has no effect (an unintended second route around it, not a "
+                "deliberate detour)"
+            )
+    return errors
+
+
 def load_level(
     path: Path,
     catalog: Catalog,
@@ -320,6 +391,11 @@ def load_level(
                 f"multiple stairways target level '{target_id}' at {coords_str} - "
                 "ambiguous which one is the return path when arriving from that level"
             )
+
+    if len(player_starts) == 1:
+        errors.extend(
+            _check_doors_enclose_something(tiles, doors, player_starts[0], width, height)
+        )
 
     if errors:
         raise ContentValidationError(str(path), errors)

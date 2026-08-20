@@ -18,6 +18,22 @@ TileType = Literal[
     "landmark",
 ]
 
+# kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
+# ordinary open ground - which is why every walkable kind (floor, stairs,
+# dungeon_entrance, road/plains/town/sea's line-of-sight, landmark...) needs no
+# entry here unless it's actually impassable and/or opaque. Lives here (rather
+# than in engine/game_map.py, which uses it for real walkability/rendering)
+# so content/loader.py can also import it for design-time validation - e.g.
+# checking a locked door actually encloses what it's meant to guard - without
+# a circular import (engine.game_map itself imports content.loader).
+TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
+    "wall": (False, False),
+    "door": (False, False),  # closed; unlock_door() overrides both to True at runtime
+    "mountain": (False, False),
+    "sea": (False, True),  # can't cross it, but can see across it
+    "forest": (True, False),  # can walk through, can't see far through/across it
+}
+
 Color = tuple[int, int, int]
 
 # Known monster AI behaviors. Defined once here (rather than a bare str on

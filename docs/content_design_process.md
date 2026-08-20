@@ -311,7 +311,19 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
 - **Locked doors/keys are reward gates, not path gates**: place them off the
   critical path, guarding a bonus item, so a level is always completable
   without finding the key. Every door/key pair used so far follows this
-  (`level_01`, `level_04`).
+  (`level_01`, `level_04`). `content/loader.py` validates this mechanically
+  now, not just by convention: `load_level` rejects a door if every tile
+  next to it is already reachable from `player_start` without a key
+  (8-directional, matching the player's actual corner-cutting diagonal
+  movement - a route that's only reachable by cutting a corner still
+  counts as a bypass). Caught a real bug this way in an earlier revision of
+  `sunken_mine/level_01`, where a side corridor accidentally reconnected to
+  the far side of a locked door one tile past it. If a *long detour*
+  around a door is ever wanted as a deliberate design (a shortcut-door
+  pattern, distinct from every reward gate used so far), this check would
+  need to be relaxed for that specific case - it currently assumes every
+  door fully encloses what's behind it, matching every door in this
+  project to date.
 - **Geometry variety, not just encounter variety** (playtest feedback on the
   6-level dungeon): `level_03` and `level_05` are a single open room each -
   noticeably less interesting than the multi-room `level_01`/`02a`/`02b`/

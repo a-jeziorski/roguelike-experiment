@@ -1,0 +1,15 @@
+id: enclosed_door
+name: Enclosed Door Fixture
+
+map: |
+  #########
+  #@..>.D[#
+  #########
+
+legend:
+  "#": wall
+  ".": floor
+  "@": player_start
+  ">": stairs_down
+  "D": { door: rusty_key }
+  "[": { item: leather_armor }

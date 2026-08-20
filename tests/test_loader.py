@@ -314,6 +314,73 @@ def test_load_level_collects_custom_tile_descriptions():
     assert level.tile_descriptions == []  # no legend entry sets description there
 
 
+def test_load_level_rejects_a_door_with_a_second_route_around_it(tmp_path):
+    # Two parallel corridors both connect the same open top row to the same
+    # open bottom row - one is locked, one isn't - so the door guards nothing.
+    level_path = tmp_path / "bypassable.lvl"
+    level_path.write_text(
+        "id: bypassable\n"
+        "name: Bypassable\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@..#\n"
+        "  #.#.#\n"
+        "  #.D.#\n"
+        "  #.#.#\n"
+        "  #..>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  "D": { door: rusty_key }\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="does not enclose anything"):
+        load_level(level_path, catalog)
+
+
+def test_load_level_rejects_a_door_bypassed_diagonally(tmp_path):
+    # The tile directly behind the door has no *orthogonal* neighbor except
+    # the door itself, but it's diagonally adjacent to tiles on both sides -
+    # MovementAction never blocks a diagonal step for cutting a wall's
+    # corner, so this is a real bypass in actual play, not a theoretical one
+    # a 4-directional-only reachability check would miss (mirrors the actual
+    # bug found in the Sunken Mine's Weighhouse Shaft).
+    level_path = tmp_path / "diagonal_bypass.lvl"
+    level_path.write_text(
+        "id: diagonal_bypass\n"
+        "name: Diagonal Bypass\n"
+        "map: |\n"
+        "  #######\n"
+        "  #@>.D.#\n"
+        "  ####.##\n"
+        "  #######\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  "D": { door: rusty_key }\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="does not enclose anything"):
+        load_level(level_path, catalog)
+
+
+def test_load_level_accepts_a_door_that_truly_encloses_its_reward():
+    catalog = load_catalog()
+    level = load_level(FIXTURES_DIR / "enclosed_door.lvl", catalog)
+
+    assert [(d.x, d.y) for d in level.doors] == [(6, 1)]
+    assert [i.item.id for i in level.item_spawns] == ["leather_armor"]
+
+
 SHIPPED_DUNGEON_IDS = {
     "forgotten_ruins",
     "prison_tower",
