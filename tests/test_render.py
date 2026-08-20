@@ -98,6 +98,19 @@ def test_render_hud_shows_full_controls_in_a_dungeon():
     assert "fire" in text
 
 
+def test_render_hud_shows_the_world_clock():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)  # default clock: a fresh GameClock()
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert engine.clock.format_for_hud() in text
+
+
 def test_long_monster_description_wraps_instead_of_being_clipped():
     """Regression test: console.print() silently truncates text past the
     console's right edge unless given an explicit width. A long, free-form

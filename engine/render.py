@@ -171,6 +171,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
+    y += console.print(0, y, engine.clock.format_for_hud(), fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
     y += console.print(
         0,

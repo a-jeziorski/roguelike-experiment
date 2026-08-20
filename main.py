@@ -24,6 +24,7 @@ from engine.actions import (
     LookAction,
     RestartAction,
 )
+from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.input_handlers import handle_event, handle_look_event, handle_target_event
@@ -229,6 +230,8 @@ def resolve_transition(
     dungeon_registry: dict,
     overworld_level,
     catalog,
+    *,
+    clock: GameClock | None = None,
 ) -> tuple[str, Engine]:
     """After a dispatch, checks the active engine's transition mailbox
     (Engine.wants_overworld / Engine.pending_dungeon_entry) and performs the
@@ -257,6 +260,7 @@ def resolve_transition(
             target = Engine(
                 game_map, player, overworld_level.name,
                 catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
+                clock=clock,
             )
             active_engines[OVERWORLD_KEY] = target
         else:
@@ -275,6 +279,7 @@ def resolve_transition(
             target = Engine(
                 game_map, player, starting_level.name,
                 catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+                clock=clock,
             )
             active_engines[dungeon_id] = target
         else:
@@ -295,6 +300,8 @@ def main() -> int:
         print(str(e), file=sys.stderr)
         return 1
 
+    clock = GameClock()
+
     dungeon = dungeon_registry[STARTING_DUNGEON_ID]
     levels = dungeon.levels
     starting_level = levels[dungeon.starting_level]
@@ -306,6 +313,7 @@ def main() -> int:
         catalog=catalog,
         levels=levels,
         starting_level=starting_level,
+        clock=clock,
     )
     active_key = STARTING_DUNGEON_ID
     active_engines: dict[str, Engine] = {active_key: engine}
@@ -349,6 +357,7 @@ def main() -> int:
                                 active_key, engine = resolve_transition(
                                     active_key, engine, active_engines,
                                     dungeon_registry, overworld_level, catalog,
+                                    clock=clock,
                                 )
                     continue
 
@@ -357,6 +366,7 @@ def main() -> int:
                 animate_combat_feedback(console, context, engine)
                 active_key, engine = resolve_transition(
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
+                    clock=clock,
                 )
 
 

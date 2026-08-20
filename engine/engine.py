@@ -14,6 +14,7 @@ from content.schema import (
     AI_VILLAGER,
 )
 from engine.actions import Action, MovementAction
+from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
 from engine.game_map import GameMap, build_game_map
@@ -55,6 +56,7 @@ class Engine:
         starting_level: "ParsedLevel | None" = None,
         is_overworld: bool = False,
         dungeon_inspect_text: dict[str, str] | None = None,
+        clock: GameClock | None = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -65,6 +67,14 @@ class Engine:
         # HUD can hide dungeon-only control hints (pickup/potion/fire) without
         # coupling that to an unrelated invariant that could change later.
         self.is_overworld = is_overworld
+        # Shared world-clock object: main.py hands the *same* GameClock
+        # instance to every Engine it constructs, so advancing it from the
+        # overworld Engine is instantly visible from every dungeon Engine's
+        # .clock reference too - same "one object, referenced everywhere"
+        # pattern as self.player across depart_player/arrive_player. Defaults
+        # to a fresh GameClock() so bare Engine(...) construction in tests
+        # doesn't need to know or care about it.
+        self.clock = clock if clock is not None else GameClock()
         # dungeon_id -> flavor text shown when a dungeon_entrance tile is
         # inspected in look mode (see engine/render.py describe_tile). Only
         # ever populated for the overworld Engine - every other Engine has no
@@ -206,7 +216,11 @@ class Engine:
     def restart(self) -> None:
         """Begins a fresh run from the starting level: a brand-new player (full
         hp, no inventory or picked-up attack bonus), a freshly built map (killed
-        monsters and taken items restored), and a cleared message log."""
+        monsters and taken items restored), a cleared message log, and the
+        world clock reset to its starting date - since self.clock is shared by
+        every cached Engine, this is visible everywhere immediately, which is
+        the intended "clean do-over" behavior for a restart."""
+        self.clock.reset()
         self.game_map, self.player = build_game_map(self.starting_level, self.catalog)
         self.level_name = self.starting_level.name
         self.game_state = "playing"
@@ -298,6 +312,16 @@ class Engine:
                 continue
             self._perform_ai(entity)
 
+    def _advance_world_clock(self) -> None:
+        """The only source of in-game time passing: one hour per turn taken
+        on the overworld (dungeons/settlements never call this - is_overworld
+        is False for all of them, including Millhaven/Wayford). Passive
+        healing is the sole current effect of time passing; future effects
+        can hang off self.clock without changing this method's shape."""
+        self.clock.advance_hour()
+        fighter = self.player.fighter
+        fighter.hp = min(fighter.max_hp, fighter.hp + 1)
+
     def process_turn(self, action: Action) -> None:
         if self.game_state != "playing":
             return
@@ -309,5 +333,8 @@ class Engine:
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)
+
+        if self.game_state == "playing" and self.is_overworld:
+            self._advance_world_clock()
 
         self.game_map.update_fov((self.player.x, self.player.y))

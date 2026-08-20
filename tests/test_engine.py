@@ -8,6 +8,7 @@ from pathlib import Path
 
 from content.loader import load_catalog, load_levels, load_overworld
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
+from engine.clock import STARTING_HOUR, GameClock
 from engine.engine import Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -1167,3 +1168,101 @@ def test_engine_stores_given_dungeon_inspect_text():
     )
 
     assert engine.dungeon_inspect_text == {"prison_tower": "A black stone tower."}
+
+
+def test_process_turn_advances_clock_on_the_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.process_turn(WaitAction())
+
+    assert engine.clock.hour == STARTING_HOUR + 1
+
+
+def test_process_turn_does_not_advance_clock_in_a_dungeon():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
+
+    engine.process_turn(WaitAction())
+
+    assert engine.clock == GameClock()
+
+
+def test_process_turn_heals_player_by_one_hp_on_the_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 11
+
+
+def test_process_turn_heal_is_capped_at_max_hp():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30
+
+
+def test_process_turn_advances_clock_regardless_of_action_success():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[2, 1] = False  # a wall to bump into
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # the move failed...
+    assert engine.clock.hour == STARTING_HOUR + 1  # ...but the hour still passed
+
+
+def test_restart_resets_the_shared_world_clock():
+    catalog = load_catalog()
+    levels = load_levels(LEVELS_DIR, catalog)
+    starting_level = levels["level_01"]
+    game_map, player = build_game_map(starting_level, catalog)
+    engine = Engine(
+        game_map, player, starting_level.name,
+        catalog=catalog, levels=levels, starting_level=starting_level,
+    )
+    for _ in range(5):
+        engine.clock.advance_hour()
+    assert engine.clock != GameClock()
+
+    engine.restart()
+
+    assert engine.clock == GameClock()
+
+
+def test_shared_clock_object_is_visible_across_engines():
+    clock = GameClock()
+
+    overworld_map = make_open_map(3, 3)
+    overworld_player = make_player(1, 1)
+    overworld_map.entities.append(overworld_player)
+    overworld_engine = Engine(
+        overworld_map, overworld_player, "The Overworld", is_overworld=True, clock=clock
+    )
+
+    dungeon_map = make_open_map(3, 3)
+    dungeon_player = make_player(1, 1)
+    dungeon_map.entities.append(dungeon_player)
+    dungeon_engine = Engine(dungeon_map, dungeon_player, "Test Level", clock=clock)
+
+    assert dungeon_engine.clock is overworld_engine.clock
+
+    overworld_engine.process_turn(WaitAction())
+
+    assert dungeon_engine.clock.hour == STARTING_HOUR + 1

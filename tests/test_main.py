@@ -10,6 +10,7 @@ from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
 from engine.actions import BumpAction, EscapeAction, RestartAction, WaitAction
+from engine.clock import GameClock
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
 from engine.game_map import build_game_map
@@ -126,13 +127,14 @@ def _entrance_for(overworld_level, dungeon_id: str) -> tuple[int, int]:
     return (entrance.x, entrance.y)
 
 
-def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str) -> Engine:
+def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str, clock=None) -> Engine:
     dungeon = dungeon_registry[dungeon_id]
     starting_level = dungeon.levels[dungeon.starting_level]
     game_map, player = build_game_map(starting_level, catalog)
     return Engine(
         game_map, player, starting_level.name,
         catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+        clock=clock,
     )
 
 
@@ -148,6 +150,33 @@ def test_resolve_transition_first_overworld_visit_lands_at_matched_entrance():
     assert active_key == OVERWORLD_KEY
     assert new_engine.is_overworld is True
     assert (new_engine.player.x, new_engine.player.y) == _entrance_for(overworld_level, "prison_tower")
+
+
+def test_resolve_transition_passes_the_given_clock_to_the_overworld_engine():
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", clock=clock)
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    _, new_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+        clock=clock,
+    )
+
+    assert new_engine.clock is clock
+
+
+def test_resolve_transition_without_a_clock_still_works():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    active_key, new_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.clock == GameClock()
 
 
 def test_resolve_transition_builds_overworld_engine_with_dungeon_inspect_text():
