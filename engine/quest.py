@@ -95,7 +95,7 @@ def create_starting_quest_log() -> QuestLog:
             "have to wait until you get there."
         ),
         completion_message="You have reached Millhaven. The sealed message can finally be delivered.",
-        failure_message="The deadline for the sealed message has passed. It will never be delivered now.",
+        failure_message="The deadline for the sealed message has passed. No point delivering it anymore.",
         deadline_year=SEALED_MESSAGE_DEADLINE_YEAR,
         deadline_day=SEALED_MESSAGE_DEADLINE_DAY,
         target_dungeon_id=SEALED_MESSAGE_TARGET_DUNGEON,
