@@ -8,7 +8,7 @@ from pathlib import Path
 
 from content.loader import load_catalog, load_levels, load_overworld
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
-from engine.clock import STARTING_HOUR, GameClock
+from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -19,6 +19,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
+from engine.quest import SEALED_MESSAGE_ID, Quest, QuestLog, create_starting_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -1266,3 +1267,105 @@ def test_shared_clock_object_is_visible_across_engines():
     overworld_engine.process_turn(WaitAction())
 
     assert dungeon_engine.clock.hour == STARTING_HOUR + 1
+
+
+def test_engine_defaults_quest_log_to_empty():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.quest_log == QuestLog()
+
+
+def test_engine_stores_given_quest_log():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    assert engine.quest_log is quest_log
+
+
+def test_process_turn_logs_quest_failure_once_deadline_crossed_on_the_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest = Quest(
+        id="test_quest", name="Test Quest", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY, target_dungeon_id="millhaven",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline passed
+
+    assert quest.status == "failed"
+    assert "too late" in engine.message_log.messages
+
+    engine.process_turn(WaitAction())  # a later turn must not repeat the message
+
+    assert engine.message_log.messages.count("too late") == 1
+
+
+def test_process_turn_does_not_touch_quest_state_in_a_dungeon():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest = Quest(
+        id="test_quest", name="Test Quest", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY, target_dungeon_id="millhaven",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(game_map, player, "Test Level", clock=clock, quest_log=quest_log)
+
+    engine.process_turn(WaitAction())
+
+    assert quest.status == "active"
+    assert engine.message_log.messages == ["You enter Test Level."]
+
+
+def test_restart_resets_the_shared_quest_log():
+    catalog = load_catalog()
+    levels = load_levels(LEVELS_DIR, catalog)
+    starting_level = levels["level_01"]
+    game_map, player = build_game_map(starting_level, catalog)
+    quest_log = create_starting_quest_log()
+    engine = Engine(
+        game_map, player, starting_level.name,
+        catalog=catalog, levels=levels, starting_level=starting_level, quest_log=quest_log,
+    )
+    quest_log.quests[SEALED_MESSAGE_ID].status = "failed"
+
+    engine.restart()
+
+    assert quest_log.quests[SEALED_MESSAGE_ID].status == "active"
+
+
+def test_shared_quest_log_object_is_visible_across_engines():
+    quest_log = create_starting_quest_log()
+
+    overworld_map = make_open_map(3, 3)
+    overworld_player = make_player(1, 1)
+    overworld_map.entities.append(overworld_player)
+    overworld_engine = Engine(
+        overworld_map, overworld_player, "The Overworld", is_overworld=True, quest_log=quest_log,
+    )
+
+    dungeon_map = make_open_map(3, 3)
+    dungeon_player = make_player(1, 1)
+    dungeon_map.entities.append(dungeon_player)
+    dungeon_engine = Engine(dungeon_map, dungeon_player, "Test Level", quest_log=quest_log)
+
+    assert dungeon_engine.quest_log is overworld_engine.quest_log
+
+    dungeon_engine.quest_log.check_dungeon_arrival("millhaven")
+
+    assert overworld_engine.quest_log.quests[SEALED_MESSAGE_ID].status == "completed"

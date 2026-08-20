@@ -172,6 +172,8 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, engine.clock.format_for_hud(), fg=HUD_FG, width=width)
+    for quest in engine.quest_log.quests.values():
+        y += console.print(0, y, quest.format_for_hud(), fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
     y += console.print(
         0,

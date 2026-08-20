@@ -10,10 +10,11 @@ from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
 from engine.actions import BumpAction, EscapeAction, RestartAction, WaitAction
-from engine.clock import GameClock
+from engine.clock import HOURS_PER_DAY, GameClock
 from engine.engine import Engine
 from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
 from engine.game_map import build_game_map
+from engine.quest import SEALED_MESSAGE_ID, QuestLog, create_starting_quest_log
 from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -127,14 +128,14 @@ def _entrance_for(overworld_level, dungeon_id: str) -> tuple[int, int]:
     return (entrance.x, entrance.y)
 
 
-def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str, clock=None) -> Engine:
+def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str, clock=None, quest_log=None) -> Engine:
     dungeon = dungeon_registry[dungeon_id]
     starting_level = dungeon.levels[dungeon.starting_level]
     game_map, player = build_game_map(starting_level, catalog)
     return Engine(
         game_map, player, starting_level.name,
         catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
-        clock=clock,
+        clock=clock, quest_log=quest_log,
     )
 
 
@@ -177,6 +178,98 @@ def test_resolve_transition_without_a_clock_still_works():
 
     assert active_key == OVERWORLD_KEY
     assert new_engine.clock == GameClock()
+
+
+def test_resolve_transition_arriving_in_millhaven_completes_the_quest():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = create_starting_quest_log()
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", quest_log=quest_log)
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+    active_key, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "millhaven"
+    active_key, millhaven_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    assert active_key == "millhaven"
+    assert quest_log.quests[SEALED_MESSAGE_ID].status == "completed"
+    assert quest_log.quests[SEALED_MESSAGE_ID].completion_message in millhaven_engine.message_log.messages
+    # the message belongs to the destination engine's log, not the source's
+    assert (
+        quest_log.quests[SEALED_MESSAGE_ID].completion_message
+        not in overworld_engine.message_log.messages
+    )
+
+
+def test_resolve_transition_arriving_elsewhere_does_not_complete_the_quest():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = create_starting_quest_log()
+    active_engines: dict = {}
+
+    prison_engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", quest_log=quest_log)
+    prison_engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines["prison_tower"] = prison_engine
+    active_key, overworld_engine = resolve_transition(
+        "prison_tower", prison_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "forgotten_ruins"
+    resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    assert quest_log.quests[SEALED_MESSAGE_ID].status == "active"
+
+
+def test_resolve_transition_without_a_quest_log_still_works():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.pending_dungeon_entry = "millhaven"
+
+    active_key, new_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == "millhaven"
+    assert new_engine.quest_log == QuestLog()
+
+
+def test_resolve_transition_deadline_failure_wins_a_same_turn_tie_with_arrival():
+    """Documented, accepted edge case: if the very turn the player steps onto
+    Millhaven's entrance tile is also the turn the clock crosses the deadline,
+    the deadline-failure check (which runs inside process_turn, before
+    resolve_transition is ever called) wins the tie."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = create_starting_quest_log()
+    quest = quest_log.quests[SEALED_MESSAGE_ID]
+    clock = GameClock(year=quest.deadline_year, day=quest.deadline_day, hour=HOURS_PER_DAY - 1)
+
+    overworld_map, overworld_player = build_game_map(overworld_level, catalog)
+    overworld_engine = Engine(
+        overworld_map, overworld_player, overworld_level.name,
+        catalog=catalog, is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+    overworld_engine.pending_dungeon_entry = "millhaven"  # simulates having just stepped onto the tile
+
+    overworld_engine.process_turn(WaitAction())  # the clock crosses the deadline this same turn
+    assert quest.status == "failed"
+
+    resolve_transition(
+        OVERWORLD_KEY, overworld_engine, {OVERWORLD_KEY: overworld_engine},
+        dungeon_registry, overworld_level, catalog, quest_log=quest_log,
+    )
+
+    assert quest.status == "failed"  # arrival does not revive an already-failed quest
 
 
 def test_resolve_transition_builds_overworld_engine_with_dungeon_inspect_text():

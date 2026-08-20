@@ -18,6 +18,7 @@ from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
 from engine.game_map import GameMap, build_game_map
+from engine.quest import QuestLog
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
@@ -57,6 +58,7 @@ class Engine:
         is_overworld: bool = False,
         dungeon_inspect_text: dict[str, str] | None = None,
         clock: GameClock | None = None,
+        quest_log: QuestLog | None = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -75,6 +77,13 @@ class Engine:
         # to a fresh GameClock() so bare Engine(...) construction in tests
         # doesn't need to know or care about it.
         self.clock = clock if clock is not None else GameClock()
+        # Shared quest log, same pattern as self.clock above - main.py hands
+        # every Engine the same QuestLog instance (built by
+        # engine.quest.create_starting_quest_log), so completing or failing
+        # the one active quest is visible everywhere at once. Defaults to a
+        # fresh *empty* QuestLog() (no quests inside) so bare Engine(...)
+        # construction in tests stays inert.
+        self.quest_log = quest_log if quest_log is not None else QuestLog()
         # dungeon_id -> flavor text shown when a dungeon_entrance tile is
         # inspected in look mode (see engine/render.py describe_tile). Only
         # ever populated for the overworld Engine - every other Engine has no
@@ -216,11 +225,13 @@ class Engine:
     def restart(self) -> None:
         """Begins a fresh run from the starting level: a brand-new player (full
         hp, no inventory or picked-up attack bonus), a freshly built map (killed
-        monsters and taken items restored), a cleared message log, and the
-        world clock reset to its starting date - since self.clock is shared by
-        every cached Engine, this is visible everywhere immediately, which is
-        the intended "clean do-over" behavior for a restart."""
+        monsters and taken items restored), a cleared message log, the world
+        clock reset to its starting date, and every quest reset to active -
+        since self.clock/self.quest_log are shared by every cached Engine,
+        this is visible everywhere immediately, which is the intended "clean
+        do-over" behavior for a restart."""
         self.clock.reset()
+        self.quest_log.reset()
         self.game_map, self.player = build_game_map(self.starting_level, self.catalog)
         self.level_name = self.starting_level.name
         self.game_state = "playing"
@@ -322,6 +333,14 @@ class Engine:
         fighter = self.player.fighter
         fighter.hp = min(fighter.max_hp, fighter.hp + 1)
 
+    def _check_quest_deadlines(self) -> None:
+        """Sibling to _advance_world_clock, called the same turn: any active
+        quest whose deadline the clock just crossed gets its failure message
+        logged here. A separate method (not folded into _advance_world_clock)
+        so deadline logic is testable independent of clock/healing mechanics."""
+        for quest in self.quest_log.check_deadlines(self.clock):
+            self.message_log.add(quest.failure_message)
+
     def process_turn(self, action: Action) -> None:
         if self.game_state != "playing":
             return
@@ -336,5 +355,6 @@ class Engine:
 
         if self.game_state == "playing" and self.is_overworld:
             self._advance_world_clock()
+            self._check_quest_deadlines()
 
         self.game_map.update_fov((self.player.x, self.player.y))

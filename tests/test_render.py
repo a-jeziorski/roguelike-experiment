@@ -16,6 +16,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import GameMap, build_game_map
+from engine.quest import SEALED_MESSAGE_ID, create_starting_quest_log
 from engine.render import (
     TILE_VISUALS,
     VIEWPORT_HEIGHT,
@@ -109,6 +110,20 @@ def test_render_hud_shows_the_world_clock():
 
     text = console_text(console)
     assert engine.clock.format_for_hud() in text
+
+
+def test_render_hud_shows_the_active_quest():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, level.name, quest_log=quest_log)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert quest_log.quests[SEALED_MESSAGE_ID].format_for_hud() in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():
