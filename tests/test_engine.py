@@ -174,6 +174,30 @@ def test_bump_into_monster_attacks_instead_of_moving():
     assert monster.fighter.hp == 5 - player.fighter.attack
 
 
+def test_combat_messages_are_logged_with_combat_category():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=5, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.message_log.messages[-1].category == "combat"
+
+
+def test_talk_dialogue_is_logged_with_dialogue_category():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert engine.message_log.messages[-1].category == "dialogue"
+
+
 def test_killing_a_monster_removes_it_from_the_map():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1, attack=100)

@@ -6,7 +6,7 @@ from pathlib import Path
 import tcod.console
 
 from content.loader import load_catalog, load_level
-from engine.engine import Engine
+from engine.engine import Engine, MessageLog
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -18,6 +18,7 @@ from engine.entity import (
 from engine.game_map import GameMap, build_game_map
 from engine.quest import SEALED_MESSAGE_ID, create_starting_quest_log
 from engine.render import (
+    LOG_COLORS,
     TILE_VISUALS,
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
@@ -29,6 +30,7 @@ from engine.render import (
     render_entities,
     render_look_frame,
     render_map,
+    render_message_log,
     render_target_frame,
 )
 
@@ -70,22 +72,9 @@ def test_render_all_does_not_raise_for_level_01():
     render_all(console, engine)  # should not raise
 
 
-def test_render_hud_shows_reduced_controls_on_the_overworld():
-    catalog = load_catalog()
-    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
-    game_map, player = build_game_map(level, catalog)
-    engine = Engine(game_map, player, level.name, is_overworld=True)
-
-    console = tcod.console.Console(70, 40, order="F")
-    render_all(console, engine)
-
-    text = console_text(console)
-    assert "[l] look  [esc] quit" in text
-    assert "pick up" not in text
-    assert "fire" not in text
-
-
-def test_render_hud_shows_full_controls_in_a_dungeon():
+def test_render_hud_does_not_show_control_hints():
+    """The control scheme was removed from the HUD (it took up a lot of
+    space) - regression coverage so it doesn't quietly come back."""
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
@@ -95,9 +84,34 @@ def test_render_hud_shows_full_controls_in_a_dungeon():
     render_all(console, engine)
 
     text = console_text(console)
-    assert "pick up" in text
-    assert "[t] talk" in text
-    assert "fire" in text
+    assert "pick up" not in text
+    assert "[t] talk" not in text
+    assert "[esc] quit" not in text
+
+
+def test_render_message_log_colors_each_category():
+    log = MessageLog()
+    log.add("You enter Millhaven Green.")  # default "info" category
+    log.add("Rat hits you for 2 damage.", category="combat")
+    log.add('Villager: "Hello."', category="dialogue")
+
+    console = tcod.console.Console(70, 10, order="F")
+    render_message_log(console, log, 0, 0)
+
+    assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["info"])
+    assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["combat"])
+    assert console.rgb[0, 2]["fg"].tolist() == list(LOG_COLORS["dialogue"])
+
+
+def test_render_message_log_keeps_category_across_a_wrapped_message():
+    log = MessageLog()
+    log.add("Rat hits you for two damage in melee combat today, for sure.", category="combat")
+
+    console = tcod.console.Console(20, 10, order="F")
+    render_message_log(console, log, 0, 0)
+
+    assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["combat"])
+    assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["combat"])
 
 
 def test_render_hud_shows_the_world_clock():

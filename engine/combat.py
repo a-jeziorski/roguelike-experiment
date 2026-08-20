@@ -16,9 +16,13 @@ def _apply_damage(
 
     if damage > 0:
         defender.fighter.hp -= damage
-        engine.message_log.add(f"{attacker.name} {verb} {defender.name} for {damage} damage.")
+        engine.message_log.add(
+            f"{attacker.name} {verb} {defender.name} for {damage} damage.", category="combat"
+        )
     else:
-        engine.message_log.add(f"{attacker.name} {verb} {defender.name} but does no damage.")
+        engine.message_log.add(
+            f"{attacker.name} {verb} {defender.name} but does no damage.", category="combat"
+        )
 
     if defender.fighter.hp <= 0:
         engine.on_entity_death(defender)

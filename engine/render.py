@@ -71,7 +71,16 @@ TILE_DESCRIPTIONS = {
 }
 
 HUD_FG = (220, 220, 220)
-LOG_FG = (190, 190, 190)
+# One color per MessageLog category (see engine/engine.py's Message) - keeps
+# the log scannable now that combat/dialogue/quest features all write to it
+# in the same run: combat in red, spoken NPC lines in blue, everything else
+# (level transitions, item/door feedback, quest updates - "descriptive" text
+# in the same spirit as look mode's) in yellow.
+LOG_COLORS = {
+    "combat": (210, 70, 70),
+    "dialogue": (100, 150, 230),
+    "info": (210, 190, 90),
+}
 DEAD_FG = (220, 50, 50)
 CURSOR_BG = (90, 90, 20)
 TARGET_VALID_BG = (40, 120, 40)
@@ -192,15 +201,6 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     y += console.print(
         0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}", fg=HUD_FG, width=width
     )
-    if engine.is_overworld:
-        controls = "[arrows/numpad] move  [l] look  [esc] quit"
-    else:
-        controls = (
-            "[arrows/numpad] move  [g] pick up  [u] use potion  [t] talk  "
-            "[l] look  [f] fire  [esc] quit"
-        )
-    y += console.print(0, y, controls, fg=HUD_FG, width=width)
-
     if engine.game_state == "dead":
         y += console.print(
             0, y, "You have died. [r] play again  [esc] quit", fg=DEAD_FG, width=width
@@ -212,21 +212,24 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
 def render_message_log(console: "Console", message_log: "MessageLog", x: int, y: int) -> None:
     """Fills whatever vertical space remains below y (up to MESSAGE_LOG_HEIGHT
     lines) with the most recent messages, wrapping each to fit and dropping
-    older messages that no longer fit rather than clipping any single one."""
+    older messages that no longer fit rather than clipping any single one.
+    Each wrapped line keeps its source message's category (LOG_COLORS) so a
+    message that wraps to two lines doesn't lose its color partway through."""
     width = max(console.width - x, 1)
     max_lines = min(MESSAGE_LOG_HEIGHT, max(console.height - y, 0))
     if max_lines == 0:
         return
 
-    lines: list[str] = []
+    lines: list[tuple[str, str]] = []
     for message in reversed(message_log.messages):
         wrapped = textwrap.wrap(message, width) or [message]
-        if len(lines) + len(wrapped) > max_lines:
+        wrapped_with_category = [(line, message.category) for line in wrapped]
+        if len(lines) + len(wrapped_with_category) > max_lines:
             break
-        lines = wrapped + lines
+        lines = wrapped_with_category + lines
 
-    for i, line in enumerate(lines):
-        console.print(x, y + i, line, fg=LOG_FG, width=width)
+    for i, (line, category) in enumerate(lines):
+        console.print(x, y + i, line, fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=width)
 
 
 def render_all(console: "Console", engine: "Engine") -> None:

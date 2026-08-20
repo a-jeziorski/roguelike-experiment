@@ -42,12 +42,28 @@ _WANDER_MOVES = [(0, 0)] * 8 + [
 _DEFAULT_TALK_LINE = "They don't seem to have anything to say."
 
 
+class Message(str):
+    """A logged line plus which color category the message log renders it
+    in (see engine/render.py's render_message_log). A str subclass rather
+    than a separate wrapper type on purpose: every existing `"text" in
+    message_log.messages` / `messages == [...]` / `.count(text)` comparison
+    keeps working unchanged against a plain string - only render_message_log
+    needs to know about .category."""
+
+    category: str
+
+    def __new__(cls, text: str, category: str = "info") -> "Message":
+        obj = str.__new__(cls, text)
+        obj.category = category
+        return obj
+
+
 class MessageLog:
     def __init__(self) -> None:
-        self.messages: list[str] = []
+        self.messages: list[Message] = []
 
-    def add(self, text: str) -> None:
-        self.messages.append(text)
+    def add(self, text: str, category: str = "info") -> None:
+        self.messages.append(Message(text, category))
 
 
 class Engine:
@@ -140,10 +156,10 @@ class Engine:
 
     def on_entity_death(self, entity: Entity) -> None:
         if entity is self.player:
-            self.message_log.add("You have died...")
+            self.message_log.add("You have died...", category="combat")
             self.game_state = "dead"
         else:
-            self.message_log.add(f"The {entity.name} dies.")
+            self.message_log.add(f"The {entity.name} dies.", category="combat")
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
 
@@ -368,10 +384,10 @@ class Engine:
         self.clock or calls _handle_enemy_turns - talking costs nothing."""
         target = self._find_adjacent_villager()
         if target is None:
-            self.message_log.add("There's no one here to talk to.")
+            self.message_log.add("There's no one here to talk to.", category="dialogue")
             return
         line = target.dialogue or _DEFAULT_TALK_LINE
-        self.message_log.add(f'{target.name}: "{line}"')
+        self.message_log.add(f'{target.name}: "{line}"', category="dialogue")
         for quest in self.quest_log.check_talked_to(target.entity_id):
             self.message_log.add(quest.completion_message)
 
