@@ -76,6 +76,11 @@ class EntityDef(BaseModel):
     alert_radius: int | None = Field(default=None, gt=0)
     flee_hp_pct: float | None = Field(default=None, gt=0, le=1)
     ranged_range: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_VILLAGER - holds position instead of wandering
+    # while undamaged (still flees normally once hurt, unchanged). Plain
+    # bool, not the nullable-with-engine-fallback shape above, since there's
+    # no "default stationary radius" concept - it's just on or off.
+    stationary: bool = False
     description: str = ""
     # Fallback line the Talk action shows for a spawn of this type with no
     # per-spawn dialogue override (see LegendEntry.dialogue below) - only

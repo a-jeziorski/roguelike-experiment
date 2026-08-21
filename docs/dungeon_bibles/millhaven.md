@@ -44,9 +44,21 @@ ever turning into a briefing.
 
 ## Structure overview
 
-One level, same as before this pass - Millhaven doesn't need multiple
-floors or branching paths to earn its depth, just NPCs worth stopping
-for:
+Still one level - Millhaven doesn't need multiple floors or branching
+paths to earn its depth, just room to breathe. This pass regenerates
+that one level at 44x46 (up from the original 22x15), after nine NPCs
+and two landmarks had accumulated in a footprint that was never sized
+for more than five. Nothing about the town's *identity* changes -
+same gate, same well, same cast, same errand - only its scale and,
+for the first time, real building interiors for the two NPCs who
+should plausibly be found in the same spot every time: the chief and
+the shopkeeper (see set pieces 6 and 8, and the Roster section's
+`stationary` note). A handful of purely decorative, unentered wall
+clusters (matching Wayford's own "several distinct clusters of houses
+and storehouses") are scattered through the residential stretches so
+the larger footprint reads as a real town, not a big empty field with
+nine dots in it - pure scenery, no new mechanics, same technique
+already shipped in Wayford.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
@@ -137,26 +149,31 @@ from `content_design_process.md`.
 
 ### 6. The Chief's Doorstep
 
-Not a hidden office - the chief stands right on the town's main road,
-where their small house narrows the street on both sides. Visible,
-central, unavoidable if you walk the green end to end. This is where
-`Talk` completes the starting quest.
+Now a real one-room house, for the first time - but positioned so the
+"doorstep" framing still holds: right on the crossroads, door facing
+the road, impossible to miss walking the green end to end. Not a
+hidden office behind a formality (a locked door, a waiting room) -
+Settlers don't have that kind of authority structure left, or want
+one. Four walls change where the chief stands, not how reachable they
+are. This is where `Talk` completes the starting quest.
 
 *Dialogue* (triggers completion): *"So you made it after all. I was
 starting to think that warning was never coming - let's hear it, all
 of it."*
 
-*Why it's positioned this way*: the chief isn't hidden behind a
-formality (a locked door, a waiting room) - Settlers don't have that
-kind of authority structure left, or want it. Being reachable *is* the
-job. The message itself is spoken, not written (`engine/quest.py`'s own
-framing: word of a goblin horde migrating into the region, carried by
-the player, "no letter, no proof") - deliberately verbal from the start,
-so `Talk` completing it is the natural mechanism rather than a
-retrofit. An earlier draft of this quest had the player carrying a
-*sealed* letter that was somehow lost during capture, then "delivering"
-it by talking - a real inconsistency (see this document's Tone notes
-below) fixed by making the message verbal from the start.
+*Why it's positioned this way*: being reachable *is* the job, house or
+no house - see the Roster section for why the chief now holds that one
+spot (`stationary`) instead of wandering off it, which matters more
+now that "the chief's spot" is a specific room rather than wherever
+they happened to wander. The message itself is spoken, not written
+(`engine/quest.py`'s own framing: word of a goblin horde migrating
+into the region, carried by the player, "no letter, no proof") -
+deliberately verbal from the start, so `Talk` completing it is the
+natural mechanism rather than a retrofit. An earlier draft of this
+quest had the player carrying a *sealed* letter that was somehow lost
+during capture, then "delivering" it by talking - a real inconsistency
+(see this document's Tone notes below) fixed by making the message
+verbal from the start.
 
 ### 7. The Escaped Prisoner
 
@@ -182,12 +199,13 @@ so explicitly rather than pretending the favor is still owed.
 
 ### 8. The Shopkeeper
 
-Sits just past the Mending Yard, at the corner of the green closest to
-anything resembling trade - the two set pieces are meant to be read
-together, not separately (see set piece 3). Doesn't sell much: one
-Healing Potion, priced at what coin is actually still worth here - 25
-gold is a real ask, not a formality, given how little of it exists to
-find.
+Now has a real house of their own, built right beside the Mending
+Yard with its door facing that landmark directly - walk from one to
+the other in a couple of steps, keeping the two set pieces literally
+as well as narratively "read together" (see set piece 3). Doesn't sell
+much: one Healing Potion, priced at what coin is actually still worth
+here - 25 gold is a real ask, not a formality, given how little of it
+exists to find.
 
 *Dialogue*: *"Coin still spends here, same as it always did. Rare
 enough these days that I don't ask where it came from."*
@@ -230,16 +248,23 @@ the player starts it*: every `villager`-AI entity here still wanders at
 full health and flees permanently the instant it's personally hurt,
 same as everywhere else in the game, and the `town_guard` wanders too
 until the player attacks any peaceful NPC on this map, at which point it
-fights back permanently for that visit. Three mechanics beyond plain
+fights back permanently for that visit. Four mechanics beyond plain
 dialogue live on this roster: the questgiver (a quest that starts
 hidden until granted via `Talk`, which `escaped_prisoner` uses), the
 shopkeeper (a nested buy screen, opened with a separate key while
 adjacent, entirely independent of `Talk` - talking to the shopkeeper
-gets ordinary dialogue like any other villager), and the town guard's
+gets ordinary dialogue like any other villager), the town guard's
 map-wide hostility trigger (see set piece 9 - this is the one entity on
 this roster that is *not* mechanically identical to `villager`, since
 "identity, not a different kind of creature" only holds for NPCs that
-share `villager`'s actual behavior, and this one deliberately doesn't).
+share `villager`'s actual behavior, and this one deliberately doesn't),
+and `stationary` (`village_chief`/`shopkeeper` only): holds position
+instead of wandering while undamaged, still flees normally once hurt.
+Used for exactly these two and no one else, on purpose - they're the
+only two NPCs whose whole premise depends on being findable in one
+specific spot (now a specific *room*) every time, where every plain
+villager and the escaped prisoner are fine wandering their own patch
+of green.
 
 ## Tone notes for anyone (agent or human) revising this later
 

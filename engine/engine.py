@@ -317,7 +317,7 @@ class Engine:
             # can't falsely reset once triggered.
             if entity.fighter.hp < entity.fighter.max_hp:
                 self._flee(entity, dx, dy)
-            else:
+            elif not entity.stationary:
                 self._wander(entity)
 
         elif entity.ai == AI_TOWN_GUARD:

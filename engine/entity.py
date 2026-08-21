@@ -52,6 +52,7 @@ class Entity:
         alert_radius: int | None = None,
         flee_hp_pct: float | None = None,
         ranged_range: int | None = None,
+        stationary: bool = False,
         description: str = "",
         dialogue: str = "",
         entity_id: str = "",
@@ -73,6 +74,7 @@ class Entity:
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
+        self.stationary = stationary
         self.description = description
         # The line the Talk action shows for this specific entity (see
         # Engine.talk_to_adjacent), and the catalog id it was spawned from

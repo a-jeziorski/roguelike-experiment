@@ -132,6 +132,22 @@ def test_item_def_is_key_defaults_false():
     assert item.is_key is False
 
 
+def test_entity_def_stationary_defaults_false():
+    villager = EntityDef(
+        id="villager", name="Villager", glyph="v", color=(1, 2, 3),
+        hp=10, attack=0, defense=0, ai="villager",
+    )
+    assert villager.stationary is False
+
+
+def test_entity_def_accepts_stationary():
+    shopkeeper = EntityDef(
+        id="shopkeeper", name="Shopkeeper", glyph="m", color=(1, 2, 3),
+        hp=10, attack=0, defense=0, ai="villager", stationary=True,
+    )
+    assert shopkeeper.stationary is True
+
+
 def test_item_def_accepts_defense_bonus():
     armor = ItemDef(
         id="leather_armor", name="Leather Armor", glyph="[", color=(1, 2, 3), defense_bonus=1

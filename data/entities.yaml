@@ -130,6 +130,7 @@ village_chief:
   attack: 0
   defense: 0
   ai: villager
+  stationary: true
   description: >
     Millhaven's chief - no title with much real weight behind it these
     days, just the one whose word people still bother to listen to.
@@ -142,6 +143,7 @@ shopkeeper:
   attack: 0
   defense: 0
   ai: villager
+  stationary: true
   description: Deals in coin, on the rare occasion anyone still has any to deal in.
   dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
 

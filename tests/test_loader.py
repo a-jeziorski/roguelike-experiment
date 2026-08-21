@@ -301,6 +301,11 @@ def test_millhaven_level_01_content():
     # villagers left in Millhaven now that this pass gave each one a line
     assert all(s.dialogue for s in level.entity_spawns)
 
+    # regression guard: the town was regenerated at a much larger scale
+    # (from 22x15) specifically so it wouldn't feel crowded again - keep it
+    # from silently shrinking back down.
+    assert level.width >= 30 and level.height >= 44 or level.width >= 44 and level.height >= 30
+
     assert [s.kind for s in level.stairs] == ["stairs_up"]
     assert level.stairs[0].next_level is None  # terminal - leaves to the overworld
     assert not any(s.kind == "stairs_down" for s in level.stairs)

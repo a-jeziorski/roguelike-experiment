@@ -58,7 +58,7 @@ def make_player(x: int, y: int, hp: int = 30, attack: int = 5, defense: int = 1)
 
 def make_monster(
     x: int, y: int, hp=5, attack=2, defense=0, ai=None,
-    alert_radius=None, flee_hp_pct=None, ranged_range=None,
+    alert_radius=None, flee_hp_pct=None, ranged_range=None, stationary=False,
 ) -> Entity:
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
@@ -69,6 +69,7 @@ def make_monster(
         alert_radius=alert_radius,
         flee_hp_pct=flee_hp_pct,
         ranged_range=ranged_range,
+        stationary=stationary,
     )
 
 
@@ -398,6 +399,36 @@ def test_villager_flees_once_damaged():
 
     assert (villager.x, villager.y) == (4, 1)  # stepped directly away
     assert player.fighter.hp == 30  # never attacked, even though adjacent
+
+
+def test_stationary_villager_holds_position_when_undamaged(monkeypatch):
+    # If _wander were called at all, this would move the villager - pinning
+    # random.choice to a non-stay-put value makes sure stationary is what's
+    # holding position, not a lucky "stay put" wander roll.
+    monkeypatch.setattr(random, "choice", lambda seq: (1, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    villager = make_monster(2, 1, hp=4, attack=0, ai="villager", stationary=True)
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (2, 1)  # held position - stationary, never wandered
+
+
+def test_stationary_villager_still_flees_once_damaged():
+    game_map = make_open_map(5, 3)
+    player = make_player(2, 1, hp=30)
+    villager = make_monster(3, 1, hp=4, attack=0, ai="villager", stationary=True)
+    villager.fighter.hp = 3  # any damage at all
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (villager.x, villager.y) == (4, 1)  # stepped directly away, same as any villager
+    assert player.fighter.hp == 30
 
 
 def test_villager_holds_position_when_flee_is_blocked():

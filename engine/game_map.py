@@ -161,6 +161,7 @@ def build_game_map(
             alert_radius=edef.alert_radius,
             flee_hp_pct=edef.flee_hp_pct,
             ranged_range=edef.ranged_range,
+            stationary=edef.stationary,
             description=edef.description,
             dialogue=spawn.dialogue or edef.dialogue,
             entity_id=edef.id,

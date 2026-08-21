@@ -139,13 +139,20 @@ both content-only:
   stairway to exist (a level with none at all is rejected as a soft-lock -
   nothing would ever let the player leave); it only removes the
   `stairs_down`-specifically requirement.
-- Its levels use outdoor terrain (`plains`/`road`, plus `wall` for simple
-  building exteriors - no interiors, out of scope for a first pass) instead
-  of dungeon `wall`/`floor`, and spawn `villager`/`town_guard`-AI entities
-  instead of monsters. Nothing about the loader restricts which `TileType`s
-  can appear in an ordinary dungeon level - the overworld's terrain kinds
-  were never exclusive to `load_overworld`, so this needed no schema change
-  at all.
+- Its levels use outdoor terrain (`plains`/`road`, plus `wall` for building
+  exteriors) instead of dungeon `wall`/`floor`, and spawn `villager`/
+  `town_guard`-AI entities instead of monsters. Nothing about the loader
+  restricts which `TileType`s can appear in an ordinary dungeon level - the
+  overworld's terrain kinds were never exclusive to `load_overworld`, so
+  this needed no schema change at all. Real building *interiors* were
+  originally out of scope for a first pass; Millhaven's regeneration
+  established the pattern once a real need showed up (giving the chief and
+  shopkeeper an actual house each) - a small `wall`-bordered box with
+  `floor`-kind interior and a single `floor`-kind gap in the perimeter as
+  the doorway. Use `floor`, never `door`, for an ordinary house entrance:
+  `door` (per its `LegendEntry` shorthand) always requires a key item to
+  open, which is correct for a dungeon reward gate and wrong for someone's
+  own front door.
 
 `inspect_text` in `dungeon.yaml` (see 0b) is functionally load-bearing here,
 not just polish: without it, inspecting the entrance falls back to
@@ -160,7 +167,14 @@ fleeing permanently. Contrast with `AI_SKITTISH`, which flees only *below*
 a configurable `flee_hp_pct` threshold and otherwise fights normally -
 skittish is "cowardly," villager is "never a combatant in the first
 place." Don't reach for skittish when what's wanted is a true
-non-combatant.
+non-combatant. The optional `stationary: bool` field (`EntityDef`, plain
+bool default `False` - not the nullable-with-engine-fallback shape
+`alert_radius`/`flee_hp_pct`/`ranged_range` use, since there's no fallback
+constant for it) holds a villager in place instead of wandering while
+undamaged; it still flees normally once hurt. Use it for an NPC whose
+premise depends on being findable in one specific spot every time (a
+shopkeeper, a chief - see Millhaven) rather than one who's fine wandering
+their own patch of ground.
 
 **`AI_TOWN_GUARD`** (`content/schema.py`/`engine/engine.py` `_perform_ai`):
 also never *initiates* violence - like `AI_VILLAGER`, it just wanders while
