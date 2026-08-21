@@ -440,13 +440,16 @@ def render_shop(
     console: "Console",
     catalog: "Catalog",
     item_ids: "list[str]",
+    prices: "dict[str, int]",
     selected: int,
     player_gold: int,
     status: str,
 ) -> None:
     """The shop screen: mirrors render_quest_log's shape - no map drawn,
     just a list of what's for sale (item_ids, resolved against the catalog
-    for name/cost/description), the selected item's description, a status
+    for name/description; `prices` gives each one's current effective cost -
+    already discount-adjusted by Engine.shop_price, so this function never
+    computes a price itself), the selected item's description, a status
     line for the last purchase attempt (this screen never renders the
     message log, so this is the only way to show immediate feedback), and a
     footer control hint."""
@@ -459,10 +462,11 @@ def render_shop(
 
     for i, item_id in enumerate(item_ids):
         idef = catalog.items[item_id]
+        cost = prices[item_id]
         marker = ">" if i == selected else " "
-        afford_tag = "" if player_gold >= (idef.cost or 0) else " (can't afford)"
+        afford_tag = "" if player_gold >= cost else " (can't afford)"
         y += console.print(
-            0, y, f"{marker} {idef.name} - {idef.cost} gold{afford_tag}", fg=HUD_FG, width=width
+            0, y, f"{marker} {idef.name} - {cost} gold{afford_tag}", fg=HUD_FG, width=width
         )
 
     y += 1

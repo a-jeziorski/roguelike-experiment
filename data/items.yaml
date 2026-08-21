@@ -72,3 +72,9 @@ gold_stash:
   color: [255, 225, 90]
   gold_amount: 25
   description: More coin than anyone carries by accident. Someone meant to come back for this.
+
+pale_fungus:
+  name: Pale Fungus
+  glyph: "%"
+  color: [180, 200, 150]
+  description: Grows only where standing water's been left untouched for years. Not for eating.

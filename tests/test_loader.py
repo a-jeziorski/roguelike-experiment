@@ -545,6 +545,14 @@ def test_sunken_mine_gold_placements():
     assert "Gold Pile" in item_names_by_level["level_03"]
 
 
+def test_sunken_mine_level_02_has_the_pale_fungus():
+    catalog = load_catalog()
+    level = load_level(SUNKEN_MINE_LEVELS_DIR / "level_02.lvl", catalog)
+
+    item_names = [s.item.name for s in level.item_spawns]
+    assert "Pale Fungus" in item_names
+
+
 def test_prison_tower_chain_links_all_levels():
     catalog = load_catalog()
     levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)

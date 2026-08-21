@@ -1,10 +1,13 @@
 """Quest tracking: a handful of hardcoded quests (see create_starting_quest_log),
 some given from the start, some granted by talking to a questgiver NPC while
-they're still "not_given". Not a scripting engine - quests complete via three
+they're still "not_given". Not a scripting engine - quests complete via four
 hardcoded trigger shapes (dungeon arrival, Talk, killing a specific catalog
-entity) that Engine/main.py call into (see Engine.on_entity_death,
-Engine.talk_to_adjacent, main.py's resolve_transition), and fail via one
-(clock deadline, see Engine._check_quest_deadlines).
+entity, picking up a specific catalog item) that Engine/main.py call into
+(see Engine.on_entity_death, Engine.talk_to_adjacent, main.py's
+resolve_transition, PickupAction), and fail via one (clock deadline, see
+Engine._check_quest_deadlines). Two reward shapes exist: granting an item
+straight into inventory (reward_item_id), and a permanent Millhaven shop
+discount (reward_shop_discount_pct) - see Engine.complete_quest.
 
 Quest.status is the per-quest lifecycle ("not_given" -> "in_progress" ->
 "completed"/"failed"). QuestLog.active_quest_id is a separate, single-quest
@@ -31,6 +34,11 @@ KILL_THE_WARDEN_QUESTGIVER = "escaped_prisoner"
 KILL_THE_WARDEN_TARGET = "warden"
 KILL_THE_WARDEN_REWARD = "healing_potion"
 
+FETCH_FUNGUS_ID = "fetch_fungus"
+FETCH_FUNGUS_QUESTGIVER = "shopkeeper"
+FETCH_FUNGUS_ITEM = "pale_fungus"
+FETCH_FUNGUS_DISCOUNT_PCT = 0.2
+
 
 @dataclass
 class Quest:
@@ -41,16 +49,19 @@ class Quest:
     # Only meaningful alongside a deadline - a no-deadline quest never fails,
     # so it can leave this at the default "".
     failure_message: str = ""
-    # A quest completes via exactly one of three hardcoded trigger shapes:
+    # A quest completes via exactly one of four hardcoded trigger shapes:
     # arriving in a dungeon (target_dungeon_id, checked in main.py's
     # resolve_transition), talking to a specific NPC (target_entity_id,
-    # checked in Engine.talk_to_adjacent), or killing a specific catalog
-    # entity (target_kill_entity_id, checked in Engine.on_entity_death). All
-    # optional so any one shape - or none, for a quest with no completion
-    # trigger yet - is valid.
+    # checked in Engine.talk_to_adjacent), killing a specific catalog entity
+    # (target_kill_entity_id, checked in Engine.on_entity_death), or picking
+    # up a specific catalog item (target_item_id, checked in PickupAction -
+    # the item is removed from the map and never enters inventory, unlike
+    # every other pickup). All optional so any one shape - or none, for a
+    # quest with no completion trigger yet - is valid.
     target_dungeon_id: str | None = None
     target_entity_id: str | None = None
     target_kill_entity_id: str | None = None
+    target_item_id: str | None = None
     # None means no deadline - check_deadlines/format_for_hud both skip a
     # quest with no deadline_day rather than crash on it.
     deadline_year: int | None = None
@@ -76,6 +87,11 @@ class Quest:
     # Catalog item id granted to the player on completion, or None for no
     # reward - see Engine.complete_quest.
     reward_item_id: str | None = None
+    # A permanent fraction off everything in the Millhaven shop, unlocked on
+    # completion (e.g. 0.2 for 20% off) - see QuestLog.shop_discount_pct /
+    # Engine.shop_price. A quest can set this instead of, or alongside,
+    # reward_item_id.
+    reward_shop_discount_pct: float | None = None
     status: QuestStatus = "not_given"
 
     def __post_init__(self) -> None:
@@ -202,6 +218,34 @@ class QuestLog:
                 return quest.target_done_dialogue
         return None
 
+    def check_fetch_item(self, entity_id: str) -> list[Quest]:
+        """Called from PickupAction for every item picked up. Marks matching
+        in-progress fetch quests 'completed', same re-fire guard as every
+        other check_* method. Unlike record_entity_killed, this does NOT
+        unconditionally record anything - picking up a fetch-quest item
+        before its quest exists is just an ordinary pickup (see
+        PickupAction), not a tracked retroactive event; deliberately
+        simpler than the kill-quest trigger, since there's no
+        killed_entity_ids-style "already done" detection here."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.status != "in_progress":
+                continue
+            if quest.target_item_id == entity_id:
+                quest.status = "completed"
+                changed.append(quest)
+        return changed
+
+    def shop_discount_pct(self) -> float:
+        """The largest permanent shop discount unlocked by any completed
+        quest, or 0.0 if none. Multiple discount-granting quests wouldn't
+        stack - whichever single discount is largest wins."""
+        discounts = [
+            q.reward_shop_discount_pct for q in self.quests.values()
+            if q.status == "completed" and q.reward_shop_discount_pct
+        ]
+        return max(discounts, default=0.0)
+
     def record_entity_killed(self, entity_id: str) -> list[Quest]:
         """Called from Engine.on_entity_death for every non-player death,
         regardless of whether any quest currently cares - see
@@ -276,7 +320,27 @@ def create_starting_quest_log() -> QuestLog:
         target_kill_entity_id=KILL_THE_WARDEN_TARGET,
         reward_item_id=KILL_THE_WARDEN_REWARD,
     )
+    fetch_fungus = Quest(
+        id=FETCH_FUNGUS_ID,
+        name="A Standing Request",
+        description=(
+            "The shopkeeper's after a specific fungus - pale stuff that only "
+            "grows where groundwater in the Sunken Mine has sat undisturbed "
+            "for years. They didn't say what it's for. Bring it back and "
+            "there's coin in it, one way or another."
+        ),
+        completion_message="The fungus is exactly what the shopkeeper described. You gather it carefully, careful not to disturb the rest.",
+        given_message="New quest: A Standing Request - the shopkeeper wants a pale fungus that only grows near standing water deep in the Sunken Mine.",
+        questgiver_done_dialogue="Found what I was after, did you? Coin's worth more to you here now, at least.",
+        questgiver_entity_id=FETCH_FUNGUS_QUESTGIVER,
+        target_item_id=FETCH_FUNGUS_ITEM,
+        reward_shop_discount_pct=FETCH_FUNGUS_DISCOUNT_PCT,
+    )
     return QuestLog(
-        quests={goblin_warning.id: goblin_warning, kill_the_warden.id: kill_the_warden},
+        quests={
+            goblin_warning.id: goblin_warning,
+            kill_the_warden.id: kill_the_warden,
+            fetch_fungus.id: fetch_fungus,
+        },
         active_quest_id=GOBLIN_WARNING_ID,
     )

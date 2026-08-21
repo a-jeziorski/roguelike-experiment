@@ -226,7 +226,8 @@ def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, 
     status = ""
 
     while True:
-        render_shop(console, engine.catalog, SHOP_INVENTORY, selected, engine.player.gold, status)
+        prices = {item_id: engine.shop_price(item_id) for item_id in SHOP_INVENTORY}
+        render_shop(console, engine.catalog, SHOP_INVENTORY, prices, selected, engine.player.gold, status)
         context.present(console)
 
         for event in tcod.event.wait():

@@ -109,6 +109,10 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             quantity=idef.quantity,
         ),
         description=idef.description,
+        # The catalog id this item was spawned from - mirrors how creature
+        # spawns already carry entity_id, and is what lets a fetch quest
+        # (QuestLog.check_fetch_item) match a picked-up item by stable id.
+        entity_id=idef.id,
     )
 
 

@@ -435,6 +435,21 @@ class Engine:
             reward = item_entity_from_def(idef)
             self.player.inventory.append(reward)
             self.message_log.add(f"You receive a {reward.name}.")
+        if quest.reward_shop_discount_pct:
+            pct = int(quest.reward_shop_discount_pct * 100)
+            self.message_log.add(f"The Millhaven shop now gives you a permanent {pct}% discount.")
+
+    def shop_price(self, item_id: str) -> int:
+        """The gold cost to buy item_id right now, after any permanent shop
+        discount unlocked by a completed quest (see
+        QuestLog.shop_discount_pct). Reused by buy_from_shop (to charge
+        correctly) and main.py's shop screen (to display the same
+        number)."""
+        if self.catalog is None or item_id not in self.catalog.items:
+            return 0
+        idef = self.catalog.items[item_id]
+        discount = self.quest_log.shop_discount_pct()
+        return round((idef.cost or 0) * (1 - discount))
 
     def buy_from_shop(self, item_id: str) -> str:
         """Attempts to buy one item from the shop for the player. Returns
@@ -448,14 +463,15 @@ class Engine:
             self.message_log.add(message)
             return message
         idef = self.catalog.items[item_id]
-        if self.player.gold < (idef.cost or 0):
+        cost = self.shop_price(item_id)
+        if self.player.gold < cost:
             message = "You can't afford that."
             self.message_log.add(message)
             return message
-        self.player.gold -= idef.cost
+        self.player.gold -= cost
         reward = item_entity_from_def(idef)
         self.player.inventory.append(reward)
-        message = f"You buy a {reward.name} for {idef.cost} gold."
+        message = f"You buy a {reward.name} for {cost} gold."
         self.message_log.add(message)
         return message
 

@@ -1,5 +1,9 @@
 from engine.clock import GameClock
 from engine.quest import (
+    FETCH_FUNGUS_DISCOUNT_PCT,
+    FETCH_FUNGUS_ID,
+    FETCH_FUNGUS_ITEM,
+    FETCH_FUNGUS_QUESTGIVER,
     GOBLIN_WARNING_DEADLINE_DAY,
     GOBLIN_WARNING_DEADLINE_YEAR,
     GOBLIN_WARNING_ID,
@@ -325,6 +329,90 @@ def test_record_entity_killed_ignores_non_matching_quests():
     assert "rat" in log.killed_entity_ids
 
 
+# --- check_fetch_item ---
+
+
+def test_check_fetch_item_completes_a_matching_in_progress_quest():
+    quest = make_quest(status="in_progress", target_item_id="pale_fungus")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_fetch_item("pale_fungus")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_fetch_item_is_a_no_op_on_a_not_given_quest():
+    """Confirms the deliberate scope decision: no retroactive "already had
+    it" detection for fetch quests, unlike kill quests."""
+    quest = make_quest(status="not_given", target_item_id="pale_fungus")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_fetch_item("pale_fungus")
+
+    assert changed == []
+    assert quest.status == "not_given"
+
+
+def test_check_fetch_item_does_not_refire_on_an_already_terminal_quest():
+    quest = make_quest(status="completed", target_item_id="pale_fungus")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_fetch_item("pale_fungus")
+
+    assert changed == []
+
+
+def test_check_fetch_item_ignores_non_matching_items():
+    quest = make_quest(status="in_progress", target_item_id="pale_fungus")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_fetch_item("healing_potion")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+# --- shop_discount_pct ---
+
+
+def test_shop_discount_pct_is_zero_with_nothing_completed():
+    log = QuestLog()
+    assert log.shop_discount_pct() == 0.0
+
+
+def test_shop_discount_pct_returns_the_completed_quests_discount():
+    quest = make_quest(status="completed", reward_shop_discount_pct=0.2)
+    log = QuestLog(quests={quest.id: quest})
+
+    assert log.shop_discount_pct() == 0.2
+
+
+def test_shop_discount_pct_ignores_an_in_progress_discount_quest():
+    quest = make_quest(status="in_progress", reward_shop_discount_pct=0.2)
+    log = QuestLog(quests={quest.id: quest})
+
+    assert log.shop_discount_pct() == 0.0
+
+
+def test_shop_discount_pct_takes_the_largest_of_multiple_completed_discounts():
+    small = make_quest(id="small", status="completed", reward_shop_discount_pct=0.1)
+    big = make_quest(id="big", status="completed", reward_shop_discount_pct=0.2)
+    log = QuestLog(quests={small.id: small, big.id: big})
+
+    assert log.shop_discount_pct() == 0.2
+
+
+def test_create_starting_quest_log_has_the_fetch_fungus_quest():
+    log = create_starting_quest_log()
+    quest = log.quests[FETCH_FUNGUS_ID]
+
+    assert quest.status == "not_given"
+    assert quest.questgiver_entity_id == FETCH_FUNGUS_QUESTGIVER == "shopkeeper"
+    assert quest.target_item_id == FETCH_FUNGUS_ITEM == "pale_fungus"
+    assert quest.reward_shop_discount_pct == FETCH_FUNGUS_DISCOUNT_PCT == 0.2
+
+
 # --- active_quest / set_active_quest ---
 
 
@@ -405,10 +493,10 @@ def test_format_for_hud_no_deadline_omits_the_day_suffix():
 # --- create_starting_quest_log ---
 
 
-def test_create_starting_quest_log_has_both_quests():
+def test_create_starting_quest_log_has_all_three_quests():
     log = create_starting_quest_log()
 
-    assert set(log.quests) == {GOBLIN_WARNING_ID, KILL_THE_WARDEN_ID}
+    assert set(log.quests) == {GOBLIN_WARNING_ID, KILL_THE_WARDEN_ID, FETCH_FUNGUS_ID}
 
 
 def test_create_starting_quest_log_goblin_warning_is_given_from_the_start():

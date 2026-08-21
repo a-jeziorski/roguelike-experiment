@@ -230,7 +230,10 @@ def test_render_shop_lists_items_with_cost_and_shows_gold():
     catalog = load_catalog()
     console = tcod.console.Console(70, 20, order="F")
 
-    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=100, status="")
+    render_shop(
+        console, catalog, ["healing_potion"], {"healing_potion": 25},
+        selected=0, player_gold=100, status="",
+    )
 
     text = console_text(console)
     assert "Healing Potion" in text
@@ -239,11 +242,31 @@ def test_render_shop_lists_items_with_cost_and_shows_gold():
     assert "A vial of crimson liquid that mends wounds." in text  # selected item's description
 
 
+def test_render_shop_shows_the_caller_supplied_price_not_the_catalog_cost():
+    """render_shop must never recompute a price itself - Engine.shop_price
+    is the single source of truth, and this function just displays
+    whatever it's handed."""
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_shop(
+        console, catalog, ["healing_potion"], {"healing_potion": 20},
+        selected=0, player_gold=100, status="",
+    )
+
+    text = console_text(console)
+    assert "20 gold" in text
+    assert "25 gold" not in text
+
+
 def test_render_shop_marks_unaffordable_items():
     catalog = load_catalog()
     console = tcod.console.Console(70, 20, order="F")
 
-    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=5, status="")
+    render_shop(
+        console, catalog, ["healing_potion"], {"healing_potion": 25},
+        selected=0, player_gold=5, status="",
+    )
 
     text = console_text(console)
     assert "can't afford" in text
@@ -253,7 +276,10 @@ def test_render_shop_does_not_mark_affordable_items():
     catalog = load_catalog()
     console = tcod.console.Console(70, 20, order="F")
 
-    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=100, status="")
+    render_shop(
+        console, catalog, ["healing_potion"], {"healing_potion": 25},
+        selected=0, player_gold=100, status="",
+    )
 
     text = console_text(console)
     assert "can't afford" not in text
@@ -264,7 +290,8 @@ def test_render_shop_shows_the_status_message():
     console = tcod.console.Console(70, 20, order="F")
 
     render_shop(
-        console, catalog, ["healing_potion"], selected=0, player_gold=100,
+        console, catalog, ["healing_potion"], {"healing_potion": 25},
+        selected=0, player_gold=100,
         status="You buy a Healing Potion for 25 gold.",
     )
 

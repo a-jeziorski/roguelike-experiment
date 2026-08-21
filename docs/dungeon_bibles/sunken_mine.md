@@ -112,6 +112,17 @@ don't go through" beat, matching the Sunken Mine's original brief
 (geometric novelty over new monsters) without duplicating the Drowned
 Waystation's dungeon-wide flooding conceit.
 
+A pale fungus grows on the ledge itself - the kind of thing that only
+takes hold where standing water's gone untouched for years, which this
+spot has in spades. It's the target of Millhaven's "A Standing Request"
+(see `docs/dungeon_bibles/millhaven.md`'s set piece 8): the shopkeeper
+wants it, for reasons the game never explains, and picking it up here
+completes that quest on the spot - no return trip needed. First item
+in the game with no `ItemEffect` at all - it's not equipment, not a
+potion, not currency, just a quest target that happens to live in the
+one room already built around "something's been sitting here
+undisturbed."
+
 ### 4. The Vermin Warren (`level_03`)
 
 A wider, irregular chamber where the tunnel roof partially gave way

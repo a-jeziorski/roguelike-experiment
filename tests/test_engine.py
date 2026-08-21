@@ -21,6 +21,9 @@ from engine.entity import (
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
 from engine.shop import SHOPKEEPER_ENTITY_ID
 from engine.quest import (
+    FETCH_FUNGUS_ID,
+    FETCH_FUNGUS_ITEM,
+    FETCH_FUNGUS_QUESTGIVER,
     GOBLIN_WARNING_ID,
     KILL_THE_WARDEN_ID,
     KILL_THE_WARDEN_QUESTGIVER,
@@ -142,6 +145,19 @@ def make_gold(x: int, y: int, gold_amount: int = 10, name: str = "Gold Pile") ->
         x, y, "$", (255, 210, 60), name,
         render_priority=RENDER_PRIORITY_ITEM,
         item=ItemEffect(gold_amount=gold_amount),
+    )
+
+
+def make_quest_item(x: int, y: int, entity_id: str, name: str = "Pale Fungus") -> Entity:
+    """A plain item Entity with no ItemEffect fields set - matches how a
+    fetch-quest item (e.g. pale_fungus) is actually authored: no
+    heal_amount/bonuses/gold_amount, just a stable entity_id to match
+    against Quest.target_item_id."""
+    return Entity(
+        x, y, "%", (180, 200, 150), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(),
+        entity_id=entity_id,
     )
 
 
@@ -862,6 +878,49 @@ def test_gold_pickup_never_enters_inventory():
     engine.process_turn(PickupAction())
 
     assert player.inventory == []
+
+
+def test_fetch_quest_item_pickup_completes_the_quest_and_never_enters_inventory():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
+    game_map.entities.extend([player, fungus])
+    quest = Quest(
+        id="fetch_test", name="Fetch Test", description="",
+        completion_message="Got it.", target_item_id="pale_fungus", status="in_progress",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.process_turn(PickupAction())
+
+    assert quest.status == "completed"
+    assert "Got it." in engine.message_log.messages
+    assert fungus not in game_map.entities
+    assert player.inventory == []
+
+
+def test_fetch_quest_item_pickup_before_the_quest_is_given_falls_back_to_ordinary_pickup():
+    """Confirms the documented, deliberate scope decision: no retroactive
+    detection for fetch quests - picking up the item before its quest is
+    granted is just an ordinary pickup."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
+    game_map.entities.extend([player, fungus])
+    quest = Quest(
+        id="fetch_test", name="Fetch Test", description="",
+        completion_message="Got it.", target_item_id="pale_fungus", status="not_given",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.process_turn(PickupAction())
+
+    assert quest.status == "not_given"
+    assert fungus not in game_map.entities
+    assert len(player.inventory) == 1
+    assert player.inventory[0] is fungus
 
 
 def test_fire_action_without_ranged_weapon_does_nothing():
@@ -2023,6 +2082,26 @@ def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():
     assert player.inventory == []
 
 
+def test_complete_quest_with_a_shop_discount_reward_logs_the_discount_message():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+    quest = Quest(
+        id="discount_test", name="Discount Test", description="",
+        completion_message="Done.", reward_shop_discount_pct=0.2,
+    )
+    quest_log.quests[quest.id] = quest
+
+    engine.complete_quest(quest)
+
+    assert "Done." in engine.message_log.messages
+    assert "20% discount" in engine.message_log.messages[-1]
+    assert player.inventory == []
+    assert player.gold == 0
+
+
 def test_complete_quest_with_no_catalog_does_not_crash():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -2258,6 +2337,45 @@ def test_buy_from_shop_a_second_time_rechecks_affordability_against_the_lower_to
     assert first == "You buy a Healing Potion for 25 gold."
     assert second == "You can't afford that."
     assert player.gold == 5
+    assert len(player.inventory) == 1
+
+
+def test_shop_price_is_the_full_cost_with_no_discount_unlocked():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    assert engine.shop_price("healing_potion") == 25
+
+
+def test_shop_price_reflects_the_fungus_quests_discount_once_completed():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = create_starting_quest_log()
+    quest_log.quests[FETCH_FUNGUS_ID].status = "completed"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    assert engine.shop_price("healing_potion") == 20
+
+
+def test_buy_from_shop_charges_the_discounted_price():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 20
+    game_map.entities.append(player)
+    quest_log = create_starting_quest_log()
+    quest_log.quests[FETCH_FUNGUS_ID].status = "completed"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    message = engine.buy_from_shop("healing_potion")
+
+    assert message == "You buy a Healing Potion for 20 gold."
+    assert player.gold == 0
     assert len(player.inventory) == 1
 
 

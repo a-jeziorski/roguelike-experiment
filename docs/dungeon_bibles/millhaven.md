@@ -219,6 +219,23 @@ nobody's spent in a generation. This is where that changes, in one
 specific and modest way - not a return of a functioning economy, just
 one person still willing to trade.
 
+The shopkeeper is also this game's second questgiver, offering "A
+Standing Request": a Pale Fungus that only grows in the Sunken Mine's
+Flooded Sump (see `docs/dungeon_bibles/sunken_mine.md`'s set piece 3).
+Proof of concept for a fourth quest-completion shape - picking up a
+specific item, rather than talking, killing, or arriving somewhere -
+and a second reward shape: not another item, but a permanent 20%
+discount on everything in this shop (Healing Potion 25 -> 20 gold).
+Fetching it is deliberately simple, per the project's own "keep it
+simple" instruction for this pass: the fungus is removed from the mine
+and the quest completes the instant it's picked up, with no return
+trip and no change to the player's inventory at all - it's never held,
+just fetched. No retroactive "already had it" detection either, unlike
+the Warden's kill-quest - if the fungus is somehow found before this
+quest is ever granted, it's just an inert curio in inventory until it
+isn't, a deliberately unhandled edge case rather than one this pass
+needed to solve.
+
 ### 9. The Town Guard
 
 Stands on the main road running down from the gate toward the well -
@@ -248,23 +265,27 @@ the player starts it*: every `villager`-AI entity here still wanders at
 full health and flees permanently the instant it's personally hurt,
 same as everywhere else in the game, and the `town_guard` wanders too
 until the player attacks any peaceful NPC on this map, at which point it
-fights back permanently for that visit. Four mechanics beyond plain
+fights back permanently for that visit. Five mechanics beyond plain
 dialogue live on this roster: the questgiver (a quest that starts
-hidden until granted via `Talk`, which `escaped_prisoner` uses), the
-shopkeeper (a nested buy screen, opened with a separate key while
-adjacent, entirely independent of `Talk` - talking to the shopkeeper
-gets ordinary dialogue like any other villager), the town guard's
-map-wide hostility trigger (see set piece 9 - this is the one entity on
-this roster that is *not* mechanically identical to `villager`, since
-"identity, not a different kind of creature" only holds for NPCs that
-share `villager`'s actual behavior, and this one deliberately doesn't),
-and `stationary` (`village_chief`/`shopkeeper` only): holds position
-instead of wandering while undamaged, still flees normally once hurt.
-Used for exactly these two and no one else, on purpose - they're the
-only two NPCs whose whole premise depends on being findable in one
-specific spot (now a specific *room*) every time, where every plain
-villager and the escaped prisoner are fine wandering their own patch
-of green.
+hidden until granted via `Talk` - `escaped_prisoner` uses this for a
+kill-quest, `shopkeeper` uses the same mechanism for a fetch-quest, see
+set piece 8), the shopkeeper's buy screen (a nested UI, opened with a
+separate key while adjacent, entirely independent of `Talk` - talking
+to the shopkeeper gets ordinary dialogue like any other villager), the
+shopkeeper's permanent discount pricing (unlocked by completing "A
+Standing Request" - `Engine.shop_price` reads this off the quest log
+live, so every future visit to the shop reflects it automatically), the
+town guard's map-wide hostility trigger (see set piece 9 - this is the
+one entity on this roster that is *not* mechanically identical to
+`villager`, since "identity, not a different kind of creature" only
+holds for NPCs that share `villager`'s actual behavior, and this one
+deliberately doesn't), and `stationary` (`village_chief`/`shopkeeper`
+only): holds position instead of wandering while undamaged, still
+flees normally once hurt. Used for exactly these two and no one else,
+on purpose - they're the only two NPCs whose whole premise depends on
+being findable in one specific spot (now a specific *room*) every
+time, where every plain villager and the escaped prisoner are fine
+wandering their own patch of green.
 
 ## Tone notes for anyone (agent or human) revising this later
 
