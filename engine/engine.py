@@ -424,12 +424,30 @@ class Engine:
         for quest in self.quest_log.check_talked_to(target.entity_id):
             self.complete_quest(quest)
 
-    def process_turn(self, action: Action) -> None:
+    def process_player_action(self, action: Action) -> bool:
+        """The first half of a turn: just the player's own action. Returns
+        False (and does nothing else) if the game had already ended before
+        this call, matching process_turn's original all-or-nothing no-op in
+        that case. Split out from process_turn so main.py's dispatch path can
+        animate the player's own attack (see ranged_attack_events/
+        melee_attack_events) before calling process_enemy_phase - otherwise a
+        monster that survives a hit and then closes distance on its own turn
+        has already moved by the time the impact flash renders, so the flash
+        appears on the tile it left rather than on the monster. Player
+        position never changes as a side effect of an attack action, so
+        skipping the FOV update until process_enemy_phase causes no visible
+        staleness during that in-between animation."""
         if self.game_state != "playing":
-            return
-
+            return False
         action.perform(self, self.player)
+        return True
 
+    def process_enemy_phase(self) -> None:
+        """The second half of a turn: enemy AI turns, player-death
+        bookkeeping, world clock/quest deadlines, and the FOV update - see
+        process_player_action's docstring for why this is split out.
+        Guarded the same way process_turn's tail always was: each step only
+        runs if the game is still "playing" going into it."""
         if self.game_state == "playing":
             self._handle_enemy_turns()
 
@@ -441,3 +459,12 @@ class Engine:
             self._check_quest_deadlines()
 
         self.game_map.update_fov((self.player.x, self.player.y))
+
+    def process_turn(self, action: Action) -> None:
+        """Resolves a full turn (both phases back to back, no animation gap)
+        - what every caller that doesn't care about mid-turn animation
+        timing should use (all existing tests, AI-only callers, etc.). See
+        main.py's dispatch_action for the animated, two-phase version."""
+        if not self.process_player_action(action):
+            return
+        self.process_enemy_phase()

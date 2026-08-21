@@ -9,11 +9,18 @@ swallowing the SystemExit that EscapeAction.perform() would otherwise raise."""
 from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
-from engine.actions import BumpAction, EscapeAction, RestartAction, WaitAction
+from engine.actions import BumpAction, EscapeAction, FireAction, RestartAction, WaitAction
 from engine.clock import HOURS_PER_DAY, GameClock
 from engine.engine import Engine
-from engine.entity import RENDER_PRIORITY_ITEM, Entity, ItemEffect
-from engine.game_map import build_game_map
+from engine.entity import (
+    RENDER_PRIORITY_ACTOR,
+    RENDER_PRIORITY_ITEM,
+    RENDER_PRIORITY_PLAYER,
+    Entity,
+    Fighter,
+    ItemEffect,
+)
+from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog
 from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition
 
@@ -78,6 +85,59 @@ def test_normal_action_is_processed_while_playing():
 def test_none_action_is_a_noop():
     engine = make_engine()
     assert dispatch_action(engine, None) is False
+
+
+def test_dispatch_action_calls_the_hook_before_enemy_ai_gets_to_move():
+    """Regression test for a real visual bug: the impact flash used to
+    render on a tile a monster had already left, because ranged combat
+    events were drained and animated in one shot *after* enemy AI had
+    already moved on the same turn. on_player_turn_resolved must fire with
+    the monster still at the position recorded in the attack event - only
+    the later, separate enemy-phase animation call should see it having
+    moved."""
+    game_map = GameMap(10, 3)
+    for x in range(10):
+        for y in range(3):
+            game_map.kinds[x, y] = "floor"
+            game_map.walkable[x, y] = True
+            game_map.transparent[x, y] = True
+    player = Entity(
+        0, 1, "@", (255, 255, 255), "Player",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=30, hp=30, attack=5, defense=1),
+    )
+    player.equipped_ranged_weapon = Entity(
+        0, 0, "}", (160, 120, 70), "Hunting Bow",
+        render_priority=RENDER_PRIORITY_ITEM, item=ItemEffect(ranged_attack_bonus=3, range=5),
+    )
+    player.inventory.append(
+        Entity(
+            0, 0, "|", (190, 170, 140), "Arrows",
+            render_priority=RENDER_PRIORITY_ITEM, item=ItemEffect(is_ammo=True, quantity=5),
+        )
+    )
+    monster = Entity(
+        4, 1, "g", (60, 140, 60), "Goblin",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=50, hp=50, attack=1, defense=0), ai="hostile_basic",
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    seen = []
+
+    def hook():
+        assert engine.ranged_attack_events, "expected a queued ranged attack event"
+        _, _, tx, ty = engine.ranged_attack_events[0]
+        seen.append(((tx, ty), (monster.x, monster.y)))
+
+    dispatch_action(engine, FireAction(4, 1), on_player_turn_resolved=hook)
+
+    assert seen, "the hook never fired"
+    event_target, monster_position_at_hook_time = seen[0]
+    assert event_target == monster_position_at_hook_time  # matched when the hook fired...
+    assert (monster.x, monster.y) != event_target  # ...but has since moved, chasing the player
+    assert monster.fighter.hp == 50 - 8  # 5 base + 3 bow bonus, confirms the shot landed
 
 
 def test_fire_mode_gate_blocks_without_a_ranged_weapon():

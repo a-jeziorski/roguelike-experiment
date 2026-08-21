@@ -82,7 +82,7 @@ def load_tileset() -> tcod.tileset.Tileset:
     )
 
 
-def dispatch_action(engine: Engine, action) -> bool:
+def dispatch_action(engine: Engine, action, on_player_turn_resolved=None) -> bool:
     """Routes a raw input Action to the engine. Returns True if the caller
     should quit.
 
@@ -90,6 +90,13 @@ def dispatch_action(engine: Engine, action) -> bool:
     process_turn no-ops once the game is no longer "playing" (so normal
     actions are ignored after death), which would otherwise silently
     swallow both quitting and restarting once the run has ended.
+
+    A normal turn action resolves in Engine's two explicit phases -
+    process_player_action then process_enemy_phase - with
+    on_player_turn_resolved() called in between if given. That's the caller's
+    hook for animating the player's own attack (see main()'s call sites)
+    before any monster has had a chance to move on the same turn; left as a
+    no-op by default so this function stays testable without SDL/animation.
     """
     if isinstance(action, EscapeAction):
         return True
@@ -98,7 +105,10 @@ def dispatch_action(engine: Engine, action) -> bool:
             engine.restart()
         return False
     if action is not None:
-        engine.process_turn(action)
+        if engine.process_player_action(action):
+            if on_player_turn_resolved is not None:
+                on_player_turn_resolved()
+            engine.process_enemy_phase()
     return False
 
 
@@ -198,11 +208,16 @@ def animate_ranged_attacks(
     console: tcod.console.Console, context: tcod.context.Context, engine: Engine
 ) -> None:
     """Plays a brief flying-projectile-then-impact-flash animation for every
-    ranged attack Engine resolved during the last dispatched turn (player-
+    ranged attack currently queued in engine.ranged_attack_events (player-
     fired via FireAction, or monster-fired via a ranged_basic AI's shot) and
-    discards the events. Damage is already fully applied by the time this
-    runs - Engine resolves combat synchronously and has no concept of
-    animation frames - so this is pure visual flavor layered on top of
+    discards the events. Called twice per turn from dispatch_action's two
+    phases - once right after the player's own action, once after enemy AI
+    turns - so a monster's impact flash always renders before that monster
+    has had a chance to move again; calling this only once per turn, after
+    both phases, used to draw a surviving target's flash on the tile it had
+    already left. Damage is already fully applied by the time this runs -
+    Engine resolves combat synchronously and has no concept of animation
+    frames - so this is pure visual flavor layered on top of
     already-final game state, not a step in Engine.process_turn."""
     events = engine.ranged_attack_events
     engine.ranged_attack_events = []
@@ -407,7 +422,10 @@ def main() -> int:
                         else:
                             target = run_target_mode(console, context, engine)
                             if target is not None:
-                                dispatch_action(engine, FireAction(*target))
+                                dispatch_action(
+                                    engine, FireAction(*target),
+                                    on_player_turn_resolved=lambda: animate_combat_feedback(console, context, engine),
+                                )
                                 animate_combat_feedback(console, context, engine)
                                 active_key, engine = resolve_transition(
                                     active_key, engine, active_engines,
@@ -416,7 +434,10 @@ def main() -> int:
                                 )
                     continue
 
-                if dispatch_action(engine, action):
+                if dispatch_action(
+                    engine, action,
+                    on_player_turn_resolved=lambda: animate_combat_feedback(console, context, engine),
+                ):
                     return 0
                 animate_combat_feedback(console, context, engine)
                 active_key, engine = resolve_transition(

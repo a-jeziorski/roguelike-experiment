@@ -231,6 +231,59 @@ def test_hostile_monster_attacks_player_on_its_turn():
     assert player.fighter.hp == 30 - 4
 
 
+def test_process_player_action_returns_false_when_not_playing():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    engine.game_state = "dead"
+
+    result = engine.process_player_action(BumpAction(1, 0))
+
+    assert result is False
+    assert (player.x, player.y) == (1, 1)  # action never performed
+
+
+def test_process_player_action_returns_true_and_performs_the_action_when_playing():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    result = engine.process_player_action(BumpAction(1, 0))
+
+    assert result is True
+    assert (player.x, player.y) == (2, 1)
+
+
+def test_process_enemy_phase_runs_ai_turns_on_its_own():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_enemy_phase()
+
+    assert player.fighter.hp == 30 - 4  # the monster attacked, with no process_player_action call this turn
+
+
+def test_process_turn_matches_the_two_phases_called_back_to_back():
+    """process_turn is a thin wrapper - splitting it must not change its
+    externally observable behavior for any caller that doesn't care about
+    mid-turn animation timing (every other test in this file relies on
+    exactly this)."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # both phases ran within the one call
+
+
 def test_sleeping_guard_ignores_player_outside_alert_radius():
     game_map = make_open_map(10, 3)
     player = make_player(0, 1)
