@@ -219,10 +219,10 @@ def test_check_questgiver_jumps_straight_to_completed_if_kill_target_already_dea
     assert quest.status == "completed"
 
 
-# --- questgiver_followup_dialogue ---
+# --- followup_dialogue ---
 
 
-def test_questgiver_followup_dialogue_none_before_completion():
+def test_followup_dialogue_none_before_completion():
     quest = make_quest(
         status="in_progress",
         questgiver_entity_id="escaped_prisoner",
@@ -230,10 +230,10 @@ def test_questgiver_followup_dialogue_none_before_completion():
     )
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.questgiver_followup_dialogue("escaped_prisoner") is None
+    assert log.followup_dialogue("escaped_prisoner") is None
 
 
-def test_questgiver_followup_dialogue_after_completion():
+def test_followup_dialogue_after_completion_for_questgiver():
     quest = make_quest(
         status="completed",
         questgiver_entity_id="escaped_prisoner",
@@ -241,17 +241,28 @@ def test_questgiver_followup_dialogue_after_completion():
     )
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.questgiver_followup_dialogue("escaped_prisoner") == "It's done."
+    assert log.followup_dialogue("escaped_prisoner") == "It's done."
 
 
-def test_questgiver_followup_dialogue_none_when_not_set():
+def test_followup_dialogue_after_completion_for_target_entity():
+    quest = make_quest(
+        status="completed",
+        target_entity_id="village_chief",
+        target_done_dialogue="Thanks for that.",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    assert log.followup_dialogue("village_chief") == "Thanks for that."
+
+
+def test_followup_dialogue_none_when_not_set():
     quest = make_quest(status="completed", questgiver_entity_id="escaped_prisoner")
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.questgiver_followup_dialogue("escaped_prisoner") is None
+    assert log.followup_dialogue("escaped_prisoner") is None
 
 
-def test_questgiver_followup_dialogue_none_for_non_matching_entity():
+def test_followup_dialogue_none_for_non_matching_entity():
     quest = make_quest(
         status="completed",
         questgiver_entity_id="escaped_prisoner",
@@ -259,7 +270,7 @@ def test_questgiver_followup_dialogue_none_for_non_matching_entity():
     )
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.questgiver_followup_dialogue("villager") is None
+    assert log.followup_dialogue("villager") is None
 
 
 # --- record_entity_killed ---

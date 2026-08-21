@@ -1624,6 +1624,24 @@ def test_talk_to_adjacent_ignores_hostile_monsters():
     assert "There's no one here to talk to." in engine.message_log.messages
 
 
+def test_talk_to_adjacent_ignores_a_fleeing_villager():
+    """Regression test: an NPC that's been hurt (and so is permanently
+    fleeing per AI_VILLAGER's own rules) shouldn't be talkable - the player
+    shouldn't be able to attack a villager and then still get their normal
+    dialogue line."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    villager.fighter.hp = 5  # any damage at all triggers permanent fleeing
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert "There's no one here to talk to." in engine.message_log.messages
+    assert 'Villager: "Hello."' not in engine.message_log.messages
+
+
 def test_talk_to_adjacent_completes_a_matching_quest():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -1637,6 +1655,24 @@ def test_talk_to_adjacent_completes_a_matching_quest():
     quest = quest_log.quests[GOBLIN_WARNING_ID]
     assert quest.status == "completed"
     assert quest.completion_message in engine.message_log.messages
+
+
+def test_talk_to_adjacent_chief_uses_the_followup_line_after_the_quest_completes():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief", name="Village Chief")
+    game_map.entities.extend([player, chief])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.talk_to_adjacent()  # first Talk: shows the original line, completes the quest
+    engine.message_log.messages.clear()
+    engine.talk_to_adjacent()  # second Talk: quest is now completed
+
+    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    assert f'Village Chief: "{quest.target_done_dialogue}"' in engine.message_log.messages
+    assert 'Village Chief: "Tell me what you can, then."' not in engine.message_log.messages
+    assert quest.completion_message not in engine.message_log.messages  # not repeated
 
 
 def test_talk_to_adjacent_does_not_complete_a_non_target_villager():
@@ -1934,6 +1970,19 @@ def test_adjacent_shopkeeper_none_when_nothing_nearby():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_shopkeeper() is None
+
+
+def test_adjacent_shopkeeper_ignores_a_fleeing_shopkeeper():
+    """Regression test: attacking the shopkeeper and making them flee must
+    also close off the shop, not just ordinary Talk."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Coin still spends here.", entity_id=SHOPKEEPER_ENTITY_ID, name="Shopkeeper")
+    shopkeeper.fighter.hp = 5
+    game_map.entities.extend([player, shopkeeper])
     engine = Engine(game_map, player, "Test Level")
 
     assert engine.adjacent_shopkeeper() is None

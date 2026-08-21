@@ -64,11 +64,15 @@ class Quest:
     # dead (see killed_entity_ids) at the moment this quest is granted.
     already_done_message: str = ""
     # Once this quest is "completed", every subsequent Talk to
-    # questgiver_entity_id says this instead of their original spoken line -
-    # see QuestLog.questgiver_followup_dialogue - so a questgiver doesn't
-    # keep asking for something already done. "" means no override: the NPC
-    # keeps saying their normal Entity.dialogue line even after completion.
+    # questgiver_entity_id/target_entity_id says the matching line below
+    # instead of their original spoken line - see QuestLog.followup_dialogue
+    # - so an NPC doesn't keep asking for (or waiting on) something already
+    # done. "" means no override: the NPC keeps saying their normal
+    # Entity.dialogue line even after completion. Both can be set on the
+    # same quest if questgiver_entity_id and target_entity_id are different
+    # NPCs who each need their own line to change.
     questgiver_done_dialogue: str = ""
+    target_done_dialogue: str = ""
     # Catalog item id granted to the player on completion, or None for no
     # reward - see Engine.complete_quest.
     reward_item_id: str | None = None
@@ -180,21 +184,22 @@ class QuestLog:
             changed.append(quest)
         return changed
 
-    def questgiver_followup_dialogue(self, entity_id: str) -> str | None:
+    def followup_dialogue(self, entity_id: str) -> str | None:
         """The line entity_id should say on Talk *instead of* their normal
-        Entity.dialogue, if any of their quests is already completed and set
-        a questgiver_done_dialogue - see that field's docstring. Returns None
-        (use the NPC's normal line) if no such quest exists yet, which is
-        also the case for every Talk before completion - so the same NPC
-        naturally asks their original question first, then switches over
-        permanently once their quest is done."""
+        Entity.dialogue, if any quest they're involved in (as questgiver or
+        as the Talk-completion target) is already completed and set a
+        matching done-dialogue - see Quest.questgiver_done_dialogue/
+        target_done_dialogue. Returns None (use the NPC's normal line) if no
+        such quest exists yet, which is also the case for every Talk before
+        completion - so the same NPC naturally acts as normal first, then
+        switches over permanently once the relevant quest is done."""
         for quest in self.quests.values():
-            if (
-                quest.questgiver_entity_id == entity_id
-                and quest.status == "completed"
-                and quest.questgiver_done_dialogue
-            ):
+            if quest.status != "completed":
+                continue
+            if quest.questgiver_entity_id == entity_id and quest.questgiver_done_dialogue:
                 return quest.questgiver_done_dialogue
+            if quest.target_entity_id == entity_id and quest.target_done_dialogue:
+                return quest.target_done_dialogue
         return None
 
     def record_entity_killed(self, entity_id: str) -> list[Quest]:
@@ -248,6 +253,7 @@ def create_starting_quest_log() -> QuestLog:
         ),
         completion_message="The warning is passed on - what Millhaven does with it now isn't yours to carry anymore.",
         failure_message="The deadline for the warning has passed. Whatever time Millhaven had to prepare, it's gone now.",
+        target_done_dialogue="The warning's out now - the town knows what's coming, thanks to you. Whatever happens next, at least we won't be caught flat-footed.",
         deadline_year=GOBLIN_WARNING_DEADLINE_YEAR,
         deadline_day=GOBLIN_WARNING_DEADLINE_DAY,
         target_entity_id=GOBLIN_WARNING_TARGET_ENTITY,

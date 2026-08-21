@@ -373,12 +373,21 @@ class Engine:
         bumping them still attacks, unchanged. `entity_id`, if given,
         additionally restricts the match to that specific catalog id (e.g.
         the shopkeeper) rather than any villager - see adjacent_shopkeeper.
-        Leaving it None reproduces the original unfiltered scan exactly."""
+        Leaving it None reproduces the original unfiltered scan exactly.
+
+        A villager that's been hurt is excluded - per _perform_ai's own
+        AI_VILLAGER branch, any damage at all makes a villager flee
+        permanently (nothing ever heals a non-player entity, so hp <
+        max_hp is a stable "currently fleeing" flag, not a fleeting one).
+        A fleeing NPC won't stop to talk or trade, so both talk_to_adjacent
+        and adjacent_shopkeeper get this for free from the one shared scan."""
         px, py = self.player.x, self.player.y
         for entity in self.game_map.entities:
             if entity.ai != AI_VILLAGER:
                 continue
             if entity_id is not None and entity.entity_id != entity_id:
+                continue
+            if entity.fighter is not None and entity.fighter.hp < entity.fighter.max_hp:
                 continue
             if entity.x == px and entity.y == py:
                 continue
@@ -441,7 +450,7 @@ class Engine:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
             return
         line = (
-            self.quest_log.questgiver_followup_dialogue(target.entity_id)
+            self.quest_log.followup_dialogue(target.entity_id)
             or target.dialogue
             or _DEFAULT_TALK_LINE
         )
