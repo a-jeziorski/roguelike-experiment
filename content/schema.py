@@ -107,6 +107,10 @@ class ItemDef(BaseModel):
     # An ammo item stacks: one pickup can be worth several shots.
     is_ammo: bool = False
     quantity: int = Field(default=1, gt=0)
+    # What a shopkeeper charges for this item, in gold - a fact about the
+    # item, not about any one shopkeeper (see engine/shop.py). None for an
+    # item that's never sold, only found.
+    cost: int | None = Field(default=None, gt=0)
     description: str = ""
 
     @field_validator("glyph")

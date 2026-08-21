@@ -8,7 +8,7 @@ map: |
   #,###,,,1,.,,,,,###,,#
   #,###,,,,,.,,,,,###,,#
   #,,,,,,,,,.,,,,,,,,,,#
-  #,,,,,2,,,.,,,,M,,,,,#
+  #,,,,,2,,,.,,,,M,,7,,#
   #.....o.......3......#
   #,,,,,,,,,.,,,,,,,,,,#
   #,,,,,,,,,.,,5,,,,,,,#
@@ -33,3 +33,4 @@ legend:
   "5": { entity: villager, dialogue: "Chief's been asking after any travelers. You'd best go say hello." }
   "V": { entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it." }
   "6": { entity: escaped_prisoner, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }
+  "7": { entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }

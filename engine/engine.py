@@ -19,6 +19,7 @@ from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
 from engine.game_map import GameMap, build_game_map, item_entity_from_def
 from engine.quest import Quest, QuestLog
+from engine.shop import SHOPKEEPER_ENTITY_ID
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
@@ -365,20 +366,30 @@ class Engine:
         for quest in self.quest_log.check_deadlines(self.clock):
             self.message_log.add(quest.failure_message)
 
-    def _find_adjacent_villager(self) -> Entity | None:
+    def _find_adjacent_villager(self, entity_id: str | None = None) -> Entity | None:
         """The first AI_VILLAGER entity within 8-directional adjacency of
         the player - matches the project's diagonal-movement model. Hostile
         monsters are never talkable (filtered by AI type, not a new flag);
-        bumping them still attacks, unchanged."""
+        bumping them still attacks, unchanged. `entity_id`, if given,
+        additionally restricts the match to that specific catalog id (e.g.
+        the shopkeeper) rather than any villager - see adjacent_shopkeeper.
+        Leaving it None reproduces the original unfiltered scan exactly."""
         px, py = self.player.x, self.player.y
         for entity in self.game_map.entities:
             if entity.ai != AI_VILLAGER:
+                continue
+            if entity_id is not None and entity.entity_id != entity_id:
                 continue
             if entity.x == px and entity.y == py:
                 continue
             if abs(entity.x - px) <= 1 and abs(entity.y - py) <= 1:
                 return entity
         return None
+
+    def adjacent_shopkeeper(self) -> Entity | None:
+        """The shopkeeper NPC, if one is adjacent to the player - used by
+        main.py's shop_gate to decide whether shop mode can be entered."""
+        return self._find_adjacent_villager(entity_id=SHOPKEEPER_ENTITY_ID)
 
     def complete_quest(self, quest: Quest, message: str | None = None) -> None:
         """Logs completion and grants quest.reward_item_id if set - the single
@@ -394,6 +405,29 @@ class Engine:
             reward = item_entity_from_def(idef)
             self.player.inventory.append(reward)
             self.message_log.add(f"You receive a {reward.name}.")
+
+    def buy_from_shop(self, item_id: str) -> str:
+        """Attempts to buy one item from the shop for the player. Returns
+        the status message (also logged to message_log, so it's still
+        visible after leaving the shop screen - see main.py's run_shop_mode,
+        which doesn't render the message log itself). Never touches
+        game_state/clock/enemy turns - buying costs no turn, same reasoning
+        as talk_to_adjacent."""
+        if self.catalog is None or item_id not in self.catalog.items:
+            message = "The shop is unavailable."
+            self.message_log.add(message)
+            return message
+        idef = self.catalog.items[item_id]
+        if self.player.gold < (idef.cost or 0):
+            message = "You can't afford that."
+            self.message_log.add(message)
+            return message
+        self.player.gold -= idef.cost
+        reward = item_entity_from_def(idef)
+        self.player.inventory.append(reward)
+        message = f"You buy a {reward.name} for {idef.cost} gold."
+        self.message_log.add(message)
+        return message
 
     def talk_to_adjacent(self) -> None:
         """Free, non-turn action (see main.py's TalkAction branch): shows an

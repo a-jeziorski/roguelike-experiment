@@ -71,6 +71,17 @@ class QuestLogAction(Action):
         pass
 
 
+class ShopAction(Action):
+    """Enters the shop screen: a free, non-turn screen for buying from a
+    nearby shopkeeper. main.py recognizes this before it would ever reach
+    Engine.process_turn and runs its own nested input loop instead -
+    perform() is never actually called in practice, kept only so ShopAction
+    satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class TalkAction(Action):
     """Talks to an adjacent villager-type NPC - free, costs no turn, same
     shape as LookAction. main.py recognizes this before it would ever reach

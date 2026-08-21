@@ -5,6 +5,7 @@ healing_potion:
   glyph: "!"
   color: [220, 40, 100]
   heal_amount: 10
+  cost: 25
   description: A vial of crimson liquid that mends wounds.
 
 rusty_dagger:

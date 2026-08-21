@@ -134,6 +134,17 @@ village_chief:
     Millhaven's chief - no title with much real weight behind it these
     days, just the one whose word people still bother to listen to.
 
+shopkeeper:
+  name: Shopkeeper
+  glyph: m
+  color: [200, 160, 70]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  description: Deals in coin, on the rare occasion anyone still has any to deal in.
+  dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
+
 bandit:
   name: Bandit
   glyph: b

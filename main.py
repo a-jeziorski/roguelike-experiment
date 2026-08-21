@@ -24,16 +24,19 @@ from engine.actions import (
     LookAction,
     QuestLogAction,
     RestartAction,
+    ShopAction,
     TalkAction,
 )
 from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.quest import QuestLog, create_starting_quest_log
+from engine.shop import SHOP_INVENTORY
 from engine.input_handlers import (
     handle_event,
     handle_look_event,
     handle_quest_log_event,
+    handle_shop_event,
     handle_target_event,
 )
 from engine.render import (
@@ -47,6 +50,7 @@ from engine.render import (
     render_look_frame,
     render_projectile,
     render_quest_log,
+    render_shop,
     render_target_frame,
 )
 from engine.targeting import find_nearest_target
@@ -120,6 +124,15 @@ def fire_mode_gate(engine: Engine) -> str | None:
         return "You have no ranged weapon equipped."
     if not any(it.item.is_ammo for it in engine.player.inventory):
         return "You have no ammo."
+    return None
+
+
+def shop_gate(engine: Engine) -> str | None:
+    """Whether shop mode can currently be entered. Returns an error message
+    to log if not, or None if run_shop_mode should run - same reasoning as
+    fire_mode_gate."""
+    if engine.adjacent_shopkeeper() is None:
+        return "There's no one here to buy from."
     return None
 
 
@@ -202,6 +215,32 @@ def run_quest_log_mode(console: tcod.console.Console, context: tcod.context.Cont
                 selected = (selected + 1) % len(quests)
             if result == "select" and quests:
                 engine.quest_log.set_active_quest(quests[selected].id)
+
+
+def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+    """Nested event loop for the shop screen: moves a selection and buys the
+    selected item on confirm, re-rendering until the player exits. Never
+    touches Engine.process_turn, so it costs no game turn - same as talking
+    or browsing the quest log."""
+    selected = 0
+    status = ""
+
+    while True:
+        render_shop(console, engine.catalog, SHOP_INVENTORY, selected, engine.player.gold, status)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_shop_event(event)
+
+            if result == "exit":
+                return
+            if result == "up" and SHOP_INVENTORY:
+                selected = (selected - 1) % len(SHOP_INVENTORY)
+            if result == "down" and SHOP_INVENTORY:
+                selected = (selected + 1) % len(SHOP_INVENTORY)
+            if result == "buy" and SHOP_INVENTORY:
+                status = engine.buy_from_shop(SHOP_INVENTORY[selected])
 
 
 def animate_ranged_attacks(
@@ -412,6 +451,15 @@ def main() -> int:
                 if isinstance(action, QuestLogAction):
                     if engine.game_state == "playing":
                         run_quest_log_mode(console, context, engine)
+                    continue
+
+                if isinstance(action, ShopAction):
+                    if engine.game_state == "playing":
+                        error = shop_gate(engine)
+                        if error:
+                            engine.message_log.add(error)
+                        else:
+                            run_shop_mode(console, context, engine)
                     continue
 
                 if isinstance(action, FireModeAction):

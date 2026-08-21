@@ -49,7 +49,7 @@ for:
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner |
+| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper |
 
 ## The named set pieces
 
@@ -87,9 +87,14 @@ bible's voice model calls for.
 
 ### 3. The Mending Yard
 
-A second `landmark` tile - tools laid out, nothing fancy, the closest
-thing Millhaven has to a shop. This villager is the *one* allowed
-slightly more informative dialogue in the whole roster.
+A second `landmark` tile - tools laid out, nothing fancy. An informal
+exchange of favors and borrowed tools, not a transaction - nobody's
+charging, nobody's paying. (A literal shop now sits nearby - see set
+piece 8 - and the two are meant to coexist rather than compete: the
+Mending Yard is what people still do for each other without coin
+changing hands; the shop is the one place coin still works at all.)
+This villager is the *one plain villager* allowed slightly more
+informative dialogue.
 
 *Landmark description*: *"A mending yard - a cobbler's last, a
 whetstone, tools laid out for whoever needs them next. Nobody's
@@ -174,20 +179,45 @@ Warden already died during the player's own escape, talking to this
 NPC completes the quest immediately instead of granting it, and says
 so explicitly rather than pretending the favor is still owed.
 
+### 8. The Shopkeeper
+
+Sits just past the Mending Yard, at the corner of the green closest to
+anything resembling trade - the two set pieces are meant to be read
+together, not separately (see set piece 3). Doesn't sell much: one
+Healing Potion, priced at what coin is actually still worth here - 25
+gold is a real ask, not a formality, given how little of it exists to
+find.
+
+*Dialogue*: *"Coin still spends here, same as it always did. Rare
+enough these days that I don't ask where it came from."*
+
+*Why it's here*: this is the payoff the gold system was built toward -
+the first, and so far only, place in the game any collected gold
+becomes useful again. Ties directly into the framing established in
+`docs/dungeon_bibles/prison_tower.md`'s "Why there's gold here at all":
+every gold placement so far has been inert, already-possessed coin
+nobody's spent in a generation. This is where that changes, in one
+specific and modest way - not a return of a functioning economy, just
+one person still willing to trade.
+
 ## Roster
 
-Seven `villager`-AI entities total (five plain `villager` spawns each
-with its own per-spawn `dialogue`, one `village_chief` spawn, and one
-`escaped_prisoner` spawn) - a modest increase from the original five,
-not a jump to Wayford's scale. Still no monsters, no combat: every
-villager-AI entity here (chief and escaped prisoner included) wanders
-at full health and flees permanently the instant it's hurt, same as
-everywhere else in the game. The one new mechanic this pass adds is a
-questgiver - a quest that starts hidden until granted via `Talk` -
-which the `escaped_prisoner` entity uses; the entity itself is still
-mechanically identical to `villager` (same hp/attack/defense/AI), the
-same "identity, not a different kind of creature" pattern the
-`village_chief` already established.
+Eight `villager`-AI entities total (five plain `villager` spawns each
+with its own per-spawn `dialogue`, one `village_chief` spawn, one
+`escaped_prisoner` spawn, and one `shopkeeper` spawn) - a modest
+increase from the original five, not a jump to Wayford's scale. Still
+no monsters, no combat: every villager-AI entity here (chief, escaped
+prisoner, and shopkeeper included) wanders at full health and flees
+permanently the instant it's hurt, same as everywhere else in the game.
+Two mechanics beyond plain dialogue live on this roster: the
+questgiver (a quest that starts hidden until granted via `Talk`, which
+`escaped_prisoner` uses) and the shopkeeper (a nested buy screen, opened
+with a separate key while adjacent, entirely independent of `Talk` -
+talking to the shopkeeper gets ordinary dialogue like any other
+villager, same as talking to anyone else). Both entities are still
+mechanically identical to `villager` (same hp/attack/defense/AI) - the
+same "identity, not a different kind of creature" pattern `village_chief`
+already established.
 
 ## Tone notes for anyone (agent or human) revising this later
 

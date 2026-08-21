@@ -11,12 +11,14 @@ from engine.actions import (
     LookAction,
     QuestLogAction,
     RestartAction,
+    ShopAction,
     WaitAction,
 )
 from engine.input_handlers import (
     handle_event,
     handle_look_event,
     handle_quest_log_event,
+    handle_shop_event,
     handle_target_event,
 )
 
@@ -67,6 +69,10 @@ def test_handle_event_r_returns_restart_action():
 
 def test_handle_event_q_returns_quest_log_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.Q)), QuestLogAction)
+
+
+def test_handle_event_b_returns_shop_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.B)), ShopAction)
 
 
 def test_handle_event_unmapped_key_returns_none():
@@ -150,3 +156,29 @@ def test_handle_quest_log_event_unmapped_key_returns_none():
 def test_handle_quest_log_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_quest_log_event(tcod.event.Quit(sdl_event=None))
+
+
+def test_handle_shop_event_up_and_down():
+    assert handle_shop_event(key_down(tcod.event.KeySym.UP)) == "up"
+    assert handle_shop_event(key_down(tcod.event.KeySym.KP_8)) == "up"
+    assert handle_shop_event(key_down(tcod.event.KeySym.DOWN)) == "down"
+    assert handle_shop_event(key_down(tcod.event.KeySym.KP_2)) == "down"
+
+
+def test_handle_shop_event_buy():
+    assert handle_shop_event(key_down(tcod.event.KeySym.RETURN)) == "buy"
+    assert handle_shop_event(key_down(tcod.event.KeySym.KP_ENTER)) == "buy"
+
+
+@pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.B])
+def test_handle_shop_event_exit_keys(sym):
+    assert handle_shop_event(key_down(sym)) == "exit"
+
+
+def test_handle_shop_event_unmapped_key_returns_none():
+    assert handle_shop_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_shop_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_shop_event(tcod.event.Quit(sdl_event=None))

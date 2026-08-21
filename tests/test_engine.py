@@ -19,6 +19,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
+from engine.shop import SHOPKEEPER_ENTITY_ID
 from engine.quest import (
     GOBLIN_WARNING_ID,
     KILL_THE_WARDEN_ID,
@@ -1904,3 +1905,131 @@ def test_complete_quest_with_no_catalog_does_not_crash():
 
     assert "Done." in engine.message_log.messages
     assert player.inventory == []
+
+
+# --- shopkeeper / buy_from_shop ---
+
+
+def test_adjacent_shopkeeper_finds_the_shopkeeper_specifically():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Coin still spends here.", entity_id=SHOPKEEPER_ENTITY_ID, name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_shopkeeper() is shopkeeper
+
+
+def test_adjacent_shopkeeper_ignores_a_plain_villager_of_the_same_ai_type():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.", entity_id="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_shopkeeper() is None
+
+
+def test_adjacent_shopkeeper_none_when_nothing_nearby():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_shopkeeper() is None
+
+
+def test_talk_to_adjacent_still_works_unfiltered_alongside_the_shopkeeper_filter():
+    """Regression test: generalizing _find_adjacent_villager to accept an
+    entity_id filter must not change talk_to_adjacent's own unfiltered
+    no-arg call."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Coin still spends here.", entity_id=SHOPKEEPER_ENTITY_ID, name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Shopkeeper: "Coin still spends here."' in engine.message_log.messages
+
+
+def test_buy_from_shop_with_enough_gold_deducts_gold_and_grants_item():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 30
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.buy_from_shop("healing_potion")
+
+    assert player.gold == 5
+    assert len(player.inventory) == 1
+    assert player.inventory[0].name == "Healing Potion"
+    assert message == "You buy a Healing Potion for 25 gold."
+    assert message in engine.message_log.messages
+
+
+def test_buy_from_shop_without_enough_gold_does_nothing():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 10
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.buy_from_shop("healing_potion")
+
+    assert player.gold == 10
+    assert player.inventory == []
+    assert message == "You can't afford that."
+    assert message in engine.message_log.messages
+
+
+def test_buy_from_shop_a_second_time_rechecks_affordability_against_the_lower_total():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 30
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    first = engine.buy_from_shop("healing_potion")
+    second = engine.buy_from_shop("healing_potion")
+
+    assert first == "You buy a Healing Potion for 25 gold."
+    assert second == "You can't afford that."
+    assert player.gold == 5
+    assert len(player.inventory) == 1
+
+
+def test_buy_from_shop_with_no_catalog_does_not_crash():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 100
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # catalog defaults to None
+
+    message = engine.buy_from_shop("healing_potion")  # must not raise
+
+    assert message == "The shop is unavailable."
+    assert player.gold == 100
+    assert player.inventory == []
+
+
+def test_buy_from_shop_never_advances_the_clock_or_processes_enemy_turns():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 30
+    rat = make_monster(0, 0, ai="hostile_basic")
+    game_map.entities.extend([player, rat])
+    clock = GameClock()
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, catalog=catalog, clock=clock)
+    rat_start = (rat.x, rat.y)
+
+    engine.buy_from_shop("healing_potion")
+
+    assert engine.clock == GameClock()  # untouched
+    assert (rat.x, rat.y) == rat_start  # no enemy turn was processed

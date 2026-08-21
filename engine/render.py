@@ -434,3 +434,46 @@ def render_quest_log(
     console.print(
         0, y, "[up/down] select  [enter] set active  [q/esc] exit", fg=HUD_FG, width=width
     )
+
+
+def render_shop(
+    console: "Console",
+    catalog: "Catalog",
+    item_ids: "list[str]",
+    selected: int,
+    player_gold: int,
+    status: str,
+) -> None:
+    """The shop screen: mirrors render_quest_log's shape - no map drawn,
+    just a list of what's for sale (item_ids, resolved against the catalog
+    for name/cost/description), the selected item's description, a status
+    line for the last purchase attempt (this screen never renders the
+    message log, so this is the only way to show immediate feedback), and a
+    footer control hint."""
+    console.clear()
+    width = console.width
+    y = 0
+    y += console.print(0, y, "Shop", fg=HUD_FG, width=width)
+    y += console.print(0, y, f"Your gold: {player_gold}", fg=HUD_FG, width=width)
+    y += 1
+
+    for i, item_id in enumerate(item_ids):
+        idef = catalog.items[item_id]
+        marker = ">" if i == selected else " "
+        afford_tag = "" if player_gold >= (idef.cost or 0) else " (can't afford)"
+        y += console.print(
+            0, y, f"{marker} {idef.name} - {idef.cost} gold{afford_tag}", fg=HUD_FG, width=width
+        )
+
+    y += 1
+    if item_ids:
+        y += console.print(0, y, catalog.items[item_ids[selected]].description, fg=HUD_FG, width=width)
+
+    if status:
+        y += 1
+        y += console.print(0, y, status, fg=HUD_FG, width=width)
+
+    y = console.height - 1
+    console.print(
+        0, y, "[up/down] select  [enter] buy  [b/esc] exit", fg=HUD_FG, width=width
+    )

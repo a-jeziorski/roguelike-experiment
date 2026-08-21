@@ -32,6 +32,7 @@ from engine.render import (
     render_map,
     render_message_log,
     render_quest_log,
+    render_shop,
     render_target_frame,
 )
 
@@ -223,6 +224,52 @@ def test_render_quest_log_shows_the_selected_quests_description():
     text = console_text(console)
     assert "Kill the Warden of Prison Tower." in text
     assert "Warn the town." not in text
+
+
+def test_render_shop_lists_items_with_cost_and_shows_gold():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=100, status="")
+
+    text = console_text(console)
+    assert "Healing Potion" in text
+    assert "25 gold" in text
+    assert "Your gold: 100" in text
+    assert "A vial of crimson liquid that mends wounds." in text  # selected item's description
+
+
+def test_render_shop_marks_unaffordable_items():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=5, status="")
+
+    text = console_text(console)
+    assert "can't afford" in text
+
+
+def test_render_shop_does_not_mark_affordable_items():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_shop(console, catalog, ["healing_potion"], selected=0, player_gold=100, status="")
+
+    text = console_text(console)
+    assert "can't afford" not in text
+
+
+def test_render_shop_shows_the_status_message():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_shop(
+        console, catalog, ["healing_potion"], selected=0, player_gold=100,
+        status="You buy a Healing Potion for 25 gold.",
+    )
+
+    text = console_text(console)
+    assert "You buy a Healing Potion for 25 gold." in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():

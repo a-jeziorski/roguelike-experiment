@@ -22,7 +22,8 @@ from engine.entity import (
 )
 from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog
-from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition
+from engine.shop import SHOPKEEPER_ENTITY_ID
+from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition, shop_gate
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -170,6 +171,35 @@ def test_fire_mode_gate_allows_when_armed_and_stocked():
         )
     )
     assert fire_mode_gate(engine) is None
+
+
+def test_shop_gate_blocks_without_a_shopkeeper_nearby():
+    engine = make_engine()  # forgotten_ruins level_01: no villagers at all
+    assert shop_gate(engine) == "There's no one here to buy from."
+
+
+def test_shop_gate_allows_when_a_shopkeeper_is_adjacent():
+    game_map = GameMap(3, 3)
+    for x in range(3):
+        for y in range(3):
+            game_map.kinds[x, y] = "floor"
+            game_map.walkable[x, y] = True
+            game_map.transparent[x, y] = True
+    player = Entity(
+        1, 1, "@", (255, 255, 255), "Player",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=30, hp=30, attack=5, defense=1),
+    )
+    shopkeeper = Entity(
+        2, 1, "m", (200, 160, 70), "Shopkeeper",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=10, hp=10, attack=0, defense=0),
+        ai="villager", entity_id=SHOPKEEPER_ENTITY_ID,
+    )
+    game_map.entities.extend([player, shopkeeper])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert shop_gate(engine) is None
 
 
 def _world():
