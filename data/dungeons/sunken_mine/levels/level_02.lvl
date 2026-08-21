@@ -13,7 +13,7 @@ map: |
   ##.######.####....######..>.#
   ##.g..-...######..~~~~~~....#
   ###D############..~~~~~~.####
-  ##.e..##########..~~~~~~.####
+  ##.e.*##########..~~~~~~.####
   ##..).##########......g..####
   ################!........####
   #############################
@@ -34,3 +34,4 @@ legend:
   ")": { item: iron_sword }
   "~": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
   "!": { item: healing_potion }
+  "*": { item: gold_stash, description: "The contents of the foreman's strongbox - a payout that was due the day everything else stopped too." }

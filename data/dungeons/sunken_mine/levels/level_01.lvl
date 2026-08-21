@@ -4,7 +4,7 @@ name: The Weighhouse Shaft
 map: |
   ###########################
   #@...####............######
-  #......../.....y.....######
+  #......../...$.y.....######
   #....####..##.###.#..######
   #########............######
   #########......b.....######
@@ -31,3 +31,4 @@ legend:
   "D": { door: rusty_key }
   "[": { item: leather_armor }
   ">": { stairs_down: level_02 }
+  "$": { item: gold_pile, description: "A handful of coin, dropped or forgotten near the counter on the day the tally stopped." }

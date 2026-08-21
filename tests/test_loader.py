@@ -16,6 +16,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
 FORGOTTEN_RUINS_LEVELS_DIR = DUNGEONS_DIR / "forgotten_ruins" / "levels"
 PRISON_TOWER_LEVELS_DIR = DUNGEONS_DIR / "prison_tower" / "levels"
+SUNKEN_MINE_LEVELS_DIR = DUNGEONS_DIR / "sunken_mine" / "levels"
 MILLHAVEN_LEVELS_DIR = DUNGEONS_DIR / "millhaven" / "levels"
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
@@ -507,22 +508,46 @@ def test_prison_tower_level_01_content():
     assert entity_names == ["Crossbow Guard", "Guard"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Hunting Bow", "Rusty Dagger"]
+    assert item_names == ["Gold Pile", "Hunting Bow", "Rusty Dagger"]
+
+
+def test_prison_tower_level_02_content():
+    catalog = load_catalog()
+    level = load_level(PRISON_TOWER_LEVELS_DIR / "level_02.lvl", catalog)
+
+    item_names = sorted(s.item.name for s in level.item_spawns)
+    assert item_names == ["Gold Pile", "Iron Sword", "Rusty Key"]
+
+
+def test_prison_tower_level_04_content():
+    catalog = load_catalog()
+    level = load_level(PRISON_TOWER_LEVELS_DIR / "level_04.lvl", catalog)
+
+    item_names = sorted(s.item.name for s in level.item_spawns)
+    assert item_names == ["Gold Stash"]
+
+
+def test_sunken_mine_gold_placements():
+    catalog = load_catalog()
+    levels = load_levels(SUNKEN_MINE_LEVELS_DIR, catalog)
+
+    item_names_by_level = {
+        level_id: sorted(s.item.name for s in level.item_spawns)
+        for level_id, level in levels.items()
+    }
+    assert "Gold Pile" in item_names_by_level["level_01"]
+    assert "Gold Stash" in item_names_by_level["level_02"]
+    assert "Gold Pile" in item_names_by_level["level_03"]
 
 
 def test_prison_tower_chain_links_all_levels():
     catalog = load_catalog()
     levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
 
-    # level_01 branches: the normal path to level_02, plus a side path into
-    # level_01_large (an oversized version of the same cell, used to exercise
-    # the camera/viewport system on a map far bigger than the console) which
-    # rejoins the main chain at level_02.
-    assert set(levels) == {"level_01", "level_01_large", "level_02", "level_03", "level_04"}
-    # level_01's first stairway is now its retreat stairs_up (terminal, leaves
-    # to the overworld), scanned before the two stairs_down branches below it.
-    assert [s.next_level for s in levels["level_01"].stairs] == [None, "level_01_large", "level_02"]
-    assert [s.next_level for s in levels["level_01_large"].stairs] == ["level_02"]
+    assert set(levels) == {"level_01", "level_02", "level_03", "level_04"}
+    # level_01's first stairway is its retreat stairs_up (terminal, leaves to
+    # the overworld), scanned before the stairs_down branch below it.
+    assert [s.next_level for s in levels["level_01"].stairs] == [None, "level_02"]
     # level_02 also has a stairs_up back to level_01 (the return-trip example).
     assert [s.next_level for s in levels["level_02"].stairs] == ["level_01", "level_03"]
     assert [s.next_level for s in levels["level_03"].stairs] == ["level_04"]

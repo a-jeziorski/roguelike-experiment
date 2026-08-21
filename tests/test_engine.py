@@ -135,6 +135,14 @@ def make_ammo(x: int, y: int, quantity: int = 5, name: str = "Arrows") -> Entity
     )
 
 
+def make_gold(x: int, y: int, gold_amount: int = 10, name: str = "Gold Pile") -> Entity:
+    return Entity(
+        x, y, "$", (255, 210, 60), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(gold_amount=gold_amount),
+    )
+
+
 def test_movement_into_open_floor():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -720,6 +728,45 @@ def test_second_ammo_pickup_merges_into_existing_stack():
     assert more_ammo not in game_map.entities
 
 
+def test_gold_pickup_increments_player_gold_and_removes_from_map():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    gold = make_gold(1, 1, gold_amount=10)
+    game_map.entities.extend([player, gold])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.gold == 10
+    assert gold not in game_map.entities
+
+
+def test_second_gold_pickup_adds_to_running_total():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 10
+    more_gold = make_gold(1, 1, gold_amount=25, name="Gold Stash")
+    game_map.entities.extend([player, more_gold])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.gold == 35
+    assert more_gold not in game_map.entities
+
+
+def test_gold_pickup_never_enters_inventory():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    gold = make_gold(1, 1, gold_amount=10)
+    game_map.entities.extend([player, gold])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.inventory == []
+
+
 def test_fire_action_without_ranged_weapon_does_nothing():
     game_map = make_open_map(5, 3)
     player = make_player(1, 1)
@@ -1037,10 +1084,12 @@ def test_restart_after_death_gives_a_fresh_run():
         starting_level=level_01,
     )
 
-    # Simulate a run in progress: damaged, geared up, and one monster killed.
+    # Simulate a run in progress: damaged, geared up, gold collected, and one
+    # monster killed.
     player.fighter.hp = 1
     player.equipped_weapon = make_weapon(0, 0, attack_bonus=10)
     player.inventory.append(make_potion(0, 0))
+    player.gold = 50
     killed_monster = next(e for e in game_map.entities if e.name == "Rat")
     game_map.entities.remove(killed_monster)
     engine.on_entity_death(player)
@@ -1056,6 +1105,7 @@ def test_restart_after_death_gives_a_fresh_run():
     assert engine.player.effective_attack == PLAYER_ATTACK
     assert engine.player.equipped_weapon is None
     assert engine.player.inventory == []
+    assert engine.player.gold == 0
     assert (engine.player.x, engine.player.y) == level_01.player_start
     assert len(engine.message_log.messages) == 1  # log cleared to just the entry message
 

@@ -213,6 +213,8 @@ class PickupAction(Action):
                 self._equip(engine, entity, candidate, slot="ranged")
             elif candidate.item.is_ammo:
                 self._stack_ammo(engine, entity, candidate)
+            elif candidate.item.gold_amount:
+                self._collect_gold(engine, entity, candidate)
             else:
                 entity.inventory.append(candidate)
                 engine.game_map.entities.remove(candidate)
@@ -264,6 +266,16 @@ class PickupAction(Action):
         else:
             entity.inventory.append(candidate)
             engine.message_log.add(f"You picked up {candidate.item.quantity}x {candidate.name}.")
+
+    def _collect_gold(self, engine: "Engine", entity: "Entity", candidate: "Entity") -> None:
+        """Folds a gold pickup straight into entity.gold - a scalar player
+        stat, not an inventory entry, so unlike every other branch above this
+        one never touches entity.inventory."""
+        entity.gold += candidate.item.gold_amount
+        engine.game_map.entities.remove(candidate)
+        engine.message_log.add(
+            f"You pick up {candidate.item.gold_amount} gold ({entity.gold} total)."
+        )
 
 
 class UseItemAction(Action):

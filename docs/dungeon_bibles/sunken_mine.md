@@ -156,9 +156,27 @@ means walking away from that answer, not past it.
 
 ## Roster and balance (unchanged constraint: reuse the existing catalog)
 
-Per the original brief, this dungeon still introduces **no new monsters
-or items** - its novelty is structural and narrative, not catalog
-growth. Placements below use the existing roster with intent, rather
+Per the original brief, this dungeon introduces **no new monsters** -
+its novelty is structural and narrative, not catalog growth. That held
+for monsters through this pass too; it no longer holds for items. A
+later pass added `gold_pile`/`gold_stash` (a new collectible-currency
+item type, not specific to this dungeon) in three places, each reusing
+lore already written into this document rather than inventing new
+set pieces:
+
+| Placement | Where specifically | Why here |
+|---|---|---|
+| `gold_pile` | The Weighhouse (`level_01`), near the counter | Coin dropped or forgotten the day the tally stopped - the same "nobody came back" beat the counter and tally board already tell. |
+| `gold_stash` | The Foreman's Office (`level_02`) | This document already establishes "a desk, a strongbox" in that room - this is that strongbox's contents, made concrete. A wage payout that was due the day everything else stopped too. |
+| `gold_pile` | The Vermin Warren (`level_03`), by the nest | The nest is already described as "things that used to belong to someone else" - scavenged coin is that line made literal. |
+
+None of this dungeon's monsters or their stats changed to accommodate
+gold - it's inert, already-possessed coin (no functioning economy
+survives in the Long Quiet, per `world_history.md`), not a reward tied
+to any fight. See `docs/dungeon_bibles/prison_tower.md`'s "Why there's
+gold here at all" for the fuller framing shared across both dungeons.
+
+Placements below use the existing monster roster with intent, rather
 than scattering the same three monster types evenly:
 
 | Monster | Where | Why here specifically |

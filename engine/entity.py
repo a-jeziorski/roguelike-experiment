@@ -25,6 +25,7 @@ class Fighter:
 @dataclass
 class ItemEffect:
     heal_amount: int | None = None
+    gold_amount: int | None = None
     attack_bonus: int | None = None
     defense_bonus: int | None = None
     ranged_attack_bonus: int | None = None
@@ -57,6 +58,7 @@ class Entity:
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
         equipped_ranged_weapon: "Entity | None" = None,
+        gold: int = 0,
     ):
         self.x = x
         self.y = y
@@ -85,6 +87,11 @@ class Entity:
         self.equipped_weapon = equipped_weapon
         self.equipped_armor = equipped_armor
         self.equipped_ranged_weapon = equipped_ranged_weapon
+        # A scalar player stat, not a held item - collected gold never enters
+        # inventory (see PickupAction._collect_gold). Named asymmetrically
+        # from ItemEffect.gold_amount on purpose, matching how is_key/key_id
+        # already don't mirror 1:1 between the two classes.
+        self.gold = gold
 
     @property
     def is_alive(self) -> bool:

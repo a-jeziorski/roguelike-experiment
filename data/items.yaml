@@ -57,3 +57,17 @@ arrows:
   is_ammo: true
   quantity: 5
   description: A bundle of fletched arrows.
+
+gold_pile:
+  name: Gold Pile
+  glyph: "$"
+  color: [255, 210, 60]
+  gold_amount: 10
+  description: A modest handful of coin - old minting, still real weight in the hand.
+
+gold_stash:
+  name: Gold Stash
+  glyph: "*"
+  color: [255, 225, 90]
+  gold_amount: 25
+  description: More coin than anyone carries by accident. Someone meant to come back for this.

@@ -92,6 +92,13 @@ class ItemDef(BaseModel):
     glyph: str
     color: Color
     heal_amount: int | None = None
+    # Gold collected straight into the player's gold stat on pickup (see
+    # PickupAction._collect_gold) - never enters inventory. Note this is a
+    # trap for Engine.complete_quest, which appends reward_item_id straight
+    # into player.inventory: a quest that rewards a gold item would sit
+    # there inert instead of incrementing player.gold, since that path never
+    # goes through PickupAction's dispatch. No current quest does this.
+    gold_amount: int | None = None
     attack_bonus: int | None = None
     defense_bonus: int | None = None
     ranged_attack_bonus: int | None = None

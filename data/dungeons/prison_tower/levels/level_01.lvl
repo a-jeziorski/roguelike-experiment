@@ -11,7 +11,7 @@ map: |
   ###.####################
   ###.####################
   #..............###.....#
-  #./....G.......###.....#
+  #./....G$......###.....#
   #......................#
   #..............###..C..#
   #..............###..>..#
@@ -28,3 +28,4 @@ legend:
   "C": { entity: crossbow_guard }
   "/": { item: rusty_dagger }
   "}": { item: hunting_bow }
+  "$": { item: gold_pile, description: "A guard's own coin, still in the pouch he never got to spend it from." }

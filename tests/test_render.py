@@ -142,6 +142,20 @@ def test_render_hud_shows_the_active_quest():
     assert quest_log.quests[GOBLIN_WARNING_ID].format_for_hud() in text
 
 
+def test_render_hud_shows_gold():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.gold = 42
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "Gold: 42" in text
+
+
 def test_render_hud_never_shows_a_not_given_quest():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)

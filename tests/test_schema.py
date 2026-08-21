@@ -180,6 +180,18 @@ def test_item_def_accepts_ammo_with_quantity():
     assert arrows.quantity == 5
 
 
+def test_item_def_gold_amount_defaults_none():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.gold_amount is None
+
+
+def test_item_def_accepts_gold_amount():
+    gold = ItemDef(
+        id="gold_pile", name="Gold Pile", glyph="$", color=(1, 2, 3), gold_amount=10
+    )
+    assert gold.gold_amount == 10
+
+
 def test_dungeon_def_valid():
     dungeon = DungeonDef(id="prison_tower", name="The Prison Tower", starting_level="level_01")
     assert dungeon.starting_level == "level_01"

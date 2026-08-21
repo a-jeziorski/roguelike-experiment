@@ -91,6 +91,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
         render_priority=RENDER_PRIORITY_ITEM,
         item=ItemEffect(
             heal_amount=idef.heal_amount,
+            gold_amount=idef.gold_amount,
             attack_bonus=idef.attack_bonus,
             defense_bonus=idef.defense_bonus,
             ranged_attack_bonus=idef.ranged_attack_bonus,

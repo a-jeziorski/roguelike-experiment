@@ -201,7 +201,8 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         width=width,
     )
     y += console.print(
-        0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}", fg=HUD_FG, width=width
+        0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
+        fg=HUD_FG, width=width,
     )
     if engine.game_state == "dead":
         y += console.print(
