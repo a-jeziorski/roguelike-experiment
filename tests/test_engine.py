@@ -1734,6 +1734,42 @@ def test_talk_to_adjacent_retroactive_completion_does_not_auto_pin():
     assert quest_log.active_quest_id is None  # a just-finished quest never auto-pins
 
 
+def test_talk_to_adjacent_still_shows_normal_dialogue_before_quest_is_completed():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()  # grants the quest, does not complete it
+
+    assert 'Escaped Prisoner: "Made it out too."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_uses_the_followup_line_after_the_quest_completes():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)  # already dead
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()  # first Talk: completes the quest retroactively
+    engine.message_log.messages.clear()
+    engine.talk_to_adjacent()  # second Talk: quest is now completed
+
+    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    assert f'Escaped Prisoner: "{quest.questgiver_done_dialogue}"' in engine.message_log.messages
+    assert 'Escaped Prisoner: "Made it out too."' not in engine.message_log.messages
+    # the reward and completion message aren't repeated on a later re-talk
+    assert quest.completion_message not in engine.message_log.messages
+    assert len(player.inventory) == 1
+
+
 def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)

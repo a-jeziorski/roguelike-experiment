@@ -406,7 +406,11 @@ class Engine:
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
             return
-        line = target.dialogue or _DEFAULT_TALK_LINE
+        line = (
+            self.quest_log.questgiver_followup_dialogue(target.entity_id)
+            or target.dialogue
+            or _DEFAULT_TALK_LINE
+        )
         self.message_log.add(f'{target.name}: "{line}"', category="dialogue")
 
         for quest in self.quest_log.check_questgiver(target.entity_id):

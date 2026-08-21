@@ -63,6 +63,12 @@ class Quest:
     # Shown instead of given_message if the kill-target was already recorded
     # dead (see killed_entity_ids) at the moment this quest is granted.
     already_done_message: str = ""
+    # Once this quest is "completed", every subsequent Talk to
+    # questgiver_entity_id says this instead of their original spoken line -
+    # see QuestLog.questgiver_followup_dialogue - so a questgiver doesn't
+    # keep asking for something already done. "" means no override: the NPC
+    # keeps saying their normal Entity.dialogue line even after completion.
+    questgiver_done_dialogue: str = ""
     # Catalog item id granted to the player on completion, or None for no
     # reward - see Engine.complete_quest.
     reward_item_id: str | None = None
@@ -174,6 +180,23 @@ class QuestLog:
             changed.append(quest)
         return changed
 
+    def questgiver_followup_dialogue(self, entity_id: str) -> str | None:
+        """The line entity_id should say on Talk *instead of* their normal
+        Entity.dialogue, if any of their quests is already completed and set
+        a questgiver_done_dialogue - see that field's docstring. Returns None
+        (use the NPC's normal line) if no such quest exists yet, which is
+        also the case for every Talk before completion - so the same NPC
+        naturally asks their original question first, then switches over
+        permanently once their quest is done."""
+        for quest in self.quests.values():
+            if (
+                quest.questgiver_entity_id == entity_id
+                and quest.status == "completed"
+                and quest.questgiver_done_dialogue
+            ):
+                return quest.questgiver_done_dialogue
+        return None
+
     def record_entity_killed(self, entity_id: str) -> list[Quest]:
         """Called from Engine.on_entity_death for every non-player death,
         regardless of whether any quest currently cares - see
@@ -242,6 +265,7 @@ def create_starting_quest_log() -> QuestLog:
         completion_message="The Warden is dead. Whatever he did to the people under him, he won't do it to anyone else now.",
         given_message="New quest: An Old Debt - if the Warden of Prison Tower is still alive, he won't be for long if you have anything to say about it.",
         already_done_message="You tell them it's already done - the Warden didn't survive your escape. They go quiet for a moment. 'Good,' they say, finally. 'Good.'",
+        questgiver_done_dialogue="The Warden's dead. Didn't think I'd ever get to hear that and mean it as good news.",
         questgiver_entity_id=KILL_THE_WARDEN_QUESTGIVER,
         target_kill_entity_id=KILL_THE_WARDEN_TARGET,
         reward_item_id=KILL_THE_WARDEN_REWARD,
