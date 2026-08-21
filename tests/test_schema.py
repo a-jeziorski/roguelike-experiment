@@ -53,6 +53,12 @@ def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     )
     assert villager.ai == "villager"
 
+    town_guard = EntityDef(
+        id="town_guard", name="Town Guard", glyph="T", color=(1, 2, 3),
+        hp=14, attack=5, defense=2, ai="town_guard",
+    )
+    assert town_guard.ai == "town_guard"
+
 
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):

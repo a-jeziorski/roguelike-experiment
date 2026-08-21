@@ -46,9 +46,16 @@ AI_SLEEPING_GUARD = "sleeping_guard"
 AI_SKITTISH = "skittish"
 AI_RANGED_BASIC = "ranged_basic"
 AI_VILLAGER = "villager"
+AI_TOWN_GUARD = "town_guard"
 AIType = Literal[
-    AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER,
+    AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
 ]
+# AI types that never initiate violence on their own - villager never fights
+# back at all; town_guard doesn't either, until the map-wide hostility flag
+# flips (see GameMap.player_attacked_peaceful_npc / Engine._perform_ai's
+# AI_TOWN_GUARD branch). Shared here since both engine/combat.py (the
+# trigger) and engine/engine.py (dispatch + adjacency filtering) need it.
+PEACEFUL_AI_TYPES = (AI_VILLAGER, AI_TOWN_GUARD)
 
 
 class EntityDef(BaseModel):

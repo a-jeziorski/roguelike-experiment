@@ -446,6 +446,71 @@ def test_villager_ignores_player_when_not_visible():
     assert (villager.x, villager.y) == (8, 1)  # never acted at all - not even a wander step
 
 
+def test_town_guard_wanders_when_peaceful(monkeypatch):
+    monkeypatch.setattr(random, "choice", lambda seq: (1, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (guard.x, guard.y) == (3, 1)  # moved per the pinned random choice
+    assert player.fighter.hp == 30  # never attacked
+
+
+def test_town_guard_holds_position_when_wander_pick_is_stay_put(monkeypatch):
+    monkeypatch.setattr(random, "choice", lambda seq: (0, 0))
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (guard.x, guard.y) == (2, 1)
+
+
+def test_town_guard_never_attacks_on_its_own_initiative_even_when_adjacent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # adjacent, but the map was never provoked
+
+
+def test_town_guard_chases_and_attacks_once_the_map_is_provoked():
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    guard = make_monster(3, 1, hp=14, attack=5, ai="town_guard")
+    game_map.player_attacked_peaceful_npc = True
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (guard.x, guard.y) == (2, 1)  # stepped toward the player, distance was 3
+
+
+def test_town_guard_attacks_when_provoked_and_already_adjacent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.player_attacked_peaceful_npc = True
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 5
+
+
 def test_ranged_basic_fires_when_in_range_but_not_adjacent():
     game_map = make_open_map(10, 3)
     player = make_player(0, 1, hp=30, defense=0)
@@ -1941,6 +2006,118 @@ def test_complete_quest_with_no_catalog_does_not_crash():
 
     assert "Done." in engine.message_log.messages
     assert player.inventory == []
+
+
+# --- town guard hostility trigger (engine/combat.py) ---
+
+
+def test_attacking_a_villager_sets_the_map_hostility_flag():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1)
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert game_map.player_attacked_peaceful_npc is True
+
+
+def test_attacking_a_town_guard_sets_the_map_hostility_flag():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert game_map.player_attacked_peaceful_npc is True
+
+
+def test_attacking_a_hostile_monster_does_not_set_the_map_hostility_flag():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=5, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert game_map.player_attacked_peaceful_npc is False
+
+
+def test_a_monster_attacking_the_player_does_not_set_the_map_hostility_flag():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())  # the monster attacks the player, not the other way around
+
+    assert game_map.player_attacked_peaceful_npc is False
+
+
+def test_a_zero_damage_attack_on_a_villager_still_sets_the_flag():
+    """Confirms the trigger is 'attacks,' not 'hurts' - a hit that deals no
+    damage still counts as an attack."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=0)  # 0 attack vs 0 defense = no damage
+    villager = make_villager(2, 1)
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert villager.fighter.hp == villager.fighter.max_hp  # confirms no damage was dealt
+    assert game_map.player_attacked_peaceful_npc is True
+
+
+def test_talk_to_adjacent_works_on_a_peaceful_town_guard():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_villager(2, 1, dialogue="Keep the peace and we've got no trouble between us.", entity_id="town_guard", name="Town Guard")
+    guard.ai = "town_guard"
+    guard.fighter = Fighter(max_hp=14, hp=14, attack=5, defense=2)
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Town Guard: "Keep the peace and we\'ve got no trouble between us."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_ignores_a_town_guard_once_the_map_is_provoked_even_if_undamaged():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_villager(2, 1, dialogue="Keep the peace.", entity_id="town_guard", name="Town Guard")
+    guard.ai = "town_guard"
+    guard.fighter = Fighter(max_hp=14, hp=14, attack=5, defense=2)  # still at full hp
+    game_map.player_attacked_peaceful_npc = True
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert "There's no one here to talk to." in engine.message_log.messages
+    assert 'Town Guard: "Keep the peace."' not in engine.message_log.messages
+
+
+def test_talk_to_adjacent_villager_unaffected_by_the_town_wide_hostility_flag():
+    """Confirms the guard/villager asymmetry is intentional: the map flag
+    only governs town_guard entities - a villager stays talkable (as long
+    as they're personally undamaged) even after the flag trips."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    game_map.player_attacked_peaceful_npc = True
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "Hello."' in engine.message_log.messages
 
 
 # --- shopkeeper / buy_from_shop ---

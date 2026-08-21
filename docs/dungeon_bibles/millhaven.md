@@ -25,7 +25,8 @@ earlier-stage version of the same project. This pass doesn't outgrow
 that; it just proves the green has people in it worth stopping for.
 
 **Placement on the world bible**: pure Long Quiet, pure Settlers - "the
-*only* faction that ever gets the peaceful `villager` AI," per
+*only* faction that ever gets a peaceful-by-default AI type (`villager`,
+who never fights back at all; `town_guard`, who will if provoked)," per
 `world_history.md`. No Old Kingdom ruin under it, no Elder Age anything
 nearby, no faction tension at its gate (that's Stonebridge's job).
 Millhaven's whole point is being the *unremarkable* success story -
@@ -49,7 +50,7 @@ for:
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper |
+| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper, The Town Guard |
 
 ## The named set pieces
 
@@ -200,24 +201,45 @@ nobody's spent in a generation. This is where that changes, in one
 specific and modest way - not a return of a functioning economy, just
 one person still willing to trade.
 
+### 9. The Town Guard
+
+Stands on the main road running down from the gate toward the well -
+not tucked into a doorway or off to one side, just planted on the road
+itself, visible from most of the green. Doesn't look for trouble,
+doesn't need to: Millhaven hasn't had any.
+
+*Dialogue*: *"Keep the peace and we've got no trouble between us."*
+
+*Why it's here*: the first `AI_TOWN_GUARD` in the game - peaceful by
+default like every other villager on this green, but not mechanically
+identical to one. Attack anyone peaceful anywhere on the green -
+another villager, or the guard directly - and the guard turns hostile
+for good, for the rest of that visit. The line above is doing double
+duty: ordinary small talk on a first read, a plain statement of the
+mechanic on a second one. Placed centrally and visibly on purpose - a
+deterrent works by being seen, not discovered by accident in a corner.
+
 ## Roster
 
-Eight `villager`-AI entities total (five plain `villager` spawns each
-with its own per-spawn `dialogue`, one `village_chief` spawn, one
-`escaped_prisoner` spawn, and one `shopkeeper` spawn) - a modest
-increase from the original five, not a jump to Wayford's scale. Still
-no monsters, no combat: every villager-AI entity here (chief, escaped
-prisoner, and shopkeeper included) wanders at full health and flees
-permanently the instant it's hurt, same as everywhere else in the game.
-Two mechanics beyond plain dialogue live on this roster: the
-questgiver (a quest that starts hidden until granted via `Talk`, which
-`escaped_prisoner` uses) and the shopkeeper (a nested buy screen, opened
-with a separate key while adjacent, entirely independent of `Talk` -
-talking to the shopkeeper gets ordinary dialogue like any other
-villager, same as talking to anyone else). Both entities are still
-mechanically identical to `villager` (same hp/attack/defense/AI) - the
-same "identity, not a different kind of creature" pattern `village_chief`
-already established.
+Nine peaceful-by-default entities total on this green: eight
+`villager`-AI (five plain `villager` spawns each with its own per-spawn
+`dialogue`, one `village_chief` spawn, one `escaped_prisoner` spawn, and
+one `shopkeeper` spawn) plus one `town_guard`-AI (`AI_TOWN_GUARD`, a
+distinct AI type from `villager` - see set piece 9). No combat *unless
+the player starts it*: every `villager`-AI entity here still wanders at
+full health and flees permanently the instant it's personally hurt,
+same as everywhere else in the game, and the `town_guard` wanders too
+until the player attacks any peaceful NPC on this map, at which point it
+fights back permanently for that visit. Three mechanics beyond plain
+dialogue live on this roster: the questgiver (a quest that starts
+hidden until granted via `Talk`, which `escaped_prisoner` uses), the
+shopkeeper (a nested buy screen, opened with a separate key while
+adjacent, entirely independent of `Talk` - talking to the shopkeeper
+gets ordinary dialogue like any other villager), and the town guard's
+map-wide hostility trigger (see set piece 9 - this is the one entity on
+this roster that is *not* mechanically identical to `villager`, since
+"identity, not a different kind of creature" only holds for NPCs that
+share `villager`'s actual behavior, and this one deliberately doesn't).
 
 ## Tone notes for anyone (agent or human) revising this later
 

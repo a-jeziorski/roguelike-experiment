@@ -11,7 +11,9 @@ from content.schema import (
     AI_RANGED_BASIC,
     AI_SKITTISH,
     AI_SLEEPING_GUARD,
+    AI_TOWN_GUARD,
     AI_VILLAGER,
+    PEACEFUL_AI_TYPES,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
@@ -318,6 +320,17 @@ class Engine:
             else:
                 self._wander(entity)
 
+        elif entity.ai == AI_TOWN_GUARD:
+            # Deliberately no per-entity hp check here, unlike AI_VILLAGER -
+            # a guard's hostility is purely the shared map-wide flag, not
+            # personal injury, since an untouched guard elsewhere on the map
+            # still needs to turn hostile the instant anyone provokes the
+            # town (see engine/combat.py's _apply_damage).
+            if self.game_map.player_attacked_peaceful_npc:
+                self._chase_and_attack(entity, dx, dy, distance)
+            else:
+                self._wander(entity)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -366,26 +379,34 @@ class Engine:
         for quest in self.quest_log.check_deadlines(self.clock):
             self.message_log.add(quest.failure_message)
 
-    def _find_adjacent_villager(self, entity_id: str | None = None) -> Entity | None:
-        """The first AI_VILLAGER entity within 8-directional adjacency of
-        the player - matches the project's diagonal-movement model. Hostile
-        monsters are never talkable (filtered by AI type, not a new flag);
-        bumping them still attacks, unchanged. `entity_id`, if given,
-        additionally restricts the match to that specific catalog id (e.g.
-        the shopkeeper) rather than any villager - see adjacent_shopkeeper.
-        Leaving it None reproduces the original unfiltered scan exactly.
+    def _find_adjacent_peaceful_npc(self, entity_id: str | None = None) -> Entity | None:
+        """The first PEACEFUL_AI_TYPES entity (villager or town_guard) within
+        8-directional adjacency of the player - matches the project's
+        diagonal-movement model. Hostile monsters are never talkable
+        (filtered by AI type, not a new flag); bumping them still attacks,
+        unchanged. `entity_id`, if given, additionally restricts the match
+        to that specific catalog id (e.g. the shopkeeper) rather than any
+        peaceful NPC - see adjacent_shopkeeper. Leaving it None reproduces
+        the original unfiltered scan exactly.
 
         A villager that's been hurt is excluded - per _perform_ai's own
         AI_VILLAGER branch, any damage at all makes a villager flee
         permanently (nothing ever heals a non-player entity, so hp <
         max_hp is a stable "currently fleeing" flag, not a fleeting one).
-        A fleeing NPC won't stop to talk or trade, so both talk_to_adjacent
-        and adjacent_shopkeeper get this for free from the one shared scan."""
+        A town guard's hostility is map-wide rather than personal, so it's
+        excluded once game_map.player_attacked_peaceful_npc trips even if
+        this specific guard is undamaged - villagers are NOT affected by
+        that flag (only their own hp matters to them); that asymmetry is
+        intentional, not a leak. A fleeing/hostile NPC won't stop to talk or
+        trade, so both talk_to_adjacent and adjacent_shopkeeper get this for
+        free from the one shared scan."""
         px, py = self.player.x, self.player.y
         for entity in self.game_map.entities:
-            if entity.ai != AI_VILLAGER:
+            if entity.ai not in PEACEFUL_AI_TYPES:
                 continue
             if entity_id is not None and entity.entity_id != entity_id:
+                continue
+            if entity.ai == AI_TOWN_GUARD and self.game_map.player_attacked_peaceful_npc:
                 continue
             if entity.fighter is not None and entity.fighter.hp < entity.fighter.max_hp:
                 continue
@@ -398,7 +419,7 @@ class Engine:
     def adjacent_shopkeeper(self) -> Entity | None:
         """The shopkeeper NPC, if one is adjacent to the player - used by
         main.py's shop_gate to decide whether shop mode can be entered."""
-        return self._find_adjacent_villager(entity_id=SHOPKEEPER_ENTITY_ID)
+        return self._find_adjacent_peaceful_npc(entity_id=SHOPKEEPER_ENTITY_ID)
 
     def complete_quest(self, quest: Quest, message: str | None = None) -> None:
         """Logs completion and grants quest.reward_item_id if set - the single
@@ -445,7 +466,7 @@ class Engine:
         completes one that targets them (see QuestLog.check_talked_to).
         Never touches self.clock or calls _handle_enemy_turns - talking costs
         nothing."""
-        target = self._find_adjacent_villager()
+        target = self._find_adjacent_peaceful_npc()
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
             return

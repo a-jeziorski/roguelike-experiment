@@ -145,6 +145,17 @@ shopkeeper:
   description: Deals in coin, on the rare occasion anyone still has any to deal in.
   dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
 
+town_guard:
+  name: Town Guard
+  glyph: T
+  color: [130, 140, 110]
+  hp: 14
+  attack: 5
+  defense: 2
+  ai: town_guard
+  description: Keeps the peace on Millhaven's green, mostly by not needing to.
+  dialogue: Keep the peace and we've got no trouble between us.
+
 bandit:
   name: Bandit
   glyph: b

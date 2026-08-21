@@ -108,10 +108,11 @@ into a ruin (bandits, not undead).
   Human, hostile, but not otherworldly.
 - **Settlers.** Present-day people choosing to rebuild something small and
   stable rather than scavenge or squat. Millhaven and the new towns. This
-  is the *only* faction that ever gets the peaceful `villager` AI - if a
-  location's people fight back or flee only when hurt, they're settlers;
-  if they're armed and hostile on sight, they're opportunists or Kingdom
-  remnants, and they get a combat AI type instead.
+  is the *only* faction that ever gets a peaceful-by-default AI type
+  (`villager`, who never fights back at all; `town_guard`, who will if
+  provoked) - if a location's people are armed and hostile on sight,
+  they're opportunists or Kingdom remnants instead, and they get a combat
+  AI type from the start.
 
 ## Geography
 

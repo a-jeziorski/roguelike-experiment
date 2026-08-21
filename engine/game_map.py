@@ -46,6 +46,14 @@ class GameMap:
         # present where a legend entry set `description`.
         self.tile_descriptions: dict[tuple[int, int], str] = {}
         self.entities: list[Entity] = []
+        # Set by engine/combat.py the moment the player attacks any
+        # PEACEFUL_AI_TYPES entity on this map - read by Engine._perform_ai's
+        # AI_TOWN_GUARD branch, which turns every town_guard on this map
+        # hostile once it's True. Lives on GameMap (not Engine) so it
+        # persists across leaving and re-entering this same map, the same
+        # way explored/locked_doors already do, and resets for free on
+        # Engine.restart() (which always builds a fresh GameMap).
+        self.player_attacked_peaceful_npc = False
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height

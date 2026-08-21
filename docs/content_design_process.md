@@ -63,7 +63,8 @@ Combat dungeons:
   geometry, reuses the existing rat/goblin/skeleton roster with no new
   monsters.
 
-Settlements (`requires_stairs_down: false`, `villager`-only, per 0c below):
+Settlements (`requires_stairs_down: false`, peaceful-AI-only (`villager`/
+`town_guard`), per 0c below):
 - `millhaven` - the original settlement, a small waypoint green.
 - `wayford` - a larger crossroads hub town, several building clusters.
 - `stonebridge` - a fortified border town near `broken_watch`; tension
@@ -140,10 +141,11 @@ both content-only:
   `stairs_down`-specifically requirement.
 - Its levels use outdoor terrain (`plains`/`road`, plus `wall` for simple
   building exteriors - no interiors, out of scope for a first pass) instead
-  of dungeon `wall`/`floor`, and spawn `villager`-AI entities instead of
-  monsters. Nothing about the loader restricts which `TileType`s can appear
-  in an ordinary dungeon level - the overworld's terrain kinds were never
-  exclusive to `load_overworld`, so this needed no schema change at all.
+  of dungeon `wall`/`floor`, and spawn `villager`/`town_guard`-AI entities
+  instead of monsters. Nothing about the loader restricts which `TileType`s
+  can appear in an ordinary dungeon level - the overworld's terrain kinds
+  were never exclusive to `load_overworld`, so this needed no schema change
+  at all.
 
 `inspect_text` in `dungeon.yaml` (see 0b) is functionally load-bearing here,
 not just polish: without it, inspecting the entrance falls back to
@@ -159,6 +161,22 @@ a configurable `flee_hp_pct` threshold and otherwise fights normally -
 skittish is "cowardly," villager is "never a combatant in the first
 place." Don't reach for skittish when what's wanted is a true
 non-combatant.
+
+**`AI_TOWN_GUARD`** (`content/schema.py`/`engine/engine.py` `_perform_ai`):
+also never *initiates* violence - like `AI_VILLAGER`, it just wanders while
+peaceful. The difference is what governs the switch, and how far it
+reaches: `AI_VILLAGER`'s flee trigger is *personal* (`fighter.hp <
+max_hp`, checked per-entity); `AI_TOWN_GUARD`'s hostility trigger is
+*shared and map-wide* (`GameMap.player_attacked_peaceful_npc`, set by
+`engine/combat.py` the instant the player attacks *any* `PEACEFUL_AI_TYPES`
+entity anywhere on the current map - villager or town_guard - and checked,
+not owned, by every `AI_TOWN_GUARD` entity on that map). A town guard who
+was never personally touched still turns hostile the moment anyone
+provokes the town, and - unlike a fleeing villager - fights back
+(`Engine._chase_and_attack`, same primitive `AI_HOSTILE_BASIC` uses) once
+triggered, permanently for that map's lifetime. Use `town_guard` where a
+settlement needs a real deterrent against violence, not just NPCs who run
+away from it.
 
 ## 0d. Per-dungeon bibles (`docs/dungeon_bibles/`)
 
