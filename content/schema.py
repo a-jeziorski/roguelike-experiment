@@ -174,12 +174,14 @@ class QuestDef(BaseModel):
     A quest completes via exactly one of four trigger shapes - at most one
     of target_dungeon_id/target_entity_id/target_kill_entity_id/
     target_item_id may be set (enforced below); zero is valid for a quest
-    with no completion trigger yet. A fetch quest (target_item_id) always
-    needs questgiver_entity_id too, since QuestLog.check_delivery only ever
-    completes it by talking to that NPC while holding the item - enforced in
-    content/loader.py's load_quests, which also checks every id here
-    (questgiver/target/reward) actually exists in the catalog, since that
-    needs the catalog and can't be checked at the field level here."""
+    with no completion trigger yet. A fetch quest (target_item_id) and a
+    kill quest (target_kill_entity_id) both always need questgiver_entity_id
+    too, since QuestLog.check_delivery/check_kill_report only ever complete
+    them by talking to that NPC (while holding the item, or after the
+    target's been recorded dead) - enforced in content/loader.py's
+    load_quests, which also checks every id here (questgiver/target/reward)
+    actually exists in the catalog, since that needs the catalog and can't
+    be checked at the field level here."""
 
     id: str
     name: str
@@ -210,6 +212,13 @@ class QuestDef(BaseModel):
     # `description` keeps showing even while carrying the item. Only
     # meaningful alongside target_item_id.
     carrying_item_description: str = ""
+    # Quest log pane override for a kill quest (target_kill_entity_id) while
+    # in_progress and its target has actually been recorded dead (not yet
+    # reported to the questgiver) - see Quest.current_description. Same
+    # shape as carrying_item_description, just for the kill-then-report
+    # trigger instead of pickup-then-deliver. Only meaningful alongside
+    # target_kill_entity_id.
+    target_dead_description: str = ""
     # Quest log pane override once this quest is "completed" - a summary of
     # what happened and what was earned, not just the original pitch. ""
     # falls back to `description`.
@@ -257,6 +266,16 @@ class QuestDef(BaseModel):
                 "carrying_item_description is set but target_item_id isn't - "
                 "this override only ever applies to a fetch quest, checked "
                 "against the item the player is actually carrying"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_dead_description_requires_a_kill_target(self) -> "QuestDef":
+        if self.target_dead_description and self.target_kill_entity_id is None:
+            raise ValueError(
+                "target_dead_description is set but target_kill_entity_id "
+                "isn't - this override only ever applies to a kill quest, "
+                "checked against whether the target's been recorded dead"
             )
         return self
 

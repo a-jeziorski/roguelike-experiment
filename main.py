@@ -201,7 +201,10 @@ def run_quest_log_mode(console: tcod.console.Console, context: tcod.context.Cont
         )
 
     while True:
-        description = quests[selected].current_description(engine.player.inventory) if quests else ""
+        description = (
+            quests[selected].current_description(engine.player.inventory, engine.quest_log.killed_entity_ids)
+            if quests else ""
+        )
         render_quest_log(console, quests, selected, engine.quest_log.active_quest_id, description)
         context.present(console)
 

@@ -289,45 +289,127 @@ def test_record_entity_killed_records_unconditionally():
     assert "warden" in log.killed_entity_ids
 
 
-def test_record_entity_killed_completes_a_matching_in_progress_quest():
+def test_record_entity_killed_records_but_never_completes_an_in_progress_quest():
+    """record_entity_killed only remembers the death now - a kill quest no
+    longer completes on the kill itself, only when reported (see
+    check_kill_report below)."""
     quest = make_quest(status="in_progress", target_kill_entity_id="warden")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.record_entity_killed("warden")
+    result = log.record_entity_killed("warden")
 
-    assert changed == [quest]
-    assert quest.status == "completed"
-
-
-def test_record_entity_killed_does_not_complete_a_not_given_quest_but_still_records_it():
-    quest = make_quest(status="not_given", target_kill_entity_id="warden")
-    log = QuestLog(quests={quest.id: quest})
-
-    changed = log.record_entity_killed("warden")
-
-    assert changed == []
-    assert quest.status == "not_given"
+    assert result is None
+    assert quest.status == "in_progress"
     assert "warden" in log.killed_entity_ids
 
 
-def test_record_entity_killed_does_not_refire_on_a_terminal_quest():
-    quest = make_quest(status="completed", target_kill_entity_id="warden")
+def test_record_entity_killed_records_a_not_given_quests_target_too():
+    quest = make_quest(status="not_given", target_kill_entity_id="warden")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.record_entity_killed("warden")
+    log.record_entity_killed("warden")
 
-    assert changed == []
+    assert quest.status == "not_given"
+    assert "warden" in log.killed_entity_ids
 
 
 def test_record_entity_killed_ignores_non_matching_quests():
     quest = make_quest(status="in_progress", target_kill_entity_id="warden")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.record_entity_killed("rat")
+    log.record_entity_killed("rat")
+
+    assert quest.status == "in_progress"
+    assert "rat" in log.killed_entity_ids
+
+
+# --- check_kill_report ---
+
+
+def test_check_kill_report_completes_when_talking_to_questgiver_after_the_kill():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"warden"})
+
+    changed = log.check_kill_report("escaped_prisoner")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_kill_report_is_a_no_op_before_the_target_is_dead():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_kill_report("escaped_prisoner")
 
     assert changed == []
     assert quest.status == "in_progress"
-    assert "rat" in log.killed_entity_ids
+
+
+def test_check_kill_report_is_a_no_op_when_talking_to_a_different_npc():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"warden"})
+
+    changed = log.check_kill_report("village_chief")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_kill_report_is_a_no_op_on_a_not_given_quest():
+    """A target dying before the quest is even granted is handled by
+    check_questgiver jumping straight to 'completed' at grant time, not by
+    check_kill_report - see already_done_message."""
+    quest = make_quest(
+        status="not_given",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"warden"})
+
+    changed = log.check_kill_report("escaped_prisoner")
+
+    assert changed == []
+    assert quest.status == "not_given"
+
+
+def test_check_kill_report_does_not_refire_on_an_already_terminal_quest():
+    quest = make_quest(
+        status="completed",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"warden"})
+
+    changed = log.check_kill_report("escaped_prisoner")
+
+    assert changed == []
+
+
+def test_check_kill_report_ignores_a_different_recorded_death():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="escaped_prisoner",
+        target_kill_entity_id="warden",
+    )
+    log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"rat"})
+
+    changed = log.check_kill_report("escaped_prisoner")
+
+    assert changed == []
+    assert quest.status == "in_progress"
 
 
 # --- check_delivery ---
@@ -638,7 +720,7 @@ def test_format_for_hud_not_given():
 
 def test_current_description_defaults_to_description_when_in_progress():
     quest = make_quest(status="in_progress", description="The starting pitch.")
-    assert quest.current_description([]) == "The starting pitch."
+    assert quest.current_description([], set()) == "The starting pitch."
 
 
 def test_current_description_uses_completed_description_when_set():
@@ -646,12 +728,12 @@ def test_current_description_uses_completed_description_when_set():
         status="completed", description="The starting pitch.",
         completed_description="All done, here's what you got.",
     )
-    assert quest.current_description([]) == "All done, here's what you got."
+    assert quest.current_description([], set()) == "All done, here's what you got."
 
 
 def test_current_description_completed_falls_back_to_description_when_unset():
     quest = make_quest(status="completed", description="The starting pitch.")
-    assert quest.current_description([]) == "The starting pitch."
+    assert quest.current_description([], set()) == "The starting pitch."
 
 
 def test_current_description_uses_failed_description_when_set():
@@ -659,12 +741,12 @@ def test_current_description_uses_failed_description_when_set():
         status="failed", description="The starting pitch.",
         failed_description="Too late - here's what that cost you.",
     )
-    assert quest.current_description([]) == "Too late - here's what that cost you."
+    assert quest.current_description([], set()) == "Too late - here's what that cost you."
 
 
 def test_current_description_failed_falls_back_to_description_when_unset():
     quest = make_quest(status="failed", description="The starting pitch.")
-    assert quest.current_description([]) == "The starting pitch."
+    assert quest.current_description([], set()) == "The starting pitch."
 
 
 def test_current_description_uses_carrying_item_description_when_holding_the_item():
@@ -675,7 +757,7 @@ def test_current_description_uses_carrying_item_description_when_holding_the_ite
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory) == "You've got it - bring it back."
+    assert quest.current_description(inventory, set()) == "You've got it - bring it back."
 
 
 def test_current_description_ignores_carrying_item_description_without_the_item():
@@ -684,7 +766,7 @@ def test_current_description_ignores_carrying_item_description_without_the_item(
         target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
         carrying_item_description="You've got it - bring it back.",
     )
-    assert quest.current_description([]) == "The starting pitch."
+    assert quest.current_description([], set()) == "The starting pitch."
 
 
 def test_current_description_ignores_carrying_item_description_for_a_non_fetch_quest():
@@ -699,7 +781,7 @@ def test_current_description_ignores_carrying_item_description_for_a_non_fetch_q
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory) == "The starting pitch."
+    assert quest.current_description(inventory, set()) == "The starting pitch."
 
 
 def test_current_description_completed_takes_priority_over_carrying_item_description():
@@ -711,4 +793,54 @@ def test_current_description_completed_takes_priority_over_carrying_item_descrip
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory) == "All done."
+    assert quest.current_description(inventory, set()) == "All done."
+
+
+def test_current_description_uses_target_dead_description_when_recorded_dead():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
+        target_dead_description="It's done - go tell them.",
+    )
+    assert quest.current_description([], {"warden"}) == "It's done - go tell them."
+
+
+def test_current_description_ignores_target_dead_description_before_the_kill():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
+        target_dead_description="It's done - go tell them.",
+    )
+    assert quest.current_description([], set()) == "The starting pitch."
+
+
+def test_current_description_ignores_target_dead_description_for_a_different_death():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
+        target_dead_description="It's done - go tell them.",
+    )
+    assert quest.current_description([], {"rat"}) == "The starting pitch."
+
+
+def test_current_description_ignores_target_dead_description_for_a_non_kill_quest():
+    """A Talk/fetch/dungeon quest has no target_kill_entity_id, so
+    target_dead_description (even if somehow set) never applies - matches
+    content/schema.py's own validator rejecting that combination at
+    content-load time; this just confirms the runtime side agrees."""
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_entity_id="village_chief", target_kill_entity_id=None,
+        target_dead_description="Should never show.",
+    )
+    assert quest.current_description([], {"warden"}) == "The starting pitch."
+
+
+def test_current_description_completed_takes_priority_over_target_dead_description():
+    quest = make_quest(
+        status="completed", description="The starting pitch.",
+        target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
+        target_dead_description="It's done - go tell them.",
+        completed_description="All done.",
+    )
+    assert quest.current_description([], {"warden"}) == "All done."

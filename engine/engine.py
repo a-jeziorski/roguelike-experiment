@@ -164,8 +164,10 @@ class Engine:
             self.message_log.add(f"The {entity.name} dies.", category="combat")
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
-            for quest in self.quest_log.record_entity_killed(entity.entity_id):
-                self.complete_quest(quest)
+            # Records the death only - a kill quest doesn't complete here
+            # anymore, only when reported to its questgiver (see
+            # talk_to_adjacent's check_kill_report loop).
+            self.quest_log.record_entity_killed(entity.entity_id)
 
     def _arrival_position(self, level: "ParsedLevel", from_level_id: str | None) -> tuple[int, int]:
         """Where the player lands on `level`: the stairway leading back to
@@ -509,9 +511,11 @@ class Engine:
         """Free, non-turn action (see main.py's TalkAction branch): shows an
         adjacent villager's dialogue line, then checks whether talking to
         them grants a questgiver's quest (see QuestLog.check_questgiver),
-        completes one that targets them (see QuestLog.check_talked_to), or
+        completes one that targets them (see QuestLog.check_talked_to),
         completes a fetch quest they're the questgiver for because the
-        player is holding the delivered item (see QuestLog.check_delivery).
+        player is holding the delivered item (see QuestLog.check_delivery),
+        or completes a kill quest they're the questgiver for because its
+        target's already been recorded dead (see QuestLog.check_kill_report).
         Never touches self.clock or calls _handle_enemy_turns - talking costs
         nothing."""
         target = self._find_adjacent_peaceful_npc()
@@ -539,6 +543,9 @@ class Engine:
         for quest in self.quest_log.check_delivery(target.entity_id, self.player.inventory):
             delivered = next(it for it in self.player.inventory if it.entity_id == quest.target_item_id)
             self.player.inventory.remove(delivered)
+            self.complete_quest(quest)
+
+        for quest in self.quest_log.check_kill_report(target.entity_id):
             self.complete_quest(quest)
 
     def process_player_action(self, action: Action) -> bool:

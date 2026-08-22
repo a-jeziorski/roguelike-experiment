@@ -1937,7 +1937,11 @@ def make_warden(x: int, y: int, hp: int = 5) -> Entity:
     )
 
 
-def test_on_entity_death_completes_a_kill_quest_and_grants_reward():
+def test_on_entity_death_records_a_kill_quests_target_but_does_not_complete_it():
+    """Killing the target is only step one now - same two-step shape as a
+    fetch quest's pickup vs. delivery. Completion only happens when the
+    player reports back to the questgiver (see
+    test_talk_to_adjacent_completes_a_kill_quest_after_the_target_is_dead)."""
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -1950,10 +1954,10 @@ def test_on_entity_death_completes_a_kill_quest_and_grants_reward():
 
     engine.on_entity_death(warden)
 
-    assert quest.status == "completed"
-    assert quest.completion_message in engine.message_log.messages
-    assert len(player.inventory) == 1
-    assert player.inventory[0].name == "Healing Potion"
+    assert quest.status == "in_progress"
+    assert quest.completion_message not in engine.message_log.messages
+    assert "warden" in quest_log.killed_entity_ids
+    assert player.inventory == []
 
 
 def test_on_entity_death_records_kill_before_quest_is_given():
@@ -2170,6 +2174,60 @@ def test_talk_to_adjacent_grants_and_delivers_a_fetch_quest_in_one_talk_when_alr
     quest = quest_log.quests["fetch_fungus"]
     assert quest.status == "completed"
     assert fungus not in player.inventory
+
+
+def test_talk_to_adjacent_completes_a_kill_quest_after_the_target_is_dead():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = real_quest_log()
+    quest_log.quests["kill_the_warden"].status = "in_progress"  # already given
+    quest_log.record_entity_killed("warden")  # killed, not yet reported
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["kill_the_warden"]
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+    assert len(player.inventory) == 1
+    assert player.inventory[0].name == "Healing Potion"
+
+
+def test_talk_to_adjacent_does_not_complete_a_kill_quest_before_the_target_is_dead():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = real_quest_log()
+    quest_log.quests["kill_the_warden"].status = "in_progress"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["kill_the_warden"]
+    assert quest.status == "in_progress"
+    assert player.inventory == []
+
+
+def test_talk_to_adjacent_does_not_complete_a_kill_quest_via_the_wrong_npc():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id="shopkeeper", name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    quest_log = real_quest_log()
+    quest_log.quests["kill_the_warden"].status = "in_progress"
+    quest_log.record_entity_killed("warden")
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["kill_the_warden"]
+    assert quest.status == "in_progress"
 
 
 def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():

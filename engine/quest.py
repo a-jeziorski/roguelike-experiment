@@ -19,18 +19,27 @@ Engine._check_quest_deadlines). Two reward shapes exist: granting an item
 straight into inventory (reward_item_id), and a permanent Millhaven shop
 discount (reward_shop_discount_pct) - see Engine.complete_quest.
 
-A fetch quest (target_item_id) is deliberately two steps, not one: picking
-up the item is an entirely ordinary pickup (it enters inventory like
-anything else - see PickupAction, which has no special case for it), and
-the quest only completes when the player then talks to questgiver_entity_id
-*while still holding it* (see QuestLog.check_delivery, called from
-Engine.talk_to_adjacent, which removes the delivered item from inventory).
-Splitting pickup from delivery this way is what leaves room for the
-delivery to be interrupted later - a deadline expiring first (already
-supported generically by check_deadlines/deadline_year/deadline_day, just
-not set on any fetch quest yet), the item being lost some other way - none
-of which exists yet, but the two-step shape is what would make it possible
-without a redesign.
+A fetch quest (target_item_id) and a kill quest (target_kill_entity_id) are
+both deliberately two steps, not one, in the same shape: picking up the
+item is an entirely ordinary pickup (see PickupAction, which has no
+special case for it) and killing the target just records the death
+(QuestLog.record_entity_killed, unconditional, regardless of quest
+status) - neither one completes anything by itself. The quest only
+completes when the player then talks to questgiver_entity_id *while
+still holding the item* (QuestLog.check_delivery) or *after the target's
+already been recorded dead* (QuestLog.check_kill_report), both called
+from Engine.talk_to_adjacent alongside check_questgiver/check_talked_to.
+Splitting the deed from the report this way is what leaves room for
+either to be interrupted before it's reported - a deadline expiring
+first (already supported generically by check_deadlines/deadline_year/
+deadline_day, just not set on any quest using this shape yet), the fetch
+item being lost some other way - none of which exists yet, but the
+two-step shape is what would make it possible without a redesign. The
+one exception: if a quest's target was already recorded dead *before*
+the quest was ever granted, check_questgiver jumps straight to
+"completed" the moment it's granted (talking to the questgiver is itself
+the report, so there's no separate step to wait for) - see
+already_done_message.
 
 Quest.status is the per-quest lifecycle ("not_given" -> "in_progress" ->
 "completed"/"failed"). QuestLog.active_quest_id is a separate, single-quest
@@ -41,13 +50,15 @@ where it changes.
 The quest log screen's detail pane doesn't just show the static
 `description` forever, either - Quest.current_description resolves it
 against the quest's actual progress: `completed_description`/
-`failed_description` once the quest is terminal, or (for a fetch quest
-specifically) `carrying_item_description` while `target_item_id` is
-in_progress and the player is actually holding it, not yet delivered. Any
-override left unset ("") just falls back to `description` - main.py's
-run_quest_log_mode calls this once per frame and hands the resolved
-string to render_quest_log, which never computes it itself (render stays
-pure display, same split as Engine.shop_price/render_shop)."""
+`failed_description` once the quest is terminal, or - while still
+in_progress - `carrying_item_description` for a fetch quest whose target
+item is actually in the player's inventory (not yet delivered), or
+`target_dead_description` for a kill quest whose target has actually been
+recorded dead (not yet reported). Any override left unset ("") just falls
+back to `description` - main.py's run_quest_log_mode calls this once per
+frame and hands the resolved string to render_quest_log, which never
+computes it itself (render stays pure display, same split as
+Engine.shop_price/render_shop)."""
 
 from __future__ import annotations
 
@@ -75,13 +86,14 @@ class Quest:
     # arriving in a dungeon (target_dungeon_id, checked in main.py's
     # resolve_transition), talking to a specific NPC (target_entity_id,
     # checked in Engine.talk_to_adjacent), killing a specific catalog entity
-    # (target_kill_entity_id, checked in Engine.on_entity_death), or
-    # delivering a specific catalog item to questgiver_entity_id
-    # (target_item_id, checked in QuestLog.check_delivery) - picking the
-    # item up is an ordinary pickup with no special handling; only talking
-    # to the questgiver *while holding it* completes the quest and removes
-    # it from inventory. All optional so any one shape - or none, for a
-    # quest with no completion trigger yet - is valid.
+    # (target_kill_entity_id, checked in QuestLog.check_kill_report) then
+    # reporting it to questgiver_entity_id, or delivering a specific catalog
+    # item to questgiver_entity_id (target_item_id, checked in
+    # QuestLog.check_delivery) - picking the item up / killing the target is
+    # an ordinary action with no special handling by itself; only talking to
+    # the questgiver afterward completes the quest (and, for a fetch quest,
+    # removes the item from inventory). All optional so any one shape - or
+    # none, for a quest with no completion trigger yet - is valid.
     target_dungeon_id: str | None = None
     target_entity_id: str | None = None
     target_kill_entity_id: str | None = None
@@ -122,6 +134,7 @@ class Quest:
     # exactly (content/loader.py's load_quests is what actually validates
     # them; this is just where they land at runtime).
     carrying_item_description: str = ""
+    target_dead_description: str = ""
     completed_description: str = ""
     failed_description: str = ""
 
@@ -140,7 +153,7 @@ class Quest:
             return f"Quest: {self.name} - active (by Day {self.deadline_day})"
         return f"Quest: {self.name} - {self.status}"
 
-    def current_description(self, inventory: list["Entity"]) -> str:
+    def current_description(self, inventory: list["Entity"], killed_entity_ids: set[str]) -> str:
         """What the quest log screen shows for this quest right now -
         richer than the static pitch `description` alone, so a quest that
         actually progresses (or ends) reads that way in the log, not just
@@ -153,8 +166,12 @@ class Quest:
         applies mid-flight, to a fetch quest (target_item_id) whose target
         item is actually in `inventory` right now (matched by
         Entity.entity_id, same predicate QuestLog.check_delivery uses) -
-        not yet delivered, so still "in_progress", but worth saying
-        differently than the original pitch."""
+        not yet delivered; target_dead_description is the same idea for a
+        kill quest (target_kill_entity_id) whose target is actually in
+        `killed_entity_ids` (same predicate QuestLog.check_kill_report
+        uses) - killed, but not yet reported to the questgiver. Both are
+        still "in_progress" at this point, but worth saying differently
+        than the original pitch."""
         if self.status == "completed":
             return self.completed_description or self.description
         if self.status == "failed":
@@ -166,6 +183,13 @@ class Quest:
             and any(it.entity_id == self.target_item_id for it in inventory)
         ):
             return self.carrying_item_description
+        if (
+            self.status == "in_progress"
+            and self.target_kill_entity_id is not None
+            and self.target_dead_description
+            and self.target_kill_entity_id in killed_entity_ids
+        ):
+            return self.target_dead_description
         return self.description
 
 
@@ -288,10 +312,10 @@ class QuestLog:
         Does not itself remove the delivered item from inventory - that's
         Engine.talk_to_adjacent's job, once it knows which quest(s) this
         returned, since QuestLog has no business reaching into player state
-        directly. No killed_entity_ids-style "already done" detection here
-        (unlike the kill-quest trigger) - deliberately simpler, and this
-        two-step design leaves room for a delivery to be interrupted later
-        (a deadline, the item being lost) without needing a redesign."""
+        directly. This two-step design leaves room for a delivery to be
+        interrupted later (a deadline, the item being lost) without needing
+        a redesign - same reasoning as check_kill_report's kill-then-report
+        shape below."""
         changed = []
         for quest in self.quests.values():
             if quest.status != "in_progress" or quest.target_item_id is None:
@@ -299,6 +323,31 @@ class QuestLog:
             if quest.questgiver_entity_id != entity_id:
                 continue
             if not any(it.entity_id == quest.target_item_id for it in inventory):
+                continue
+            quest.status = "completed"
+            changed.append(quest)
+        return changed
+
+    def check_kill_report(self, entity_id: str) -> list[Quest]:
+        """Called whenever the player talks to an NPC (Engine.talk_to_adjacent),
+        alongside check_questgiver/check_talked_to/check_delivery. Completes
+        an in-progress kill quest only if BOTH entity_id matches its
+        questgiver_entity_id AND its target has actually been recorded dead
+        (killed_entity_ids) - killing the target alone never completes
+        anything anymore (see record_entity_killed, which only records the
+        death, unconditionally, regardless of any quest's status). Mirrors
+        check_delivery's fetch-quest shape exactly, just checking
+        killed_entity_ids instead of inventory. Doesn't apply to a quest
+        granted *after* its target already died - check_questgiver handles
+        that case by jumping straight to "completed" at grant time, since
+        talking to the questgiver in that scenario is itself the report."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.status != "in_progress" or quest.target_kill_entity_id is None:
+                continue
+            if quest.questgiver_entity_id != entity_id:
+                continue
+            if quest.target_kill_entity_id not in self.killed_entity_ids:
                 continue
             quest.status = "completed"
             changed.append(quest)
@@ -314,19 +363,18 @@ class QuestLog:
         ]
         return max(discounts, default=0.0)
 
-    def record_entity_killed(self, entity_id: str) -> list[Quest]:
+    def record_entity_killed(self, entity_id: str) -> None:
         """Called from Engine.on_entity_death for every non-player death,
         regardless of whether any quest currently cares - see
-        killed_entity_ids above for why this must be unconditional."""
+        killed_entity_ids above for why this must be unconditional. Purely a
+        memory of what's died now, for two different callers: check_questgiver's
+        retroactive "already done" detection when a kill quest is granted
+        after its target already died, and check_kill_report's "has the
+        target actually died yet" check when the player reports back to a
+        kill quest's questgiver. Never completes a quest directly - killing
+        the target alone doesn't finish a kill quest, same two-step shape as
+        a fetch quest's pickup vs. delivery."""
         self.killed_entity_ids.add(entity_id)
-        changed = []
-        for quest in self.quests.values():
-            if quest.status != "in_progress":
-                continue
-            if quest.target_kill_entity_id == entity_id:
-                quest.status = "completed"
-                changed.append(quest)
-        return changed
 
     def reset(self) -> None:
         """Every quest back to its own starting status (not-given quests
@@ -370,6 +418,7 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         reward_item_id=qdef.reward_item_id, reward_shop_discount_pct=qdef.reward_shop_discount_pct,
         status=qdef.starting_status,
         carrying_item_description=qdef.carrying_item_description,
+        target_dead_description=qdef.target_dead_description,
         completed_description=qdef.completed_description,
         failed_description=qdef.failed_description,
     )

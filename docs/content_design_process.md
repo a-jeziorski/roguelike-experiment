@@ -231,19 +231,28 @@ single field is set (`QuestDef` rejects setting more than one):
 |---|---|---|
 | `target_dungeon_id` | player arrives in that dungeon | `main.py`'s `resolve_transition` -> `QuestLog.check_dungeon_arrival` |
 | `target_entity_id` | player talks to that catalog entity | `Engine.talk_to_adjacent` -> `QuestLog.check_talked_to` |
-| `target_kill_entity_id` | that catalog entity dies (anywhere, any time - see `killed_entity_ids`) | `Engine.on_entity_death` -> `QuestLog.record_entity_killed` |
+| `target_kill_entity_id` | player talks to `questgiver_entity_id` *after* that catalog entity has died (anywhere, any time - see `killed_entity_ids`) | `Engine.talk_to_adjacent` -> `QuestLog.check_kill_report` |
 | `target_item_id` | player talks to `questgiver_entity_id` *while holding* a matching item | `Engine.talk_to_adjacent` -> `QuestLog.check_delivery` |
 
 None is valid too, for a quest with no completion trigger authored yet.
+The kill and fetch shapes are both deliberately two steps, not one: the
+deed itself (the kill, the pickup) only records that it happened
+(`QuestLog.record_entity_killed`, or an ordinary `PickupAction` with no
+special case) - only reporting back to `questgiver_entity_id` actually
+completes the quest and, for a fetch quest, removes the item from
+inventory. The one exception: if the kill-target already died *before*
+the quest was ever granted, `check_questgiver` jumps straight to
+"completed" the moment it's granted (talking to the questgiver in that
+case is itself the report) - see `already_done_message`.
 
 `questgiver_entity_id` is a separate concept from the trigger: setting it
 means the quest starts `starting_status: not_given` and is granted by
 *talking* to that NPC (`QuestLog.check_questgiver`), rather than being
 live from game start (`starting_status: in_progress`, no questgiver
-needed - see `goblin_warning`). A `target_item_id` (fetch) quest always
-needs a `questgiver_entity_id` too - delivery only ever completes by
-talking to that NPC while holding the item - and `load_quests` rejects a
-fetch quest missing one, along with a `not_given` quest missing one
+needed - see `goblin_warning`). A `target_item_id` (fetch) or
+`target_kill_entity_id` (kill) quest always needs a `questgiver_entity_id`
+too - both only ever complete by talking to that NPC - and `load_quests`
+rejects either one missing it, along with a `not_given` quest missing one
 (nothing else can ever grant it) and a bad entity/item/dungeon reference.
 `deadline_year`/`deadline_day` must be set together or not at all.
 
@@ -261,7 +270,7 @@ one quest starts `in_progress`.
 
 **The quest log's detail pane isn't stuck on `description` forever.**
 `Quest.current_description` (`engine/quest.py`) resolves what to actually
-show against the quest's live progress, and three optional overrides let
+show against the quest's live progress, and four optional overrides let
 content say more as a quest moves along - any left unset ("") just keeps
 showing `description` at that stage:
 
@@ -270,11 +279,15 @@ showing `description` at that stage:
 | `completed_description` | `status == "completed"` - a summary of what happened and what was earned, not just the original pitch |
 | `failed_description` | `status == "failed"` - only meaningful alongside a deadline, since that's the only way a quest ever fails; `load_quests` rejects it otherwise |
 | `carrying_item_description` | a fetch quest (`target_item_id`), still `in_progress`, while the target item is actually in the player's inventory (not yet delivered) - only meaningful alongside `target_item_id`; `load_quests` rejects it otherwise |
+| `target_dead_description` | a kill quest (`target_kill_entity_id`), still `in_progress`, while the target's actually been recorded dead (not yet reported) - only meaningful alongside `target_kill_entity_id`; `load_quests` rejects it otherwise |
 
 Write these whenever a quest's premise would otherwise go stale in the
-log - `fetch_fungus` is the fullest example (starting pitch ->
-`carrying_item_description` once the fungus is picked up -> `completed_description`
-naming the discount once delivered).
+log - `fetch_fungus` is the fullest fetch example (starting pitch ->
+`carrying_item_description` once the fungus is picked up ->
+`completed_description` naming the discount once delivered) and
+`kill_the_warden`/`clearing_the_watch_road` are the kill-quest equivalent
+(starting pitch -> `target_dead_description` once the kill lands ->
+`completed_description` once reported).
 
 ## 0f. Shops are content too (`EntityDef.shop_inventory`)
 

@@ -3,15 +3,18 @@
 # (catalog references, trigger-shape/deadline rules). A quest completes via
 # exactly one trigger shape: target_dungeon_id (arriving somewhere),
 # target_entity_id (talking to someone), target_kill_entity_id (killing a
-# specific catalog entity), or target_item_id (delivering a specific item to
-# questgiver_entity_id while holding it) - see engine/quest.py for what each
-# one actually checks.
+# specific catalog entity, then reporting it to questgiver_entity_id), or
+# target_item_id (delivering a specific item to questgiver_entity_id while
+# holding it) - see engine/quest.py for what each one actually checks. Both
+# the kill and fetch shapes are two steps: the deed (kill/pickup) alone
+# never completes anything, only reporting back to the questgiver does.
 #
 # description is only the quest log's *starting* pane text - completed_
-# description/failed_description (and, for a fetch quest specifically,
-# carrying_item_description) override it once the quest actually progresses;
-# see Quest.current_description (engine/quest.py) for exactly when each one
-# applies. Leave any of the three unset ("") to just keep showing
+# description/failed_description, carrying_item_description (fetch quests,
+# once the item's in inventory), and target_dead_description (kill quests,
+# once the target's been recorded dead) override it once the quest actually
+# progresses; see Quest.current_description (engine/quest.py) for exactly
+# when each one applies. Leave any of them unset ("") to just keep showing
 # `description` at that stage.
 
 goblin_warning:
@@ -45,6 +48,10 @@ kill_the_warden:
     Prison Tower doesn't get to just walk away from what he did there.
     Whether he's already paid for it or not is something you'd know
     better than they would.
+  target_dead_description: >
+    The Warden's dead - you saw to that yourself. Whatever he did to the
+    people under him doesn't matter anymore; what's left is telling the
+    prisoner who asked. Get back to them in Millhaven.
   completed_description: >
     The Warden is dead - by your hand, whether during the escape or after.
     You went back and told the prisoner who asked; they didn't say much,
@@ -87,11 +94,15 @@ clearing_the_watch_road:
     with - not the whole nest, just whoever's currently running it. Take
     out the one actually organizing the raids, and the road west opens
     back up.
+  target_dead_description: >
+    The captain's dead - you saw to that yourself, at Broken Watch.
+    Whatever's left of his rickety little hierarchy isn't your problem.
+    Get back to Wayford and let the Road Warden know the road's clear.
   completed_description: >
-    The captain's dead, and word already beat you back to Wayford. The
-    Road Warden doesn't ask for details - just hands over a set of bone
-    plate armor, salvaged from who knows where, and calls it a fair
-    trade for a clear road.
+    The captain's dead, and you went back and told the Road Warden
+    yourself. They don't ask for details - just hand over a set of bone
+    plate armor, salvaged from who knows where, and call it a fair trade
+    for a clear road.
   completion_message: The captain's dead. Whatever this cost him to hold that tower, it's someone else's problem now - if anyone even bothers.
   given_message: "New quest: Clearing the Watch Road - the Road Warden wants whoever's leading the bandits at Broken Watch dealt with, so the road west is safe to use again."
   questgiver_done_dialogue: Word's already reached me - the road's clear. Don't know who's fool enough to try holding that tower next, but it won't be for a while.

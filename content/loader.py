@@ -221,6 +221,14 @@ def load_quests(
                 "questgiver, so one without a questgiver can never complete"
             )
 
+        if quest.target_kill_entity_id is not None and quest.questgiver_entity_id is None:
+            errors.append(
+                f"quest '{quest_id}': target_kill_entity_id (a kill quest) "
+                "requires questgiver_entity_id too - QuestLog.check_kill_report "
+                "only ever completes a kill quest by talking to its "
+                "questgiver, so one without a questgiver can never complete"
+            )
+
         if quest.questgiver_entity_id is None and quest.starting_status == "not_given":
             errors.append(
                 f"quest '{quest_id}': starting_status is 'not_given' but no "

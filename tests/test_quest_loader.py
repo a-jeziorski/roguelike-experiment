@@ -212,6 +212,22 @@ def test_load_quests_rejects_a_fetch_quest_with_no_questgiver(tmp_path):
         load_quests(path, catalog)
 
 
+def test_load_quests_rejects_a_kill_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_kill_entity_id: warden\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
+        load_quests(path, catalog)
+
+
 def test_load_quests_rejects_a_not_given_quest_with_no_questgiver(tmp_path):
     path = write_quests(
         tmp_path,
@@ -243,6 +259,23 @@ def test_load_quests_allows_a_not_given_quest_with_a_questgiver(tmp_path):
     quests = load_quests(path, catalog)
 
     assert quests["fine_quest"].starting_status == "not_given"
+
+
+def test_load_quests_rejects_target_dead_description_without_a_kill_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  target_dead_description: It's dead.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_dead_description"):
+        load_quests(path, catalog)
 
 
 def test_load_quests_rejects_carrying_item_description_without_a_fetch_target(tmp_path):
@@ -316,10 +349,13 @@ def test_load_quests_real_shipped_quests_have_the_new_description_overrides():
 
     assert quests["goblin_warning"].completed_description
     assert quests["goblin_warning"].failed_description
+    assert quests["kill_the_warden"].target_dead_description
     assert quests["kill_the_warden"].completed_description
     assert quests["fetch_fungus"].carrying_item_description
     assert quests["fetch_fungus"].completed_description
     assert "20%" in quests["fetch_fungus"].completed_description
+    assert quests["clearing_the_watch_road"].target_dead_description
+    assert quests["clearing_the_watch_road"].completed_description
 
 
 class _FakeInventoryItem:
@@ -336,15 +372,38 @@ def test_fetch_fungus_current_description_progresses_through_every_real_stage():
     log = create_quest_log(quests)
     quest = log.quests["fetch_fungus"]
 
-    starting = quest.current_description([])
+    starting = quest.current_description([], set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")])
+    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")], set())
     assert carrying == quest.carrying_item_description
     assert carrying != starting
 
     quest.status = "completed"
-    completed = quest.current_description([])
+    completed = quest.current_description([], set())
     assert completed == quest.completed_description
     assert completed not in (starting, carrying)
+
+
+def test_kill_the_warden_current_description_progresses_through_every_real_stage():
+    """Same end-to-end regression net as the fetch_fungus test above, for
+    the kill-then-report shape: starting pitch -> target recorded dead ->
+    completed, each stage a genuinely different string."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
+    log = create_quest_log(quests)
+    quest = log.quests["kill_the_warden"]
+
+    starting = quest.current_description([], set())
+    assert starting == quest.description
+
+    quest.status = "in_progress"
+    dead = quest.current_description([], {"warden"})
+    assert dead == quest.target_dead_description
+    assert dead != starting
+
+    quest.status = "completed"
+    completed = quest.current_description([], {"warden"})
+    assert completed == quest.completed_description
+    assert completed not in (starting, dead)
