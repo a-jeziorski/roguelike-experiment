@@ -152,6 +152,7 @@ def test_load_quests_skips_dungeon_check_when_known_dungeon_ids_is_none(tmp_path
         "  name: Quest One\n"
         "  description: x\n"
         "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
         "  target_dungeon_id: anything_at_all\n"
         "  starting_status: in_progress\n",
     )
@@ -228,6 +229,22 @@ def test_load_quests_rejects_a_kill_quest_with_no_questgiver(tmp_path):
         load_quests(path, catalog)
 
 
+def test_load_quests_rejects_a_dungeon_arrival_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_dungeon_id: millhaven\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
+        load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
 def test_load_quests_rejects_a_not_given_quest_with_no_questgiver(tmp_path):
     path = write_quests(
         tmp_path,
@@ -275,6 +292,23 @@ def test_load_quests_rejects_target_dead_description_without_a_kill_target(tmp_p
     catalog = load_catalog()
 
     with pytest.raises(ContentValidationError, match="target_dead_description"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_target_visited_description_without_a_dungeon_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  target_visited_description: You've been.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_visited_description"):
         load_quests(path, catalog)
 
 
@@ -356,6 +390,8 @@ def test_load_quests_real_shipped_quests_have_the_new_description_overrides():
     assert "20%" in quests["fetch_fungus"].completed_description
     assert quests["clearing_the_watch_road"].target_dead_description
     assert quests["clearing_the_watch_road"].completed_description
+    assert quests["word_down_the_road"].target_visited_description
+    assert quests["word_down_the_road"].completed_description
 
 
 class _FakeInventoryItem:
@@ -372,16 +408,16 @@ def test_fetch_fungus_current_description_progresses_through_every_real_stage():
     log = create_quest_log(quests)
     quest = log.quests["fetch_fungus"]
 
-    starting = quest.current_description([], set())
+    starting = quest.current_description([], set(), set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")], set())
+    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")], set(), set())
     assert carrying == quest.carrying_item_description
     assert carrying != starting
 
     quest.status = "completed"
-    completed = quest.current_description([], set())
+    completed = quest.current_description([], set(), set())
     assert completed == quest.completed_description
     assert completed not in (starting, carrying)
 
@@ -395,15 +431,38 @@ def test_kill_the_warden_current_description_progresses_through_every_real_stage
     log = create_quest_log(quests)
     quest = log.quests["kill_the_warden"]
 
-    starting = quest.current_description([], set())
+    starting = quest.current_description([], set(), set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    dead = quest.current_description([], {"warden"})
+    dead = quest.current_description([], {"warden"}, set())
     assert dead == quest.target_dead_description
     assert dead != starting
 
     quest.status = "completed"
-    completed = quest.current_description([], {"warden"})
+    completed = quest.current_description([], {"warden"}, set())
     assert completed == quest.completed_description
     assert completed not in (starting, dead)
+
+
+def test_word_down_the_road_current_description_progresses_through_every_real_stage():
+    """Same end-to-end regression net again, for the dungeon-arrival ->
+    report shape: starting pitch -> Millhaven recorded visited -> completed,
+    each stage a genuinely different string."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
+    log = create_quest_log(quests)
+    quest = log.quests["word_down_the_road"]
+
+    starting = quest.current_description([], set(), set())
+    assert starting == quest.description
+
+    quest.status = "in_progress"
+    visited = quest.current_description([], set(), {"millhaven"})
+    assert visited == quest.target_visited_description
+    assert visited != starting
+
+    quest.status = "completed"
+    completed = quest.current_description([], set(), {"millhaven"})
+    assert completed == quest.completed_description
+    assert completed not in (starting, visited)

@@ -1,21 +1,25 @@
 # Quest catalog. Each entry is one quest - see content/schema.py's QuestDef
 # for the full field list and content/loader.py's load_quests for validation
 # (catalog references, trigger-shape/deadline rules). A quest completes via
-# exactly one trigger shape: target_dungeon_id (arriving somewhere),
-# target_entity_id (talking to someone), target_kill_entity_id (killing a
+# exactly one trigger shape: target_dungeon_id (arriving somewhere, then
+# reporting it to questgiver_entity_id), target_entity_id (talking to
+# someone - the one single-step shape), target_kill_entity_id (killing a
 # specific catalog entity, then reporting it to questgiver_entity_id), or
 # target_item_id (delivering a specific item to questgiver_entity_id while
-# holding it) - see engine/quest.py for what each one actually checks. Both
-# the kill and fetch shapes are two steps: the deed (kill/pickup) alone
-# never completes anything, only reporting back to the questgiver does.
+# holding it) - see engine/quest.py for what each one actually checks. The
+# dungeon-arrival, kill, and fetch shapes are all two steps: the deed
+# (arriving/killing/picking up) alone never completes anything, only
+# reporting back to the questgiver does.
 #
 # description is only the quest log's *starting* pane text - completed_
 # description/failed_description, carrying_item_description (fetch quests,
-# once the item's in inventory), and target_dead_description (kill quests,
-# once the target's been recorded dead) override it once the quest actually
-# progresses; see Quest.current_description (engine/quest.py) for exactly
-# when each one applies. Leave any of them unset ("") to just keep showing
-# `description` at that stage.
+# once the item's in inventory), target_dead_description (kill quests, once
+# the target's been recorded dead), and target_visited_description
+# (dungeon-arrival quests, once the dungeon's been recorded visited)
+# override it once the quest actually progresses; see
+# Quest.current_description (engine/quest.py) for exactly when each one
+# applies. Leave any of them unset ("") to just keep showing `description`
+# at that stage.
 
 goblin_warning:
   name: The Goblin Warning
@@ -138,6 +142,10 @@ word_down_the_road:
     The Caravan Master wants proof the road to Millhaven still holds
     before committing a cart to it - nothing to fight, nothing to fetch,
     just make the trip and see for yourself that it's still passable.
+  target_visited_description: >
+    You've made the trip to Millhaven and the road held the whole way.
+    That's the proof the Caravan Master wanted - get back to Wayford and
+    let them know.
   completed_description: >
     You made it to Millhaven and back with nothing to report, which is
     exactly what the Caravan Master wanted to hear. A cart's going out
@@ -145,6 +153,7 @@ word_down_the_road:
     anyone here will admit to.
   completion_message: The road holds. Whatever else has changed, that much hasn't.
   given_message: "New quest: Word Down the Road - the Caravan Master wants proof the road to Millhaven is still safe to travel, before risking an actual caravan on it."
+  already_done_message: You tell the Caravan Master the road's already proven itself - you made that trip before they ever asked. They don't seem to mind hearing it secondhand. 'Good enough,' they say. 'Cart goes out either way.'
   questgiver_done_dialogue: You made it there and back in one piece - that's all I needed to hear. I'll get a cart moving before the season's out.
   questgiver_entity_id: wayford_caravan_master
   target_dungeon_id: millhaven

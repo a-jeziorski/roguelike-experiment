@@ -295,10 +295,10 @@ def test_resolve_transition_without_a_clock_still_works():
 
 def _quest_log_with_dungeon_target(dungeon_id: str) -> QuestLog:
     """A synthetic QuestLog for exercising resolve_transition's wiring to
-    QuestLog.check_dungeon_arrival - still-valid general infrastructure that
-    the real starting quest no longer uses (it completes via Talk instead,
-    see test_engine.py), but is worth keeping covered for a future quest
-    that does complete this way."""
+    QuestLog.record_dungeon_arrival - the same trigger shape the real
+    word_down_the_road quest uses (see test_engine.py for that quest's own
+    full report-based completion), kept here as isolated infrastructure
+    coverage for resolve_transition's own wiring specifically."""
     quest = Quest(
         id="test_quest",
         name="Test Quest",
@@ -308,12 +308,17 @@ def _quest_log_with_dungeon_target(dungeon_id: str) -> QuestLog:
         deadline_year=9999,
         deadline_day=1,
         target_dungeon_id=dungeon_id,
+        questgiver_entity_id="test_questgiver",
         status="in_progress",
     )
     return QuestLog(quests={quest.id: quest})
 
 
-def test_resolve_transition_dungeon_arrival_completes_a_matching_quest():
+def test_resolve_transition_dungeon_arrival_records_the_visit_but_does_not_complete_the_quest():
+    """Arriving in the target dungeon only records the visit now (see
+    QuestLog.record_dungeon_arrival) - completion requires reporting back to
+    the questgiver (QuestLog.check_dungeon_report), same two-step shape as a
+    fetch quest's pickup vs. delivery."""
     catalog, dungeon_registry, overworld_level = _world()
     quest_log = _quest_log_with_dungeon_target("millhaven")
     active_engines: dict = {}
@@ -333,16 +338,15 @@ def test_resolve_transition_dungeon_arrival_completes_a_matching_quest():
     )
 
     assert active_key == "millhaven"
-    assert quest_log.quests["test_quest"].status == "completed"
-    assert quest_log.quests["test_quest"].completion_message in millhaven_engine.message_log.messages
-    # the message belongs to the destination engine's log, not the source's
-    assert (
-        quest_log.quests["test_quest"].completion_message
-        not in overworld_engine.message_log.messages
-    )
+    assert "millhaven" in quest_log.visited_dungeon_ids
+    assert quest_log.quests["test_quest"].status == "in_progress"
+    assert quest_log.quests["test_quest"].completion_message not in millhaven_engine.message_log.messages
 
 
-def test_resolve_transition_dungeon_arrival_grants_a_reward():
+def test_resolve_transition_dungeon_arrival_then_report_grants_a_reward():
+    """The follow-through once the visit's been recorded: reporting to the
+    questgiver (QuestLog.check_dungeon_report, same call Engine.talk_to_adjacent
+    makes) completes the quest and grants its reward."""
     catalog, dungeon_registry, overworld_level = _world()
     quest_log = _quest_log_with_dungeon_target("millhaven")
     quest_log.quests["test_quest"].reward_item_id = "healing_potion"
@@ -362,6 +366,10 @@ def test_resolve_transition_dungeon_arrival_grants_a_reward():
         quest_log=quest_log,
     )
 
+    for quest in millhaven_engine.quest_log.check_dungeon_report("test_questgiver"):
+        millhaven_engine.complete_quest(quest)
+
+    assert quest_log.quests["test_quest"].status == "completed"
     assert len(millhaven_engine.player.inventory) == 1
     assert millhaven_engine.player.inventory[0].name == "Healing Potion"
 
@@ -398,7 +406,9 @@ def test_resolve_transition_without_a_quest_log_still_works():
     )
 
     assert active_key == "millhaven"
-    assert new_engine.quest_log == QuestLog()
+    # record_dungeon_arrival still fires unconditionally on the fresh,
+    # otherwise-empty QuestLog Engine() defaults to - see record_dungeon_arrival.
+    assert new_engine.quest_log == QuestLog(visited_dungeon_ids={"millhaven"})
 
 
 def test_resolve_transition_deadline_failure_wins_a_same_turn_tie_with_arrival():

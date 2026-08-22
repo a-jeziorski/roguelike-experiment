@@ -202,7 +202,11 @@ def run_quest_log_mode(console: tcod.console.Console, context: tcod.context.Cont
 
     while True:
         description = (
-            quests[selected].current_description(engine.player.inventory, engine.quest_log.killed_entity_ids)
+            quests[selected].current_description(
+                engine.player.inventory,
+                engine.quest_log.killed_entity_ids,
+                engine.quest_log.visited_dungeon_ids,
+            )
             if quests else ""
         )
         render_quest_log(console, quests, selected, engine.quest_log.active_quest_id, description)
@@ -391,8 +395,7 @@ def resolve_transition(
             active_engines[dungeon_id] = target
         else:
             target.arrive_player(player)  # position=None: resume exactly where they left
-        for quest in target.quest_log.check_dungeon_arrival(dungeon_id):
-            target.complete_quest(quest)
+        target.quest_log.record_dungeon_arrival(dungeon_id)
         return dungeon_id, target
 
     return active_key, engine

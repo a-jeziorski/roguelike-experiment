@@ -514,10 +514,12 @@ class Engine:
         completes one that targets them (see QuestLog.check_talked_to),
         completes a fetch quest they're the questgiver for because the
         player is holding the delivered item (see QuestLog.check_delivery),
-        or completes a kill quest they're the questgiver for because its
-        target's already been recorded dead (see QuestLog.check_kill_report).
-        Never touches self.clock or calls _handle_enemy_turns - talking costs
-        nothing."""
+        completes a kill quest they're the questgiver for because its
+        target's already been recorded dead (see QuestLog.check_kill_report),
+        or completes a dungeon-arrival quest they're the questgiver for
+        because its target dungeon's already been recorded visited (see
+        QuestLog.check_dungeon_report). Never touches self.clock or calls
+        _handle_enemy_turns - talking costs nothing."""
         target = self._find_adjacent_peaceful_npc()
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
@@ -546,6 +548,9 @@ class Engine:
             self.complete_quest(quest)
 
         for quest in self.quest_log.check_kill_report(target.entity_id):
+            self.complete_quest(quest)
+
+        for quest in self.quest_log.check_dungeon_report(target.entity_id):
             self.complete_quest(quest)
 
     def process_player_action(self, action: Action) -> bool:

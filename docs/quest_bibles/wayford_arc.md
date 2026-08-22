@@ -102,10 +102,18 @@ Chief`, `Escaped Prisoner`, `Shopkeeper`).
 - **Questgiver**: `wayford_caravan_master`.
 - **Trigger**: `target_dungeon_id: millhaven` - this trigger shape has
   never been used by real shipped content before (only exercised in
-  tests); this is its first real outing.
+  tests); this is its first real outing. **Update after the user's own
+  follow-up request**: dungeon-arrival quests are now two-step, matching
+  the kill and fetch triggers exactly - arriving at Millhaven only
+  records the visit (`QuestLog.record_dungeon_arrival`); the quest only
+  completes once the player reports back to the Caravan Master
+  (`QuestLog.check_dungeon_report`). This wasn't the original design (see
+  the note this replaces, below) but is the more consistent one, and the
+  one actually shipped.
 - **Premise**: the Caravan Master wants proof the road to Millhaven is
-  still passable before committing an actual caravan to it. Arriving
-  *is* the proof - no NPC to find once there, no fetch, nothing. This
+  still passable before committing an actual caravan to it - the trip
+  itself doesn't need a fetch or a fight, but telling the Caravan Master
+  about it in person does still require coming back to Wayford. This
   quest requires **zero changes to Millhaven's own content** - the
   target is the dungeon itself, not anything inside it.
   `completion_message` should land on "the road holds" / "safe passage
@@ -113,6 +121,13 @@ Chief`, `Escaped Prisoner`, `Shopkeeper`).
 - **Reward**: none - matches `goblin_warning`'s existing "no mechanical
   reward, just narrative closure" shape. This quest is about Wayford's
   ambition paying off in premise, not in loot.
+
+*(Superseded design note, kept for context rather than deleted: the
+original version of this quest completed the instant the player arrived
+at Millhaven, with no return trip - deliberately, on the reasoning that
+"arriving is the proof, nothing to report." The user later asked for the
+return-trip requirement anyway, for consistency with the kill and fetch
+quests, and it shipped as described above.)*
 
 ## Known-quirk note: `reward_shop_discount_pct` is global, not per-shop
 

@@ -168,20 +168,23 @@ class QuestDef(BaseModel):
     quest start given or not," not live state that changes as the run
     progresses). engine/quest.py's quest_from_def converts one of these into
     a live Quest; engine/quest.py itself still owns what each trigger *does*
-    (QuestLog.check_dungeon_arrival/check_talked_to/check_delivery/
-    record_entity_killed) - this model only owns which quest targets what.
+    (QuestLog.check_dungeon_report/check_talked_to/check_delivery/
+    check_kill_report/record_entity_killed/record_dungeon_arrival) - this
+    model only owns which quest targets what.
 
     A quest completes via exactly one of four trigger shapes - at most one
     of target_dungeon_id/target_entity_id/target_kill_entity_id/
     target_item_id may be set (enforced below); zero is valid for a quest
-    with no completion trigger yet. A fetch quest (target_item_id) and a
-    kill quest (target_kill_entity_id) both always need questgiver_entity_id
-    too, since QuestLog.check_delivery/check_kill_report only ever complete
-    them by talking to that NPC (while holding the item, or after the
-    target's been recorded dead) - enforced in content/loader.py's
-    load_quests, which also checks every id here (questgiver/target/reward)
-    actually exists in the catalog, since that needs the catalog and can't
-    be checked at the field level here."""
+    with no completion trigger yet. A fetch quest (target_item_id), a kill
+    quest (target_kill_entity_id), and a dungeon-arrival quest
+    (target_dungeon_id) all always need questgiver_entity_id too, since
+    QuestLog.check_delivery/check_kill_report/check_dungeon_report only
+    ever complete them by talking to that NPC (while holding the item,
+    after the kill-target's been recorded dead, or after the dungeon's
+    been recorded visited) - enforced in content/loader.py's load_quests,
+    which also checks every id here (questgiver/target/reward) actually
+    exists in the catalog, since that needs the catalog and can't be
+    checked at the field level here."""
 
     id: str
     name: str
@@ -219,6 +222,12 @@ class QuestDef(BaseModel):
     # trigger instead of pickup-then-deliver. Only meaningful alongside
     # target_kill_entity_id.
     target_dead_description: str = ""
+    # Quest log pane override for a dungeon-arrival quest (target_dungeon_id)
+    # while in_progress and the target dungeon has actually been recorded
+    # visited (not yet reported to the questgiver) - see
+    # Quest.current_description. Same shape again, for the arrive-then-report
+    # trigger. Only meaningful alongside target_dungeon_id.
+    target_visited_description: str = ""
     # Quest log pane override once this quest is "completed" - a summary of
     # what happened and what was earned, not just the original pitch. ""
     # falls back to `description`.
@@ -276,6 +285,17 @@ class QuestDef(BaseModel):
                 "target_dead_description is set but target_kill_entity_id "
                 "isn't - this override only ever applies to a kill quest, "
                 "checked against whether the target's been recorded dead"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_visited_description_requires_a_dungeon_target(self) -> "QuestDef":
+        if self.target_visited_description and self.target_dungeon_id is None:
+            raise ValueError(
+                "target_visited_description is set but target_dungeon_id "
+                "isn't - this override only ever applies to a dungeon-arrival "
+                "quest, checked against whether the dungeon's been recorded "
+                "visited"
             )
         return self
 

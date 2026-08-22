@@ -229,19 +229,22 @@ single field is set (`QuestDef` rejects setting more than one):
 
 | Trigger field | Fires when | Checked in |
 |---|---|---|
-| `target_dungeon_id` | player arrives in that dungeon | `main.py`'s `resolve_transition` -> `QuestLog.check_dungeon_arrival` |
+| `target_dungeon_id` | player talks to `questgiver_entity_id` *after* arriving in that dungeon (any time - see `visited_dungeon_ids`) | `Engine.talk_to_adjacent` -> `QuestLog.check_dungeon_report` |
 | `target_entity_id` | player talks to that catalog entity | `Engine.talk_to_adjacent` -> `QuestLog.check_talked_to` |
 | `target_kill_entity_id` | player talks to `questgiver_entity_id` *after* that catalog entity has died (anywhere, any time - see `killed_entity_ids`) | `Engine.talk_to_adjacent` -> `QuestLog.check_kill_report` |
 | `target_item_id` | player talks to `questgiver_entity_id` *while holding* a matching item | `Engine.talk_to_adjacent` -> `QuestLog.check_delivery` |
 
 None is valid too, for a quest with no completion trigger authored yet.
-The kill and fetch shapes are both deliberately two steps, not one: the
-deed itself (the kill, the pickup) only records that it happened
-(`QuestLog.record_entity_killed`, or an ordinary `PickupAction` with no
-special case) - only reporting back to `questgiver_entity_id` actually
-completes the quest and, for a fetch quest, removes the item from
-inventory. The one exception: if the kill-target already died *before*
-the quest was ever granted, `check_questgiver` jumps straight to
+The dungeon-arrival, kill, and fetch shapes are all deliberately two
+steps, not one: the deed itself (arriving, the kill, the pickup) only
+records that it happened (`QuestLog.record_dungeon_arrival`/
+`record_entity_killed`, or an ordinary `PickupAction` with no special
+case) - only reporting back to `questgiver_entity_id` actually completes
+the quest and, for a fetch quest, removes the item from inventory. Talk
+(`target_entity_id`) is the one trigger that stays single-step - talking
+*is* the deed, there's nothing to split it from. The one exception across
+all three two-step shapes: if the target was already dead/visited
+*before* the quest was ever granted, `check_questgiver` jumps straight to
 "completed" the moment it's granted (talking to the questgiver in that
 case is itself the report) - see `already_done_message`.
 
@@ -249,12 +252,13 @@ case is itself the report) - see `already_done_message`.
 means the quest starts `starting_status: not_given` and is granted by
 *talking* to that NPC (`QuestLog.check_questgiver`), rather than being
 live from game start (`starting_status: in_progress`, no questgiver
-needed - see `goblin_warning`). A `target_item_id` (fetch) or
-`target_kill_entity_id` (kill) quest always needs a `questgiver_entity_id`
-too - both only ever complete by talking to that NPC - and `load_quests`
-rejects either one missing it, along with a `not_given` quest missing one
-(nothing else can ever grant it) and a bad entity/item/dungeon reference.
-`deadline_year`/`deadline_day` must be set together or not at all.
+needed - see `goblin_warning`). A `target_item_id` (fetch),
+`target_kill_entity_id` (kill), or `target_dungeon_id` (dungeon-arrival)
+quest always needs a `questgiver_entity_id` too - all three only ever
+complete by talking to that NPC - and `load_quests` rejects any of them
+missing it, along with a `not_given` quest missing one (nothing else can
+ever grant it) and a bad entity/item/dungeon reference. `deadline_year`/
+`deadline_day` must be set together or not at all.
 
 Reward is `reward_item_id` (grants a catalog item straight into
 inventory), `reward_shop_discount_pct` (a permanent fraction off
@@ -280,14 +284,17 @@ showing `description` at that stage:
 | `failed_description` | `status == "failed"` - only meaningful alongside a deadline, since that's the only way a quest ever fails; `load_quests` rejects it otherwise |
 | `carrying_item_description` | a fetch quest (`target_item_id`), still `in_progress`, while the target item is actually in the player's inventory (not yet delivered) - only meaningful alongside `target_item_id`; `load_quests` rejects it otherwise |
 | `target_dead_description` | a kill quest (`target_kill_entity_id`), still `in_progress`, while the target's actually been recorded dead (not yet reported) - only meaningful alongside `target_kill_entity_id`; `load_quests` rejects it otherwise |
+| `target_visited_description` | a dungeon-arrival quest (`target_dungeon_id`), still `in_progress`, while the target dungeon's actually been recorded visited (not yet reported) - only meaningful alongside `target_dungeon_id`; `load_quests` rejects it otherwise |
 
 Write these whenever a quest's premise would otherwise go stale in the
 log - `fetch_fungus` is the fullest fetch example (starting pitch ->
 `carrying_item_description` once the fungus is picked up ->
-`completed_description` naming the discount once delivered) and
+`completed_description` naming the discount once delivered),
 `kill_the_warden`/`clearing_the_watch_road` are the kill-quest equivalent
 (starting pitch -> `target_dead_description` once the kill lands ->
-`completed_description` once reported).
+`completed_description` once reported), and `word_down_the_road` is the
+dungeon-arrival equivalent (starting pitch -> `target_visited_description`
+once Millhaven's been reached -> `completed_description` once reported).
 
 ## 0f. Shops are content too (`EntityDef.shop_inventory`)
 

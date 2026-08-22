@@ -229,6 +229,15 @@ def load_quests(
                 "questgiver, so one without a questgiver can never complete"
             )
 
+        if quest.target_dungeon_id is not None and quest.questgiver_entity_id is None:
+            errors.append(
+                f"quest '{quest_id}': target_dungeon_id (a dungeon-arrival "
+                "quest) requires questgiver_entity_id too - "
+                "QuestLog.check_dungeon_report only ever completes a "
+                "dungeon-arrival quest by talking to its questgiver, so one "
+                "without a questgiver can never complete"
+            )
+
         if quest.questgiver_entity_id is None and quest.starting_status == "not_given":
             errors.append(
                 f"quest '{quest_id}': starting_status is 'not_given' but no "

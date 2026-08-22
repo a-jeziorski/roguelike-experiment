@@ -2230,6 +2230,57 @@ def test_talk_to_adjacent_does_not_complete_a_kill_quest_via_the_wrong_npc():
     assert quest.status == "in_progress"
 
 
+def test_talk_to_adjacent_completes_a_dungeon_arrival_quest_after_the_dungeon_is_visited():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    caravan_master = make_villager(2, 1, dialogue="Off to Millhaven?", entity_id="wayford_caravan_master", name="Caravan Master")
+    game_map.entities.extend([player, caravan_master])
+    quest_log = real_quest_log()
+    quest_log.quests["word_down_the_road"].status = "in_progress"  # already given
+    quest_log.record_dungeon_arrival("millhaven")  # visited, not yet reported
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["word_down_the_road"]
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+
+
+def test_talk_to_adjacent_does_not_complete_a_dungeon_arrival_quest_before_the_dungeon_is_visited():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    caravan_master = make_villager(2, 1, dialogue="Off to Millhaven?", entity_id="wayford_caravan_master", name="Caravan Master")
+    game_map.entities.extend([player, caravan_master])
+    quest_log = real_quest_log()
+    quest_log.quests["word_down_the_road"].status = "in_progress"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["word_down_the_road"]
+    assert quest.status == "in_progress"
+
+
+def test_talk_to_adjacent_does_not_complete_a_dungeon_arrival_quest_via_the_wrong_npc():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id="shopkeeper", name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    quest_log = real_quest_log()
+    quest_log.quests["word_down_the_road"].status = "in_progress"
+    quest_log.record_dungeon_arrival("millhaven")
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["word_down_the_road"]
+    assert quest.status == "in_progress"
+
+
 def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
