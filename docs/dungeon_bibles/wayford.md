@@ -184,8 +184,13 @@ catalog's generic fallback line. That was wrong, and the user caught it
 - with twelve anonymous villagers all sharing one repeated "they don't
 have much to say," Wayford read as thinner than Millhaven despite being
 the bigger town. `docs/content_design_process.md` §1 now states the
-corrected rule directly: every villager spawn in a settlement gets its
-own per-spawn `dialogue`, no exceptions for a town's size.
+corrected rule: at least 75% of a settlement's villager/town_guard spawns
+need their own per-spawn `dialogue` - a floor, not a per-town judgment
+call, though not literally every single spawn either (the user felt the
+original 100%-with-no-exceptions fix over-corrected). Wayford's own
+roster still lands at 100% unique, comfortably clearing that floor - the
+fix wasn't undone, just the *rule* was relaxed for whatever gets
+authored next.
 
 Matching Millhaven's technique, scaled to Wayford's larger cast: one
 dismissive villager (mid-chore, plainly not interested), one nudge line
@@ -211,9 +216,11 @@ not scoped per-dungeon, so reusing `"shopkeeper"` or `"village_chief"`
 here would make talking to *Wayford's* NPC also grant or complete
 *Millhaven's* quests. One or two reused `town_guard` spawns (safe to
 reuse - no quest ever targets it by id) plus twelve plain `villager`
-spawns, **every one of them with its own per-spawn `dialogue`** (see set
-piece 7 - not optional, per the corrected rule in
-`docs/content_design_process.md` §1).
+spawns, all fourteen (twelve villagers plus the two named-with-dialogue
+spawns from set piece 7) given their own per-spawn `dialogue` - Wayford
+comfortably clears the 75% floor `docs/content_design_process.md` §1
+requires of a settlement's cast, though that floor no longer demands
+literally every spawn.
 
 **`town_guard`'s existing catalog `description`** ("Keeps the peace on
 Millhaven's green, mostly by not needing to.") is Millhaven-specific

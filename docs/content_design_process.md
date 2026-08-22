@@ -318,26 +318,35 @@ happens when content assumes mechanics the engine doesn't have); `dialogue`
 is one more flat line per NPC, same discipline as everything else here. A
 villager with no per-spawn `dialogue` falls back to its catalog type's own
 default (`EntityDef.dialogue` - `villager`'s is a generic "they don't have
-much to say"). **Treat that fallback as a safety net, not an acceptable
-default for a shipped settlement's cast** - it exists so a stray,
-never-quite-authored spawn still says *something* sensible, not so a whole
-town's worth of anonymous villagers can lean on one repeated line. Every
-villager spawn in a properly authored settlement gets its own per-spawn
-`dialogue` (a distinct legend symbol per unique line, since `dialogue`
-lives on the legend entry - see `data/dungeons/millhaven/levels/level_01.lvl`
-for the pattern: five plain villagers, five distinct symbols, five distinct
-lines). This was missed on Wayford's first regeneration - twelve
-anonymous villagers all silently sharing the one catalog-default line -
-caught only once the user played it and noticed the town felt thinner
-than Millhaven's. Fixed by giving each one its own line; treat that fix
-as the standard from here on, not a one-off. Most lines should still cost
-the player nothing to skip (per Millhaven's own tone notes - see
-`docs/dungeon_bibles/millhaven.md`), but a few per settlement should
-carry something real: a nudge toward a questgiver the player might
-otherwise miss, or a piece of world/local texture. A tile's custom
-`description`, when set, always wins over its kind's default and over a
-`dungeon_entrance`'s dungeon-level `inspect_text` (0b) - most specific
-wins.
+much to say"). **Treat that fallback as a safety net, not the bulk of a
+shipped settlement's cast** - it exists so a stray, never-quite-authored
+spawn still says *something* sensible, not so most of a town's villagers
+can lean on one repeated line. **At least 75% of the villager/town_guard
+spawns in a settlement need their own per-spawn `dialogue`** (a distinct
+legend symbol per unique line, since `dialogue` lives on the legend entry
+- see `data/dungeons/millhaven/levels/level_01.lvl` for the pattern: five
+plain villagers, five distinct symbols, five distinct lines). This is a
+floor, not a target to undershoot - 100% unique is fine and was in fact
+the fix applied to Wayford - but it's no longer a hard requirement for
+every single spawn: a player who hears the same one or two lines from an
+occasional NPC in a big town doesn't read it as broken the way a whole
+cast repeating one line does, and a firm 100%-or-nothing rule turned out
+to read as more rigid than the actual problem called for. (History: the
+100%-with-no-exceptions version of this rule was written after Wayford's
+first regeneration shipped twelve anonymous villagers all silently
+sharing the one catalog-default line - caught only once the user played
+it and noticed the town felt thinner than Millhaven's. Relaxed to 75%
+after the user felt the original fix over-corrected; a future pass may
+add several distinct *fallback* lines, rotated rather than one repeated
+default, to raise the ceiling on the un-authored remainder without
+requiring every spawn to be individually written - not built yet.) Most
+lines should still cost the player nothing to skip (per Millhaven's own
+tone notes - see `docs/dungeon_bibles/millhaven.md`), but a few per
+settlement should carry something real: a nudge toward a questgiver the
+player might otherwise miss, or a piece of world/local texture. A tile's
+custom `description`, when set, always wins over its kind's default and
+over a `dungeon_entrance`'s dungeon-level `inspect_text` (0b) - most
+specific wins.
 
 **For a walkable point of interest, use `tile: landmark`, never
 `tile: floor` (or `road`/`plains`/etc.) with a `description` bolted on.**
@@ -558,12 +567,12 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
    items (checked against the balance methodology above).
 3. **Flavor text**: level `name` and every entity/item `description` fit
    the narrative arc - these are the only things the player actually reads.
-   **For a settlement specifically, every `AI_VILLAGER`/`AI_TOWN_GUARD`
-   spawn needs its own per-spawn `dialogue` (see §1)** - not optional, per
-   the Wayford regression this rule exists to prevent. For a combat
-   dungeon, where villager-type spawns are rare or absent, a per-spawn
-   `dialogue` is still worth considering for any named set piece built
-   around one, but nothing there forces it.
+   **For a settlement specifically, at least 75% of its `AI_VILLAGER`/
+   `AI_TOWN_GUARD` spawns need their own per-spawn `dialogue` (see §1)** -
+   a floor, not a per-town judgment call; 100% is fine but no longer
+   required. For a combat dungeon, where villager-type spawns are rare or
+   absent, a per-spawn `dialogue` is still worth considering for any named
+   set piece built around one, but nothing there forces it.
 4. **Validate**: `python tools/preview.py data/dungeons` - reviews every
    shipped dungeon's rendering, stairway destinations, and door/key pairings
    at once (or point it at one `data/dungeons/<id>` while iterating on a
