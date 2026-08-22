@@ -615,7 +615,7 @@ def test_new_settlement_dungeon_content(dungeon_id):
 
     all_entities = [s.entity for level in dungeon.levels.values() for s in level.entity_spawns]
     assert len(all_entities) > 0
-    assert all(e.ai == "villager" for e in all_entities)
+    assert all(e.ai in ("villager", "town_guard") for e in all_entities)
 
 
 def test_prison_tower_level_01_content():

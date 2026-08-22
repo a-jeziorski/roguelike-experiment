@@ -13,6 +13,7 @@ rusty_dagger:
   glyph: "/"
   color: [180, 180, 190]
   attack_bonus: 2
+  cost: 15
   description: Better than fists.
 
 iron_sword:
@@ -34,6 +35,7 @@ leather_armor:
   glyph: "["
   color: [150, 110, 60]
   defense_bonus: 1
+  cost: 20
   description: Cracked but serviceable hide armor, better than bare skin.
 
 bone_plate:
@@ -78,3 +80,9 @@ pale_fungus:
   glyph: "%"
   color: [180, 200, 150]
   description: Grows only where standing water's been left untouched for years. Not for eating.
+
+road_ledger:
+  name: Road Ledger
+  glyph: "="
+  color: [200, 190, 160]
+  description: A water-stained Kingdom ledger, listing roads and waystations nobody's maintained in a generation. Worth more to a clerk than to anyone who took this place.

@@ -79,3 +79,61 @@ fetch_fungus:
   questgiver_entity_id: shopkeeper
   target_item_id: pale_fungus
   reward_shop_discount_pct: 0.2
+
+clearing_the_watch_road:
+  name: Clearing the Watch Road
+  description: >
+    The Road Warden wants the bandit captain holding Broken Watch dealt
+    with - not the whole nest, just whoever's currently running it. Take
+    out the one actually organizing the raids, and the road west opens
+    back up.
+  completed_description: >
+    The captain's dead, and word already beat you back to Wayford. The
+    Road Warden doesn't ask for details - just hands over a set of bone
+    plate armor, salvaged from who knows where, and calls it a fair
+    trade for a clear road.
+  completion_message: The captain's dead. Whatever this cost him to hold that tower, it's someone else's problem now - if anyone even bothers.
+  given_message: "New quest: Clearing the Watch Road - the Road Warden wants whoever's leading the bandits at Broken Watch dealt with, so the road west is safe to use again."
+  questgiver_done_dialogue: Word's already reached me - the road's clear. Don't know who's fool enough to try holding that tower next, but it won't be for a while.
+  questgiver_entity_id: wayford_road_warden
+  target_kill_entity_id: bandit_captain
+  reward_item_id: bone_plate
+
+a_record_worth_keeping:
+  name: A Record Worth Keeping
+  description: >
+    The Town Clerk wants an old route ledger recovered from Broken
+    Watch - Kingdom paperwork the bandits never had any use for, showing
+    which roads and waystations still connect. Nobody there will miss it.
+  carrying_item_description: >
+    You've got the ledger - water-stained but the ink's mostly held.
+    Whatever it's worth to the Clerk, it's not worth anything to whoever
+    left it behind at Broken Watch. Bring it back to Wayford.
+  completed_description: >
+    The Clerk goes quiet reading through it, longer than you'd expect for
+    a stack of old paper. In the end they hand over a hunting bow from
+    the town's own stores - requisitioned, not gifted, the Clerk is
+    careful to point out - and thank you like they mean it.
+  completion_message: The ledger changes hands. Whatever those old roads used to connect, someone in Wayford cares enough now to write it back down.
+  given_message: "New quest: A Record Worth Keeping - the Town Clerk wants an old route ledger recovered from Broken Watch, left behind in whatever passed for its duty room."
+  questgiver_done_dialogue: Every road we used to keep, listed plain as anything. Worth more to me than the bow I gave you for it, and I mean that literally.
+  questgiver_entity_id: wayford_clerk
+  target_item_id: road_ledger
+  reward_item_id: hunting_bow
+
+word_down_the_road:
+  name: Word Down the Road
+  description: >
+    The Caravan Master wants proof the road to Millhaven still holds
+    before committing a cart to it - nothing to fight, nothing to fetch,
+    just make the trip and see for yourself that it's still passable.
+  completed_description: >
+    You made it to Millhaven and back with nothing to report, which is
+    exactly what the Caravan Master wanted to hear. A cart's going out
+    again before the season's through - the first one in longer than
+    anyone here will admit to.
+  completion_message: The road holds. Whatever else has changed, that much hasn't.
+  given_message: "New quest: Word Down the Road - the Caravan Master wants proof the road to Millhaven is still safe to travel, before risking an actual caravan on it."
+  questgiver_done_dialogue: You made it there and back in one piece - that's all I needed to hear. I'll get a cart moving before the season's out.
+  questgiver_entity_id: wayford_caravan_master
+  target_dungeon_id: millhaven

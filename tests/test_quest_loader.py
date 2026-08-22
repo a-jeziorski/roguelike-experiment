@@ -15,11 +15,17 @@ def write_quests(tmp_path: Path, text: str) -> Path:
     return path
 
 
+ALL_SHIPPED_QUEST_IDS = {
+    "goblin_warning", "kill_the_warden", "fetch_fungus",
+    "clearing_the_watch_road", "a_record_worth_keeping", "word_down_the_road",
+}
+
+
 def test_load_quests_loads_the_real_shipped_file():
     catalog = load_catalog()
     quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
 
-    assert set(quests) == {"goblin_warning", "kill_the_warden", "fetch_fungus"}
+    assert set(quests) == ALL_SHIPPED_QUEST_IDS
     assert quests["goblin_warning"].starting_status == "in_progress"
     assert quests["kill_the_warden"].starting_status == "not_given"
     assert quests["fetch_fungus"].reward_shop_discount_pct == 0.2
@@ -34,7 +40,7 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
     log = create_quest_log(quests)
 
-    assert set(log.quests) == {"goblin_warning", "kill_the_warden", "fetch_fungus"}
+    assert set(log.quests) == ALL_SHIPPED_QUEST_IDS
     assert log.active_quest_id == "goblin_warning"
 
     goblin_warning = log.quests["goblin_warning"]
@@ -54,6 +60,24 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     assert fetch_fungus.questgiver_entity_id == "shopkeeper"
     assert fetch_fungus.target_item_id == "pale_fungus"
     assert fetch_fungus.reward_shop_discount_pct == 0.2
+
+    clearing_the_watch_road = log.quests["clearing_the_watch_road"]
+    assert clearing_the_watch_road.status == "not_given"
+    assert clearing_the_watch_road.questgiver_entity_id == "wayford_road_warden"
+    assert clearing_the_watch_road.target_kill_entity_id == "bandit_captain"
+    assert clearing_the_watch_road.reward_item_id == "bone_plate"
+
+    a_record_worth_keeping = log.quests["a_record_worth_keeping"]
+    assert a_record_worth_keeping.status == "not_given"
+    assert a_record_worth_keeping.questgiver_entity_id == "wayford_clerk"
+    assert a_record_worth_keeping.target_item_id == "road_ledger"
+    assert a_record_worth_keeping.reward_item_id == "hunting_bow"
+
+    word_down_the_road = log.quests["word_down_the_road"]
+    assert word_down_the_road.status == "not_given"
+    assert word_down_the_road.questgiver_entity_id == "wayford_caravan_master"
+    assert word_down_the_road.target_dungeon_id == "millhaven"
+    assert word_down_the_road.reward_item_id is None
 
 
 def test_load_quests_rejects_unknown_questgiver_entity(tmp_path):

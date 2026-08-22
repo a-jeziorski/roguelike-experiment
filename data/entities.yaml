@@ -156,8 +156,57 @@ town_guard:
   attack: 5
   defense: 2
   ai: town_guard
-  description: Keeps the peace on Millhaven's green, mostly by not needing to.
+  description: Keeps the peace here, mostly by not needing to.
   dialogue: Keep the peace and we've got no trouble between us.
+
+wayford_road_warden:
+  name: Road Warden
+  glyph: R
+  color: [160, 100, 70]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Watches the west road out of Wayford - or watches for word of it, when watching it directly isn't safe.
+  dialogue: Road west isn't safe past the old watchtower. Been saying it for weeks - carts turn back before they even reach Broken Watch.
+
+wayford_clerk:
+  name: Town Clerk
+  glyph: c
+  color: [140, 150, 170]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Keeps what records Wayford still has, and wants back what it doesn't.
+  dialogue: Half our own records burned or scattered before I ever took this desk. If Broken Watch's old muster survived, I'd very much like to know what it says.
+
+wayford_caravan_master:
+  name: Caravan Master
+  glyph: M
+  color: [190, 150, 80]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Used to run carts to Millhaven on a schedule. Hasn't sent one out in longer than they'd like to admit.
+  dialogue: Used to run a cart to Millhaven every season, back before anyone thought twice about it. Haven't sent one in longer than I'd like to admit.
+
+wayford_provisioner:
+  name: Provisioner
+  glyph: P
+  color: [210, 175, 90]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Runs the biggest stall in Wayford's market, and has for years. Coin spends here without a second thought.
+  dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
+  shop_inventory: [healing_potion, rusty_dagger, leather_armor]
 
 bandit:
   name: Bandit
