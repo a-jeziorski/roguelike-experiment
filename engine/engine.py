@@ -445,19 +445,26 @@ class Engine:
         return self._find_adjacent_peaceful_npc(requires_shop=True)
 
     def complete_quest(self, quest: Quest, message: str | None = None) -> None:
-        """Logs completion and grants quest.reward_item_id if set - the single
-        funnel every completion trigger (kill, Talk, dungeon arrival, a
-        retroactive questgiver grant) routes through, so reward-granting only
-        has to be written once. Never mutates quest.status - that already
-        happened inside whichever QuestLog.check_* call produced this quest;
-        this is purely "log + reward". Never called for a quest that failed -
-        failing a quest never grants a reward."""
+        """Logs completion and grants whichever reward(s) are set - the
+        single funnel every completion trigger (kill, Talk, dungeon
+        arrival, fetch, a retroactive questgiver grant) routes through, so
+        reward-granting only has to be written once. Never mutates
+        quest.status - that already happened inside whichever QuestLog.check_*
+        call produced this quest; this is purely "log + reward". Never
+        called for a quest that failed - failing a quest never grants a
+        reward. The three reward shapes (reward_item_id, reward_gold_amount,
+        reward_shop_discount_pct) aren't mutually exclusive - a quest can
+        set any combination, though no shipped quest currently combines
+        more than one."""
         self.message_log.add(message or quest.completion_message)
         if quest.reward_item_id is not None and self.catalog is not None:
             idef = self.catalog.items[quest.reward_item_id]
             reward = item_entity_from_def(idef)
             self.player.inventory.append(reward)
             self.message_log.add(f"You receive a {reward.name}.")
+        if quest.reward_gold_amount:
+            self.player.gold += quest.reward_gold_amount
+            self.message_log.add(f"You receive {quest.reward_gold_amount} gold.")
         if quest.reward_shop_discount_pct:
             pct = int(quest.reward_shop_discount_pct * 100)
             self.message_log.add(f"The Millhaven shop now gives you a permanent {pct}% discount.")

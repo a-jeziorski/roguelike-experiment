@@ -126,15 +126,15 @@ a_record_worth_keeping:
     left it behind at Broken Watch. Bring it back to Wayford.
   completed_description: >
     The Clerk goes quiet reading through it, longer than you'd expect for
-    a stack of old paper. In the end they hand over a hunting bow from
-    the town's own stores - requisitioned, not gifted, the Clerk is
-    careful to point out - and thank you like they mean it.
+    a stack of old paper. In the end they count out coin from the town's
+    own strongbox - requisitioned, not gifted, they're careful to point
+    out - and thank you like they mean it.
   completion_message: The ledger changes hands. Whatever those old roads used to connect, someone in Wayford cares enough now to write it back down.
   given_message: "New quest: A Record Worth Keeping - the Town Clerk wants an old route ledger recovered from Broken Watch, left behind in whatever passed for its duty room."
-  questgiver_done_dialogue: Every road we used to keep, listed plain as anything. Worth more to me than the bow I gave you for it, and I mean that literally.
+  questgiver_done_dialogue: Every road we used to keep, listed plain as anything. Worth more than what I just paid you for it, and I mean that literally.
   questgiver_entity_id: wayford_clerk
   target_item_id: road_ledger
-  reward_item_id: hunting_bow
+  reward_gold_amount: 30
 
 word_down_the_road:
   name: Word Down the Road

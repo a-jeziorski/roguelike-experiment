@@ -260,10 +260,16 @@ missing it, along with a `not_given` quest missing one (nothing else can
 ever grant it) and a bad entity/item/dungeon reference. `deadline_year`/
 `deadline_day` must be set together or not at all.
 
-Reward is `reward_item_id` (grants a catalog item straight into
-inventory), `reward_shop_discount_pct` (a permanent fraction off
-everything in the Millhaven shop, e.g. `0.2` for 20% off - see
-`Engine.shop_price`), both, or neither.
+Reward is any combination of `reward_item_id` (grants a catalog item
+straight into inventory), `reward_gold_amount` (adds straight to the
+player's gold stat - the correct way to reward gold from a quest; don't
+reach for `reward_item_id` pointed at a `gold_amount` item, which bypasses
+`PickupAction._collect_gold` and would sit inert in inventory instead -
+see `ItemDef.gold_amount`'s own comment in `content/schema.py`), and
+`reward_shop_discount_pct` (a permanent fraction off everything in the
+Millhaven shop, e.g. `0.2` for 20% off - see `Engine.shop_price`), or none
+at all. No shipped quest currently combines more than one reward shape,
+but nothing stops it.
 
 Which quest is pinned to the HUD at game start is whichever comes first,
 in `data/quests.yaml`'s key order, with `starting_status: in_progress` -

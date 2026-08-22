@@ -91,8 +91,13 @@ Chief`, `Escaped Prisoner`, `Shopkeeper`).
   and matches this arc's "administrative debris nobody cared about" tone
   (the same aesthetic `sunken_mine.md` already established for Old
   Kingdom institutional decay).
-- **Reward**: `reward_item_id`, not `reward_shop_discount_pct` -
-  deliberately. See the shop-discount note below for why.
+- **Reward**: `reward_gold_amount: 30`, not `reward_shop_discount_pct` -
+  deliberately (see the shop-discount note below for why). Originally
+  shipped as `reward_item_id: hunting_bow`; changed to gold once the user
+  asked for a proper gold-reward mechanism (`reward_gold_amount`, added
+  to `QuestDef`/`Quest`/`Engine.complete_quest`) - a cleaner fit for a
+  quest whose questgiver's own dialogue was already building toward a
+  monetary-worth punchline ("worth more... and I mean that literally").
 - **Constraint on Broken Watch's bible**: needs one room-appropriate
   placement for `road_ledger`, described as found/discarded rather than
   guarded or displayed.
@@ -141,8 +146,9 @@ quietly discount the *other* town's shop as well.
 
 This arc doesn't fix that - it's an engine-mechanics question, out of
 scope for a content pass - it just avoids stepping on it: neither new
-quest here grants `reward_shop_discount_pct`, both use `reward_item_id`
-instead. If a future pass wants a second discount-granting quest, the
+quest here grants `reward_shop_discount_pct` (one uses `reward_item_id`,
+the other `reward_gold_amount` - see quest 2's updated Reward note
+above). If a future pass wants a second discount-granting quest, the
 discount mechanism should probably be made per-shopkeeper first. Worth
 raising with the user as a possible follow-up, not deciding unilaterally
 here.
@@ -196,6 +202,8 @@ Every id either dungeon bible must honor. New entries in **bold**.
 - Sunken Mine (the user offered it as an alternative to Millhaven for
   quest 3; Millhaven was chosen since it has NPCs to make "the road
   holds" land as a real place, not an empty ruin - see quest 3's premise).
-- Any new reward mechanism (gold rewards, per-shopkeeper discounts) -
-  every reward in this arc uses `reward_item_id`, already supported.
+- Per-shopkeeper shop discounts - see the known-quirk note above; still
+  out of scope. (Gold rewards *were* originally out of scope here too,
+  but shipped as a follow-up once the user asked for them - see quest 2's
+  updated Reward note.)
 - Any change to `bandit`/`bandit_captain` stats/balance - reused as-is.

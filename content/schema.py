@@ -120,11 +120,14 @@ class ItemDef(BaseModel):
     color: Color
     heal_amount: int | None = None
     # Gold collected straight into the player's gold stat on pickup (see
-    # PickupAction._collect_gold) - never enters inventory. Note this is a
-    # trap for Engine.complete_quest, which appends reward_item_id straight
-    # into player.inventory: a quest that rewards a gold item would sit
-    # there inert instead of incrementing player.gold, since that path never
-    # goes through PickupAction's dispatch. No current quest does this.
+    # PickupAction._collect_gold) - never enters inventory. Don't set
+    # reward_item_id (QuestDef, engine/quest.py) to a gold-amount item as a
+    # way to reward gold from a quest - that path appends straight into
+    # player.inventory via Engine.complete_quest, bypassing
+    # PickupAction._collect_gold entirely, so the "coin" would just sit
+    # there inert instead of incrementing player.gold. Use
+    # QuestDef.reward_gold_amount instead - the actual, correct mechanism
+    # for a quest to reward gold.
     gold_amount: int | None = None
     attack_bonus: int | None = None
     defense_bonus: int | None = None
@@ -207,6 +210,7 @@ class QuestDef(BaseModel):
     questgiver_done_dialogue: str = ""
     target_done_dialogue: str = ""
     reward_item_id: str | None = None
+    reward_gold_amount: int | None = Field(default=None, gt=0)
     reward_shop_discount_pct: float | None = Field(default=None, gt=0, le=1)
     starting_status: QuestStatus = "not_given"
     # Quest log pane override for a fetch quest (target_item_id) while

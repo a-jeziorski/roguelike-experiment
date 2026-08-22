@@ -2298,6 +2298,41 @@ def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():
     assert player.inventory == []
 
 
+def test_complete_quest_with_a_gold_reward_adds_to_the_player_gold_stat():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 10
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    quest = Quest(
+        id="gold_test", name="Gold Test", description="",
+        completion_message="Done.", reward_gold_amount=30,
+    )
+
+    engine.complete_quest(quest)
+
+    assert "Done." in engine.message_log.messages
+    assert "30 gold" in engine.message_log.messages[-1]
+    assert player.gold == 40
+    assert player.inventory == []  # gold never enters inventory, same as a map pickup
+
+
+def test_complete_quest_with_no_gold_reward_leaves_gold_untouched():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 10
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    quest = Quest(
+        id="no_gold_reward", name="No Gold Reward", description="",
+        completion_message="Done.", reward_gold_amount=None,
+    )
+
+    engine.complete_quest(quest)
+
+    assert player.gold == 10
+
+
 def test_complete_quest_with_a_shop_discount_reward_logs_the_discount_message():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)

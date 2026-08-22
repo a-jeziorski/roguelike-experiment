@@ -15,9 +15,11 @@ Not a scripting engine - quests complete via four hardcoded trigger shapes
 specific catalog item to its questgiver) that Engine/main.py call into (see
 Engine.on_entity_death, Engine.talk_to_adjacent, main.py's
 resolve_transition), and fail via one (clock deadline, see
-Engine._check_quest_deadlines). Two reward shapes exist: granting an item
-straight into inventory (reward_item_id), and a permanent Millhaven shop
-discount (reward_shop_discount_pct) - see Engine.complete_quest.
+Engine._check_quest_deadlines). Three reward shapes exist, not mutually
+exclusive: granting an item straight into inventory (reward_item_id),
+gold straight into the player's gold stat (reward_gold_amount), and a
+permanent Millhaven shop discount (reward_shop_discount_pct) - see
+Engine.complete_quest.
 
 Three of the four trigger shapes - fetch (target_item_id), kill
 (target_kill_entity_id), and dungeon arrival (target_dungeon_id) - are
@@ -134,10 +136,15 @@ class Quest:
     # Catalog item id granted to the player on completion, or None for no
     # reward - see Engine.complete_quest.
     reward_item_id: str | None = None
+    # Gold added straight to the player's gold stat on completion, or None
+    # for no reward - see Engine.complete_quest. Simpler than reward_item_id:
+    # no catalog lookup, just entity.gold += this.
+    reward_gold_amount: int | None = None
     # A permanent fraction off everything in the Millhaven shop, unlocked on
     # completion (e.g. 0.2 for 20% off) - see QuestLog.shop_discount_pct /
     # Engine.shop_price. A quest can set this instead of, or alongside,
-    # reward_item_id.
+    # reward_item_id/reward_gold_amount - none of the three reward shapes
+    # are mutually exclusive.
     reward_shop_discount_pct: float | None = None
     status: QuestStatus = "not_given"
     # Quest log pane overrides for current_description below - see each
@@ -474,7 +481,8 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         already_done_message=qdef.already_done_message,
         questgiver_done_dialogue=qdef.questgiver_done_dialogue,
         target_done_dialogue=qdef.target_done_dialogue,
-        reward_item_id=qdef.reward_item_id, reward_shop_discount_pct=qdef.reward_shop_discount_pct,
+        reward_item_id=qdef.reward_item_id, reward_gold_amount=qdef.reward_gold_amount,
+        reward_shop_discount_pct=qdef.reward_shop_discount_pct,
         status=qdef.starting_status,
         carrying_item_description=qdef.carrying_item_description,
         target_dead_description=qdef.target_dead_description,

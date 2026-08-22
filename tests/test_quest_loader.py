@@ -71,7 +71,7 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     assert a_record_worth_keeping.status == "not_given"
     assert a_record_worth_keeping.questgiver_entity_id == "wayford_clerk"
     assert a_record_worth_keeping.target_item_id == "road_ledger"
-    assert a_record_worth_keeping.reward_item_id == "hunting_bow"
+    assert a_record_worth_keeping.reward_gold_amount == 30
 
     word_down_the_road = log.quests["word_down_the_road"]
     assert word_down_the_road.status == "not_given"
