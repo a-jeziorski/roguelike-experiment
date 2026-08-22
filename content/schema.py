@@ -57,6 +57,12 @@ AIType = Literal[
 # trigger) and engine/engine.py (dispatch + adjacency filtering) need it.
 PEACEFUL_AI_TYPES = (AI_VILLAGER, AI_TOWN_GUARD)
 
+# A quest's lifecycle - lives here (rather than engine/quest.py) for the same
+# reason AIType does: engine/quest.py's QuestDef.starting_status and its
+# runtime Quest.status both need it, and content/schema.py must never depend
+# on engine/*.
+QuestStatus = Literal["not_given", "in_progress", "completed", "failed"]
+
 
 class EntityDef(BaseModel):
     """A monster type, as defined once in data/entities.yaml and referenced by id
@@ -143,6 +149,67 @@ class ItemDef(BaseModel):
                 "an item can only set one of attack_bonus/defense_bonus/"
                 "ranged_attack_bonus (ambiguous which equipment slot it belongs in)"
             )
+        return self
+
+
+class QuestDef(BaseModel):
+    """A quest, as defined once in data/quests.yaml. Field-for-field the raw
+    authored shape of engine/quest.py's runtime Quest, minus Quest's mutable
+    `status` (renamed `starting_status` here - authored intent, "does this
+    quest start given or not," not live state that changes as the run
+    progresses). engine/quest.py's quest_from_def converts one of these into
+    a live Quest; engine/quest.py itself still owns what each trigger *does*
+    (QuestLog.check_dungeon_arrival/check_talked_to/check_delivery/
+    record_entity_killed) - this model only owns which quest targets what.
+
+    A quest completes via exactly one of four trigger shapes - at most one
+    of target_dungeon_id/target_entity_id/target_kill_entity_id/
+    target_item_id may be set (enforced below); zero is valid for a quest
+    with no completion trigger yet. A fetch quest (target_item_id) always
+    needs questgiver_entity_id too, since QuestLog.check_delivery only ever
+    completes it by talking to that NPC while holding the item - enforced in
+    content/loader.py's load_quests, which also checks every id here
+    (questgiver/target/reward) actually exists in the catalog, since that
+    needs the catalog and can't be checked at the field level here."""
+
+    id: str
+    name: str
+    description: str
+    completion_message: str
+    failure_message: str = ""
+    target_dungeon_id: str | None = None
+    target_entity_id: str | None = None
+    target_kill_entity_id: str | None = None
+    target_item_id: str | None = None
+    deadline_year: int | None = None
+    deadline_day: int | None = None
+    questgiver_entity_id: str | None = None
+    given_message: str = ""
+    already_done_message: str = ""
+    questgiver_done_dialogue: str = ""
+    target_done_dialogue: str = ""
+    reward_item_id: str | None = None
+    reward_shop_discount_pct: float | None = Field(default=None, gt=0, le=1)
+    starting_status: QuestStatus = "not_given"
+
+    @model_validator(mode="after")
+    def at_most_one_trigger(self) -> "QuestDef":
+        triggers = [
+            self.target_dungeon_id, self.target_entity_id,
+            self.target_kill_entity_id, self.target_item_id,
+        ]
+        if sum(t is not None for t in triggers) > 1:
+            raise ValueError(
+                "a quest can set at most one of target_dungeon_id/"
+                "target_entity_id/target_kill_entity_id/target_item_id "
+                "(ambiguous which completion trigger applies)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def deadline_both_or_neither(self) -> "QuestDef":
+        if (self.deadline_year is None) != (self.deadline_day is None):
+            raise ValueError("deadline_year and deadline_day must be set together or not at all")
         return self
 
 

@@ -1,0 +1,52 @@
+# Quest catalog. Each entry is one quest - see content/schema.py's QuestDef
+# for the full field list and content/loader.py's load_quests for validation
+# (catalog references, trigger-shape/deadline rules). A quest completes via
+# exactly one trigger shape: target_dungeon_id (arriving somewhere),
+# target_entity_id (talking to someone), target_kill_entity_id (killing a
+# specific catalog entity), or target_item_id (delivering a specific item to
+# questgiver_entity_id while holding it) - see engine/quest.py for what each
+# one actually checks.
+
+goblin_warning:
+  name: The Goblin Warning
+  description: >
+    Before your capture, you were carrying word to Millhaven: a goblin
+    horde is migrating into the region, and the town needs warning before
+    it arrives. No letter, no proof - just what you were told, and who
+    you can get to listen.
+  completion_message: The warning is passed on - what Millhaven does with it now isn't yours to carry anymore.
+  failure_message: The deadline for the warning has passed. Whatever time Millhaven had to prepare, it's gone now.
+  target_done_dialogue: The warning's out now - the town knows what's coming, thanks to you. Whatever happens next, at least we won't be caught flat-footed.
+  deadline_year: 87
+  deadline_day: 57
+  target_entity_id: village_chief
+  starting_status: in_progress
+
+kill_the_warden:
+  name: An Old Debt
+  description: >
+    Another prisoner who made it out asked you for a favor: the Warden of
+    Prison Tower doesn't get to just walk away from what he did there.
+    Whether he's already paid for it or not is something you'd know
+    better than they would.
+  completion_message: The Warden is dead. Whatever he did to the people under him, he won't do it to anyone else now.
+  given_message: "New quest: An Old Debt - if the Warden of Prison Tower is still alive, he won't be for long if you have anything to say about it."
+  already_done_message: You tell them it's already done - the Warden didn't survive your escape. They go quiet for a moment. 'Good,' they say, finally. 'Good.'
+  questgiver_done_dialogue: The Warden's dead. Didn't think I'd ever get to hear that and mean it as good news.
+  questgiver_entity_id: escaped_prisoner
+  target_kill_entity_id: warden
+  reward_item_id: healing_potion
+
+fetch_fungus:
+  name: A Standing Request
+  description: >
+    The shopkeeper's after a specific fungus - pale stuff that only grows
+    where groundwater in the Sunken Mine has sat undisturbed for years.
+    They didn't say what it's for. Bring it back and there's coin in it,
+    one way or another.
+  completion_message: The shopkeeper takes the fungus, turns it over once, and nods. 'Knew you'd manage.' Whatever it's for, that's between them and it now.
+  given_message: "New quest: A Standing Request - the shopkeeper wants a pale fungus that only grows near standing water deep in the Sunken Mine."
+  questgiver_done_dialogue: Found what I was after, did you? Coin's worth more to you here now, at least.
+  questgiver_entity_id: shopkeeper
+  target_item_id: pale_fungus
+  reward_shop_discount_pct: 0.2

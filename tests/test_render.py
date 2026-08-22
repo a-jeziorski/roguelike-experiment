@@ -5,7 +5,7 @@ from pathlib import Path
 
 import tcod.console
 
-from content.loader import load_catalog, load_level
+from content.loader import load_catalog, load_level, load_quests
 from engine.engine import Engine, MessageLog
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -16,7 +16,7 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import GameMap, build_game_map
-from engine.quest import GOBLIN_WARNING_ID, KILL_THE_WARDEN_ID, Quest, create_starting_quest_log
+from engine.quest import Quest, QuestLog, create_quest_log
 from engine.render import (
     LOG_COLORS,
     TILE_VISUALS,
@@ -38,6 +38,14 @@ from engine.render import (
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
+QUESTS_PATH = DATA_DIR / "quests.yaml"
+
+
+def real_quest_log() -> QuestLog:
+    """The real starting QuestLog, built from data/quests.yaml the same way
+    main.py builds it - for tests that exercise real quest content."""
+    catalog = load_catalog()
+    return create_quest_log(load_quests(QUESTS_PATH, catalog))
 
 
 def make_game_map(width: int = 3, height: int = 3) -> GameMap:
@@ -133,14 +141,14 @@ def test_render_hud_shows_the_active_quest():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, level.name, quest_log=quest_log)
 
     console = tcod.console.Console(70, 40, order="F")
     render_all(console, engine)
 
     text = console_text(console)
-    assert quest_log.quests[GOBLIN_WARNING_ID].format_for_hud() in text
+    assert quest_log.quests["goblin_warning"].format_for_hud() in text
 
 
 def test_render_hud_shows_gold():
@@ -161,14 +169,14 @@ def test_render_hud_never_shows_a_not_given_quest():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
-    quest_log = create_starting_quest_log()  # kill_the_warden starts "not_given"
+    quest_log = real_quest_log()  # kill_the_warden starts "not_given"
     engine = Engine(game_map, player, level.name, quest_log=quest_log)
 
     console = tcod.console.Console(70, 40, order="F")
     render_all(console, engine)
 
     text = console_text(console)
-    kill_quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    kill_quest = quest_log.quests["kill_the_warden"]
     assert kill_quest.name not in text
 
 
@@ -176,16 +184,16 @@ def test_render_hud_only_shows_the_pinned_quest_even_with_two_in_progress():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
-    quest_log = create_starting_quest_log()
-    quest_log.quests[KILL_THE_WARDEN_ID].status = "in_progress"  # both now in progress
+    quest_log = real_quest_log()
+    quest_log.quests["kill_the_warden"].status = "in_progress"  # both now in progress
     engine = Engine(game_map, player, level.name, quest_log=quest_log)  # pinned: goblin_warning
 
     console = tcod.console.Console(70, 40, order="F")
     render_all(console, engine)
 
     text = console_text(console)
-    assert quest_log.quests[GOBLIN_WARNING_ID].name in text
-    assert quest_log.quests[KILL_THE_WARDEN_ID].name not in text
+    assert quest_log.quests["goblin_warning"].name in text
+    assert quest_log.quests["kill_the_warden"].name not in text
 
 
 def test_render_quest_log_lists_quests_and_tags_the_active_one():

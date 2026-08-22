@@ -103,10 +103,10 @@ class Engine:
         self.clock = clock if clock is not None else GameClock()
         # Shared quest log, same pattern as self.clock above - main.py hands
         # every Engine the same QuestLog instance (built by
-        # engine.quest.create_starting_quest_log), so completing or failing
-        # the one active quest is visible everywhere at once. Defaults to a
-        # fresh *empty* QuestLog() (no quests inside) so bare Engine(...)
-        # construction in tests stays inert.
+        # engine.quest.create_quest_log from data/quests.yaml), so completing
+        # or failing the one active quest is visible everywhere at once.
+        # Defaults to a fresh *empty* QuestLog() (no quests inside) so bare
+        # Engine(...) construction in tests stays inert.
         self.quest_log = quest_log if quest_log is not None else QuestLog()
         # dungeon_id -> flavor text shown when a dungeon_entrance tile is
         # inspected in look mode (see engine/render.py describe_tile). Only

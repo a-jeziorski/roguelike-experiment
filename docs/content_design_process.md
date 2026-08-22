@@ -212,6 +212,53 @@ and `landmark` tiles rather than monster encounters). No longer a trial:
 new or revising existing, and fold it into the authoring checklist
 (§4) below.
 
+## 0e. Quests are content too (`data/quests.yaml`)
+
+Quests follow the same "engine defines the shape, `data/` fills it in"
+split as monsters and items: `content/schema.py`'s `QuestDef` is the raw
+authored shape (validated field-by-field, and cross-referenced against the
+catalog/dungeon registry by `content/loader.py`'s `load_quests`);
+`engine/quest.py` owns the actual mechanics - what each trigger checks,
+when a quest is granted, what a reward does - and turns a validated
+`QuestDef` into a live `Quest` via `quest_from_def`/`create_quest_log`.
+Adding a new quest never means touching `engine/quest.py` - it means
+adding an entry to `data/quests.yaml`.
+
+A quest completes via exactly one of four trigger shapes, picked by which
+single field is set (`QuestDef` rejects setting more than one):
+
+| Trigger field | Fires when | Checked in |
+|---|---|---|
+| `target_dungeon_id` | player arrives in that dungeon | `main.py`'s `resolve_transition` -> `QuestLog.check_dungeon_arrival` |
+| `target_entity_id` | player talks to that catalog entity | `Engine.talk_to_adjacent` -> `QuestLog.check_talked_to` |
+| `target_kill_entity_id` | that catalog entity dies (anywhere, any time - see `killed_entity_ids`) | `Engine.on_entity_death` -> `QuestLog.record_entity_killed` |
+| `target_item_id` | player talks to `questgiver_entity_id` *while holding* a matching item | `Engine.talk_to_adjacent` -> `QuestLog.check_delivery` |
+
+None is valid too, for a quest with no completion trigger authored yet.
+
+`questgiver_entity_id` is a separate concept from the trigger: setting it
+means the quest starts `starting_status: not_given` and is granted by
+*talking* to that NPC (`QuestLog.check_questgiver`), rather than being
+live from game start (`starting_status: in_progress`, no questgiver
+needed - see `goblin_warning`). A `target_item_id` (fetch) quest always
+needs a `questgiver_entity_id` too - delivery only ever completes by
+talking to that NPC while holding the item - and `load_quests` rejects a
+fetch quest missing one, along with a `not_given` quest missing one
+(nothing else can ever grant it) and a bad entity/item/dungeon reference.
+`deadline_year`/`deadline_day` must be set together or not at all.
+
+Reward is `reward_item_id` (grants a catalog item straight into
+inventory), `reward_shop_discount_pct` (a permanent fraction off
+everything in the Millhaven shop, e.g. `0.2` for 20% off - see
+`Engine.shop_price`), both, or neither.
+
+Which quest is pinned to the HUD at game start is whichever comes first,
+in `data/quests.yaml`'s key order, with `starting_status: in_progress` -
+today only `goblin_warning` starts that way, so this can't yet surprise
+anyone, but a second in-progress starting quest would make file order the
+(silent) tiebreaker. Don't reorder `quests.yaml` casually once more than
+one quest starts `in_progress`.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

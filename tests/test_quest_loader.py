@@ -1,0 +1,221 @@
+from pathlib import Path
+
+import pytest
+
+from content.loader import ContentValidationError, load_catalog, load_quests
+from engine.quest import create_quest_log
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+QUESTS_PATH = DATA_DIR / "quests.yaml"
+
+
+def write_quests(tmp_path: Path, text: str) -> Path:
+    path = tmp_path / "quests.yaml"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_load_quests_loads_the_real_shipped_file():
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
+
+    assert set(quests) == {"goblin_warning", "kill_the_warden", "fetch_fungus"}
+    assert quests["goblin_warning"].starting_status == "in_progress"
+    assert quests["kill_the_warden"].starting_status == "not_given"
+    assert quests["fetch_fungus"].reward_shop_discount_pct == 0.2
+
+
+def test_load_quests_end_to_end_matches_pre_refactor_values():
+    """Regression net for the move from hardcoded Quest instances to
+    data/quests.yaml: pins the same field values the old
+    create_starting_quest_log() hardcoded, now loaded through the full
+    load_quests -> create_quest_log pipeline against the real file."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven"})
+    log = create_quest_log(quests)
+
+    assert set(log.quests) == {"goblin_warning", "kill_the_warden", "fetch_fungus"}
+    assert log.active_quest_id == "goblin_warning"
+
+    goblin_warning = log.quests["goblin_warning"]
+    assert goblin_warning.status == "in_progress"
+    assert goblin_warning.deadline_year == 87
+    assert goblin_warning.deadline_day == 57
+    assert goblin_warning.target_entity_id == "village_chief"
+
+    kill_the_warden = log.quests["kill_the_warden"]
+    assert kill_the_warden.status == "not_given"
+    assert kill_the_warden.questgiver_entity_id == "escaped_prisoner"
+    assert kill_the_warden.target_kill_entity_id == "warden"
+    assert kill_the_warden.reward_item_id == "healing_potion"
+
+    fetch_fungus = log.quests["fetch_fungus"]
+    assert fetch_fungus.status == "not_given"
+    assert fetch_fungus.questgiver_entity_id == "shopkeeper"
+    assert fetch_fungus.target_item_id == "pale_fungus"
+    assert fetch_fungus.reward_shop_discount_pct == 0.2
+
+
+def test_load_quests_rejects_unknown_questgiver_entity(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: nonexistent_npc\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="questgiver_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_unknown_target_item(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_item_id: nonexistent_item\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_item_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_unknown_reward_item(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  reward_item_id: nonexistent_item\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="reward_item_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_unknown_target_dungeon(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_dungeon_id: nonexistent_dungeon\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_dungeon_id"):
+        load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_skips_dungeon_check_when_known_dungeon_ids_is_none(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "quest_one:\n"
+        "  name: Quest One\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_dungeon_id: anything_at_all\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)  # known_dungeon_ids defaults to None
+
+    assert quests["quest_one"].target_dungeon_id == "anything_at_all"
+
+
+def test_load_quests_rejects_two_trigger_fields_set_at_once(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  target_kill_entity_id: warden\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="at most one"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_one_deadline_field_without_the_other(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  deadline_year: 87\n"
+        "  target_entity_id: village_chief\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="deadline_year and deadline_day"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_fetch_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_item_id: pale_fungus\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_not_given_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n",
+        # starting_status defaults to "not_given", no questgiver_entity_id set
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="could never start"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_allows_a_not_given_quest_with_a_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "fine_quest:\n"
+        "  name: Fine Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_entity_id: village_chief\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["fine_quest"].starting_status == "not_given"

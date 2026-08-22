@@ -6,7 +6,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 import random
 from pathlib import Path
 
-from content.loader import load_catalog, load_level, load_levels, load_overworld
+from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
@@ -20,23 +20,21 @@ from engine.entity import (
 )
 from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
 from engine.shop import SHOPKEEPER_ENTITY_ID
-from engine.quest import (
-    FETCH_FUNGUS_ID,
-    FETCH_FUNGUS_ITEM,
-    FETCH_FUNGUS_QUESTGIVER,
-    GOBLIN_WARNING_ID,
-    KILL_THE_WARDEN_ID,
-    KILL_THE_WARDEN_QUESTGIVER,
-    KILL_THE_WARDEN_TARGET,
-    Quest,
-    QuestLog,
-    create_starting_quest_log,
-)
+from engine.quest import Quest, QuestLog, create_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
 PRISON_TOWER_LEVELS_DIR = DATA_DIR / "dungeons" / "prison_tower" / "levels"
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+QUESTS_PATH = DATA_DIR / "quests.yaml"
+
+
+def real_quest_log() -> QuestLog:
+    """The real starting QuestLog, built from data/quests.yaml the same way
+    main.py builds it - for tests that exercise real quest content
+    (ids/entities/items/rewards) rather than a synthetic Quest/QuestLog."""
+    catalog = load_catalog()
+    return create_quest_log(load_quests(QUESTS_PATH, catalog))
 
 
 def make_open_map(width: int, height: int) -> GameMap:
@@ -1625,7 +1623,7 @@ def test_engine_stores_given_quest_log():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     game_map.entities.append(player)
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     assert engine.quest_log is quest_log
@@ -1682,20 +1680,20 @@ def test_restart_resets_the_shared_quest_log():
     levels = load_levels(LEVELS_DIR, catalog)
     starting_level = levels["level_01"]
     game_map, player = build_game_map(starting_level, catalog)
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(
         game_map, player, starting_level.name,
         catalog=catalog, levels=levels, starting_level=starting_level, quest_log=quest_log,
     )
-    quest_log.quests[GOBLIN_WARNING_ID].status = "failed"
+    quest_log.quests["goblin_warning"].status = "failed"
 
     engine.restart()
 
-    assert quest_log.quests[GOBLIN_WARNING_ID].status == "in_progress"
+    assert quest_log.quests["goblin_warning"].status == "in_progress"
 
 
 def test_shared_quest_log_object_is_visible_across_engines():
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
 
     overworld_map = make_open_map(3, 3)
     overworld_player = make_player(1, 1)
@@ -1713,7 +1711,7 @@ def test_shared_quest_log_object_is_visible_across_engines():
 
     dungeon_engine.quest_log.check_talked_to("village_chief")
 
-    assert overworld_engine.quest_log.quests[GOBLIN_WARNING_ID].status == "completed"
+    assert overworld_engine.quest_log.quests["goblin_warning"].status == "completed"
 
 
 def test_talk_to_adjacent_shows_the_villagers_dialogue():
@@ -1786,12 +1784,12 @@ def test_talk_to_adjacent_completes_a_matching_quest():
     player = make_player(1, 1)
     chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
     game_map.entities.extend([player, chief])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    quest = quest_log.quests["goblin_warning"]
     assert quest.status == "completed"
     assert quest.completion_message in engine.message_log.messages
 
@@ -1801,14 +1799,14 @@ def test_talk_to_adjacent_chief_uses_the_followup_line_after_the_quest_completes
     player = make_player(1, 1)
     chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief", name="Village Chief")
     game_map.entities.extend([player, chief])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     engine.talk_to_adjacent()  # first Talk: shows the original line, completes the quest
     engine.message_log.messages.clear()
     engine.talk_to_adjacent()  # second Talk: quest is now completed
 
-    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    quest = quest_log.quests["goblin_warning"]
     assert f'Village Chief: "{quest.target_done_dialogue}"' in engine.message_log.messages
     assert 'Village Chief: "Tell me what you can, then."' not in engine.message_log.messages
     assert quest.completion_message not in engine.message_log.messages  # not repeated
@@ -1819,12 +1817,12 @@ def test_talk_to_adjacent_does_not_complete_a_non_target_villager():
     player = make_player(1, 1)
     villager = make_villager(2, 1, dialogue="Can't talk.", entity_id="villager")
     game_map.entities.extend([player, villager])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    quest = quest_log.quests["goblin_warning"]
     assert quest.status == "in_progress"
     assert quest.completion_message not in engine.message_log.messages
 
@@ -1834,13 +1832,13 @@ def test_talk_to_adjacent_does_not_repeat_completion_message():
     player = make_player(1, 1)
     chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
     game_map.entities.extend([player, chief])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     engine.talk_to_adjacent()
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    quest = quest_log.quests["goblin_warning"]
     assert engine.message_log.messages.count(quest.completion_message) == 1
 
 
@@ -1853,8 +1851,8 @@ def test_talk_to_adjacent_after_deadline_failure_does_not_complete_the_quest():
     player = make_player(1, 1)
     chief = make_villager(2, 1, dialogue="Tell me what you can, then.", entity_id="village_chief")
     game_map.entities.extend([player, chief])
-    quest_log = create_starting_quest_log()
-    quest = quest_log.quests[GOBLIN_WARNING_ID]
+    quest_log = real_quest_log()
+    quest = quest_log.quests["goblin_warning"]
     clock = GameClock(year=quest.deadline_year, day=quest.deadline_day + 1, hour=0)
     engine = Engine(game_map, player, "Test Level", clock=clock, quest_log=quest_log)
     engine._check_quest_deadlines()
@@ -1891,7 +1889,7 @@ def make_warden(x: int, y: int, hp: int = 5) -> Entity:
         blocks_movement=True,
         render_priority=RENDER_PRIORITY_ACTOR,
         fighter=Fighter(max_hp=hp, hp=hp, attack=0, defense=0),
-        entity_id=KILL_THE_WARDEN_TARGET,
+        entity_id="warden",
     )
 
 
@@ -1901,8 +1899,8 @@ def test_on_entity_death_completes_a_kill_quest_and_grants_reward():
     player = make_player(1, 1)
     warden = make_warden(2, 1)
     game_map.entities.extend([player, warden])
-    quest_log = create_starting_quest_log()
-    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest_log = real_quest_log()
+    quest = quest_log.quests["kill_the_warden"]
     quest.status = "in_progress"  # simulate having already been granted
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
@@ -1920,14 +1918,14 @@ def test_on_entity_death_records_kill_before_quest_is_given():
     player = make_player(1, 1)
     warden = make_warden(2, 1)
     game_map.entities.extend([player, warden])
-    quest_log = create_starting_quest_log()  # kill_the_warden still "not_given"
+    quest_log = real_quest_log()  # kill_the_warden still "not_given"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.on_entity_death(warden)
 
-    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest = quest_log.quests["kill_the_warden"]
     assert quest.status == "not_given"
-    assert KILL_THE_WARDEN_TARGET in quest_log.killed_entity_ids
+    assert "warden" in quest_log.killed_entity_ids
     assert player.inventory == []  # no reward - the quest was never completed
 
 
@@ -1935,14 +1933,14 @@ def test_talk_to_adjacent_grants_a_questgiver_quest():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest = quest_log.quests["kill_the_warden"]
     assert quest.status == "in_progress"
     assert quest.given_message in engine.message_log.messages
     assert player.inventory == []  # not completed yet, no reward
@@ -1952,15 +1950,15 @@ def test_talk_to_adjacent_questgiver_already_done_completes_immediately():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
-    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)  # already killed before being asked
+    quest_log = real_quest_log()
+    quest_log.record_entity_killed("warden")  # already killed before being asked
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest = quest_log.quests["kill_the_warden"]
     assert quest.status == "completed"
     assert quest.already_done_message in engine.message_log.messages
     assert quest.given_message not in engine.message_log.messages
@@ -1972,40 +1970,40 @@ def test_talk_to_adjacent_auto_pins_a_granted_quest_when_nothing_was_pinned():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     quest_log.active_quest_id = None
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    assert quest_log.active_quest_id == KILL_THE_WARDEN_ID
+    assert quest_log.active_quest_id == "kill_the_warden"
 
 
 def test_talk_to_adjacent_does_not_bump_an_already_pinned_quest():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()  # active_quest_id starts as GOBLIN_WARNING_ID
+    quest_log = real_quest_log()  # active_quest_id starts as "goblin_warning"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    assert quest_log.active_quest_id == GOBLIN_WARNING_ID  # unchanged
+    assert quest_log.active_quest_id == "goblin_warning"  # unchanged
 
 
 def test_talk_to_adjacent_retroactive_completion_does_not_auto_pin():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     quest_log.active_quest_id = None
-    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)
+    quest_log.record_entity_killed("warden")
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
@@ -2017,9 +2015,9 @@ def test_talk_to_adjacent_still_shows_normal_dialogue_before_quest_is_completed(
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
+    quest_log = real_quest_log()
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()  # grants the quest, does not complete it
@@ -2031,17 +2029,17 @@ def test_talk_to_adjacent_uses_the_followup_line_after_the_quest_completes():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
-    quest_log.record_entity_killed(KILL_THE_WARDEN_TARGET)  # already dead
+    quest_log = real_quest_log()
+    quest_log.record_entity_killed("warden")  # already dead
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()  # first Talk: completes the quest retroactively
     engine.message_log.messages.clear()
     engine.talk_to_adjacent()  # second Talk: quest is now completed
 
-    quest = quest_log.quests[KILL_THE_WARDEN_ID]
+    quest = quest_log.quests["kill_the_warden"]
     assert f'Escaped Prisoner: "{quest.questgiver_done_dialogue}"' in engine.message_log.messages
     assert 'Escaped Prisoner: "Made it out too."' not in engine.message_log.messages
     # the reward and completion message aren't repeated on a later re-talk
@@ -2053,17 +2051,17 @@ def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
     player.inventory.append(fungus)
-    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id="shopkeeper", name="Shopkeeper")
     game_map.entities.extend([player, shopkeeper])
-    quest_log = create_starting_quest_log()
-    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"  # already given, not yet delivered
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "in_progress"  # already given, not yet delivered
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    quest = quest_log.quests["fetch_fungus"]
     assert quest.status == "completed"
     assert quest.completion_message in engine.message_log.messages
     assert fungus not in player.inventory
@@ -2074,15 +2072,15 @@ def test_talk_to_adjacent_does_not_complete_a_fetch_quest_without_the_item():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id="shopkeeper", name="Shopkeeper")
     game_map.entities.extend([player, shopkeeper])
-    quest_log = create_starting_quest_log()
-    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "in_progress"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    quest = quest_log.quests["fetch_fungus"]
     assert quest.status == "in_progress"
     assert player.inventory == []
 
@@ -2091,17 +2089,17 @@ def test_talk_to_adjacent_does_not_complete_a_fetch_quest_via_the_wrong_npc():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
     player.inventory.append(fungus)
-    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner")
     game_map.entities.extend([player, prisoner])
-    quest_log = create_starting_quest_log()
-    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "in_progress"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    quest = quest_log.quests["fetch_fungus"]
     assert quest.status == "in_progress"
     assert fungus in player.inventory
 
@@ -2116,16 +2114,16 @@ def test_talk_to_adjacent_grants_and_delivers_a_fetch_quest_in_one_talk_when_alr
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
     player.inventory.append(fungus)
-    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id="shopkeeper", name="Shopkeeper")
     game_map.entities.extend([player, shopkeeper])
-    quest_log = create_starting_quest_log()  # fetch_fungus starts not_given
+    quest_log = real_quest_log()  # fetch_fungus starts not_given
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     engine.talk_to_adjacent()
 
-    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    quest = quest_log.quests["fetch_fungus"]
     assert quest.status == "completed"
     assert fungus not in player.inventory
 
@@ -2420,8 +2418,8 @@ def test_shop_price_reflects_the_fungus_quests_discount_once_completed():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     game_map.entities.append(player)
-    quest_log = create_starting_quest_log()
-    quest_log.quests[FETCH_FUNGUS_ID].status = "completed"
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "completed"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     assert engine.shop_price("healing_potion") == 20
@@ -2433,8 +2431,8 @@ def test_buy_from_shop_charges_the_discounted_price():
     player = make_player(1, 1)
     player.gold = 20
     game_map.entities.append(player)
-    quest_log = create_starting_quest_log()
-    quest_log.quests[FETCH_FUNGUS_ID].status = "completed"
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "completed"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
     message = engine.buy_from_shop("healing_potion")

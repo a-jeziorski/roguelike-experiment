@@ -15,7 +15,7 @@ from typing import Literal
 import yaml
 from pydantic import ValidationError
 
-from content.schema import TILE_PASSABILITY, DungeonDef, EntityDef, ItemDef, LevelDef
+from content.schema import TILE_PASSABILITY, DungeonDef, EntityDef, ItemDef, LevelDef, QuestDef
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -143,6 +143,70 @@ def load_catalog(
         )
 
     return Catalog(entities=entities, items=items)
+
+
+def load_quests(
+    path: Path, catalog: Catalog, known_dungeon_ids: set[str] | None = None,
+) -> dict[str, QuestDef]:
+    """Loads and validates data/quests.yaml (see content/schema.py's
+    QuestDef). `known_dungeon_ids` cross-checks target_dungeon_id the same
+    way load_overworld checks dungeon_entrance - pass None to skip (e.g. a
+    test not loading the full dungeon registry)."""
+    raw = _load_yaml(path) or {}
+    quests: dict[str, QuestDef] = {}
+    errors: list[str] = []
+
+    for quest_id, fields in raw.items():
+        try:
+            quest = QuestDef(id=quest_id, **fields)
+        except ValidationError as e:
+            errors.append(f"quest '{quest_id}': {e}")
+            continue
+
+        for label, entity_id in (
+            ("questgiver_entity_id", quest.questgiver_entity_id),
+            ("target_entity_id", quest.target_entity_id),
+            ("target_kill_entity_id", quest.target_kill_entity_id),
+        ):
+            if entity_id is not None and entity_id not in catalog.entities:
+                errors.append(f"quest '{quest_id}': {label} references unknown entity '{entity_id}'")
+
+        for label, item_id in (
+            ("target_item_id", quest.target_item_id),
+            ("reward_item_id", quest.reward_item_id),
+        ):
+            if item_id is not None and item_id not in catalog.items:
+                errors.append(f"quest '{quest_id}': {label} references unknown item '{item_id}'")
+
+        if quest.target_dungeon_id is not None and known_dungeon_ids is not None:
+            if quest.target_dungeon_id not in known_dungeon_ids:
+                errors.append(
+                    f"quest '{quest_id}': target_dungeon_id references unknown "
+                    f"dungeon '{quest.target_dungeon_id}'"
+                )
+
+        if quest.target_item_id is not None and quest.questgiver_entity_id is None:
+            errors.append(
+                f"quest '{quest_id}': target_item_id (a fetch/delivery quest) "
+                "requires questgiver_entity_id too - QuestLog.check_delivery "
+                "only ever completes a fetch quest by talking to its "
+                "questgiver, so one without a questgiver can never complete"
+            )
+
+        if quest.questgiver_entity_id is None and quest.starting_status == "not_given":
+            errors.append(
+                f"quest '{quest_id}': starting_status is 'not_given' but no "
+                "questgiver_entity_id is set - QuestLog.check_questgiver is "
+                "the only way a not_given quest is ever granted, so this "
+                "quest could never start"
+            )
+
+        quests[quest_id] = quest
+
+    if errors:
+        raise ContentValidationError(str(path), errors)
+
+    return quests
 
 
 def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:

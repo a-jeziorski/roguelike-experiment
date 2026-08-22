@@ -1,20 +1,10 @@
+from content.schema import QuestDef
 from engine.clock import GameClock
 from engine.quest import (
-    FETCH_FUNGUS_DISCOUNT_PCT,
-    FETCH_FUNGUS_ID,
-    FETCH_FUNGUS_ITEM,
-    FETCH_FUNGUS_QUESTGIVER,
-    GOBLIN_WARNING_DEADLINE_DAY,
-    GOBLIN_WARNING_DEADLINE_YEAR,
-    GOBLIN_WARNING_ID,
-    GOBLIN_WARNING_TARGET_ENTITY,
-    KILL_THE_WARDEN_ID,
-    KILL_THE_WARDEN_QUESTGIVER,
-    KILL_THE_WARDEN_REWARD,
-    KILL_THE_WARDEN_TARGET,
     Quest,
     QuestLog,
-    create_starting_quest_log,
+    create_quest_log,
+    quest_from_def,
 )
 
 
@@ -32,6 +22,17 @@ def make_quest(**overrides) -> Quest:
     )
     defaults.update(overrides)
     return Quest(**defaults)
+
+
+def make_quest_def(**overrides) -> QuestDef:
+    defaults = dict(
+        id="test_quest",
+        name="Test Quest",
+        description="A quest for testing.",
+        completion_message="Completed!",
+    )
+    defaults.update(overrides)
+    return QuestDef(**defaults)
 
 
 # --- check_deadlines ---
@@ -462,16 +463,6 @@ def test_shop_discount_pct_takes_the_largest_of_multiple_completed_discounts():
     assert log.shop_discount_pct() == 0.2
 
 
-def test_create_starting_quest_log_has_the_fetch_fungus_quest():
-    log = create_starting_quest_log()
-    quest = log.quests[FETCH_FUNGUS_ID]
-
-    assert quest.status == "not_given"
-    assert quest.questgiver_entity_id == FETCH_FUNGUS_QUESTGIVER == "shopkeeper"
-    assert quest.target_item_id == FETCH_FUNGUS_ITEM == "pale_fungus"
-    assert quest.reward_shop_discount_pct == FETCH_FUNGUS_DISCOUNT_PCT == 0.2
-
-
 # --- active_quest / set_active_quest ---
 
 
@@ -549,41 +540,74 @@ def test_format_for_hud_no_deadline_omits_the_day_suffix():
     assert quest.format_for_hud() == "Quest: An Old Debt - active"
 
 
-# --- create_starting_quest_log ---
+# --- quest_from_def ---
 
 
-def test_create_starting_quest_log_has_all_three_quests():
-    log = create_starting_quest_log()
+def test_quest_from_def_copies_every_field():
+    qdef = make_quest_def(
+        id="fetch_test", name="Fetch Test", description="Bring it back.",
+        completion_message="Got it.", failure_message="Too late.",
+        target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
+        deadline_year=87, deadline_day=60,
+        given_message="Go get it.", already_done_message="Already done.",
+        questgiver_done_dialogue="Thanks.",
+        reward_shop_discount_pct=0.2,
+        starting_status="in_progress",
+    )
 
-    assert set(log.quests) == {GOBLIN_WARNING_ID, KILL_THE_WARDEN_ID, FETCH_FUNGUS_ID}
+    quest = quest_from_def(qdef)
 
-
-def test_create_starting_quest_log_goblin_warning_is_given_from_the_start():
-    log = create_starting_quest_log()
-    quest = log.quests[GOBLIN_WARNING_ID]
-
+    assert quest.id == "fetch_test"
+    assert quest.name == "Fetch Test"
+    assert quest.description == "Bring it back."
+    assert quest.completion_message == "Got it."
+    assert quest.failure_message == "Too late."
+    assert quest.target_item_id == "pale_fungus"
+    assert quest.questgiver_entity_id == "shopkeeper"
+    assert quest.deadline_year == 87
+    assert quest.deadline_day == 60
+    assert quest.given_message == "Go get it."
+    assert quest.already_done_message == "Already done."
+    assert quest.questgiver_done_dialogue == "Thanks."
+    assert quest.reward_shop_discount_pct == 0.2
     assert quest.status == "in_progress"
-    assert quest.deadline_year == GOBLIN_WARNING_DEADLINE_YEAR == 87
-    assert quest.deadline_day == GOBLIN_WARNING_DEADLINE_DAY == 57
-    assert quest.target_entity_id == GOBLIN_WARNING_TARGET_ENTITY == "village_chief"
-    assert quest.target_dungeon_id is None
+    assert quest.initial_status == "in_progress"  # __post_init__ snapshots starting_status
 
 
-def test_create_starting_quest_log_kill_the_warden_starts_not_given():
-    log = create_starting_quest_log()
-    quest = log.quests[KILL_THE_WARDEN_ID]
-
-    assert quest.status == "not_given"
-    assert quest.deadline_year is None
-    assert quest.deadline_day is None
-    assert quest.questgiver_entity_id == KILL_THE_WARDEN_QUESTGIVER == "escaped_prisoner"
-    assert quest.target_kill_entity_id == KILL_THE_WARDEN_TARGET == "warden"
-    assert quest.reward_item_id == KILL_THE_WARDEN_REWARD == "healing_potion"
+# --- create_quest_log ---
 
 
-def test_create_starting_quest_log_pins_the_goblin_warning_as_active():
-    log = create_starting_quest_log()
-    assert log.active_quest_id == GOBLIN_WARNING_ID
+def test_create_quest_log_builds_a_quest_per_def():
+    defs = {
+        "a": make_quest_def(id="a", starting_status="in_progress"),
+        "b": make_quest_def(id="b", starting_status="not_given"),
+    }
+
+    log = create_quest_log(defs)
+
+    assert set(log.quests) == {"a", "b"}
+    assert log.quests["a"].status == "in_progress"
+    assert log.quests["b"].status == "not_given"
+
+
+def test_create_quest_log_pins_the_first_in_progress_quest_in_def_order():
+    defs = {
+        "not_given_one": make_quest_def(id="not_given_one", starting_status="not_given"),
+        "first_in_progress": make_quest_def(id="first_in_progress", starting_status="in_progress"),
+        "second_in_progress": make_quest_def(id="second_in_progress", starting_status="in_progress"),
+    }
+
+    log = create_quest_log(defs)
+
+    assert log.active_quest_id == "first_in_progress"
+
+
+def test_create_quest_log_pin_is_none_when_nothing_starts_in_progress():
+    defs = {"a": make_quest_def(id="a", starting_status="not_given")}
+
+    log = create_quest_log(defs)
+
+    assert log.active_quest_id is None
 
 
 # --- Quest.format_for_hud ---

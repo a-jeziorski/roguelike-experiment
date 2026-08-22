@@ -166,7 +166,7 @@ no house - see the Roster section for why the chief now holds that one
 spot (`stationary`) instead of wandering off it, which matters more
 now that "the chief's spot" is a specific room rather than wherever
 they happened to wander. The message itself is spoken, not written
-(`engine/quest.py`'s own framing: word of a goblin horde migrating
+(`data/quests.yaml`'s own framing: word of a goblin horde migrating
 into the region, carried by the player, "no letter, no proof") -
 deliberately verbal from the start, so `Talk` completing it is the
 natural mechanism rather than a retrofit. An earlier draft of this

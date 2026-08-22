@@ -15,6 +15,7 @@ from content.loader import (
     load_catalog,
     load_dungeon_registry,
     load_overworld,
+    load_quests,
 )
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
@@ -30,7 +31,7 @@ from engine.actions import (
 from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
-from engine.quest import QuestLog, create_starting_quest_log
+from engine.quest import QuestLog, create_quest_log
 from engine.shop import SHOP_INVENTORY
 from engine.input_handlers import (
     handle_event,
@@ -57,6 +58,7 @@ from engine.targeting import find_nearest_target
 
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
 OVERWORLD_LEVEL_PATH = Path(__file__).resolve().parent / "data" / "overworld.lvl"
+QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
 STARTING_DUNGEON_ID = "prison_tower"
 OVERWORLD_KEY = "overworld"
 
@@ -394,12 +396,13 @@ def main() -> int:
         overworld_level = load_overworld(
             OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
         )
+        quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
 
     clock = GameClock()
-    quest_log = create_starting_quest_log()
+    quest_log = create_quest_log(quest_defs)
 
     dungeon = dungeon_registry[STARTING_DUNGEON_ID]
     levels = dungeon.levels

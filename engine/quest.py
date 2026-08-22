@@ -1,10 +1,20 @@
-"""Quest tracking: a handful of hardcoded quests (see create_starting_quest_log),
-some given from the start, some granted by talking to a questgiver NPC while
-they're still "not_given". Not a scripting engine - quests complete via four
-hardcoded trigger shapes (dungeon arrival, Talk, killing a specific catalog
-entity, delivering a specific catalog item to its questgiver) that
-Engine/main.py call into (see Engine.on_entity_death, Engine.talk_to_adjacent,
-main.py's resolve_transition), and fail via one (clock deadline, see
+"""Quest tracking: this module owns the *mechanics* of a quest - the four
+trigger shapes a quest can complete via (dungeon arrival, Talk, killing a
+specific catalog entity, delivering a specific catalog item to its
+questgiver) and what each one actually checks - not any one quest's specific
+content. The quests themselves (names, flavor text, deadlines, which
+NPC/item/dungeon each targets, rewards) are authored in data/quests.yaml,
+validated as QuestDef (content/schema.py) by content/loader.py's
+load_quests, and turned into live Quest/QuestLog state by this module's own
+quest_from_def/create_quest_log - the same "content/schema.py defines the
+raw shape, engine/ converts it to runtime state" split already used for
+monsters (EntityDef -> Entity) and items (ItemDef -> item Entity).
+
+Not a scripting engine - quests complete via four hardcoded trigger shapes
+(dungeon arrival, Talk, killing a specific catalog entity, delivering a
+specific catalog item to its questgiver) that Engine/main.py call into (see
+Engine.on_entity_death, Engine.talk_to_adjacent, main.py's
+resolve_transition), and fail via one (clock deadline, see
 Engine._check_quest_deadlines). Two reward shapes exist: granting an item
 straight into inventory (reward_item_id), and a permanent Millhaven shop
 discount (reward_shop_discount_pct) - see Engine.complete_quest.
@@ -31,29 +41,14 @@ where it changes."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
+from content.schema import QuestStatus
 from engine.clock import GameClock
 
 if TYPE_CHECKING:
+    from content.schema import QuestDef
     from engine.entity import Entity
-
-QuestStatus = Literal["not_given", "in_progress", "completed", "failed"]
-
-GOBLIN_WARNING_ID = "goblin_warning"
-GOBLIN_WARNING_DEADLINE_YEAR = 87
-GOBLIN_WARNING_DEADLINE_DAY = 57
-GOBLIN_WARNING_TARGET_ENTITY = "village_chief"
-
-KILL_THE_WARDEN_ID = "kill_the_warden"
-KILL_THE_WARDEN_QUESTGIVER = "escaped_prisoner"
-KILL_THE_WARDEN_TARGET = "warden"
-KILL_THE_WARDEN_REWARD = "healing_potion"
-
-FETCH_FUNGUS_ID = "fetch_fungus"
-FETCH_FUNGUS_QUESTGIVER = "shopkeeper"
-FETCH_FUNGUS_ITEM = "pale_fungus"
-FETCH_FUNGUS_DISCOUNT_PCT = 0.2
 
 
 @dataclass
@@ -132,9 +127,9 @@ class Quest:
 class QuestLog:
     """One instance is shared by every Engine in the game (see main.py) -
     same "one object, referenced everywhere" pattern as GameClock. Only
-    main.py's real quest_log (via create_starting_quest_log) is ever
-    populated; bare Engine(...) construction (e.g. in tests) gets a fresh
-    empty QuestLog()."""
+    main.py's real quest_log (via create_quest_log, built from
+    data/quests.yaml) is ever populated; bare Engine(...) construction (e.g.
+    in tests) gets a fresh empty QuestLog()."""
 
     quests: dict[str, Quest] = field(default_factory=dict)
     # Which in-progress quest's name/deadline the HUD shows - see
@@ -312,62 +307,38 @@ class QuestLog:
         )
 
 
-def create_starting_quest_log() -> QuestLog:
-    goblin_warning = Quest(
-        id=GOBLIN_WARNING_ID,
-        name="The Goblin Warning",
-        description=(
-            "Before your capture, you were carrying word to Millhaven: a "
-            "goblin horde is migrating into the region, and the town needs "
-            "warning before it arrives. No letter, no proof - just what "
-            "you were told, and who you can get to listen."
-        ),
-        completion_message="The warning is passed on - what Millhaven does with it now isn't yours to carry anymore.",
-        failure_message="The deadline for the warning has passed. Whatever time Millhaven had to prepare, it's gone now.",
-        target_done_dialogue="The warning's out now - the town knows what's coming, thanks to you. Whatever happens next, at least we won't be caught flat-footed.",
-        deadline_year=GOBLIN_WARNING_DEADLINE_YEAR,
-        deadline_day=GOBLIN_WARNING_DEADLINE_DAY,
-        target_entity_id=GOBLIN_WARNING_TARGET_ENTITY,
-        status="in_progress",
+def quest_from_def(qdef: "QuestDef") -> Quest:
+    """One QuestDef in, one runtime Quest out - mirrors
+    engine/game_map.py's item_entity_from_def (one ItemDef in, one Entity
+    out, no map context needed)."""
+    return Quest(
+        id=qdef.id, name=qdef.name, description=qdef.description,
+        completion_message=qdef.completion_message, failure_message=qdef.failure_message,
+        target_dungeon_id=qdef.target_dungeon_id, target_entity_id=qdef.target_entity_id,
+        target_kill_entity_id=qdef.target_kill_entity_id, target_item_id=qdef.target_item_id,
+        deadline_year=qdef.deadline_year, deadline_day=qdef.deadline_day,
+        questgiver_entity_id=qdef.questgiver_entity_id, given_message=qdef.given_message,
+        already_done_message=qdef.already_done_message,
+        questgiver_done_dialogue=qdef.questgiver_done_dialogue,
+        target_done_dialogue=qdef.target_done_dialogue,
+        reward_item_id=qdef.reward_item_id, reward_shop_discount_pct=qdef.reward_shop_discount_pct,
+        status=qdef.starting_status,
     )
-    kill_the_warden = Quest(
-        id=KILL_THE_WARDEN_ID,
-        name="An Old Debt",
-        description=(
-            "Another prisoner who made it out asked you for a favor: the "
-            "Warden of Prison Tower doesn't get to just walk away from what "
-            "he did there. Whether he's already paid for it or not is "
-            "something you'd know better than they would."
-        ),
-        completion_message="The Warden is dead. Whatever he did to the people under him, he won't do it to anyone else now.",
-        given_message="New quest: An Old Debt - if the Warden of Prison Tower is still alive, he won't be for long if you have anything to say about it.",
-        already_done_message="You tell them it's already done - the Warden didn't survive your escape. They go quiet for a moment. 'Good,' they say, finally. 'Good.'",
-        questgiver_done_dialogue="The Warden's dead. Didn't think I'd ever get to hear that and mean it as good news.",
-        questgiver_entity_id=KILL_THE_WARDEN_QUESTGIVER,
-        target_kill_entity_id=KILL_THE_WARDEN_TARGET,
-        reward_item_id=KILL_THE_WARDEN_REWARD,
+
+
+def create_quest_log(quest_defs: dict[str, "QuestDef"]) -> QuestLog:
+    """Builds the real QuestLog main.py hands to every Engine, from
+    data/quests.yaml (via content.loader.load_quests). Which quest starts
+    pinned to the HUD is whichever comes first, in quest_defs' (i.e.
+    quests.yaml's) key order, with starting_status: in_progress - same
+    one-liner QuestLog.reset() already uses to recompute this after a
+    restart. Only one quest starts in_progress today, so this can't yet
+    produce a surprising pin - but a second in-progress starting quest would
+    make YAML key order the tiebreaker, silently, so don't reorder
+    quests.yaml casually (see tests/test_quest_loader.py, which pins this
+    behavior explicitly)."""
+    quests = {qid: quest_from_def(qdef) for qid, qdef in quest_defs.items()}
+    active_quest_id = next(
+        (q.id for q in quests.values() if q.initial_status == "in_progress"), None
     )
-    fetch_fungus = Quest(
-        id=FETCH_FUNGUS_ID,
-        name="A Standing Request",
-        description=(
-            "The shopkeeper's after a specific fungus - pale stuff that only "
-            "grows where groundwater in the Sunken Mine has sat undisturbed "
-            "for years. They didn't say what it's for. Bring it back and "
-            "there's coin in it, one way or another."
-        ),
-        completion_message="The shopkeeper takes the fungus, turns it over once, and nods. 'Knew you'd manage.' Whatever it's for, that's between them and it now.",
-        given_message="New quest: A Standing Request - the shopkeeper wants a pale fungus that only grows near standing water deep in the Sunken Mine.",
-        questgiver_done_dialogue="Found what I was after, did you? Coin's worth more to you here now, at least.",
-        questgiver_entity_id=FETCH_FUNGUS_QUESTGIVER,
-        target_item_id=FETCH_FUNGUS_ITEM,
-        reward_shop_discount_pct=FETCH_FUNGUS_DISCOUNT_PCT,
-    )
-    return QuestLog(
-        quests={
-            goblin_warning.id: goblin_warning,
-            kill_the_warden.id: kill_the_warden,
-            fetch_fungus.id: fetch_fungus,
-        },
-        active_quest_id=GOBLIN_WARNING_ID,
-    )
+    return QuestLog(quests=quests, active_quest_id=active_quest_id)
