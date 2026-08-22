@@ -11,16 +11,16 @@ map: |
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,v,,,,,,.,,,,,,v,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,v,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,1,,,,,,.,,,,,,2,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,3,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,v,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,4,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#######,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,d,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#::c::#,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,v,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###:###,,,,,,,,v,,,,#
+  #,,,,,5,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###:###,,,,,,,,6,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,###########,,,,#
@@ -35,7 +35,7 @@ map: |
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,v,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,v,,,,#
+  #,,,,,,,7,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,8,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,i,,,,.,,,,,,,,,,,,,,n,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -46,9 +46,9 @@ map: |
   #,,,,,,,,,####,,####,,,,#:::::::::#,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,#::::P::::#,,,,,####,,####,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,v,,,,,,,v,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,v,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,v,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,9,,,,,,,a,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,e,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,f,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   ##########################################################
@@ -66,7 +66,18 @@ legend:
   "M": { entity: wayford_caravan_master }
   "P": { entity: wayford_provisioner }
   "T": { entity: town_guard }
-  "v": { entity: villager }
   "d": { entity: villager, dialogue: "Can't stop, cart's half-loaded and losing light." }
   "n": { entity: villager, dialogue: "Road Warden's been asking around for someone reckless enough to deal with Broken Watch. Might be worth a word, if you're that sort." }
+  "1": { entity: villager, dialogue: "Mind the cart tracks, they're deeper than they look. Wheel's already thrown twice this week." }
+  "2": { entity: villager, dialogue: "Wasn't always this quiet at the crossroads. My grandmother used to talk about carts backed up past the gate, waiting their turn. Different world." }
+  "3": { entity: villager, dialogue: "Busiest I've seen the square in months. Doesn't mean much - months aren't saying much these days." }
+  "4": { entity: villager, dialogue: "Clerk's been going through what's left of the old records for weeks now. Word is there's a gap in them nobody's been able to fill." }
+  "5": { entity: villager, dialogue: "Guards keep saying the roads are fine. Guards also haven't left town in a while." }
+  "6": { entity: villager, dialogue: "Caravan Master used to run a route to Millhaven, if the stories are true. Be curious to know why that stopped." }
+  "7": { entity: villager, dialogue: "Four roads, this town sits on. Only really use two of them anymore." }
+  "8": { entity: villager, dialogue: "Provisioner's stall is worth a look, if you've got coin. Best-stocked place in town, and it's not close." }
+  "9": { entity: villager, dialogue: "Season's turning. Means less light to get anything done, same as it does every year." }
+  "a": { entity: villager, dialogue: "If you're looking for excitement, you're a few roads too early. Try back when the caravans start running again." }
+  "e": { entity: villager, dialogue: "Don't get many new faces around here. Welcome, I suppose - or apologies, depending how your trip's going." }
+  "f": { entity: villager, dialogue: "Not much for talking, if it's all the same to you." }
   "i": { item: healing_potion }

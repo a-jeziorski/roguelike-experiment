@@ -176,16 +176,29 @@ guard's line but landing the same mechanical point (attacking any
 peaceful NPC here turns every guard on this map hostile, for the rest
 of the visit).
 
-### 7. Two named villagers
+### 7. The wandering villagers
 
-Matching Millhaven's technique exactly: one dismissive (mid-chore,
-plainly not interested in talking), one that nudges the player toward
-one of the three questgivers without a quest marker or waypoint system
-doing the work. Everyone else on the green-equivalent here can stay
-anonymous, wandering `villager` spawns with the catalog's generic
-fallback dialogue - not every NPC in a town this size needs to be
-individually written, the same restraint Millhaven's own tone notes
-insist on.
+**Correction after playtesting**: this bible originally said everyone
+outside the six named/mechanical NPCs above could stay anonymous, on the
+catalog's generic fallback line. That was wrong, and the user caught it
+- with twelve anonymous villagers all sharing one repeated "they don't
+have much to say," Wayford read as thinner than Millhaven despite being
+the bigger town. `docs/content_design_process.md` §1 now states the
+corrected rule directly: every villager spawn in a settlement gets its
+own per-spawn `dialogue`, no exceptions for a town's size.
+
+Matching Millhaven's technique, scaled to Wayford's larger cast: one
+dismissive villager (mid-chore, plainly not interested), one nudge line
+per questgiver (three total, one each toward the Road Warden, the Clerk,
+and the Caravan Master - each still discoverable without the game ever
+needing a quest marker), two lines carrying real world texture (a
+Sundering-era aside about the crossroads' busier past, a plain
+observation about the roads themselves), and the rest atmosphere and
+personality - market bustle, a dry joke about the town's quiet season,
+a plug for the Provisioner's stock, a couple of plainly unremarkable
+greetings. All fourteen lines (twelve plain villagers plus the
+dismissive and one nudge from this set piece) are distinct; none repeat
+the catalog default.
 
 ## Roster
 
@@ -197,9 +210,10 @@ global key `QuestLog.check_questgiver`/`check_delivery` match against,
 not scoped per-dungeon, so reusing `"shopkeeper"` or `"village_chief"`
 here would make talking to *Wayford's* NPC also grant or complete
 *Millhaven's* quests. One or two reused `town_guard` spawns (safe to
-reuse - no quest ever targets it by id) plus however many anonymous
-`villager` spawns the resized footprint calls for, two of them with
-per-spawn `dialogue` per set piece 7.
+reuse - no quest ever targets it by id) plus twelve plain `villager`
+spawns, **every one of them with its own per-spawn `dialogue`** (see set
+piece 7 - not optional, per the corrected rule in
+`docs/content_design_process.md` §1).
 
 **`town_guard`'s existing catalog `description`** ("Keeps the peace on
 Millhaven's green, mostly by not needing to.") is Millhaven-specific
