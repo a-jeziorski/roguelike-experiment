@@ -146,6 +146,7 @@ shopkeeper:
   stationary: true
   description: Deals in coin, on the rare occasion anyone still has any to deal in.
   dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
+  shop_inventory: [healing_potion]
 
 town_guard:
   name: Town Guard

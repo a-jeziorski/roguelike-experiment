@@ -55,6 +55,7 @@ class Entity:
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
+        shop_inventory: list[str] | None = None,
         entity_id: str = "",
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
@@ -82,6 +83,11 @@ class Entity:
         # identifies *which* NPC was talked to, since display names aren't
         # guaranteed unique/stable the way catalog ids are.
         self.dialogue = dialogue
+        # Catalog item ids this entity sells, if any - empty means "not a
+        # shopkeeper" (see Engine.adjacent_shopkeeper). Defensively copied so
+        # every spawned Entity gets its own list, never aliasing the
+        # catalog's EntityDef.shop_inventory.
+        self.shop_inventory: list[str] = list(shop_inventory) if shop_inventory is not None else []
         self.entity_id = entity_id
         self.inventory: list[Entity] = []
         # The Entity currently equipped in each slot (so its name/bonus stay

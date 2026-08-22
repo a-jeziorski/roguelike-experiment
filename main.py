@@ -32,7 +32,6 @@ from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.quest import QuestLog, create_quest_log
-from engine.shop import SHOP_INVENTORY
 from engine.input_handlers import (
     handle_event,
     handle_look_event,
@@ -223,13 +222,19 @@ def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, 
     """Nested event loop for the shop screen: moves a selection and buys the
     selected item on confirm, re-rendering until the player exits. Never
     touches Engine.process_turn, so it costs no game turn - same as talking
-    or browsing the quest log."""
+    or browsing the quest log. Reads its item list from whichever
+    shopkeeper is actually adjacent (see EntityDef.shop_inventory) rather
+    than a single hardcoded list - shop_gate already guarantees a
+    shopkeeper is adjacent before this is ever called, and this loop never
+    moves the player, so that stays true for its whole lifetime."""
+    shopkeeper = engine.adjacent_shopkeeper()
+    item_ids = shopkeeper.shop_inventory if shopkeeper is not None else []
     selected = 0
     status = ""
 
     while True:
-        prices = {item_id: engine.shop_price(item_id) for item_id in SHOP_INVENTORY}
-        render_shop(console, engine.catalog, SHOP_INVENTORY, prices, selected, engine.player.gold, status)
+        prices = {item_id: engine.shop_price(item_id) for item_id in item_ids}
+        render_shop(console, engine.catalog, item_ids, prices, selected, engine.player.gold, status)
         context.present(console)
 
         for event in tcod.event.wait():
@@ -238,12 +243,12 @@ def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, 
 
             if result == "exit":
                 return
-            if result == "up" and SHOP_INVENTORY:
-                selected = (selected - 1) % len(SHOP_INVENTORY)
-            if result == "down" and SHOP_INVENTORY:
-                selected = (selected + 1) % len(SHOP_INVENTORY)
-            if result == "buy" and SHOP_INVENTORY:
-                status = engine.buy_from_shop(SHOP_INVENTORY[selected])
+            if result == "up" and item_ids:
+                selected = (selected - 1) % len(item_ids)
+            if result == "down" and item_ids:
+                selected = (selected + 1) % len(item_ids)
+            if result == "buy" and item_ids:
+                status = engine.buy_from_shop(item_ids[selected])
 
 
 def animate_ranged_attacks(

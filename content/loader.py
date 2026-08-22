@@ -15,7 +15,15 @@ from typing import Literal
 import yaml
 from pydantic import ValidationError
 
-from content.schema import TILE_PASSABILITY, DungeonDef, EntityDef, ItemDef, LevelDef, QuestDef
+from content.schema import (
+    PEACEFUL_AI_TYPES,
+    TILE_PASSABILITY,
+    DungeonDef,
+    EntityDef,
+    ItemDef,
+    LevelDef,
+    QuestDef,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -136,6 +144,26 @@ def load_catalog(
             items[item_id] = ItemDef(id=item_id, **raw)
         except ValidationError as e:
             errors.append(f"item '{item_id}': {e}")
+
+    for entity_id, edef in entities.items():
+        if not edef.shop_inventory:
+            continue
+        if edef.ai not in PEACEFUL_AI_TYPES:
+            errors.append(
+                f"entity '{entity_id}': shop_inventory is set but ai is "
+                f"'{edef.ai}' - only a peaceful NPC (villager/town_guard) is "
+                "ever reachable as a shopkeeper (see PEACEFUL_AI_TYPES), so "
+                "this entity's stock could never be sold"
+            )
+        for item_id in edef.shop_inventory:
+            if item_id not in items:
+                errors.append(f"entity '{entity_id}': shop_inventory references unknown item '{item_id}'")
+            elif items[item_id].cost is None:
+                errors.append(
+                    f"entity '{entity_id}': shop_inventory item '{item_id}' has "
+                    "no cost set - Engine.shop_price treats a missing cost as "
+                    "0, so it would sell for free"
+                )
 
     if errors:
         raise ContentValidationError(

@@ -22,7 +22,6 @@ from engine.entity import (
 )
 from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog
-from engine.shop import SHOPKEEPER_ENTITY_ID
 from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition, shop_gate
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -194,7 +193,7 @@ def test_shop_gate_allows_when_a_shopkeeper_is_adjacent():
         2, 1, "m", (200, 160, 70), "Shopkeeper",
         blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
         fighter=Fighter(max_hp=10, hp=10, attack=0, defense=0),
-        ai="villager", entity_id=SHOPKEEPER_ENTITY_ID,
+        ai="villager", shop_inventory=["healing_potion"],
     )
     game_map.entities.extend([player, shopkeeper])
     engine = Engine(game_map, player, "Test Level")
@@ -218,7 +217,7 @@ def test_shop_gate_blocks_when_the_shopkeeper_is_fleeing():
         2, 1, "m", (200, 160, 70), "Shopkeeper",
         blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
         fighter=Fighter(max_hp=10, hp=5, attack=0, defense=0),  # already hurt - fleeing
-        ai="villager", entity_id=SHOPKEEPER_ENTITY_ID,
+        ai="villager", shop_inventory=["healing_potion"],
     )
     game_map.entities.extend([player, shopkeeper])
     engine = Engine(game_map, player, "Test Level")

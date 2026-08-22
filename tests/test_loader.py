@@ -29,6 +29,119 @@ def test_load_catalog_loads_real_data():
     assert "rusty_dagger" in catalog.items
 
 
+def test_load_catalog_real_shopkeeper_has_shop_inventory():
+    catalog = load_catalog()
+    assert catalog.entities["shopkeeper"].shop_inventory == ["healing_potion"]
+
+
+def test_load_catalog_rejects_shop_inventory_referencing_unknown_item(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    entities_path.write_text(
+        "merchant:\n"
+        "  name: Merchant\n"
+        "  glyph: m\n"
+        "  color: [200, 160, 70]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n"
+        "  shop_inventory: [nonexistent_item]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="shop_inventory references unknown item"):
+        load_catalog(entities_path, items_path)
+
+
+def test_load_catalog_rejects_shop_inventory_item_with_no_cost(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    entities_path.write_text(
+        "merchant:\n"
+        "  name: Merchant\n"
+        "  glyph: m\n"
+        "  color: [200, 160, 70]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n"
+        "  shop_inventory: [free_thing]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text(
+        "free_thing:\n"
+        "  name: Free Thing\n"
+        "  glyph: '?'\n"
+        "  color: [255, 255, 255]\n",  # no cost set
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="has no cost set"):
+        load_catalog(entities_path, items_path)
+
+
+def test_load_catalog_rejects_shop_inventory_on_a_non_peaceful_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    entities_path.write_text(
+        "shady_rat:\n"
+        "  name: Shady Rat\n"
+        "  glyph: r\n"
+        "  color: [140, 90, 60]\n"
+        "  hp: 6\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: hostile_basic\n"
+        "  shop_inventory: [trinket]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text(
+        "trinket:\n"
+        "  name: Trinket\n"
+        "  glyph: '?'\n"
+        "  color: [255, 255, 255]\n"
+        "  cost: 5\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="could never be sold"):
+        load_catalog(entities_path, items_path)
+
+
+def test_load_catalog_allows_shop_inventory_on_a_town_guard(tmp_path):
+    """Confirms the peaceful-AI check accepts both PEACEFUL_AI_TYPES, not
+    just villager - a real content file could reasonably want a guard who
+    also sells something."""
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    entities_path.write_text(
+        "quartermaster:\n"
+        "  name: Quartermaster\n"
+        "  glyph: g\n"
+        "  color: [120, 120, 140]\n"
+        "  hp: 18\n"
+        "  attack: 4\n"
+        "  defense: 1\n"
+        "  ai: town_guard\n"
+        "  shop_inventory: [trinket]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text(
+        "trinket:\n"
+        "  name: Trinket\n"
+        "  glyph: '?'\n"
+        "  color: [255, 255, 255]\n"
+        "  cost: 5\n",
+        encoding="utf-8",
+    )
+
+    catalog = load_catalog(entities_path, items_path)
+
+    assert catalog.entities["quartermaster"].shop_inventory == ["trinket"]
+
+
 @pytest.mark.parametrize(
     "entity_id,hp,attack,defense,ai",
     [

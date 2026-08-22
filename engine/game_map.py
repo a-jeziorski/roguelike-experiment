@@ -168,6 +168,7 @@ def build_game_map(
             stationary=edef.stationary,
             description=edef.description,
             dialogue=spawn.dialogue or edef.dialogue,
+            shop_inventory=edef.shop_inventory,
             entity_id=edef.id,
         )
         game_map.entities.append(entity)

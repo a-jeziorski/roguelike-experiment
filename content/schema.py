@@ -92,6 +92,15 @@ class EntityDef(BaseModel):
     # per-spawn dialogue override (see LegendEntry.dialogue below) - only
     # meaningful for AI_VILLAGER entities today, but not restricted to them.
     dialogue: str = ""
+    # Catalog item ids this entity sells, if any - empty means "not a
+    # shopkeeper." Any entity with a non-empty shop_inventory is reachable
+    # via Engine.adjacent_shopkeeper regardless of its catalog id, so a new
+    # town can define its own shopkeeper NPC (its own EntityDef, its own
+    # stock) without any engine change. Only meaningful on a
+    # PEACEFUL_AI_TYPES entity (villager/town_guard) - content/loader.py's
+    # load_catalog rejects it otherwise, since such an entity can never
+    # actually be traded with.
+    shop_inventory: list[str] = Field(default_factory=list)
 
     @field_validator("glyph")
     @classmethod
@@ -126,8 +135,8 @@ class ItemDef(BaseModel):
     is_ammo: bool = False
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
-    # item, not about any one shopkeeper (see engine/shop.py). None for an
-    # item that's never sold, only found.
+    # item, not about any one shopkeeper (see EntityDef.shop_inventory).
+    # None for an item that's never sold, only found.
     cost: int | None = Field(default=None, gt=0)
     description: str = ""
 

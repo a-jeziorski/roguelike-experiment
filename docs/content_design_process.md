@@ -259,6 +259,26 @@ anyone, but a second in-progress starting quest would make file order the
 (silent) tiebreaker. Don't reorder `quests.yaml` casually once more than
 one quest starts `in_progress`.
 
+## 0f. Shops are content too (`EntityDef.shop_inventory`)
+
+Unlike quests, a shop doesn't need its own content type - it's entirely a
+property of the NPC selling things. Any catalog entity in
+`data/entities.yaml` with a non-empty `shop_inventory` (a list of item
+ids) is a shopkeeper: `Engine.adjacent_shopkeeper` finds whichever one is
+next to the player by that field, not by any hardcoded catalog id, so a
+new town's own shopkeeper (its own entity, its own stock) works with no
+engine change. `load_catalog` validates every `shop_inventory` entry the
+same way a level's legend gets validated: each item id must exist in
+`data/items.yaml` and have `cost` set (a shop item with no cost would
+silently sell for free), and `shop_inventory` is only meaningful on a
+peaceful NPC (`ai: villager` or `town_guard`) - `PEACEFUL_AI_TYPES` is the
+only set of AI types `adjacent_shopkeeper` ever scans, so a hostile
+monster with a `shop_inventory` would be dead content, and is rejected as
+such. Price itself still lives on `ItemDef.cost`, not on the shopkeeper -
+a fact about the item, not about any one seller, so multiple shopkeepers
+selling the same item charge the same price (modulated by any active
+`reward_shop_discount_pct`, per the quests section above).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
