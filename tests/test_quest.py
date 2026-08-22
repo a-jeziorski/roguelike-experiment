@@ -329,45 +329,104 @@ def test_record_entity_killed_ignores_non_matching_quests():
     assert "rat" in log.killed_entity_ids
 
 
-# --- check_fetch_item ---
+# --- check_delivery ---
 
 
-def test_check_fetch_item_completes_a_matching_in_progress_quest():
-    quest = make_quest(status="in_progress", target_item_id="pale_fungus")
+class _FakeInventoryItem:
+    """Minimal stand-in for engine.entity.Entity, carrying only what
+    check_delivery reads (entity_id) - keeps test_quest.py decoupled from
+    engine.entity, matching how this file otherwise tests quest.py's logic
+    in isolation."""
+
+    def __init__(self, entity_id: str):
+        self.entity_id = entity_id
+
+
+def test_check_delivery_completes_when_talking_to_questgiver_while_carrying_the_item():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
     log = QuestLog(quests={quest.id: quest})
+    inventory = [_FakeInventoryItem("pale_fungus")]
 
-    changed = log.check_fetch_item("pale_fungus")
+    changed = log.check_delivery("shopkeeper", inventory)
 
     assert changed == [quest]
     assert quest.status == "completed"
 
 
-def test_check_fetch_item_is_a_no_op_on_a_not_given_quest():
-    """Confirms the deliberate scope decision: no retroactive "already had
-    it" detection for fetch quests, unlike kill quests."""
-    quest = make_quest(status="not_given", target_item_id="pale_fungus")
+def test_check_delivery_is_a_no_op_without_the_item_in_inventory():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.check_fetch_item("pale_fungus")
+    changed = log.check_delivery("shopkeeper", [])
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_delivery_is_a_no_op_when_talking_to_a_different_npc():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
+    log = QuestLog(quests={quest.id: quest})
+    inventory = [_FakeInventoryItem("pale_fungus")]
+
+    changed = log.check_delivery("village_chief", inventory)
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_delivery_is_a_no_op_on_a_not_given_quest():
+    """Confirms the deliberate scope decision: no retroactive "already had
+    it" detection for fetch quests, unlike kill quests."""
+    quest = make_quest(
+        status="not_given",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
+    log = QuestLog(quests={quest.id: quest})
+    inventory = [_FakeInventoryItem("pale_fungus")]
+
+    changed = log.check_delivery("shopkeeper", inventory)
 
     assert changed == []
     assert quest.status == "not_given"
 
 
-def test_check_fetch_item_does_not_refire_on_an_already_terminal_quest():
-    quest = make_quest(status="completed", target_item_id="pale_fungus")
+def test_check_delivery_does_not_refire_on_an_already_terminal_quest():
+    quest = make_quest(
+        status="completed",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
     log = QuestLog(quests={quest.id: quest})
+    inventory = [_FakeInventoryItem("pale_fungus")]
 
-    changed = log.check_fetch_item("pale_fungus")
+    changed = log.check_delivery("shopkeeper", inventory)
 
     assert changed == []
 
 
-def test_check_fetch_item_ignores_non_matching_items():
-    quest = make_quest(status="in_progress", target_item_id="pale_fungus")
+def test_check_delivery_ignores_non_matching_inventory_items():
+    quest = make_quest(
+        status="in_progress",
+        questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus",
+    )
     log = QuestLog(quests={quest.id: quest})
+    inventory = [_FakeInventoryItem("healing_potion")]
 
-    changed = log.check_fetch_item("healing_potion")
+    changed = log.check_delivery("shopkeeper", inventory)
 
     assert changed == []
     assert quest.status == "in_progress"

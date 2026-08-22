@@ -222,19 +222,26 @@ one person still willing to trade.
 The shopkeeper is also this game's second questgiver, offering "A
 Standing Request": a Pale Fungus that only grows in the Sunken Mine's
 Flooded Sump (see `docs/dungeon_bibles/sunken_mine.md`'s set piece 3).
-Proof of concept for a fourth quest-completion shape - picking up a
-specific item, rather than talking, killing, or arriving somewhere -
-and a second reward shape: not another item, but a permanent 20%
-discount on everything in this shop (Healing Potion 25 -> 20 gold).
-Fetching it is deliberately simple, per the project's own "keep it
-simple" instruction for this pass: the fungus is removed from the mine
-and the quest completes the instant it's picked up, with no return
-trip and no change to the player's inventory at all - it's never held,
-just fetched. No retroactive "already had it" detection either, unlike
-the Warden's kill-quest - if the fungus is somehow found before this
-quest is ever granted, it's just an inert curio in inventory until it
-isn't, a deliberately unhandled edge case rather than one this pass
-needed to solve.
+Proof of concept for a fourth quest-completion shape - delivering a
+specific item back to whoever asked for it, rather than talking,
+killing, or arriving somewhere - and a second reward shape: not another
+item, but a permanent 20% discount on everything in this shop (Healing
+Potion 25 -> 20 gold).
+
+Fetching it is deliberately two steps, not one. Picking up the fungus
+in the mine is an entirely ordinary pickup - it goes into inventory
+like anything else, no special handling at all. The quest only
+completes back here, talking to the shopkeeper *while still carrying
+it* - which is what removes it from inventory and grants the discount.
+Splitting the fetch from the delivery this way is the whole point: it
+leaves room for the delivery to be interrupted before it happens - a
+deadline expiring on the way back, the item being lost some other way
+- neither of which exists on this quest yet, but the two-step shape is
+what would make either possible without redesigning it later. No
+retroactive "already had it" detection, unlike the Warden's kill-quest
+- picking up the fungus before this quest is even granted just leaves
+it sitting in inventory as an inert curio, a deliberately unhandled
+edge case rather than one this pass needed to solve.
 
 ### 9. The Town Guard
 

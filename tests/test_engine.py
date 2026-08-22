@@ -880,44 +880,28 @@ def test_gold_pickup_never_enters_inventory():
     assert player.inventory == []
 
 
-def test_fetch_quest_item_pickup_completes_the_quest_and_never_enters_inventory():
+def test_fetch_quest_item_pickup_is_always_an_ordinary_pickup():
+    """PickupAction has no fetch-quest special case at all (see
+    engine/actions.py) - picking up a fetch-quest item always enters
+    inventory like anything else, regardless of the matching quest's
+    status. Completion only ever happens later, via delivery - see
+    test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item."""
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     fungus = make_quest_item(1, 1, entity_id="pale_fungus")
     game_map.entities.extend([player, fungus])
     quest = Quest(
         id="fetch_test", name="Fetch Test", description="",
-        completion_message="Got it.", target_item_id="pale_fungus", status="in_progress",
+        completion_message="Got it.", questgiver_entity_id="shopkeeper",
+        target_item_id="pale_fungus", status="in_progress",
     )
     quest_log = QuestLog(quests={quest.id: quest})
     engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
 
     engine.process_turn(PickupAction())
 
-    assert quest.status == "completed"
-    assert "Got it." in engine.message_log.messages
-    assert fungus not in game_map.entities
-    assert player.inventory == []
-
-
-def test_fetch_quest_item_pickup_before_the_quest_is_given_falls_back_to_ordinary_pickup():
-    """Confirms the documented, deliberate scope decision: no retroactive
-    detection for fetch quests - picking up the item before its quest is
-    granted is just an ordinary pickup."""
-    game_map = make_open_map(3, 3)
-    player = make_player(1, 1)
-    fungus = make_quest_item(1, 1, entity_id="pale_fungus")
-    game_map.entities.extend([player, fungus])
-    quest = Quest(
-        id="fetch_test", name="Fetch Test", description="",
-        completion_message="Got it.", target_item_id="pale_fungus", status="not_given",
-    )
-    quest_log = QuestLog(quests={quest.id: quest})
-    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
-
-    engine.process_turn(PickupAction())
-
-    assert quest.status == "not_given"
+    assert quest.status == "in_progress"
+    assert "Got it." not in engine.message_log.messages
     assert fungus not in game_map.entities
     assert len(player.inventory) == 1
     assert player.inventory[0] is fungus
@@ -2063,6 +2047,87 @@ def test_talk_to_adjacent_uses_the_followup_line_after_the_quest_completes():
     # the reward and completion message aren't repeated on a later re-talk
     assert quest.completion_message not in engine.message_log.messages
     assert len(player.inventory) == 1
+
+
+def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    player.inventory.append(fungus)
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    quest_log = create_starting_quest_log()
+    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"  # already given, not yet delivered
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+    assert fungus not in player.inventory
+    assert engine.shop_price("healing_potion") == 20  # discount reward granted
+
+
+def test_talk_to_adjacent_does_not_complete_a_fetch_quest_without_the_item():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    quest_log = create_starting_quest_log()
+    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    assert quest.status == "in_progress"
+    assert player.inventory == []
+
+
+def test_talk_to_adjacent_does_not_complete_a_fetch_quest_via_the_wrong_npc():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    player.inventory.append(fungus)
+    prisoner = make_villager(2, 1, dialogue="Made it out too.", entity_id=KILL_THE_WARDEN_QUESTGIVER, name="Escaped Prisoner")
+    game_map.entities.extend([player, prisoner])
+    quest_log = create_starting_quest_log()
+    quest_log.quests[FETCH_FUNGUS_ID].status = "in_progress"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    assert quest.status == "in_progress"
+    assert fungus in player.inventory
+
+
+def test_talk_to_adjacent_grants_and_delivers_a_fetch_quest_in_one_talk_when_already_carrying_the_item():
+    """Emergent behavior from check_questgiver and check_delivery both
+    running inside the same talk_to_adjacent call: if the player already
+    picked up the fungus (an entirely ordinary pickup - see
+    test_fetch_quest_item_pickup_is_always_an_ordinary_pickup) before ever
+    talking to the shopkeeper, one Talk both grants and immediately
+    delivers the quest."""
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    fungus = make_quest_item(1, 1, entity_id=FETCH_FUNGUS_ITEM)
+    player.inventory.append(fungus)
+    shopkeeper = make_villager(2, 1, dialogue="Anything I can get you?", entity_id=FETCH_FUNGUS_QUESTGIVER, name="Shopkeeper")
+    game_map.entities.extend([player, shopkeeper])
+    quest_log = create_starting_quest_log()  # fetch_fungus starts not_given
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests[FETCH_FUNGUS_ID]
+    assert quest.status == "completed"
+    assert fungus not in player.inventory
 
 
 def test_complete_quest_with_no_reward_item_leaves_inventory_untouched():

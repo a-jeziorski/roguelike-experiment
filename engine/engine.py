@@ -478,8 +478,10 @@ class Engine:
     def talk_to_adjacent(self) -> None:
         """Free, non-turn action (see main.py's TalkAction branch): shows an
         adjacent villager's dialogue line, then checks whether talking to
-        them grants a questgiver's quest (see QuestLog.check_questgiver) or
-        completes one that targets them (see QuestLog.check_talked_to).
+        them grants a questgiver's quest (see QuestLog.check_questgiver),
+        completes one that targets them (see QuestLog.check_talked_to), or
+        completes a fetch quest they're the questgiver for because the
+        player is holding the delivered item (see QuestLog.check_delivery).
         Never touches self.clock or calls _handle_enemy_turns - talking costs
         nothing."""
         target = self._find_adjacent_peaceful_npc()
@@ -502,6 +504,11 @@ class Engine:
                     self.quest_log.active_quest_id = quest.id
 
         for quest in self.quest_log.check_talked_to(target.entity_id):
+            self.complete_quest(quest)
+
+        for quest in self.quest_log.check_delivery(target.entity_id, self.player.inventory):
+            delivered = next(it for it in self.player.inventory if it.entity_id == quest.target_item_id)
+            self.player.inventory.remove(delivered)
             self.complete_quest(quest)
 
     def process_player_action(self, action: Action) -> bool:

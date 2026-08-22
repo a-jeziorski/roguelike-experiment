@@ -216,12 +216,7 @@ class PickupAction(Action):
             if candidate.item is None or candidate.x != entity.x or candidate.y != entity.y:
                 continue
 
-            fetched = engine.quest_log.check_fetch_item(candidate.entity_id)
-            if fetched:
-                engine.game_map.entities.remove(candidate)
-                for quest in fetched:
-                    engine.complete_quest(quest)
-            elif candidate.item.attack_bonus:
+            if candidate.item.attack_bonus:
                 self._equip(engine, entity, candidate, slot="weapon")
             elif candidate.item.defense_bonus:
                 self._equip(engine, entity, candidate, slot="armor")

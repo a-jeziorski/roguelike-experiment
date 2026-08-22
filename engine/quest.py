@@ -2,12 +2,25 @@
 some given from the start, some granted by talking to a questgiver NPC while
 they're still "not_given". Not a scripting engine - quests complete via four
 hardcoded trigger shapes (dungeon arrival, Talk, killing a specific catalog
-entity, picking up a specific catalog item) that Engine/main.py call into
-(see Engine.on_entity_death, Engine.talk_to_adjacent, main.py's
-resolve_transition, PickupAction), and fail via one (clock deadline, see
+entity, delivering a specific catalog item to its questgiver) that
+Engine/main.py call into (see Engine.on_entity_death, Engine.talk_to_adjacent,
+main.py's resolve_transition), and fail via one (clock deadline, see
 Engine._check_quest_deadlines). Two reward shapes exist: granting an item
 straight into inventory (reward_item_id), and a permanent Millhaven shop
 discount (reward_shop_discount_pct) - see Engine.complete_quest.
+
+A fetch quest (target_item_id) is deliberately two steps, not one: picking
+up the item is an entirely ordinary pickup (it enters inventory like
+anything else - see PickupAction, which has no special case for it), and
+the quest only completes when the player then talks to questgiver_entity_id
+*while still holding it* (see QuestLog.check_delivery, called from
+Engine.talk_to_adjacent, which removes the delivered item from inventory).
+Splitting pickup from delivery this way is what leaves room for the
+delivery to be interrupted later - a deadline expiring first (already
+supported generically by check_deadlines/deadline_year/deadline_day, just
+not set on any fetch quest yet), the item being lost some other way - none
+of which exists yet, but the two-step shape is what would make it possible
+without a redesign.
 
 Quest.status is the per-quest lifecycle ("not_given" -> "in_progress" ->
 "completed"/"failed"). QuestLog.active_quest_id is a separate, single-quest
@@ -18,9 +31,12 @@ where it changes."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from engine.clock import GameClock
+
+if TYPE_CHECKING:
+    from engine.entity import Entity
 
 QuestStatus = Literal["not_given", "in_progress", "completed", "failed"]
 
@@ -53,10 +69,12 @@ class Quest:
     # arriving in a dungeon (target_dungeon_id, checked in main.py's
     # resolve_transition), talking to a specific NPC (target_entity_id,
     # checked in Engine.talk_to_adjacent), killing a specific catalog entity
-    # (target_kill_entity_id, checked in Engine.on_entity_death), or picking
-    # up a specific catalog item (target_item_id, checked in PickupAction -
-    # the item is removed from the map and never enters inventory, unlike
-    # every other pickup). All optional so any one shape - or none, for a
+    # (target_kill_entity_id, checked in Engine.on_entity_death), or
+    # delivering a specific catalog item to questgiver_entity_id
+    # (target_item_id, checked in QuestLog.check_delivery) - picking the
+    # item up is an ordinary pickup with no special handling; only talking
+    # to the questgiver *while holding it* completes the quest and removes
+    # it from inventory. All optional so any one shape - or none, for a
     # quest with no completion trigger yet - is valid.
     target_dungeon_id: str | None = None
     target_entity_id: str | None = None
@@ -218,22 +236,31 @@ class QuestLog:
                 return quest.target_done_dialogue
         return None
 
-    def check_fetch_item(self, entity_id: str) -> list[Quest]:
-        """Called from PickupAction for every item picked up. Marks matching
-        in-progress fetch quests 'completed', same re-fire guard as every
-        other check_* method. Unlike record_entity_killed, this does NOT
-        unconditionally record anything - picking up a fetch-quest item
-        before its quest exists is just an ordinary pickup (see
-        PickupAction), not a tracked retroactive event; deliberately
-        simpler than the kill-quest trigger, since there's no
-        killed_entity_ids-style "already done" detection here."""
+    def check_delivery(self, entity_id: str, inventory: list[Entity]) -> list[Quest]:
+        """Called whenever the player talks to an NPC (Engine.talk_to_adjacent),
+        alongside check_questgiver/check_talked_to. Completes an in-progress
+        fetch quest only if BOTH entity_id matches its questgiver_entity_id
+        AND the player is actually still carrying the target item
+        (matched by Entity.entity_id in `inventory`) - picking the item up
+        alone never completes anything (see PickupAction, which has no
+        special case for a fetch-quest item; it's just an ordinary pickup).
+        Does not itself remove the delivered item from inventory - that's
+        Engine.talk_to_adjacent's job, once it knows which quest(s) this
+        returned, since QuestLog has no business reaching into player state
+        directly. No killed_entity_ids-style "already done" detection here
+        (unlike the kill-quest trigger) - deliberately simpler, and this
+        two-step design leaves room for a delivery to be interrupted later
+        (a deadline, the item being lost) without needing a redesign."""
         changed = []
         for quest in self.quests.values():
-            if quest.status != "in_progress":
+            if quest.status != "in_progress" or quest.target_item_id is None:
                 continue
-            if quest.target_item_id == entity_id:
-                quest.status = "completed"
-                changed.append(quest)
+            if quest.questgiver_entity_id != entity_id:
+                continue
+            if not any(it.entity_id == quest.target_item_id for it in inventory):
+                continue
+            quest.status = "completed"
+            changed.append(quest)
         return changed
 
     def shop_discount_pct(self) -> float:
@@ -329,7 +356,7 @@ def create_starting_quest_log() -> QuestLog:
             "for years. They didn't say what it's for. Bring it back and "
             "there's coin in it, one way or another."
         ),
-        completion_message="The fungus is exactly what the shopkeeper described. You gather it carefully, careful not to disturb the rest.",
+        completion_message="The shopkeeper takes the fungus, turns it over once, and nods. 'Knew you'd manage.' Whatever it's for, that's between them and it now.",
         given_message="New quest: A Standing Request - the shopkeeper wants a pale fungus that only grows near standing water deep in the Sunken Mine.",
         questgiver_done_dialogue="Found what I was after, did you? Coin's worth more to you here now, at least.",
         questgiver_entity_id=FETCH_FUNGUS_QUESTGIVER,
