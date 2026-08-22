@@ -1137,6 +1137,27 @@ def test_ascending_returns_to_the_same_cached_map_with_state_preserved():
     assert engine.message_log.messages[-1] == "You ascend to The Solitary Cell."
 
 
+def test_on_player_reach_stairs_resets_the_message_log():
+    """Regression test: moving between levels of the same dungeon must not
+    keep surfacing messages logged on a different level - the same "old
+    dialogue lines resurfacing" bug arrive_player fixes, but for intra-
+    dungeon stairs instead of a dungeon/overworld round trip."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+    engine.message_log.add("Something from level_01.")
+
+    engine.on_player_reach_stairs("level_02")
+
+    assert "Something from level_01." not in engine.message_log.messages
+    assert engine.message_log.messages == ["You descend into The Guard Barracks."]
+
+
 def test_departing_a_level_removes_the_player_from_its_entity_list():
     """Regression test: build_game_map re-appends the player into the new
     map but never removed them from the old one - harmless while old maps
@@ -1475,6 +1496,26 @@ def test_arrive_player_with_no_position_resumes_last_departure_spot():
 
     assert (player.x, player.y) == (7, 9)
     assert player in engine.game_map.entities
+
+
+def test_arrive_player_resets_the_message_log():
+    """Regression test: a cached Engine persists for the whole run (see
+    docstring on Engine, "each dungeon gets at most one live Engine"), so
+    without a reset, returning to it later would keep surfacing every
+    message from an earlier visit alongside whatever's happening now -
+    reported as old dialogue lines resurfacing when revisiting a town."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(game_map, player, level_01.name, catalog=catalog)
+    engine.message_log.add("Something from the first visit.")
+    engine.depart_player()
+
+    engine.arrive_player(player)
+
+    assert "Something from the first visit." not in engine.message_log.messages
+    assert engine.message_log.messages == [f"You enter {level_01.name}."]
 
 
 def test_movement_onto_dungeon_entrance_sets_pending_dungeon_entry():

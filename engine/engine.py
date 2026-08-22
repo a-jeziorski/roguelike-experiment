@@ -211,10 +211,17 @@ class Engine:
         may since have been overwritten by whatever map was active in
         between. First-time creation of a target Engine doesn't use this -
         the constructor + build_game_map already do the equivalent
-        bootstrapping."""
+        bootstrapping.
+
+        Resets message_log first - a cached Engine's log otherwise keeps
+        every message from every earlier visit, so returning to a
+        dungeon/the overworld later in the same run would surface stale
+        dialogue and combat lines from the last time the player was here,
+        alongside (and easily confused with) whatever's happening now."""
         self.player = player
         player.x, player.y = position if position is not None else self.last_position
         self.game_map.entities.append(player)
+        self.message_log = MessageLog()
         self.message_log.add(f"You enter {self.level_name}.")
         self.game_map.update_fov((player.x, player.y))
 
@@ -244,6 +251,11 @@ class Engine:
         self.current_level_id = next_level_id
         self.level_name = next_level.name
         verb = "ascend to" if kind == "stairs_up" else "descend into"
+        # Reset here too, same reasoning as arrive_player - this Engine
+        # persists across the whole run, so without a reset a level revisited
+        # later would still be carrying every message from earlier visits to
+        # *other* levels in this same dungeon, not just this one.
+        self.message_log = MessageLog()
         self.message_log.add(f"You {verb} {next_level.name}.")
         self.game_map.update_fov((self.player.x, self.player.y))
 
