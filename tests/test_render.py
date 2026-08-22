@@ -207,7 +207,7 @@ def test_render_quest_log_lists_quests_and_tags_the_active_one():
     )
     console = tcod.console.Console(70, 20, order="F")
 
-    render_quest_log(console, [goblin, warden], selected=0, active_quest_id="goblin")
+    render_quest_log(console, [goblin, warden], selected=0, active_quest_id="goblin", description=goblin.description)
 
     text = console_text(console)
     assert "The Goblin Warning" in text
@@ -216,7 +216,10 @@ def test_render_quest_log_lists_quests_and_tags_the_active_one():
     assert "Warn the town." in text  # the selected (index 0) quest's description
 
 
-def test_render_quest_log_shows_the_selected_quests_description():
+def test_render_quest_log_shows_the_caller_supplied_description():
+    """render_quest_log never reads Quest.description itself (see
+    Quest.current_description, which is what actually resolves it) - it
+    just displays whatever description string the caller hands it."""
     goblin = Quest(
         id="goblin", name="The Goblin Warning", description="Warn the town.",
         completion_message="Done.", status="in_progress",
@@ -227,10 +230,14 @@ def test_render_quest_log_shows_the_selected_quests_description():
     )
     console = tcod.console.Console(70, 20, order="F")
 
-    render_quest_log(console, [goblin, warden], selected=1, active_quest_id="goblin")
+    render_quest_log(
+        console, [goblin, warden], selected=1, active_quest_id="goblin",
+        description="A resolved description, not warden.description itself.",
+    )
 
     text = console_text(console)
-    assert "Kill the Warden of Prison Tower." in text
+    assert "A resolved description, not warden.description itself." in text
+    assert "Kill the Warden of Prison Tower." not in text
     assert "Warn the town." not in text
 
 

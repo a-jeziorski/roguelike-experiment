@@ -259,6 +259,23 @@ anyone, but a second in-progress starting quest would make file order the
 (silent) tiebreaker. Don't reorder `quests.yaml` casually once more than
 one quest starts `in_progress`.
 
+**The quest log's detail pane isn't stuck on `description` forever.**
+`Quest.current_description` (`engine/quest.py`) resolves what to actually
+show against the quest's live progress, and three optional overrides let
+content say more as a quest moves along - any left unset ("") just keeps
+showing `description` at that stage:
+
+| Override | Shown when |
+|---|---|
+| `completed_description` | `status == "completed"` - a summary of what happened and what was earned, not just the original pitch |
+| `failed_description` | `status == "failed"` - only meaningful alongside a deadline, since that's the only way a quest ever fails; `load_quests` rejects it otherwise |
+| `carrying_item_description` | a fetch quest (`target_item_id`), still `in_progress`, while the target item is actually in the player's inventory (not yet delivered) - only meaningful alongside `target_item_id`; `load_quests` rejects it otherwise |
+
+Write these whenever a quest's premise would otherwise go stale in the
+log - `fetch_fungus` is the fullest example (starting pitch ->
+`carrying_item_description` once the fungus is picked up -> `completed_description`
+naming the discount once delivered).
+
 ## 0f. Shops are content too (`EntityDef.shop_inventory`)
 
 Unlike quests, a shop doesn't need its own content type - it's entirely a

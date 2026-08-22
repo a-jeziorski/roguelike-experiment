@@ -36,7 +36,18 @@ Quest.status is the per-quest lifecycle ("not_given" -> "in_progress" ->
 "completed"/"failed"). QuestLog.active_quest_id is a separate, single-quest
 concept: which one in-progress quest is currently pinned to the HUD - see
 Engine.talk_to_adjacent's auto-pin-on-grant and main.py's quest log screen for
-where it changes."""
+where it changes.
+
+The quest log screen's detail pane doesn't just show the static
+`description` forever, either - Quest.current_description resolves it
+against the quest's actual progress: `completed_description`/
+`failed_description` once the quest is terminal, or (for a fetch quest
+specifically) `carrying_item_description` while `target_item_id` is
+in_progress and the player is actually holding it, not yet delivered. Any
+override left unset ("") just falls back to `description` - main.py's
+run_quest_log_mode calls this once per frame and hands the resolved
+string to render_quest_log, which never computes it itself (render stays
+pure display, same split as Engine.shop_price/render_shop)."""
 
 from __future__ import annotations
 
@@ -106,6 +117,13 @@ class Quest:
     # reward_item_id.
     reward_shop_discount_pct: float | None = None
     status: QuestStatus = "not_given"
+    # Quest log pane overrides for current_description below - see each
+    # field's docstring on content.schema.QuestDef, which this mirrors
+    # exactly (content/loader.py's load_quests is what actually validates
+    # them; this is just where they land at runtime).
+    carrying_item_description: str = ""
+    completed_description: str = ""
+    failed_description: str = ""
 
     def __post_init__(self) -> None:
         # Not a dataclass field on purpose - stays out of __eq__/repr, so
@@ -121,6 +139,34 @@ class Quest:
                 return f"Quest: {self.name} - active"
             return f"Quest: {self.name} - active (by Day {self.deadline_day})"
         return f"Quest: {self.name} - {self.status}"
+
+    def current_description(self, inventory: list["Entity"]) -> str:
+        """What the quest log screen shows for this quest right now -
+        richer than the static pitch `description` alone, so a quest that
+        actually progresses (or ends) reads that way in the log, not just
+        via the HUD's one-line status tag. Falls back to `description` at
+        any stage with no dedicated override, so an unwritten override
+        just means "nothing new to say yet," never a blank pane.
+
+        Checked in this order: completed and failed are terminal and take
+        priority over everything else; carrying_item_description only
+        applies mid-flight, to a fetch quest (target_item_id) whose target
+        item is actually in `inventory` right now (matched by
+        Entity.entity_id, same predicate QuestLog.check_delivery uses) -
+        not yet delivered, so still "in_progress", but worth saying
+        differently than the original pitch."""
+        if self.status == "completed":
+            return self.completed_description or self.description
+        if self.status == "failed":
+            return self.failed_description or self.description
+        if (
+            self.status == "in_progress"
+            and self.target_item_id is not None
+            and self.carrying_item_description
+            and any(it.entity_id == self.target_item_id for it in inventory)
+        ):
+            return self.carrying_item_description
+        return self.description
 
 
 @dataclass
@@ -323,6 +369,9 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_done_dialogue=qdef.target_done_dialogue,
         reward_item_id=qdef.reward_item_id, reward_shop_discount_pct=qdef.reward_shop_discount_pct,
         status=qdef.starting_status,
+        carrying_item_description=qdef.carrying_item_description,
+        completed_description=qdef.completed_description,
+        failed_description=qdef.failed_description,
     )
 
 

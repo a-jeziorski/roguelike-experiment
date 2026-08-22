@@ -6,6 +6,13 @@
 # specific catalog entity), or target_item_id (delivering a specific item to
 # questgiver_entity_id while holding it) - see engine/quest.py for what each
 # one actually checks.
+#
+# description is only the quest log's *starting* pane text - completed_
+# description/failed_description (and, for a fetch quest specifically,
+# carrying_item_description) override it once the quest actually progresses;
+# see Quest.current_description (engine/quest.py) for exactly when each one
+# applies. Leave any of the three unset ("") to just keep showing
+# `description` at that stage.
 
 goblin_warning:
   name: The Goblin Warning
@@ -14,6 +21,15 @@ goblin_warning:
     horde is migrating into the region, and the town needs warning before
     it arrives. No letter, no proof - just what you were told, and who
     you can get to listen.
+  completed_description: >
+    You found the Village Chief and told them everything you knew - the
+    horde, the timing, all of it. The warning's been passed on. What
+    Millhaven does with it now is out of your hands.
+  failed_description: >
+    The deadline came and went before you ever found the Village Chief.
+    Whatever warning you were carrying, it never reached anyone in time -
+    if the horde's already on its way, nobody in Millhaven had the chance
+    to prepare for it.
   completion_message: The warning is passed on - what Millhaven does with it now isn't yours to carry anymore.
   failure_message: The deadline for the warning has passed. Whatever time Millhaven had to prepare, it's gone now.
   target_done_dialogue: The warning's out now - the town knows what's coming, thanks to you. Whatever happens next, at least we won't be caught flat-footed.
@@ -29,6 +45,10 @@ kill_the_warden:
     Prison Tower doesn't get to just walk away from what he did there.
     Whether he's already paid for it or not is something you'd know
     better than they would.
+  completed_description: >
+    The Warden is dead - by your hand, whether during the escape or after.
+    You went back and told the prisoner who asked; they didn't say much,
+    but they pressed a Healing Potion into your hands before you left.
   completion_message: The Warden is dead. Whatever he did to the people under him, he won't do it to anyone else now.
   given_message: "New quest: An Old Debt - if the Warden of Prison Tower is still alive, he won't be for long if you have anything to say about it."
   already_done_message: You tell them it's already done - the Warden didn't survive your escape. They go quiet for a moment. 'Good,' they say, finally. 'Good.'
@@ -44,6 +64,15 @@ fetch_fungus:
     where groundwater in the Sunken Mine has sat undisturbed for years.
     They didn't say what it's for. Bring it back and there's coin in it,
     one way or another.
+  carrying_item_description: >
+    You've got the fungus - pale, damp, exactly what the shopkeeper
+    described. It's not worth much to anyone else. Bring it back to them
+    in Millhaven to collect whatever they're offering for it.
+  completed_description: >
+    You brought the fungus back and the shopkeeper took it without much
+    explanation. What you got in return was concrete enough, though: a
+    standing 20% discount on everything they sell, for as long as you're
+    both still here.
   completion_message: The shopkeeper takes the fungus, turns it over once, and nods. 'Knew you'd manage.' Whatever it's for, that's between them and it now.
   given_message: "New quest: A Standing Request - the shopkeeper wants a pale fungus that only grows near standing water deep in the Sunken Mine."
   questgiver_done_dialogue: Found what I was after, did you? Coin's worth more to you here now, at least.

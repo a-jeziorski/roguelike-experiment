@@ -631,3 +631,84 @@ def test_format_for_hud_failed_omits_deadline():
 def test_format_for_hud_not_given():
     quest = make_quest(name="An Old Debt", status="not_given")
     assert quest.format_for_hud() == "Quest: An Old Debt - not_given"
+
+
+# --- Quest.current_description ---
+
+
+def test_current_description_defaults_to_description_when_in_progress():
+    quest = make_quest(status="in_progress", description="The starting pitch.")
+    assert quest.current_description([]) == "The starting pitch."
+
+
+def test_current_description_uses_completed_description_when_set():
+    quest = make_quest(
+        status="completed", description="The starting pitch.",
+        completed_description="All done, here's what you got.",
+    )
+    assert quest.current_description([]) == "All done, here's what you got."
+
+
+def test_current_description_completed_falls_back_to_description_when_unset():
+    quest = make_quest(status="completed", description="The starting pitch.")
+    assert quest.current_description([]) == "The starting pitch."
+
+
+def test_current_description_uses_failed_description_when_set():
+    quest = make_quest(
+        status="failed", description="The starting pitch.",
+        failed_description="Too late - here's what that cost you.",
+    )
+    assert quest.current_description([]) == "Too late - here's what that cost you."
+
+
+def test_current_description_failed_falls_back_to_description_when_unset():
+    quest = make_quest(status="failed", description="The starting pitch.")
+    assert quest.current_description([]) == "The starting pitch."
+
+
+def test_current_description_uses_carrying_item_description_when_holding_the_item():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
+        carrying_item_description="You've got it - bring it back.",
+    )
+    inventory = [_FakeInventoryItem("pale_fungus")]
+
+    assert quest.current_description(inventory) == "You've got it - bring it back."
+
+
+def test_current_description_ignores_carrying_item_description_without_the_item():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
+        carrying_item_description="You've got it - bring it back.",
+    )
+    assert quest.current_description([]) == "The starting pitch."
+
+
+def test_current_description_ignores_carrying_item_description_for_a_non_fetch_quest():
+    """A Talk/kill/dungeon quest has no target_item_id, so
+    carrying_item_description (even if somehow set) never applies -
+    matches content/schema.py's own validator rejecting that combination
+    at content-load time; this just confirms the runtime side agrees."""
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_entity_id="village_chief", target_item_id=None,
+        carrying_item_description="Should never show.",
+    )
+    inventory = [_FakeInventoryItem("pale_fungus")]
+
+    assert quest.current_description(inventory) == "The starting pitch."
+
+
+def test_current_description_completed_takes_priority_over_carrying_item_description():
+    quest = make_quest(
+        status="completed", description="The starting pitch.",
+        target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
+        carrying_item_description="You've got it - bring it back.",
+        completed_description="All done.",
+    )
+    inventory = [_FakeInventoryItem("pale_fungus")]
+
+    assert quest.current_description(inventory) == "All done."

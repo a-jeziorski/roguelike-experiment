@@ -408,13 +408,17 @@ def render_quest_log(
     quests: "list[Quest]",
     selected: int,
     active_quest_id: str | None,
+    description: str,
 ) -> None:
     """The quest log screen: unlike every other render_* function above, this
     one draws no map - just a list of known quests (already filtered by the
-    caller to exclude not-given ones), the selected quest's full description,
-    and a footer control hint. `quests` and `selected` together identify the
+    caller to exclude not-given ones), the selected quest's description, and
+    a footer control hint. `quests` and `selected` together identify the
     highlighted row; `active_quest_id` marks which one is currently pinned to
-    the HUD."""
+    the HUD. `description` is the selected quest's already-resolved current
+    text (see Quest.current_description) - this function never computes it
+    itself, same "engine computes, render just displays" split as
+    Engine.shop_price/render_shop's `prices`."""
     console.clear()
     width = console.width
     y = 0
@@ -428,7 +432,7 @@ def render_quest_log(
 
     y += 1
     if quests:
-        y += console.print(0, y, quests[selected].description, fg=HUD_FG, width=width)
+        y += console.print(0, y, description, fg=HUD_FG, width=width)
 
     y = console.height - 1
     console.print(

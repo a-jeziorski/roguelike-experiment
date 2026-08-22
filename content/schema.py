@@ -183,6 +183,10 @@ class QuestDef(BaseModel):
 
     id: str
     name: str
+    # The quest log screen's default pane text - what's shown before
+    # anything's happened yet (not_given/in_progress with no more specific
+    # override applicable). See Quest.current_description for how the
+    # three overrides below take precedence over this at their own stage.
     description: str
     completion_message: str
     failure_message: str = ""
@@ -200,6 +204,20 @@ class QuestDef(BaseModel):
     reward_item_id: str | None = None
     reward_shop_discount_pct: float | None = Field(default=None, gt=0, le=1)
     starting_status: QuestStatus = "not_given"
+    # Quest log pane override for a fetch quest (target_item_id) while
+    # in_progress and the player is actually carrying the target item (not
+    # yet delivered) - see Quest.current_description. "" means no override:
+    # `description` keeps showing even while carrying the item. Only
+    # meaningful alongside target_item_id.
+    carrying_item_description: str = ""
+    # Quest log pane override once this quest is "completed" - a summary of
+    # what happened and what was earned, not just the original pitch. ""
+    # falls back to `description`.
+    completed_description: str = ""
+    # Quest log pane override once this quest is "failed" - only meaningful
+    # alongside a deadline (see the validator below), since that's the only
+    # way a quest ever fails. "" falls back to `description`.
+    failed_description: str = ""
 
     @model_validator(mode="after")
     def at_most_one_trigger(self) -> "QuestDef":
@@ -216,9 +234,30 @@ class QuestDef(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def failed_description_requires_a_deadline(self) -> "QuestDef":
+        if self.failed_description and self.deadline_year is None:
+            raise ValueError(
+                "failed_description is set but there's no deadline - "
+                "QuestLog.check_deadlines is the only way a quest ever "
+                "fails, so a quest with no deadline_year/deadline_day can "
+                "never show it"
+            )
+        return self
+
+    @model_validator(mode="after")
     def deadline_both_or_neither(self) -> "QuestDef":
         if (self.deadline_year is None) != (self.deadline_day is None):
             raise ValueError("deadline_year and deadline_day must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def carrying_item_description_requires_a_fetch_target(self) -> "QuestDef":
+        if self.carrying_item_description and self.target_item_id is None:
+            raise ValueError(
+                "carrying_item_description is set but target_item_id isn't - "
+                "this override only ever applies to a fetch quest, checked "
+                "against the item the player is actually carrying"
+            )
         return self
 
 
