@@ -217,10 +217,10 @@ def render_projectile(console: "Console", cam_x: int, cam_y: int, x: int, y: int
         console.print(sx, sy, glyph, fg=PROJECTILE_FG)
 
 
-def flash_impact(console: "Console", cam_x: int, cam_y: int, x: int, y: int) -> None:
+def flash_impact(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int, x: int, y: int) -> None:
     sx, sy = x - cam_x, y - cam_y
     if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
-        console.rgb[sx, sy]["bg"] = IMPACT_BG
+        _print_highlighted_cell(console, game_map, sx, sy, x, y, IMPACT_BG)
 
 
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
@@ -393,6 +393,45 @@ def render_look_hud(
     return y
 
 
+def _ascii_cell_visual(game_map: "GameMap", x: int, y: int) -> tuple[str, tuple[int, int, int]] | None:
+    """What (x, y) would show under pure-ASCII rendering, ignoring any
+    sprite entirely: the topmost visible entity's glyph/color if any
+    (matching render_entities' own render_priority ordering), else the
+    tile kind's own glyph (light if currently visible, dark if only
+    explored). None if the cell is neither visible nor explored -
+    render_map/render_entities draw nothing there either."""
+    if game_map.visible[x, y]:
+        entities_here = [e for e in game_map.entities if e.x == x and e.y == y]
+        if entities_here:
+            topmost = max(entities_here, key=lambda e: e.render_priority)
+            return topmost.glyph, topmost.color
+        kind = game_map.kinds[x, y]
+        return TILE_VISUALS[kind]["glyph"], TILE_VISUALS[kind]["light"]
+    if game_map.explored[x, y]:
+        kind = game_map.kinds[x, y]
+        return TILE_VISUALS[kind]["glyph"], TILE_VISUALS[kind]["dark"]
+    return None
+
+
+def _print_highlighted_cell(
+    console: "Console", game_map: "GameMap", sx: int, sy: int, x: int, y: int,
+    bg_color: tuple[int, int, int],
+) -> None:
+    """Reverts a single cell to its ASCII glyph before applying a bg
+    highlight - a fully opaque bitmap tile (every mapped sprite is opaque,
+    whether it's plain terrain or an entity composited over its terrain -
+    see engine/sprites.py) would otherwise completely cover any bg color
+    set on top of it, since a Console cell holds only one glyph and tcod
+    draws that glyph's own pixels over the cell's bg, not blended with it.
+    The only three places a background highlight is ever applied - look
+    mode, target mode, and flash_impact - all go through this."""
+    visual = _ascii_cell_visual(game_map, x, y)
+    if visual is not None:
+        glyph, color = visual
+        console.print(sx, sy, glyph, fg=color)
+    console.rgb[sx, sy]["bg"] = bg_color
+
+
 def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, cursor_y: int) -> None:
     """Centers the camera on the cursor rather than the player: look mode's
     cursor can roam anywhere on the map, unlike targeting's range-limited one,
@@ -404,7 +443,9 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
     )
     render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
-    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = CURSOR_BG
+    _print_highlighted_cell(
+        console, engine.game_map, cursor_x - cam_x, cursor_y - cam_y, cursor_x, cursor_y, CURSOR_BG
+    )
 
     hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
@@ -452,8 +493,9 @@ def render_target_frame(
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
-    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = (
-        TARGET_VALID_BG if valid else TARGET_INVALID_BG
+    _print_highlighted_cell(
+        console, engine.game_map, cursor_x - cam_x, cursor_y - cam_y, cursor_x, cursor_y,
+        TARGET_VALID_BG if valid else TARGET_INVALID_BG,
     )
 
     hud_y = VIEWPORT_HEIGHT + 1

@@ -297,7 +297,7 @@ def animate_ranged_attacks(
             time.sleep(PROJECTILE_FRAME_SECONDS)
 
         render_all(console, engine)
-        flash_impact(console, cam_x, cam_y, tx, ty)
+        flash_impact(console, engine.game_map, cam_x, cam_y, tx, ty)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 
@@ -317,7 +317,7 @@ def animate_melee_attacks(
 
     for x, y in events:
         render_all(console, engine)
-        flash_impact(console, cam_x, cam_y, x, y)
+        flash_impact(console, engine.game_map, cam_x, cam_y, x, y)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 

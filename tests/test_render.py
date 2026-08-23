@@ -18,12 +18,17 @@ from engine.entity import (
 from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog, create_quest_log
 from engine.render import (
+    CURSOR_BG,
+    IMPACT_BG,
     LOG_COLORS,
+    TARGET_INVALID_BG,
+    TARGET_VALID_BG,
     TILE_VISUALS,
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
     compute_camera,
     describe_tile,
+    flash_impact,
     projectile_glyph,
     projectile_path,
     render_all,
@@ -366,6 +371,110 @@ def test_render_target_frame_does_not_raise_for_level_01():
     console = tcod.console.Console(70, 40, order="F")
     render_target_frame(console, engine, player.x, player.y, max_range=5)  # should not raise
     render_target_frame(console, engine, player.x + 3, player.y, max_range=5)  # empty cursor tile
+
+
+def _make_engine_with_player(game_map):
+    player = Entity(
+        1, 1, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+        entity_id="player",
+    )
+    game_map.entities.append(player)
+    return Engine(game_map, player, "Test Level"), player
+
+
+def test_render_look_frame_shows_the_cursor_highlight_even_when_the_tile_is_sprite_mapped():
+    """A regression test for the bug where a fully-opaque bitmap tile
+    completely covered any bg color set on top of it - see
+    engine/render.py's _print_highlighted_cell."""
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    engine, player = _make_engine_with_player(game_map)
+    engine.sprite_codepoints = SpriteCodepoints(tile_kinds={"floor": 0xE000})
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_look_frame(console, engine, 5, 5)
+
+    assert tuple(console.rgb[5, 5]["bg"]) == CURSOR_BG
+    assert chr(console.rgb[5, 5]["ch"]) == TILE_VISUALS["floor"]["glyph"]  # ASCII, not 0xE000
+
+
+def test_render_target_frame_shows_the_valid_highlight_even_when_the_tile_is_sprite_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    engine, player = _make_engine_with_player(game_map)
+    player.x, player.y = 4, 5
+    target = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(target)
+    engine.sprite_codepoints = SpriteCodepoints(tile_kinds={"floor": 0xE000})
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_target_frame(console, engine, 5, 5, max_range=5)
+
+    assert tuple(console.rgb[5, 5]["bg"]) == TARGET_VALID_BG
+    assert chr(console.rgb[5, 5]["ch"]) == "r"  # the target's ASCII glyph, not TILE_VISUALS/sprite
+
+
+def test_render_target_frame_shows_the_invalid_highlight_out_of_range():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[8, 8] = "floor"
+    game_map.visible[8, 8] = True
+    engine, player = _make_engine_with_player(game_map)
+    player.x, player.y = 1, 1
+    engine.sprite_codepoints = SpriteCodepoints(tile_kinds={"floor": 0xE000})
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_target_frame(console, engine, 8, 8, max_range=1)  # far out of range
+
+    assert tuple(console.rgb[8, 8]["bg"]) == TARGET_INVALID_BG
+
+
+def test_flash_impact_shows_the_highlight_even_when_the_tile_is_sprite_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+
+    console = tcod.console.Console(20, 20, order="F")
+    flash_impact(console, game_map, cam_x=0, cam_y=0, x=5, y=5)
+
+    assert tuple(console.rgb[5, 5]["bg"]) == IMPACT_BG
+    assert chr(console.rgb[5, 5]["ch"]) == TILE_VISUALS["floor"]["glyph"]
+
+
+def test_flash_impact_shows_the_entity_glyph_when_one_is_present():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    rat = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(rat)
+
+    console = tcod.console.Console(20, 20, order="F")
+    flash_impact(console, game_map, cam_x=0, cam_y=0, x=5, y=5)
+
+    assert tuple(console.rgb[5, 5]["bg"]) == IMPACT_BG
+    assert chr(console.rgb[5, 5]["ch"]) == "r"
+
+
+def test_flash_impact_does_nothing_outside_the_viewport():
+    game_map = make_game_map(10, 10)
+    console = tcod.console.Console(20, 20, order="F")
+
+    flash_impact(console, game_map, cam_x=0, cam_y=0, x=500, y=500)  # far outside
+
+    assert tuple(console.rgb[0, 0]["bg"]) != IMPACT_BG
 
 
 def test_describe_tile_unexplored():
