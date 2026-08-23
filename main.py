@@ -342,14 +342,16 @@ def _match_entrance(overworld_map, from_dungeon_id: str) -> tuple[int, int] | No
     return None
 
 
-def _pending_encounter(from_dungeon_id, quest_log: QuestLog, encounter_registry):
+def _armable_encounter(from_dungeon_id, quest_log: QuestLog, encounter_registry):
     """The first not-yet-triggered EncounterDef (data/encounters.yaml) whose
     trigger_dungeon_id matches from_dungeon_id and whose gate_quest_id is
-    currently at gate_quest_status, or None. First match wins if more than
-    one is ever eligible at once - only one encounter exists today, but this
-    mirrors the same "file order is meaningful" convention already
-    documented for data/quests.yaml's active-quest-pin tiebreak, should a
-    second overlapping encounter ever be added."""
+    currently at gate_quest_status, or None - the moment its delay timer
+    should (re)start (see QuestLog.arm_encounter), not the moment it fires.
+    First match wins if more than one is ever eligible at once - only one
+    encounter exists today, but this mirrors the same "file order is
+    meaningful" convention already documented for data/quests.yaml's
+    active-quest-pin tiebreak, should a second overlapping encounter ever
+    be added."""
     for encounter in (encounter_registry or {}).values():
         if encounter.trigger_dungeon_id != from_dungeon_id:
             continue
@@ -359,6 +361,57 @@ def _pending_encounter(from_dungeon_id, quest_log: QuestLog, encounter_registry)
         if quest is not None and quest.status == encounter.gate_quest_status:
             return encounter
     return None
+
+
+def _due_encounter(quest_log: QuestLog, encounter_registry, clock: GameClock):
+    """The first armed EncounterDef whose delay has actually elapsed, or
+    None. Re-checks gate_quest_status is still current - an armed encounter
+    whose gate quest's status changed during the delay (e.g. somehow
+    completed some other way) never fires, even once its timer runs out."""
+    for encounter_id, due in quest_log.armed_encounters.items():
+        if encounter_id in quest_log.triggered_encounter_ids:
+            continue
+        if (clock.year, clock.day, clock.hour) < due:
+            continue
+        encounter = (encounter_registry or {}).get(encounter_id)
+        if encounter is None:
+            continue
+        quest = quest_log.quests.get(encounter.gate_quest_id)
+        if quest is not None and quest.status == encounter.gate_quest_status:
+            return encounter
+    return None
+
+
+def _redirect_into_encounter(
+    encounter, overworld_engine: Engine, active_engines: dict[str, Engine],
+    dungeon_registry: dict, catalog, sprite_codepoints, position: tuple[int, int],
+) -> tuple[str, Engine]:
+    """Departs the player from overworld_engine and hands them to
+    encounter.encounter_dungeon_id's Engine (built fresh on first fire,
+    resumed thereafter) - the actual mechanics of an overworld encounter
+    firing, shared by both the "just landed on the overworld" and "already
+    walking the overworld, timer ran out" call sites in resolve_transition.
+    `position` is wherever the player actually was on the overworld the
+    moment this fired - see Engine.overworld_return_position, which uses it
+    to hand the player back to that exact spot once they later leave."""
+    enc_player = overworld_engine.depart_player()
+    enc_target = active_engines.get(encounter.encounter_dungeon_id)
+    if enc_target is None:
+        dungeon = dungeon_registry[encounter.encounter_dungeon_id]
+        starting_level = dungeon.levels[dungeon.starting_level]
+        enc_map, _ = build_game_map(starting_level, catalog, player=enc_player)
+        enc_target = Engine(
+            enc_map, enc_player, starting_level.name,
+            catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+            clock=overworld_engine.clock, quest_log=overworld_engine.quest_log,
+            sprite_codepoints=sprite_codepoints, overworld_return_position=position,
+        )
+        active_engines[encounter.encounter_dungeon_id] = enc_target
+    else:
+        enc_target.arrive_player(enc_player)
+    enc_target.quest_log.record_dungeon_arrival(encounter.encounter_dungeon_id)
+    enc_target.quest_log.record_encounter_triggered(encounter.id)
+    return encounter.encounter_dungeon_id, enc_target
 
 
 def resolve_transition(
@@ -388,19 +441,28 @@ def resolve_transition(
     on first visit and cached in active_engines thereafter, so leaving and
     later returning resumes exactly the state that dungeon was left in.
 
-    `encounter_registry` (data/encounters.yaml, EncounterDef -> ...) is
-    checked every time the player lands on the overworld: if a matching,
-    not-yet-triggered encounter exists (see _pending_encounter), the player
-    is immediately redirected into its encounter_dungeon_id instead - the
-    overworld landing above still happens first (unchanged), it's just
-    invisible, since the player is re-departed from it before anything ever
-    renders that frame, and a cached Engine's message_log is unconditionally
-    reset on its next real arrival anyway. `None` (the default) disables the
-    feature entirely - every existing caller/test that doesn't pass it keeps
-    behaving exactly as before.
+    `encounter_registry` (data/encounters.yaml, EncounterDef -> ...) drives
+    a two-step arm-then-fire sequence, not an instant redirect: departing
+    trigger_dungeon_id with its gate quest at gate_quest_status arms a
+    delay_hours-long timer (QuestLog.armed_encounters/arm_encounter); the
+    player is only actually redirected into encounter_dungeon_id once that
+    many *overworld* hours have elapsed (_due_encounter), checked both here
+    (whenever the current engine is the overworld one, covering the timer
+    running out mid-walk on some later turn) and again right after arming
+    (covering a delay that's already elapsed the instant it's set). `None`
+    (the default) disables the feature entirely - every existing
+    caller/test that doesn't pass it keeps behaving exactly as before.
     """
     if engine.game_state != "playing":
         return active_key, engine
+
+    if engine.is_overworld:
+        encounter = _due_encounter(engine.quest_log, encounter_registry, engine.clock)
+        if encounter is not None:
+            return _redirect_into_encounter(
+                encounter, engine, active_engines, dungeon_registry, catalog,
+                sprite_codepoints, (engine.player.x, engine.player.y),
+            )
 
     if engine.wants_overworld:
         player = engine.depart_player()
@@ -420,26 +482,15 @@ def resolve_transition(
             position = engine.overworld_return_position or _match_entrance(target.game_map, active_key) or overworld_level.player_start
             target.arrive_player(player, position)
 
-        encounter = _pending_encounter(active_key, target.quest_log, encounter_registry)
-        if encounter is not None:
-            enc_player = target.depart_player()
-            enc_target = active_engines.get(encounter.encounter_dungeon_id)
-            if enc_target is None:
-                dungeon = dungeon_registry[encounter.encounter_dungeon_id]
-                starting_level = dungeon.levels[dungeon.starting_level]
-                enc_map, _ = build_game_map(starting_level, catalog, player=enc_player)
-                enc_target = Engine(
-                    enc_map, enc_player, starting_level.name,
-                    catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
-                    clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
-                    overworld_return_position=position,
+        armable = _armable_encounter(active_key, target.quest_log, encounter_registry)
+        if armable is not None:
+            target.quest_log.arm_encounter(armable.id, target.clock.plus_hours(armable.delay_hours))
+            encounter = _due_encounter(target.quest_log, encounter_registry, target.clock)
+            if encounter is not None:
+                return _redirect_into_encounter(
+                    encounter, target, active_engines, dungeon_registry, catalog,
+                    sprite_codepoints, (target.player.x, target.player.y),
                 )
-                active_engines[encounter.encounter_dungeon_id] = enc_target
-            else:
-                enc_target.arrive_player(enc_player)
-            enc_target.quest_log.record_dungeon_arrival(encounter.encounter_dungeon_id)
-            enc_target.quest_log.record_encounter_triggered(encounter.id)
-            return encounter.encounter_dungeon_id, enc_target
 
         return OVERWORLD_KEY, target
 

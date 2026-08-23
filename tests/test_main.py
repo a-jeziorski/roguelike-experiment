@@ -590,22 +590,151 @@ def _ambush_encounter() -> dict[str, EncounterDef]:
     }
 
 
-def test_resolve_transition_triggers_the_ambush_when_leaving_millhaven_with_the_quest_in_progress():
+def test_resolve_transition_arms_but_does_not_immediately_redirect():
+    """Leaving Millhaven no longer instantly ambushes the player - it only
+    arms delay_hours' timer (see EncounterDef.delay_hours)."""
     catalog, dungeon_registry, overworld_level = _world()
-    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=_quest_log_with_ambush_quest("in_progress"))
+    clock = GameClock()
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=_quest_log_with_ambush_quest("in_progress"))
     engine.on_player_reach_stairs(None, "stairs_up")
 
     active_key, new_engine = resolve_transition(
         "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
-        quest_log=engine.quest_log, encounter_registry=_ambush_encounter(),
+        clock=clock, quest_log=engine.quest_log, encounter_registry=_ambush_encounter(),
     )
 
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.is_overworld is True
+    assert "warning_ambush" in engine.quest_log.armed_encounters
+    assert "warning_ambush" not in engine.quest_log.triggered_encounter_ids
+
+
+def test_resolve_transition_does_not_fire_before_the_delay_elapses():
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    encounter_registry = _ambush_encounter()  # delay_hours defaults to 3
+
+    active_key, overworld_engine = resolve_transition(
+        "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    assert active_key == OVERWORLD_KEY
+
+    for _ in range(2):  # fewer than the 3-hour delay
+        clock.advance_hour()
+        active_key, overworld_engine = resolve_transition(
+            active_key, overworld_engine, {"millhaven": engine, OVERWORLD_KEY: overworld_engine},
+            dungeon_registry, overworld_level, catalog,
+            clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+        )
+
+    assert active_key == OVERWORLD_KEY
+    assert overworld_engine.is_overworld is True
+    assert "warning_ambush" not in quest_log.triggered_encounter_ids
+
+
+def test_resolve_transition_fires_once_the_delay_elapses():
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    encounter_registry = _ambush_encounter()
+    active_engines = {"millhaven": engine}
+
+    active_key, overworld_engine = resolve_transition(
+        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    active_engines[OVERWORLD_KEY] = overworld_engine
+
+    for _ in range(3):  # exactly the default delay_hours
+        clock.advance_hour()
+        active_key, engine_now = resolve_transition(
+            active_key, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+            clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+        )
+
     assert active_key == "goblin_ambush"
-    assert new_engine.is_overworld is False
-    goblins = [e for e in new_engine.game_map.entities if e.name == "Goblin"]
+    assert engine_now.is_overworld is False
+    goblins = [e for e in engine_now.game_map.entities if e.name == "Goblin"]
     assert len(goblins) == 3
-    assert "warning_ambush" in engine.quest_log.triggered_encounter_ids
-    assert "goblin_ambush" in engine.quest_log.visited_dungeon_ids
+    assert "warning_ambush" in quest_log.triggered_encounter_ids
+    assert "goblin_ambush" in quest_log.visited_dungeon_ids
+
+
+def test_resolve_transition_fires_at_the_players_current_overworld_position():
+    """The ambush catches up wherever the player actually is when the timer
+    runs out, not back at Millhaven's entrance - Engine.overworld_return_position
+    reflects wherever they'd wandered to during the delay."""
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    encounter_registry = _ambush_encounter()
+    active_engines = {"millhaven": engine}
+
+    active_key, overworld_engine = resolve_transition(
+        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    active_engines[OVERWORLD_KEY] = overworld_engine
+
+    # Simulate the player wandering elsewhere on the overworld during the delay.
+    wandered_to = (overworld_engine.player.x + 3, overworld_engine.player.y + 2)
+    overworld_engine.player.x, overworld_engine.player.y = wandered_to
+
+    for _ in range(3):
+        clock.advance_hour()
+        active_key, ambush_engine = resolve_transition(
+            active_key, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+            clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+        )
+
+    assert active_key == "goblin_ambush"
+
+    ambush_engine.on_player_reach_stairs(None, "stairs_up")  # flee the ambush
+    active_key, back_on_overworld = resolve_transition(
+        active_key, ambush_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert (back_on_overworld.player.x, back_on_overworld.player.y) == wandered_to
+
+
+def test_resolve_transition_redeparting_before_firing_resets_the_timer():
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    encounter_registry = _ambush_encounter()
+
+    resolve_transition(
+        "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    first_due = quest_log.armed_encounters["warning_ambush"]
+
+    clock.advance_hour()
+    clock.advance_hour()  # 2 hours elapsed, still not due
+
+    # Re-enter and leave Millhaven again - the timer should restart from here.
+    engine_2 = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine_2.on_player_reach_stairs(None, "stairs_up")
+    resolve_transition(
+        "millhaven", engine_2, {"millhaven": engine_2}, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    second_due = quest_log.armed_encounters["warning_ambush"]
+
+    assert second_due != first_due
+    assert second_due > first_due
 
 
 def test_resolve_transition_does_not_trigger_the_ambush_from_a_different_dungeon():
@@ -652,71 +781,68 @@ def test_resolve_transition_does_not_retrigger_an_already_triggered_ambush():
     assert new_engine.is_overworld is True
 
 
-def test_resolve_transition_leaving_the_ambush_returns_to_millhavens_real_entrance():
-    catalog, dungeon_registry, overworld_level = _world()
-    quest_log = _quest_log_with_ambush_quest("in_progress")
-    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
+def _arm_and_fire_ambush(dungeon_registry, catalog, overworld_level, clock, quest_log, active_engines):
+    """Shared setup for tests past the arm/fire split that don't care about
+    the delay mechanics themselves: departs Millhaven, advances the clock
+    through the default 3-hour delay_hours, and returns (active_key, engine)
+    once the ambush has actually fired."""
+    encounter_registry = _ambush_encounter()
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
     engine.on_player_reach_stairs(None, "stairs_up")
-    active_engines = {"millhaven": engine}
+    active_engines["millhaven"] = engine
 
-    active_key, ambush_engine = resolve_transition(
+    active_key, current = resolve_transition(
         "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
-        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
     )
-    assert active_key == "goblin_ambush"
+    active_engines[OVERWORLD_KEY] = current
 
-    ambush_engine.on_player_reach_stairs(None, "stairs_up")  # flee the ambush
-    active_key, overworld_engine = resolve_transition(
-        active_key, ambush_engine, active_engines, dungeon_registry, overworld_level, catalog,
-        quest_log=quest_log, encounter_registry=_ambush_encounter(),
-    )
-
-    assert active_key == OVERWORLD_KEY
-    assert (overworld_engine.player.x, overworld_engine.player.y) == _entrance_for(overworld_level, "millhaven")
+    for _ in range(3):
+        clock.advance_hour()
+        active_key, current = resolve_transition(
+            active_key, current, active_engines, dungeon_registry, overworld_level, catalog,
+            clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+        )
+    return active_key, current
 
 
 def test_resolve_transition_ambush_resumes_the_same_cached_engine_after_a_restart():
     """Engine.restart() (called elsewhere, not exercised directly here) only
-    rebuilds the *current* Engine and clears QuestLog.triggered_encounter_ids
-    - it doesn't evict active_engines. Pinning that a second ambush trigger
-    (simulated by clearing triggered_encounter_ids directly, the same effect
-    restart's QuestLog.reset() has) resumes the exact same cached Engine
-    rather than rebuilding a fresh one - consistent with every other cached
-    dungeon's documented behavior (see QuestLog.reset's own docstring)."""
+    rebuilds the *current* Engine and clears QuestLog.triggered_encounter_ids/
+    armed_encounters - it doesn't evict active_engines. Pinning that a
+    second ambush trigger (simulated by clearing that state directly, the
+    same effect restart's QuestLog.reset() has) resumes the exact same
+    cached Engine rather than rebuilding a fresh one - consistent with
+    every other cached dungeon's documented behavior (see QuestLog.reset's
+    own docstring)."""
     catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
     quest_log = _quest_log_with_ambush_quest("in_progress")
-    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
-    engine.on_player_reach_stairs(None, "stairs_up")
-    active_engines = {"millhaven": engine}
+    active_engines: dict = {}
 
-    _, ambush_engine = resolve_transition(
-        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
-        quest_log=quest_log, encounter_registry=_ambush_encounter(),
-    )
+    active_key, ambush_engine = _arm_and_fire_ambush(dungeon_registry, catalog, overworld_level, clock, quest_log, active_engines)
+    assert active_key == "goblin_ambush"
     goblin = next(e for e in ambush_engine.game_map.entities if e.name == "Goblin")
     ambush_engine.on_entity_death(goblin)
     assert goblin not in ambush_engine.game_map.entities
 
     # Simulate a restart: the quest goes back to in_progress (a fresh run
-    # re-grants it) and the encounter's "already triggered" record clears,
-    # exactly like QuestLog.reset() - but active_engines isn't touched.
+    # re-grants it) and the encounter's arm/trigger record clears, exactly
+    # like QuestLog.reset() - but active_engines isn't touched.
     quest_log.triggered_encounter_ids.discard("warning_ambush")
-    engine_2 = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
-    engine_2.on_player_reach_stairs(None, "stairs_up")
-    active_engines["millhaven"] = engine_2
+    quest_log.armed_encounters.clear()
 
-    _, ambush_engine_2 = resolve_transition(
-        "millhaven", engine_2, active_engines, dungeon_registry, overworld_level, catalog,
-        quest_log=quest_log, encounter_registry=_ambush_encounter(),
-    )
+    active_key_2, ambush_engine_2 = _arm_and_fire_ambush(dungeon_registry, catalog, overworld_level, clock, quest_log, active_engines)
 
+    assert active_key_2 == "goblin_ambush"
     assert ambush_engine_2 is ambush_engine
     assert goblin not in ambush_engine_2.game_map.entities  # still dead, not rebuilt fresh
 
 
 # Dungeons deliberately unreachable by walking there - only ever entered via
-# an EncounterDef's redirect (see main.py's _pending_encounter) - carved out
-# of the "every registered dungeon has an overworld entrance" check below.
+# an EncounterDef's redirect (see main.py's _armable_encounter/_due_encounter)
+# - carved out of the "every registered dungeon has an overworld entrance"
+# check below.
 ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush"}
 
 

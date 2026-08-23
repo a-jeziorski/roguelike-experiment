@@ -39,3 +39,24 @@ def test_reset_returns_to_starting_values_after_being_advanced():
 
     clock.reset()
     assert clock == GameClock()
+
+
+def test_plus_hours_within_the_same_day():
+    clock = GameClock(hour=5, day=50, year=87)
+    assert clock.plus_hours(3) == (87, 50, 8)
+
+
+def test_plus_hours_crosses_a_day_boundary():
+    clock = GameClock(hour=22, day=50, year=87)
+    assert clock.plus_hours(3) == (87, 51, 1)
+
+
+def test_plus_hours_crosses_a_year_boundary():
+    clock = GameClock(hour=22, day=365, year=87)
+    assert clock.plus_hours(3) == (88, 1, 1)
+
+
+def test_plus_hours_does_not_mutate_the_clock():
+    clock = GameClock(hour=5, day=50, year=87)
+    clock.plus_hours(20)
+    assert clock == GameClock(hour=5, day=50, year=87)

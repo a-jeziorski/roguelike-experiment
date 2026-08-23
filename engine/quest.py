@@ -266,8 +266,18 @@ class QuestLog:
     # across the whole run - same shape and reasoning as killed_entity_ids/
     # visited_dungeon_ids, so an overworld encounter never re-triggers on a
     # later departure once it's already happened once. See
-    # record_encounter_triggered and main.py's _pending_encounter.
+    # record_encounter_triggered and main.py's _due_encounter.
     triggered_encounter_ids: set[str] = field(default_factory=set)
+    # EncounterDef id -> the (year, day, hour) it becomes eligible to fire
+    # (see GameClock.plus_hours), for an encounter that's been armed
+    # (main.py's _armable_encounter matched) but hasn't fired yet. A stale
+    # entry - its gate quest's status having since changed away from
+    # gate_quest_status - is never removed here; quest status transitions
+    # are one-way in this codebase (not_given -> in_progress ->
+    # completed/failed, never back), so a stale due-time can never
+    # incorrectly resurrect, and main.py's _due_encounter re-checks the
+    # gate quest's live status at fire time regardless. See arm_encounter.
+    armed_encounters: dict[str, tuple[int, int, int]] = field(default_factory=dict)
 
     def active_quest(self) -> Quest | None:
         return self.quests.get(self.active_quest_id) if self.active_quest_id else None
@@ -304,12 +314,22 @@ class QuestLog:
         self.visited_dungeon_ids.add(dungeon_id)
 
     def record_encounter_triggered(self, encounter_id: str) -> None:
-        """Called from main.py's _pending_encounter/resolve_transition the
+        """Called from main.py's _due_encounter/resolve_transition the
         moment an overworld encounter actually fires - unconditional, same
         reasoning as record_dungeon_arrival/record_entity_killed. Purely a
-        memory of "this has already happened," so _pending_encounter never
-        redirects into the same encounter twice."""
+        memory of "this has already happened," so _due_encounter/
+        _armable_encounter never redirect into the same encounter twice."""
         self.triggered_encounter_ids.add(encounter_id)
+
+    def arm_encounter(self, encounter_id: str, due: tuple[int, int, int]) -> None:
+        """Called from main.py's resolve_transition when _armable_encounter
+        matches - starts (or restarts) encounter_id's delay timer, due at
+        the given (year, day, hour). Unconditionally overwrites any
+        existing due-time: re-departing the trigger dungeon before an
+        already-armed timer fires restarts the countdown from that later
+        departure, rather than continuing the original one - "counted from
+        your most recent departure," not the first ever."""
+        self.armed_encounters[encounter_id] = due
 
     def check_talked_to(self, entity_id: str) -> list[Quest]:
         """Called whenever the player talks to an NPC (Engine.talk_to_adjacent).
@@ -512,9 +532,11 @@ class QuestLog:
         """Every quest back to its own starting status (not-given quests
         stay not-given, already-given quests go back to in-progress), the
         active pin recomputed, and killed_entity_ids/visited_dungeon_ids/
-        triggered_encounter_ids cleared. Engine.restart() calls this, since a
-        restart is meant to be a clean slate for shared/global state, not
-        just the current dungeon's local state (see GameClock.reset()).
+        triggered_encounter_ids/armed_encounters cleared. Engine.restart()
+        calls this, since a restart is meant to be a clean slate for
+        shared/global state, not just the current dungeon's local state
+        (see GameClock.reset()) - a restart should re-arm any in-flight
+        encounter timer from scratch, not resume a stale countdown.
 
         Note: killed_entity_ids/visited_dungeon_ids/triggered_encounter_ids
         are shared/global, but Engine.restart() only rebuilds the *current*
@@ -534,6 +556,7 @@ class QuestLog:
         self.killed_entity_ids = set()
         self.visited_dungeon_ids = set()
         self.triggered_encounter_ids = set()
+        self.armed_encounters = {}
         self.active_quest_id = next(
             (q.id for q in self.quests.values() if q.initial_status == "in_progress"), None
         )
