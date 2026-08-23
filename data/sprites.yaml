@@ -97,7 +97,4 @@ tile_kinds:
   landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
   town:             {sheet: kenney_tiny_town, col: 6, row: 5}
   dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
-  # mountain: intentionally omitted - too important for a rough stand-in;
-  # the user will hand-pick a proper sprite later. Add a `mountain: {...}`
-  # line here whenever that's chosen - zero code change required, falls
-  # back to '^' until then.
+  mountain: { sheet: kenney_roguelike, col: 54, row: 21 }
