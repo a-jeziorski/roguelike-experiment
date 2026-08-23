@@ -169,17 +169,17 @@ word_down_the_road:
 spreading_the_warning:
   name: Spreading the Warning
   description: >
-    The Village Chief wants the goblin warning carried further than
-    Millhaven - Wayford sits on roads a horde could just as easily reach,
-    and nobody there's heard a word of it yet. Same as before: nothing
-    written down, just what you know and who you can get to listen.
+    The Village Chief wants the goblin warning carried on to Wayford's
+    Road Warden - a horde moving through the region is exactly the kind
+    of thing he'd want to hear about first. Same as before: nothing
+    written down, just what you know, told to him in person.
   completed_description: >
     You carried the warning on to Wayford yourself and told the Road
     Warden in person - no letter, same as with the Chief. He didn't seem
     surprised, just grim. Whatever's moving out there, two towns are
     watching for it now instead of one.
   completion_message: The warning's passed on again - Wayford knows what's coming now too, same as Millhaven did.
-  given_message: "New quest: Spreading the Warning - the Village Chief wants the goblin warning carried on to Wayford, before the horde gets there first."
+  given_message: "New quest: Spreading the Warning - the Village Chief wants the goblin warning carried on to Wayford's Road Warden, before the horde gets there first."
   questgiver_done_dialogue: Word's on its way to Wayford now, thanks to you. Whatever's coming, at least two towns will see it before it arrives instead of one.
   target_done_dialogue: Goblins on the move, is it. Wouldn't be the first horde to think this crossroads makes an easy path through. We'll keep eyes on the eastern road - appreciate the warning, whatever it's worth.
   questgiver_entity_id: village_chief
