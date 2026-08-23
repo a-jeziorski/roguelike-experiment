@@ -9,6 +9,7 @@ swallowing the SystemExit that EscapeAction.perform() would otherwise raise."""
 from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
+from content.schema import EncounterDef
 from engine.actions import BumpAction, EscapeAction, FireAction, RestartAction, WaitAction
 from engine.clock import HOURS_PER_DAY, GameClock
 from engine.engine import Engine
@@ -560,14 +561,175 @@ def test_resolve_transition_round_trip_preserves_dungeon_state():
     assert guard not in prison_engine_2.game_map.entities  # still dead after the detour
 
 
+# --- resolve_transition: overworld encounter redirect ---
+
+
+def _quest_log_with_ambush_quest(status: str) -> QuestLog:
+    """A synthetic QuestLog with one quest at id 'spreading_the_warning' -
+    matches the real shipped data/encounters.yaml's warning_ambush entry's
+    gate_quest_id exactly, so a real EncounterDef built directly (not loaded
+    from the file - see _ambush_encounter below) can be checked against it
+    without a filesystem dependency."""
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="Warning delivered.", status=status,
+    )
+    return QuestLog(quests={quest.id: quest})
+
+
+def _ambush_encounter() -> dict[str, EncounterDef]:
+    """Built directly rather than loaded from data/encounters.yaml, so these
+    tests don't depend on that file's exact contents - only on the real
+    millhaven/goblin_ambush dungeons existing in the registry, which
+    _world() already provides."""
+    return {
+        "warning_ambush": EncounterDef(
+            id="warning_ambush", trigger_dungeon_id="millhaven",
+            gate_quest_id="spreading_the_warning", encounter_dungeon_id="goblin_ambush",
+        ),
+    }
+
+
+def test_resolve_transition_triggers_the_ambush_when_leaving_millhaven_with_the_quest_in_progress():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=_quest_log_with_ambush_quest("in_progress"))
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    active_key, new_engine = resolve_transition(
+        "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
+        quest_log=engine.quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert active_key == "goblin_ambush"
+    assert new_engine.is_overworld is False
+    goblins = [e for e in new_engine.game_map.entities if e.name == "Goblin"]
+    assert len(goblins) == 3
+    assert "warning_ambush" in engine.quest_log.triggered_encounter_ids
+    assert "goblin_ambush" in engine.quest_log.visited_dungeon_ids
+
+
+def test_resolve_transition_does_not_trigger_the_ambush_from_a_different_dungeon():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "forgotten_ruins", quest_log=_quest_log_with_ambush_quest("in_progress"))
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    active_key, new_engine = resolve_transition(
+        "forgotten_ruins", engine, {"forgotten_ruins": engine}, dungeon_registry, overworld_level, catalog,
+        quest_log=engine.quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.is_overworld is True
+
+
+def test_resolve_transition_does_not_trigger_the_ambush_when_the_quest_is_not_in_progress():
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=_quest_log_with_ambush_quest("completed"))
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    active_key, new_engine = resolve_transition(
+        "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
+        quest_log=engine.quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.is_overworld is True
+
+
+def test_resolve_transition_does_not_retrigger_an_already_triggered_ambush():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    quest_log.triggered_encounter_ids.add("warning_ambush")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    active_key, new_engine = resolve_transition(
+        "millhaven", engine, {"millhaven": engine}, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert new_engine.is_overworld is True
+
+
+def test_resolve_transition_leaving_the_ambush_returns_to_millhavens_real_entrance():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines = {"millhaven": engine}
+
+    active_key, ambush_engine = resolve_transition(
+        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+    )
+    assert active_key == "goblin_ambush"
+
+    ambush_engine.on_player_reach_stairs(None, "stairs_up")  # flee the ambush
+    active_key, overworld_engine = resolve_transition(
+        active_key, ambush_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert active_key == OVERWORLD_KEY
+    assert (overworld_engine.player.x, overworld_engine.player.y) == _entrance_for(overworld_level, "millhaven")
+
+
+def test_resolve_transition_ambush_resumes_the_same_cached_engine_after_a_restart():
+    """Engine.restart() (called elsewhere, not exercised directly here) only
+    rebuilds the *current* Engine and clears QuestLog.triggered_encounter_ids
+    - it doesn't evict active_engines. Pinning that a second ambush trigger
+    (simulated by clearing triggered_encounter_ids directly, the same effect
+    restart's QuestLog.reset() has) resumes the exact same cached Engine
+    rather than rebuilding a fresh one - consistent with every other cached
+    dungeon's documented behavior (see QuestLog.reset's own docstring)."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    active_engines = {"millhaven": engine}
+
+    _, ambush_engine = resolve_transition(
+        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+    )
+    goblin = next(e for e in ambush_engine.game_map.entities if e.name == "Goblin")
+    ambush_engine.on_entity_death(goblin)
+    assert goblin not in ambush_engine.game_map.entities
+
+    # Simulate a restart: the quest goes back to in_progress (a fresh run
+    # re-grants it) and the encounter's "already triggered" record clears,
+    # exactly like QuestLog.reset() - but active_engines isn't touched.
+    quest_log.triggered_encounter_ids.discard("warning_ambush")
+    engine_2 = _dungeon_engine(dungeon_registry, catalog, "millhaven", quest_log=quest_log)
+    engine_2.on_player_reach_stairs(None, "stairs_up")
+    active_engines["millhaven"] = engine_2
+
+    _, ambush_engine_2 = resolve_transition(
+        "millhaven", engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log, encounter_registry=_ambush_encounter(),
+    )
+
+    assert ambush_engine_2 is ambush_engine
+    assert goblin not in ambush_engine_2.game_map.entities  # still dead, not rebuilt fresh
+
+
+# Dungeons deliberately unreachable by walking there - only ever entered via
+# an EncounterDef's redirect (see main.py's _pending_encounter) - carved out
+# of the "every registered dungeon has an overworld entrance" check below.
+ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush"}
+
+
 def test_overworld_has_all_ten_shipped_entrances_mutually_reachable():
     """Every dungeon_entrance on the real overworld map must be reachable from
     player_start via ordinary 8-directional movement, and vice versa - a
     location an entrance leads to that nothing can walk to would be shippable
-    content nobody could ever reach."""
+    content nobody could ever reach. Every registered dungeon must have a
+    matching entrance, except ENCOUNTER_ONLY_DUNGEON_IDS - those are reached
+    through a scripted redirect instead, never by walking there."""
     catalog, dungeon_registry, overworld_level = _world()
 
-    assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry)
+    assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry) - ENCOUNTER_ONLY_DUNGEON_IDS
     assert len(overworld_level.dungeon_entrances) == 10
 
     game_map, _ = build_game_map(overworld_level, catalog)

@@ -194,7 +194,7 @@ Every id either dungeon bible must honor. New entries in **bold**.
 
 | Id | Kind | Lives in | Notes |
 |---|---|---|---|
-| **`wayford_road_warden`** | entity | Wayford | questgiver, quest 1; also, from outside this arc, the Talk-completion target of `spreading_the_warning` (`data/quests.yaml`) - the Village Chief's Millhaven-originated goblin-warning chain, added in a later pass. Not this arc's content, but touches this arc's NPC, so noted here to keep this ledger an accurate map of everything that reaches him. |
+| **`wayford_road_warden`** | entity | Wayford | questgiver, quest 1; also, from outside this arc, the Talk-completion target of `spreading_the_warning` (`data/quests.yaml`) - the Village Chief's Millhaven-originated goblin-warning chain, added in a later pass. Not this arc's content, but touches this arc's NPC, so noted here to keep this ledger an accurate map of everything that reaches him. `spreading_the_warning` also got its own goblin ambush along the way (`data/encounters.yaml`'s `warning_ambush`, `data/dungeons/goblin_ambush/`) - a scripted overworld encounter triggered leaving Millhaven with that quest `in_progress`, unrelated to anything in Wayford proper; see `docs/dungeon_bibles/goblin_ambush.md`. |
 | **`wayford_clerk`** | entity | Wayford | questgiver, quest 2 |
 | **`wayford_caravan_master`** | entity | Wayford | questgiver, quest 3 |
 | **`wayford_provisioner`** | entity | Wayford | shopkeeper, not part of the arc |

@@ -442,6 +442,17 @@ def test_followup_dialogue_prefers_the_later_defined_quest_for_a_chained_npc():
     assert log.followup_dialogue("village_chief") == "Word's on its way to Wayford now."
 
 
+# --- record_encounter_triggered ---
+
+
+def test_record_encounter_triggered_records_unconditionally():
+    log = QuestLog()
+
+    log.record_encounter_triggered("warning_ambush")
+
+    assert "warning_ambush" in log.triggered_encounter_ids
+
+
 # --- record_entity_killed ---
 
 
@@ -777,6 +788,12 @@ def test_reset_clears_killed_entity_ids():
     log = QuestLog(killed_entity_ids={"warden"})
     log.reset()
     assert log.killed_entity_ids == set()
+
+
+def test_reset_clears_triggered_encounter_ids():
+    log = QuestLog(triggered_encounter_ids={"warning_ambush"})
+    log.reset()
+    assert log.triggered_encounter_ids == set()
 
 
 def test_reset_recomputes_the_active_pin_from_initially_in_progress_quests():

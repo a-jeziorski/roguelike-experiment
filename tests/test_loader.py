@@ -572,6 +572,7 @@ SHIPPED_DUNGEON_IDS = {
     "wayford",
     "stonebridge",
     "saltmarsh",
+    "goblin_ambush",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine"]

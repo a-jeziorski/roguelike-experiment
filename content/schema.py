@@ -338,6 +338,33 @@ class QuestDef(BaseModel):
         return self
 
 
+class EncounterDef(BaseModel):
+    """A scripted overworld encounter, authored in data/encounters.yaml:
+    leaving `trigger_dungeon_id` for the overworld while `gate_quest_id`'s
+    live status equals `gate_quest_status` redirects the player into
+    `encounter_dungeon_id` instead of landing on the overworld - see
+    main.py's resolve_transition/_pending_encounter, and
+    QuestLog.triggered_encounter_ids for the one-time-only tracking.
+
+    Deliberately not named requires_quest_id/requires_quest_status despite
+    the similarity to QuestDef.requires_quest_id above - that field means
+    "must be completed, checked once at grant time" (QuestLog.check_questgiver);
+    this one means "must currently equal this status, checked on every
+    departure from trigger_dungeon_id" - different enough that sharing the
+    name would mislead a future reader into assuming the same semantics.
+
+    encounter_dungeon_id names a real entry in the dungeon registry (loaded
+    and validated the same way as any other dungeon) that's deliberately
+    never pointed at by any overworld dungeon_entrance tile - it's only
+    ever reachable through this trigger, not by walking there."""
+
+    id: str
+    trigger_dungeon_id: str
+    gate_quest_id: str
+    gate_quest_status: QuestStatus = "in_progress"
+    encounter_dungeon_id: str
+
+
 class LegendEntry(BaseModel):
     """A normalized legend entry: what tile a symbol represents, and optionally
     which entity/item spawns there, or which level a stairway leads to.

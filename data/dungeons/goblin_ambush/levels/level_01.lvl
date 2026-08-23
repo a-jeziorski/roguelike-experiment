@@ -1,0 +1,24 @@
+id: level_01
+name: The Narrows
+
+map: |
+  #################
+  #,,,,,,,,,,,,,,,#
+  #,,,,g,,,,,g,,,,#
+  #,,,,,,,g,,,,,,,#
+  #,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,#
+  ########,########
+  #,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,#
+  #,,,,,,x@,,,,,,,#
+  #################
+
+legend:
+  "#": { tile: wall, description: "Felled trees, dragged in and piled deliberately - not natural deadfall. Whoever did this wanted exactly one way through." }
+  ",": plains
+  "@": player_start
+  "x": { stairs_up: null, description: "Open ground back toward the road - nothing stopping you from breaking off here." }
+  "g": { entity: goblin }

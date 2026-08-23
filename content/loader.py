@@ -19,6 +19,7 @@ from content.schema import (
     PEACEFUL_AI_TYPES,
     TILE_PASSABILITY,
     DungeonDef,
+    EncounterDef,
     EntityDef,
     ItemDef,
     LevelDef,
@@ -291,6 +292,52 @@ def load_quests(
         raise ContentValidationError(str(path), errors)
 
     return quests
+
+
+def load_encounters(
+    path: Path, known_dungeon_ids: set[str], known_quest_ids: set[str],
+) -> dict[str, EncounterDef]:
+    """Loads and validates data/encounters.yaml (see content/schema.py's
+    EncounterDef). No catalog parameter - unlike QuestDef/EntityDef,
+    EncounterDef has no entity/item references to cross-check, only dungeon
+    and quest ids. Unlike load_quests' known_dungeon_ids, both cross-checks
+    here are required rather than optional - an encounter with a bad
+    trigger_dungeon_id/encounter_dungeon_id/gate_quest_id can never actually
+    fire, which is worth catching unconditionally rather than only when a
+    caller happens to pass the full registries."""
+    raw = _load_yaml(path) or {}
+    encounters: dict[str, EncounterDef] = {}
+    errors: list[str] = []
+
+    for encounter_id, fields in raw.items():
+        try:
+            encounter = EncounterDef(id=encounter_id, **fields)
+        except ValidationError as e:
+            errors.append(f"encounter '{encounter_id}': {e}")
+            continue
+
+        for label, dungeon_id in (
+            ("trigger_dungeon_id", encounter.trigger_dungeon_id),
+            ("encounter_dungeon_id", encounter.encounter_dungeon_id),
+        ):
+            if dungeon_id not in known_dungeon_ids:
+                errors.append(
+                    f"encounter '{encounter_id}': {label} references unknown "
+                    f"dungeon '{dungeon_id}'"
+                )
+
+        if encounter.gate_quest_id not in known_quest_ids:
+            errors.append(
+                f"encounter '{encounter_id}': gate_quest_id references unknown "
+                f"quest '{encounter.gate_quest_id}'"
+            )
+
+        encounters[encounter_id] = encounter
+
+    if errors:
+        raise ContentValidationError(str(path), errors)
+
+    return encounters
 
 
 @dataclass
