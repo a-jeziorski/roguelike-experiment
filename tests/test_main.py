@@ -731,7 +731,14 @@ def test_resolve_transition_fires_at_the_players_current_overworld_position():
 
     assert active_key == "goblin_ambush"
 
-    ambush_engine.on_player_reach_stairs(None, "stairs_up")  # flee the ambush
+    # Flee via the real mechanism goblin_ambush actually uses now
+    # (open_boundary), not a stairs tile - walk to the south edge of the
+    # real 17x13 map (player_start is (8, 10)) and step off it.
+    assert ambush_engine.game_map.open_boundary is True
+    ambush_engine.player.x, ambush_engine.player.y = 8, 12
+    ambush_engine.process_turn(BumpAction(0, 1))
+    assert ambush_engine.wants_overworld is True
+
     active_key, back_on_overworld = resolve_transition(
         active_key, ambush_engine, active_engines, dungeon_registry, overworld_level, catalog,
         clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,

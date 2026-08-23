@@ -418,10 +418,52 @@ than leaving the player to infer an ambush from context.
 Nothing about the encounter dungeon itself is special content-wise - it's
 authored exactly like any other dungeon (per-dungeon bible first, §0d, no
 exception for a small map), and per the user's explicit choice for
-`goblin_ambush`, an encounter isn't a lock: it uses a normal terminal exit,
-leavable at any time, win or not - see that dungeon's own bible for the
+`goblin_ambush`, an encounter isn't a lock: it's leavable at any time, win
+or not - originally via a terminal `stairs_up` tile, since generalized into
+`open_boundary` (§0h below), which reads better for an outdoor clearing
+than a stairway ever did. See that dungeon's own bible for the
 chokepoint-geometry reasoning (§2's balance methodology applies to an
 encounter exactly as it would to any other first multi-monster fight).
+
+## 0h. Open-boundary levels (`LevelDef.open_boundary`)
+
+For an outdoor level where a stairway tile would read wrong - there's no
+literal staircase in a forest clearing - `open_boundary: true` makes every
+edge of the level's map a valid way to leave, the way a real patch of
+wilderness would just continue past what's actually drawn, instead of
+needing one specific tile. `content/loader.py`'s `load_level` propagates it
+from `LevelDef` into `ParsedLevel`, `engine/game_map.py`'s `build_game_map`
+copies it onto the runtime `GameMap`, and `engine/actions.py`'s
+`MovementAction` checks it the moment the player's destination falls
+outside `GameMap.in_bounds` (previously indistinguishable from "walked into
+a wall," which returned False from `is_walkable` either way) - calling
+`Engine.on_player_reach_map_edge`, the open-area equivalent of
+`on_player_reach_stairs(None, ...)`: same `wants_overworld` mailbox
+`main.py`'s `resolve_transition` already consumes generically, so nothing
+in `main.py` needed to change for this to work, including composing for
+free with an overworld encounter's `overworld_return_position`.
+
+Authoring one needs no new legend syntax: just don't wall in the
+perimeter - leave the outermost ring of tiles as ordinary walkable terrain
+(`plains`/`forest`, whichever fits the scene) instead of `wall`, and the
+grid's own edge becomes the exit. `load_level` enforces two things about
+this: `open_boundary: true` still needs *some* way to reach an edge (a
+level with `open_boundary: true` but a fully-walled perimeter is rejected
+as dead content, the same "shop item with no cost" class of check as
+elsewhere in this loader), and `open_boundary` counts as satisfying the
+existing "a `requires_stairs_down: false` level needs some way to leave"
+soft-lock check on its own - a level can have `open_boundary: true` and
+zero stairs and still be valid content. `open_boundary_message` (optional,
+falls back to a generic engine default - `_DEFAULT_OPEN_BOUNDARY_MESSAGE`,
+`engine/engine.py`) is logged the moment the player actually leaves, same
+role as `EncounterDef.encounter_message` above: explain what just happened
+rather than leaving a bare, unexplained transition.
+
+`goblin_ambush` is the reference example - see its own dungeon bible for
+how the chokepoint geometry stays intact (the internal wall partition is
+unaffected; only the *outer* perimeter opened up) and why `player_start`
+sits a couple tiles inboard of the now-open edge rather than directly
+against it.
 
 ## 1. Narrative framing
 

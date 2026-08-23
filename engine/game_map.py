@@ -54,6 +54,13 @@ class GameMap:
         # way explored/locked_doors already do, and resets for free on
         # Engine.restart() (which always builds a fresh GameMap).
         self.player_attacked_peaceful_npc = False
+        # True makes every edge of this map a valid way to leave (see
+        # LevelDef.open_boundary, engine/actions.py's MovementAction,
+        # Engine.on_player_reach_map_edge). Set by build_game_map from the
+        # level, same as stairs/locked_doors above rather than a
+        # constructor param.
+        self.open_boundary = False
+        self.open_boundary_message = ""
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -127,6 +134,8 @@ def build_game_map(
     Returns (game_map, player_entity).
     """
     game_map = GameMap(level.width, level.height)
+    game_map.open_boundary = level.open_boundary
+    game_map.open_boundary_message = level.open_boundary_message
 
     for y, row in enumerate(level.tiles):
         for x, tile in enumerate(row):

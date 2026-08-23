@@ -232,6 +232,51 @@ def test_level_with_no_stairs_at_all_still_rejected_when_not_required():
         load_level(FIXTURES_DIR / "no_stairs.lvl", catalog, require_stairs_down=False)
 
 
+def test_open_boundary_satisfies_the_no_stairs_soft_lock_check(tmp_path):
+    level_path = tmp_path / "open.lvl"
+    level_path.write_text(
+        "id: open\n"
+        "name: Test Level\n"
+        "open_boundary: true\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@,\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ",": plains\n'
+        '  "@": player_start\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog, require_stairs_down=False)
+
+    assert level.open_boundary is True
+    assert level.stairs == []
+
+
+def test_open_boundary_with_a_fully_walled_perimeter_is_rejected(tmp_path):
+    level_path = tmp_path / "sealed.lvl"
+    level_path.write_text(
+        "id: sealed\n"
+        "name: Test Level\n"
+        "open_boundary: true\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  "@": player_start\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="no perimeter tile is walkable"):
+        load_level(level_path, catalog, require_stairs_down=False)
+
+
 def test_dangling_stairs_reference_is_rejected_when_known_ids_given():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="level_nonexistent"):
@@ -618,6 +663,20 @@ def test_new_settlement_dungeon_content(dungeon_id):
     all_entities = [s.entity for level in dungeon.levels.values() for s in level.entity_spawns]
     assert len(all_entities) > 0
     assert all(e.ai in ("villager", "town_guard") for e in all_entities)
+
+
+def test_goblin_ambush_uses_open_boundary_instead_of_a_stairway():
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "goblin_ambush", catalog)
+
+    assert dungeon.requires_stairs_down is False
+    level = dungeon.levels["level_01"]
+    assert level.open_boundary is True
+    assert level.open_boundary_message != ""
+    assert level.stairs == []
+
+    goblin_names = [s.entity.name for s in level.entity_spawns]
+    assert goblin_names == ["Goblin", "Goblin", "Goblin"]
 
 
 def test_prison_tower_level_01_content():

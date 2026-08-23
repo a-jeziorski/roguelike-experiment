@@ -489,6 +489,22 @@ class LevelDef(BaseModel):
     name: str
     map: str
     legend: dict[str, LegendEntry]
+    # True makes every edge of this level's map a valid way to leave (see
+    # engine/actions.py's MovementAction, engine/engine.py's
+    # on_player_reach_map_edge) - always returns to the overworld, the
+    # open-area equivalent of a terminal stairs_up, just triggered by
+    # walking off the map instead of onto one specific tile. Only
+    # meaningful alongside requires_stairs_down: false (content/loader.py's
+    # load_level rejects a level with neither a stairway nor this set,
+    # per the existing "there would be no way to leave" soft-lock check) -
+    # a real progression dungeon should keep using stairs_down to go
+    # deeper.
+    open_boundary: bool = False
+    # Custom message logged the moment the player actually leaves via the
+    # edge (see DEFAULT_OPEN_BOUNDARY_MESSAGE in engine/engine.py for the
+    # fallback used when this is left unset). Only meaningful alongside
+    # open_boundary: true.
+    open_boundary_message: str = ""
 
     @field_validator("legend", mode="before")
     @classmethod

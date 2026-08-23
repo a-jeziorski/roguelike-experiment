@@ -25,10 +25,16 @@ Wayford's Road Warden, not an organized ambush party with a plan beyond
 this project's established tone for every other goblin/bandit encounter so
 far (`sunken_mine.md`, `wayford_arc.md`'s bandits).
 
-Fleeable, not a lock: per the user's explicit choice, the exit works exactly
-like any other dungeon's terminal stairway - reachable and usable at any
-time, win or not. This isn't a "boss fight," it's a real but fair first
-taste of danger during overworld travel.
+Fleeable, not a lock: per the user's explicit choice, the player can leave
+at any time, win or not - originally via a single terminal `stairs_up`
+tile, since generalized into the first real use of `open_boundary`
+(`content/schema.py`'s `LevelDef.open_boundary`, `docs/content_design_process.md`
+§0h): the whole map perimeter is walkable `forest`, not a wall ring, so
+walking off *any* edge leaves - a stairway in the middle of a forest
+clearing never made sense, and a single-tile-only exit felt like a trap
+door rather than the open ground it's meant to be. This isn't a
+"boss fight," it's a real but fair first taste of danger during overworld
+travel.
 
 ## The one set piece: The Narrows
 
@@ -40,10 +46,12 @@ funnel through it, and three goblins holding the clearing on the far side
 outnumber whatever gets through one at a time.
 
 - **The road-side clearing** (south, around `player_start`): where the
-  player lands, and where the terminal exit sits right next to
-  `player_start` - reachable the instant the ambush starts, no walking
-  required to flee. Open ground, nothing else here; this is "still safe,"
-  the moment before the choke.
+  player lands. `player_start` sits a couple tiles inboard of the open
+  south edge rather than right against it, so arriving doesn't put the
+  player one accidental step from immediately leaving again - but the
+  whole south tree line is walkable forest, so retreating never means
+  backtracking to one specific spot. Open ground, nothing else here; this
+  is "still safe," the moment before the choke.
 - **The narrows** (the single-tile gap in the felled-log wall, row 6):
   the entire mechanical point of this map. `docs/content_design_process.md`
   §2 is explicit that a first multi-monster fight needs a chokepoint so the
@@ -64,11 +72,16 @@ outnumber whatever gets through one at a time.
 
 ## Terrain
 
-Outdoor (`plains` + `wall`, no dungeon `floor`/interior) - same tile
+Outdoor (`plains` interior + `forest` perimeter + `wall` only for the
+internal chokepoint partition, no dungeon `floor`/interior) - same tile
 vocabulary Millhaven/Wayford already established is valid on any dungeon
 level, not exclusive to settlements (`docs/content_design_process.md` §0c).
-The felled-log "wall" tiles get a `description` override rather than
-reading as a generic dungeon wall in look mode.
+`forest` (walkable, blocks line of sight per `TILE_PASSABILITY`) rings the
+whole map rather than a wall - it both reads as "the trees keep going
+past what's mapped" and is the actual walkable ring `open_boundary` needs
+to let the player reach an edge at all. The felled-log "wall" tiles (the
+internal partition only, not the border) get a `description` override
+rather than reading as a generic dungeon wall in look mode.
 
 ## Explicitly out of scope
 
@@ -76,7 +89,11 @@ reading as a generic dungeon wall in look mode.
   safely, not treasure. `spreading_the_warning` itself stays reward-less,
   unchanged.
 - No second level, no `stairs_down` - `requires_stairs_down: false`, same
-  shape as a settlement (one level, one terminal exit), even though this
-  isn't peaceful.
+  shape as a settlement (one level, no deeper progression), even though
+  this isn't peaceful.
 - No overworld `dungeon_entrance` tile anywhere targets this dungeon -
   deliberate; it's only reachable through the `EncounterDef` trigger.
+- No `stairs_up` tile anymore either - superseded by `open_boundary: true`
+  (see the pitch section above); kept as historical context only in case a
+  future dungeon ever wants a single explicit exit *alongside* an open
+  boundary (this one doesn't need both).

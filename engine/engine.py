@@ -44,6 +44,12 @@ _WANDER_MOVES = [(0, 0)] * 8 + [
 # actually fire for a properly-authored villager, kept only for safety.
 _DEFAULT_TALK_LINE = "They don't seem to have anything to say."
 
+# Fallback logged when the player leaves an open_boundary level (see
+# GameMap.open_boundary) with no LevelDef.open_boundary_message authored -
+# same "sensible generic default, content can override" shape as
+# _DEFAULT_TALK_LINE above.
+_DEFAULT_OPEN_BOUNDARY_MESSAGE = "You walk past the edge of the map, back onto open ground."
+
 
 class Message(str):
     """A logged line plus which color category the message log renders it
@@ -280,6 +286,18 @@ class Engine:
         self.message_log = MessageLog()
         self.message_log.add(f"You {verb} {next_level.name}.")
         self.game_map.update_fov((self.player.x, self.player.y))
+
+    def on_player_reach_map_edge(self) -> None:
+        """Called by MovementAction when the player steps off the edge of
+        an open_boundary level (see GameMap.open_boundary) - the open-area
+        equivalent of on_player_reach_stairs(None, ...), just triggered by
+        geography instead of a specific tile. Always leaves to the
+        overworld, same wants_overworld mailbox main.py's resolve_transition
+        already consumes - overworld_return_position (if this Engine has
+        one set, e.g. an overworld-encounter Engine) still applies exactly
+        as it does for a stairway exit, no special-casing needed here."""
+        self.message_log.add(self.game_map.open_boundary_message or _DEFAULT_OPEN_BOUNDARY_MESSAGE)
+        self.wants_overworld = True
 
     def restart(self) -> None:
         """Begins a fresh run from the starting level: a brand-new player (full
