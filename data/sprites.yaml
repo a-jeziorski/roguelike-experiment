@@ -4,8 +4,8 @@
 # full field list and content/loader.py's load_sprite_manifest for
 # validation. Anything not listed under entities/items/tile_kinds simply
 # has no sprite - engine/render.py falls back to that id/kind's authored
-# ASCII glyph, so leaving something out is always safe, never a broken
-# reference.
+# ASCII glyph, so leaving something out (e.g. mountain, deliberately - see
+# tile_kinds below) is always safe, never a broken reference.
 #
 # A SpriteRef addresses its tile either by `name` (looked up in the sheet's
 # own name->index JSON, when it has one) or by `col`+`row` (direct grid
@@ -14,11 +14,77 @@
 # engine/sprites.py's recolor_sprite) - used wherever several entries
 # reuse one base sprite with no distinct art of their own, so they still
 # read as visually distinct from each other.
+#
+# Sources (see assets/tilesets/LICENSE_*.txt): RLTiles (public domain,
+# https://github.com/statico/rltiles) for most creatures/items; Kenney's
+# Roguelike/RPG pack and Tiny Town (both CC0, kenney.nl) for terrain and
+# the two settlement/dungeon-entrance tile kinds.
 
-sheets: {}
+sheets:
+  rltiles:
+    image: rltiles-2d.png
+    index: rltiles-2d.json
+    tile_size: 32
+  kenney_roguelike:
+    image: roguelikeSheet_transparent.png
+    tile_size: 16
+    spacing: 1
+    columns: 57
+    rows: 31
+  kenney_tiny_town:
+    image: tiny_town_tilemap.png
+    tile_size: 16
+    spacing: 1
+    columns: 12
+    rows: 11
 
-entities: {}
+entities:
+  rat:                     {sheet: rltiles, name: rat}
+  goblin:                  {sheet: rltiles, name: goblin}
+  skeleton:                {sheet: rltiles, name: skeleton}
+  skeleton_archer:         {sheet: rltiles, name: skeleton}   # no distinct archer art
+  ogre:                    {sheet: rltiles, name: ogre}
+  guard:                   {sheet: rltiles, name: guard, recolor: true}
+  crossbow_guard:          {sheet: rltiles, name: guard, recolor: true}
+  warden:                  {sheet: rltiles, name: guard, recolor: true}
+  town_guard:              {sheet: rltiles, name: guard, recolor: true}
+  feral_prisoner:          {sheet: rltiles, name: prisoner, recolor: true}
+  escaped_prisoner:        {sheet: rltiles, name: prisoner, recolor: true}
+  villager:                {sheet: rltiles, name: human, recolor: true}
+  village_chief:           {sheet: rltiles, name: human, recolor: true}
+  shopkeeper:              {sheet: rltiles, name: shopkeeper}
+  wayford_road_warden:     {sheet: rltiles, name: human, recolor: true}
+  wayford_clerk:           {sheet: rltiles, name: human, recolor: true}
+  wayford_caravan_master:  {sheet: rltiles, name: human, recolor: true}
+  wayford_provisioner:     {sheet: rltiles, name: human, recolor: true}
+  bandit:                  {sheet: rltiles, name: rogue, recolor: true}
+  bandit_captain:          {sheet: rltiles, name: captain}
+  drowned_wretch:          {sheet: rltiles, name: human_zombie, recolor: true}
+  stone_sentinel:          {sheet: rltiles, name: stone_golem}
 
-items: {}
+items:
+  healing_potion:  {sheet: rltiles, name: misc_bottle, recolor: true}
+  rusty_dagger:    {sheet: rltiles, name: dagger}
+  iron_sword:      {sheet: rltiles, name: short_sword}
+  rusty_key:       {sheet: rltiles, name: skeleton_key}
+  leather_armor:   {sheet: rltiles, name: leather_armor}
+  bone_plate:      {sheet: rltiles, name: plate_mail}
+  hunting_bow:     {sheet: rltiles, name: bow}
+  arrows:          {sheet: rltiles, name: arrow}
+  gold_pile:       {sheet: rltiles, name: gold}
+  gold_stash:      {sheet: rltiles, name: gold_piece}
+  pale_fungus:     {sheet: rltiles, name: fungus}
+  road_ledger:     {sheet: kenney_roguelike, col: 44, row: 15}   # a scroll icon
 
-tile_kinds: {}
+tile_kinds:
+  sea:              {sheet: kenney_roguelike, col: 0,  row: 2}
+  plains:           {sheet: kenney_roguelike, col: 5,  row: 0}
+  road:             {sheet: kenney_roguelike, col: 6,  row: 0}
+  forest:           {sheet: kenney_roguelike, col: 23, row: 9}
+  landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
+  town:             {sheet: kenney_tiny_town, col: 6, row: 5}
+  dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
+  # mountain: intentionally omitted - too important for a rough stand-in;
+  # the user will hand-pick a proper sprite later. Add a `mountain: {...}`
+  # line here whenever that's chosen - zero code change required, falls
+  # back to '^' until then.

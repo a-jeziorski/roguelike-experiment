@@ -1,0 +1,13 @@
+Kenney assets (roguelikeSheet_transparent.png, tiny_town_tilemap.png)
+
+  Created/distributed by Kenney (www.kenney.nl)
+
+  License: Creative Commons Zero, CC0
+  http://creativecommons.org/publicdomain/zero/1.0/
+
+  This content is free to use in personal, educational and commercial
+  projects. Support Kenney by crediting or donating (not mandatory).
+
+Sources:
+  Roguelike/RPG pack - https://kenney.nl/assets/roguelike-rpg-pack
+  Tiny Town          - https://kenney.nl/assets/tiny-town
