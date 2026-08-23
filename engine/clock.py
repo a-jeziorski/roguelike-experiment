@@ -36,6 +36,22 @@ class GameClock:
                 self.day = 1
                 self.year += 1
 
+    def plus_hours(self, hours: int) -> tuple[int, int, int]:
+        """(year, day, hour) this clock will reach after `hours` more hours,
+        without mutating self - same day/year rollover convention as
+        advance_hour (day resets to 1, not 0, past DAYS_PER_YEAR), just
+        generalized to add more than one hour at once. Used to compute a
+        due-time for an armed overworld encounter (see
+        QuestLog.armed_encounters) without actually advancing time."""
+        total = self.hour + hours
+        day = self.day + total // HOURS_PER_DAY
+        hour = total % HOURS_PER_DAY
+        year = self.year
+        while day > DAYS_PER_YEAR:
+            day -= DAYS_PER_YEAR
+            year += 1
+        return (year, day, hour)
+
     def reset(self) -> None:
         self.year = STARTING_YEAR
         self.day = STARTING_DAY

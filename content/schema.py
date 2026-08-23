@@ -341,10 +341,13 @@ class QuestDef(BaseModel):
 class EncounterDef(BaseModel):
     """A scripted overworld encounter, authored in data/encounters.yaml:
     leaving `trigger_dungeon_id` for the overworld while `gate_quest_id`'s
-    live status equals `gate_quest_status` redirects the player into
-    `encounter_dungeon_id` instead of landing on the overworld - see
-    main.py's resolve_transition/_pending_encounter, and
-    QuestLog.triggered_encounter_ids for the one-time-only tracking.
+    live status equals `gate_quest_status` arms a `delay_hours`-long timer;
+    once that many *overworld* hours have actually elapsed (dungeons never
+    advance the clock - see Engine.process_enemy_phase), the player is
+    redirected into `encounter_dungeon_id` instead of continuing on the
+    overworld - see main.py's resolve_transition/_armable_encounter/
+    _due_encounter, and QuestLog.armed_encounters/triggered_encounter_ids
+    for the arm-then-fire state.
 
     Deliberately not named requires_quest_id/requires_quest_status despite
     the similarity to QuestDef.requires_quest_id above - that field means
@@ -363,6 +366,12 @@ class EncounterDef(BaseModel):
     gate_quest_id: str
     gate_quest_status: QuestStatus = "in_progress"
     encounter_dungeon_id: str
+    # Overworld hours that must pass after arming (departing trigger_dungeon_id
+    # with the gate quest at gate_quest_status) before the encounter actually
+    # fires - see GameClock.plus_hours/QuestLog.armed_encounters. Re-departing
+    # trigger_dungeon_id before the timer fires restarts it from that later
+    # departure, rather than continuing the original countdown.
+    delay_hours: int = Field(default=3, gt=0)
 
 
 class LegendEntry(BaseModel):

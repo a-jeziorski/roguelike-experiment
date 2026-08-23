@@ -29,6 +29,7 @@ def test_load_encounters_loads_the_real_shipped_file():
     assert warning_ambush.gate_quest_id == "spreading_the_warning"
     assert warning_ambush.gate_quest_status == "in_progress"
     assert warning_ambush.encounter_dungeon_id == "goblin_ambush"
+    assert warning_ambush.delay_hours == 3
 
 
 def test_load_encounters_rejects_unknown_trigger_dungeon(tmp_path):
@@ -97,3 +98,32 @@ def test_load_encounters_allows_an_explicit_gate_quest_status(tmp_path):
     encounters = load_encounters(path, KNOWN_DUNGEON_IDS, KNOWN_QUEST_IDS)
 
     assert encounters["an_encounter"].gate_quest_status == "completed"
+
+
+def test_load_encounters_defaults_delay_hours_to_3(tmp_path):
+    path = write_encounters(
+        tmp_path,
+        "an_encounter:\n"
+        "  trigger_dungeon_id: millhaven\n"
+        "  gate_quest_id: spreading_the_warning\n"
+        "  encounter_dungeon_id: goblin_ambush\n",
+    )
+
+    encounters = load_encounters(path, KNOWN_DUNGEON_IDS, KNOWN_QUEST_IDS)
+
+    assert encounters["an_encounter"].delay_hours == 3
+
+
+def test_load_encounters_allows_an_explicit_delay_hours(tmp_path):
+    path = write_encounters(
+        tmp_path,
+        "an_encounter:\n"
+        "  trigger_dungeon_id: millhaven\n"
+        "  gate_quest_id: spreading_the_warning\n"
+        "  encounter_dungeon_id: goblin_ambush\n"
+        "  delay_hours: 10\n",
+    )
+
+    encounters = load_encounters(path, KNOWN_DUNGEON_IDS, KNOWN_QUEST_IDS)
+
+    assert encounters["an_encounter"].delay_hours == 10

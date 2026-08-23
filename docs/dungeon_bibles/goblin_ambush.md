@@ -10,8 +10,13 @@ existing is one deliberately placed fight, so the geometry has to earn it.*
 
 Not a real place - a scripted overworld encounter (`data/encounters.yaml`),
 reached only by leaving Millhaven for the overworld while `spreading_the_warning`
-(`data/quests.yaml`) is `in_progress`, never by walking to it. The player has
-just taken the Village Chief's warning out onto the road toward Wayford;
+(`data/quests.yaml`) is `in_progress`, never by walking to it. Doesn't fire
+the instant the player steps outside the gate - `warning_ambush`'s
+`delay_hours: 3` means it only catches up with them after 3 hours of actual
+overworld travel (see `main.py`'s `_armable_encounter`/`_due_encounter`),
+so it reads as the goblins intercepting them partway down the road, not an
+ambush waiting at Millhaven's own doorstep. The player has just taken the
+Village Chief's warning out onto the road toward Wayford;
 this is the goblin horde (the same one `goblin_warning`/`spreading_the_warning`
 have been building up narratively) making its first real appearance -
 opportunistic raiders trying to intercept the message before it reaches

@@ -453,6 +453,22 @@ def test_record_encounter_triggered_records_unconditionally():
     assert "warning_ambush" in log.triggered_encounter_ids
 
 
+def test_arm_encounter_sets_the_due_time():
+    log = QuestLog()
+
+    log.arm_encounter("warning_ambush", (87, 50, 3))
+
+    assert log.armed_encounters["warning_ambush"] == (87, 50, 3)
+
+
+def test_arm_encounter_overwrites_an_existing_due_time():
+    log = QuestLog(armed_encounters={"warning_ambush": (87, 50, 3)})
+
+    log.arm_encounter("warning_ambush", (87, 50, 10))
+
+    assert log.armed_encounters["warning_ambush"] == (87, 50, 10)
+
+
 # --- record_entity_killed ---
 
 
@@ -794,6 +810,12 @@ def test_reset_clears_triggered_encounter_ids():
     log = QuestLog(triggered_encounter_ids={"warning_ambush"})
     log.reset()
     assert log.triggered_encounter_ids == set()
+
+
+def test_reset_clears_armed_encounters():
+    log = QuestLog(armed_encounters={"warning_ambush": (87, 50, 3)})
+    log.reset()
+    assert log.armed_encounters == {}
 
 
 def test_reset_recomputes_the_active_pin_from_initially_in_progress_quests():

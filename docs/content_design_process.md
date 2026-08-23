@@ -366,6 +366,7 @@ warning_ambush:
   gate_quest_id: spreading_the_warning
   gate_quest_status: in_progress     # default - the quest's live status must equal this
   encounter_dungeon_id: goblin_ambush  # a real dungeon-registry entry to redirect into
+  delay_hours: 3                     # default - overworld hours after arming before it fires
 ```
 
 `gate_quest_id`/`gate_quest_status` are deliberately **not** named
@@ -384,17 +385,30 @@ is worth catching at content-load time.
 validated exactly like any other dungeon (`load_dungeon_registry` has no
 "must be reachable from the overworld" requirement) - it's just
 **deliberately never pointed at by any overworld `dungeon_entrance` tile**,
-so the only way in is through the trigger. `main.py`'s `resolve_transition`/
-`_pending_encounter` do the actual redirect: whenever the player lands back
-on the overworld, if a not-yet-triggered `EncounterDef` matches the
-departing dungeon and the gate quest's live status, the player is
-immediately re-departed from the overworld and handed to the encounter's
-Engine instead - see `Engine.overworld_return_position`, which remembers
-the real overworld coordinate the player should land at once they
-eventually leave the encounter (since an entrance-less dungeon has no
-`dungeon_entrance` tile for the normal `_match_entrance` lookup to find).
-`QuestLog.triggered_encounter_ids` (same shape as `killed_entity_ids`/
-`visited_dungeon_ids`) ensures an encounter only ever fires once per run.
+so the only way in is through the trigger.
+
+Firing is a two-step arm-then-fire sequence, not instant - `main.py`'s
+`resolve_transition`/`_armable_encounter`/`_due_encounter` do the work:
+departing `trigger_dungeon_id` with the gate quest at `gate_quest_status`
+*arms* a `delay_hours`-long timer (`QuestLog.armed_encounters`/
+`arm_encounter`), and the player is only actually redirected into
+`encounter_dungeon_id` once that many hours have elapsed **on the
+overworld specifically** - `Engine.process_enemy_phase` only ever advances
+`GameClock` while `is_overworld` is true, so time spent inside a different
+dungeon in between doesn't count toward the delay. Re-departing
+`trigger_dungeon_id` before an armed timer fires restarts the countdown
+from that later departure ("counted from your most recent departure," not
+the first ever one) - `arm_encounter` always overwrites the due-time.
+`_redirect_into_encounter` uses the player's *current* overworld position
+at fire time (not wherever they originally entered from) for
+`Engine.overworld_return_position`, since they may have walked anywhere
+during the delay - fleeing the encounter later returns them to wherever
+the ambush actually caught up with them, not back at the entrance they
+left through. `QuestLog.triggered_encounter_ids` (same shape as
+`killed_entity_ids`/`visited_dungeon_ids`) ensures an encounter only ever
+fires once per run, checked by both `_armable_encounter` (never re-arms)
+and `_due_encounter` (never fires an already-triggered id even if some
+stale armed-entry lingers).
 
 Nothing about the encounter dungeon itself is special content-wise - it's
 authored exactly like any other dungeon (per-dungeon bible first, §0d, no
