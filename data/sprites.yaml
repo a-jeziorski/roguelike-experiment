@@ -97,4 +97,4 @@ tile_kinds:
   landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
   town:             {sheet: kenney_tiny_town, col: 6, row: 5}
   dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
-  mountain: { sheet: kenney_roguelike, col: 54, row: 21 }
+  mountain:         {sheet: kenney_roguelike, col: 54, row: 21}
