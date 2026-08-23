@@ -17,6 +17,7 @@ from engine.sprites import (
     _SheetIndex,
     apply_sprites,
     build_sprite_codepoints,
+    composite_sprite_over_terrain,
     recolor_sprite,
 )
 
@@ -81,6 +82,38 @@ def test_recolor_sprite_retints_a_plain_pixel_toward_the_target_hue():
     assert out_h == pytest.approx(target_h, abs=0.01)
     assert out_s == pytest.approx(target_s, abs=0.01)
     assert out_v == pytest.approx(original_v, abs=0.01)  # lightness/shading preserved
+
+
+def test_composite_sprite_over_terrain_transparent_actor_pixel_leaves_terrain_untouched():
+    terrain = np.array([[[10, 20, 30, 255]]], dtype=np.uint8)
+    actor = np.array([[[0, 0, 0, 0]]], dtype=np.uint8)
+
+    out = composite_sprite_over_terrain(actor, terrain)
+
+    assert tuple(out[0, 0]) == (10, 20, 30, 255)
+    assert tuple(terrain[0, 0]) == (10, 20, 30, 255)  # inputs not mutated
+
+
+def test_composite_sprite_over_terrain_opaque_actor_pixel_fully_replaces_terrain():
+    terrain = np.array([[[10, 20, 30, 255]]], dtype=np.uint8)
+    actor = np.array([[[200, 5, 5, 255]]], dtype=np.uint8)
+
+    out = composite_sprite_over_terrain(actor, terrain)
+
+    assert tuple(out[0, 0]) == (200, 5, 5, 255)
+
+
+def test_composite_sprite_over_terrain_partial_alpha_blends_between_the_two():
+    terrain = np.array([[[10, 20, 30, 255]]], dtype=np.uint8)
+    actor = np.array([[[200, 5, 5, 128]]], dtype=np.uint8)
+
+    out = composite_sprite_over_terrain(actor, terrain)
+
+    r, g, b, a = out[0, 0]
+    assert a == 255
+    assert 10 < r < 200  # strictly between the two source colors
+    assert 5 < g < 20
+    assert 5 < b < 30
 
 
 def _solid_sheet(colors: list[tuple[int, int, int, int]], tile_size: int, columns: int) -> Image.Image:
@@ -238,13 +271,90 @@ def test_build_sprite_codepoints_raises_for_an_out_of_bounds_column():
         build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
 
 
+def test_build_sprite_codepoints_registers_a_composite_for_every_actor_tile_kind_pair():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=4, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={
+            "rat": SpriteRef(sheet="test", col=0, row=0),
+            "villager": SpriteRef(sheet="test", col=1, row=0),
+        },
+        items={"healing_potion": SpriteRef(sheet="test", col=2, row=0)},
+        tile_kinds={"floor": SpriteRef(sheet="test", col=3, row=0)},
+    )
+    sheet_images = {
+        "test": _solid_sheet(
+            [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (128, 128, 128, 255)], 16, 4,
+        )
+    }
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    # Base pass unchanged: entities (sorted), then items, then tile_kinds -
+    # exactly PUA_START, PUA_START+1, ... - this is what the existing
+    # codepoint-determinism tests/callers already rely on.
+    assert result.entities["rat"] == PUA_START
+    assert result.entities["villager"] == PUA_START + 1
+    assert result.items["healing_potion"] == PUA_START + 2
+    assert result.tile_kinds["floor"] == PUA_START + 3
+
+    # Composite pass: one entry per (entity, tile_kind) then per (item, tile_kind),
+    # appended strictly after the base pass's 4 codepoints.
+    assert set(result.entities_on_tile) == {("rat", "floor"), ("villager", "floor")}
+    assert set(result.items_on_tile) == {("healing_potion", "floor")}
+    assert all(cp >= PUA_START + 4 for cp in result.entities_on_tile.values())
+    assert all(cp >= PUA_START + 4 for cp in result.items_on_tile.values())
+
+
+def test_build_sprite_codepoints_composite_codepoint_holds_the_blended_pixels():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={"rat": SpriteRef(sheet="test", col=0, row=0)},
+        items={},
+        tile_kinds={"floor": SpriteRef(sheet="test", col=1, row=0)},
+    )
+    # Both fully opaque, so the composite should equal the actor's own color
+    # everywhere (opaque-over-terrain fully replaces, per
+    # composite_sprite_over_terrain's own contract).
+    sheet_images = {"test": _solid_sheet([(200, 5, 5, 255), (10, 20, 30, 255)], 16, 2)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    composite_tile = tileset.get_tile(result.entities_on_tile[("rat", "floor")])
+    assert tuple(composite_tile[0, 0]) == (200, 5, 5, 255)
+
+
+def test_build_sprite_codepoints_no_composite_for_an_unmapped_tile_kind():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={"rat": SpriteRef(sheet="test", col=0, row=0)},
+        items={},
+        tile_kinds={},  # nothing mapped - e.g. "mountain" left out deliberately
+    )
+    sheet_images = {"test": _solid_sheet([(255, 0, 0, 255)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert result.entities_on_tile == {}
+    assert "rat" in result.entities  # the plain sprite still registers
+
+
 def test_apply_sprites_loads_real_files_from_disk(tmp_path):
     catalog = make_catalog()
     Image.new("RGBA", (16, 16), (9, 9, 9, 255)).save(tmp_path / "sheet.png")
     manifest = SpriteManifest(
         sheets={"test": SpriteSheetDef(image="sheet.png", tile_size=16, columns=1, rows=1)},
         entities={"rat": SpriteRef(sheet="test", col=0, row=0)},
-        items={}, tile_kinds={},
+        items={},
+        tile_kinds={"floor": SpriteRef(sheet="test", col=0, row=0)},
     )
     tileset = tcod.tileset.Tileset(16, 16)
 
@@ -253,3 +363,4 @@ def test_apply_sprites_loads_real_files_from_disk(tmp_path):
     assert "rat" in result.entities
     tile = tileset.get_tile(result.entities["rat"])
     assert tuple(tile[0, 0]) == (9, 9, 9, 255)
+    assert ("rat", "floor") in result.entities_on_tile

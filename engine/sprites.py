@@ -1,10 +1,10 @@
 """Registers bitmap sprite tiles into a tcod Tileset at Unicode Private Use
 Area codepoints (U+E000+), layered on top of the existing font-based
 Tileset - see main.py's load_tileset(). engine/render.py's _resolved_glyph
-is the only place these codepoints are ever looked up; every other
-console.print() call (HUD/log/quest-log/shop prose) never touches a PUA
-codepoint, so this module has no effect on anything but the single-glyph
-map/entity rendering.
+(tile kinds) and _resolved_entity_glyph (entities/items) are the only
+places these codepoints are ever looked up; every other console.print()
+call (HUD/log/quest-log/shop prose) never touches a PUA codepoint, so this
+module has no effect on anything but the single-glyph map/entity rendering.
 
 Also owns the shared-sprite recolor mechanism: several catalog entries
 have no distinct art of their own and reuse one base sprite (e.g. every
@@ -13,11 +13,21 @@ retints that shared sprite toward the matching EntityDef/ItemDef's own
 `color` field, so each still reads as visually distinct with zero new art
 authoring, now or for anything added to the catalog later.
 
-Split for testability: recolor_sprite() and build_sprite_codepoints() are
-pure functions over already-decoded PIL Images / numpy arrays - no file
-I/O - so tests can exercise them with tiny synthetic in-memory
-images/arrays, no real PNG fixtures needed. apply_sprites() is the thin
-wrapper that actually opens files from assets_dir."""
+And the entity/item-over-terrain compositing mechanism
+(composite_sprite_over_terrain): a Console cell holds exactly one glyph,
+so drawing an entity's sprite over a tile fully replaces the tile's own
+codepoint rather than blending with it - wherever the entity's sprite is
+transparent, the console's plain background shows through instead of the
+terrain that should be visible there. build_sprite_codepoints
+precomputes every (entity/item, tile_kind) composite once at startup so
+render.py never needs live Tileset access during play.
+
+Split for testability: recolor_sprite(), composite_sprite_over_terrain(),
+and build_sprite_codepoints() are pure functions over already-decoded PIL
+Images / numpy arrays - no file I/O - so tests can exercise them with tiny
+synthetic in-memory images/arrays, no real PNG fixtures needed.
+apply_sprites() is the thin wrapper that actually opens files from
+assets_dir."""
 
 from __future__ import annotations
 
@@ -56,11 +66,23 @@ class SpriteCodepoints:
     it. A missing key (including every key, for the all-defaults case) means
     "no sprite mapped" - engine/render.py's _resolved_glyph falls back to
     the authored ASCII glyph, so this is always a safe value for a catalog
-    id or tile kind nothing has been mapped for yet."""
+    id or tile kind nothing has been mapped for yet.
+
+    entities_on_tile/items_on_tile hold a second kind of codepoint: an
+    actor's sprite pre-composited over a specific tile kind's own sprite
+    (see composite_sprite_over_terrain), keyed by (actor_id, tile_kind) -
+    used whenever both the actor and the tile kind it's standing on have a
+    sprite mapped, so the actor's transparent background shows the real
+    terrain instead of a plain black square. Missing a (actor_id, tile_kind)
+    pair - e.g. the tile kind has no sprite mapped at all - falls back to
+    the actor's plain codepoint above; see engine/render.py's
+    _resolved_entity_glyph for the full fallback chain."""
 
     entities: dict[str, int] = field(default_factory=dict)
     items: dict[str, int] = field(default_factory=dict)
     tile_kinds: dict[str, int] = field(default_factory=dict)
+    entities_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
+    items_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
 
 
 def _is_skin_tone(h: float, s: float) -> bool:
@@ -90,6 +112,21 @@ def recolor_sprite(rgba: np.ndarray, target_color: "Color") -> np.ndarray:
             out[y, x, 1] = round(ng * 255)
             out[y, x, 2] = round(nb * 255)
     return out
+
+
+def composite_sprite_over_terrain(actor_rgba: np.ndarray, terrain_rgba: np.ndarray) -> np.ndarray:
+    """Alpha-composites an already-recolored/resized entity or item sprite
+    over a tile-kind's own sprite, using the actor's own per-pixel alpha as
+    the blend mask (standard "over" compositing): a fully transparent
+    actor pixel leaves the terrain pixel untouched, a fully opaque one
+    fully replaces it, and any partial alpha blends proportionally. Both
+    arrays must already be the same (H, W, 4) uint8 shape - guaranteed by
+    build_sprite_codepoints, which resizes every sprite to the tileset's
+    own tile_shape before this is ever called. Returns a new array; neither
+    input is mutated."""
+    base = Image.fromarray(terrain_rgba, mode="RGBA")
+    top = Image.fromarray(actor_rgba, mode="RGBA")
+    return np.asarray(Image.alpha_composite(base, top), dtype=np.uint8)
 
 
 class _SheetIndex(NamedTuple):
@@ -148,12 +185,21 @@ def build_sprite_codepoints(
     `tileset` at a fresh sequential PUA codepoint, and returns the lookup
     render.py needs. Deterministic assignment order (entities, then items,
     then tile_kinds, each sorted by key) so re-running with the same
-    manifest always assigns the same codepoints."""
+    manifest always assigns the same codepoints.
+
+    A second pass then registers every (entity/item, tile_kind) composite
+    (see composite_sprite_over_terrain) for every actor and tile kind that
+    both have a sprite mapped - eagerly, once, here at startup rather than
+    lazily during play, since the full set is small and bounded
+    ((entities + items) x tile_kinds - a few hundred tiny composites at
+    most) and this keeps engine/render.py free of any live Tileset access.
+    This pass is strictly appended after the base one above, so the base
+    codepoints stay exactly where existing callers already expect them."""
     result = SpriteCodepoints()
     next_codepoint = PUA_START
     tile_shape = (tileset.tile_height, tileset.tile_width)
 
-    def _register(ref: "SpriteRef", color: "Color | None") -> int:
+    def _register(ref: "SpriteRef", color: "Color | None") -> tuple[int, np.ndarray]:
         nonlocal next_codepoint
         sheet_def = manifest.sheets[ref.sheet]
         box = _tile_box(sheet_def, ref, sheet_indexes.get(ref.sheet))
@@ -167,7 +213,11 @@ def build_sprite_codepoints(
         tileset[next_codepoint] = rgba
         codepoint = next_codepoint
         next_codepoint += 1
-        return codepoint
+        return codepoint, rgba
+
+    entity_pixels: dict[str, np.ndarray] = {}
+    item_pixels: dict[str, np.ndarray] = {}
+    tile_pixels: dict[str, np.ndarray] = {}
 
     for entity_id in sorted(manifest.entities):
         # The player isn't a real catalog entry (see
@@ -175,15 +225,32 @@ def build_sprite_codepoints(
         # toward, which load_sprite_manifest already enforces by rejecting
         # recolor: true on it, so None here is never actually used.
         edef = catalog.entities.get(entity_id)
-        result.entities[entity_id] = _register(
+        codepoint, rgba = _register(
             manifest.entities[entity_id], edef.color if edef is not None else None
         )
+        result.entities[entity_id] = codepoint
+        entity_pixels[entity_id] = rgba
     for item_id in sorted(manifest.items):
-        result.items[item_id] = _register(
-            manifest.items[item_id], catalog.items[item_id].color
-        )
+        codepoint, rgba = _register(manifest.items[item_id], catalog.items[item_id].color)
+        result.items[item_id] = codepoint
+        item_pixels[item_id] = rgba
     for kind in sorted(manifest.tile_kinds):
-        result.tile_kinds[kind] = _register(manifest.tile_kinds[kind], None)
+        codepoint, rgba = _register(manifest.tile_kinds[kind], None)
+        result.tile_kinds[kind] = codepoint
+        tile_pixels[kind] = rgba
+
+    for entity_id in sorted(entity_pixels):
+        for kind in sorted(tile_pixels):
+            composite = composite_sprite_over_terrain(entity_pixels[entity_id], tile_pixels[kind])
+            tileset[next_codepoint] = composite
+            result.entities_on_tile[(entity_id, kind)] = next_codepoint
+            next_codepoint += 1
+    for item_id in sorted(item_pixels):
+        for kind in sorted(tile_pixels):
+            composite = composite_sprite_over_terrain(item_pixels[item_id], tile_pixels[kind])
+            tileset[next_codepoint] = composite
+            result.items_on_tile[(item_id, kind)] = next_codepoint
+            next_codepoint += 1
 
     return result
 

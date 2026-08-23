@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from content.loader import Catalog
     from engine.engine import Engine, MessageLog
+    from engine.entity import Entity
     from engine.game_map import GameMap
     from engine.quest import Quest
     from engine.sprites import SpriteCodepoints
@@ -150,6 +151,31 @@ def render_map(
                 console.print(sx, sy, glyph, fg=visual["dark"])
 
 
+def _resolved_entity_glyph(
+    entity: "Entity", tile_kind: str, sprite_codepoints: "SpriteCodepoints | None"
+) -> str:
+    """The entity/item counterpart to _resolved_glyph, with one extra level:
+    (1) no sprite_codepoints, or no plain sprite mapped for entity.entity_id
+    at all -> the authored ASCII glyph; (2) a plain sprite exists but there's
+    no composite registered for (entity.entity_id, tile_kind) - because
+    tile_kind itself has no sprite mapped (e.g. mountain, deliberately) ->
+    the entity's plain, uncomposited sprite (today's look - a real but rare
+    cosmetic gap only in that edge case, never ASCII, never a crash); (3)
+    both mapped -> the entity composited over tile_kind's own sprite (see
+    engine/sprites.py's composite_sprite_over_terrain), so the real terrain
+    shows through the sprite's transparent background instead of a plain
+    black square."""
+    if not entity.entity_id or sprite_codepoints is None:
+        return entity.glyph
+    is_item = entity.item is not None
+    plain_lookup = sprite_codepoints.items if is_item else sprite_codepoints.entities
+    if entity.entity_id not in plain_lookup:
+        return entity.glyph
+    composited_lookup = sprite_codepoints.items_on_tile if is_item else sprite_codepoints.entities_on_tile
+    composited = composited_lookup.get((entity.entity_id, tile_kind))
+    return chr(composited) if composited is not None else chr(plain_lookup[entity.entity_id])
+
+
 def render_entities(
     console: "Console",
     game_map: "GameMap",
@@ -162,10 +188,8 @@ def render_entities(
             continue
         sx, sy = entity.x - cam_x, entity.y - cam_y
         if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
-            lookup = None
-            if sprite_codepoints is not None:
-                lookup = sprite_codepoints.items if entity.item is not None else sprite_codepoints.entities
-            glyph = _resolved_glyph(entity.glyph, entity.entity_id, lookup)
+            tile_kind = game_map.kinds[entity.x, entity.y]
+            glyph = _resolved_entity_glyph(entity, tile_kind, sprite_codepoints)
             console.print(sx, sy, glyph, fg=entity.color)
 
 

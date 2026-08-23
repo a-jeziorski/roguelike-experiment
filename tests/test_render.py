@@ -706,6 +706,92 @@ def test_render_entities_uses_a_sprite_codepoint_for_the_mapped_player():
     assert console.rgb[5, 5]["ch"] == 0xE003
 
 
+def test_render_entities_uses_the_composited_codepoint_when_the_tile_kind_is_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    rat = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(rat)
+    sprite_codepoints = SpriteCodepoints(
+        entities={"rat": 0xE001}, entities_on_tile={("rat", "floor"): 0xE050},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE050  # composited, not the plain 0xE001
+
+
+def test_render_entities_falls_back_to_the_plain_sprite_when_the_tile_kind_has_no_composite():
+    """The tile kind an entity stands on (e.g. mountain, deliberately left
+    unmapped) has no sprite of its own - falls back to the entity's plain,
+    uncomposited codepoint rather than ASCII."""
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "mountain"
+    game_map.visible[5, 5] = True
+    rat = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(rat)
+    sprite_codepoints = SpriteCodepoints(entities={"rat": 0xE001})  # no entities_on_tile at all
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE001
+
+
+def test_render_entities_composites_items_too():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    potion = Entity(
+        5, 5, "!", (220, 40, 100), "Healing Potion",
+        item=ItemEffect(heal_amount=10),
+        entity_id="healing_potion",
+    )
+    game_map.entities.append(potion)
+    sprite_codepoints = SpriteCodepoints(
+        items={"healing_potion": 0xE002}, items_on_tile={("healing_potion", "floor"): 0xE051},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE051
+
+
+def test_render_entities_falls_back_to_ascii_when_no_plain_sprite_is_mapped_even_with_a_stray_composite():
+    """Confirms the fallback ORDER: a plain sprite must exist before a
+    composite is even consulted, so a mismatched/stray entities_on_tile
+    entry can never surface a sprite for an entity that was never actually
+    mapped."""
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    goblin = Entity(
+        5, 5, "g", (60, 140, 60), "Goblin",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="goblin",
+    )
+    game_map.entities.append(goblin)
+    sprite_codepoints = SpriteCodepoints(entities_on_tile={("goblin", "floor"): 0xE050})  # no plain entry
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert chr(console.rgb[5, 5]["ch"]) == "g"
+
+
 def test_render_all_threads_engines_sprite_codepoints_through():
     game_map = make_game_map(10, 10)
     game_map.kinds[5, 5] = "floor"
