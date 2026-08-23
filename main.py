@@ -16,6 +16,7 @@ from content.loader import (
     load_dungeon_registry,
     load_overworld,
     load_quests,
+    load_sprite_manifest,
 )
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
@@ -32,6 +33,7 @@ from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.quest import QuestLog, create_quest_log
+from engine.sprites import apply_sprites
 from engine.input_handlers import (
     handle_event,
     handle_look_event,
@@ -58,10 +60,15 @@ from engine.targeting import find_nearest_target
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
 OVERWORLD_LEVEL_PATH = Path(__file__).resolve().parent / "data" / "overworld.lvl"
 QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
+SPRITES_PATH = Path(__file__).resolve().parent / "data" / "sprites.yaml"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "tilesets"
 STARTING_DUNGEON_ID = "prison_tower"
 OVERWORLD_KEY = "overworld"
 
-TILE_SIZE = 14
+# 16 rather than an arbitrary size: matches the Kenney sprite packs' native
+# 16x16 resolution exactly (crisp, no resize) and downscales RLTiles' native
+# 32x32 by a clean 2x - see engine/sprites.py.
+TILE_SIZE = 16
 # The console must be at least as wide as the map viewport (no horizontal HUD
 # sidebar); its extra rows below VIEWPORT_HEIGHT are the HUD/message log area,
 # sized independently of any level's actual height - see engine/render.py.
@@ -343,6 +350,7 @@ def resolve_transition(
     *,
     clock: GameClock | None = None,
     quest_log: QuestLog | None = None,
+    sprite_codepoints=None,
 ) -> tuple[str, Engine]:
     """After a dispatch, checks the active engine's transition mailbox
     (Engine.wants_overworld / Engine.pending_dungeon_entry) and performs the
@@ -371,7 +379,7 @@ def resolve_transition(
             target = Engine(
                 game_map, player, overworld_level.name,
                 catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
-                clock=clock, quest_log=quest_log,
+                clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[OVERWORLD_KEY] = target
         else:
@@ -390,7 +398,7 @@ def resolve_transition(
             target = Engine(
                 game_map, player, starting_level.name,
                 catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
-                clock=clock, quest_log=quest_log,
+                clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[dungeon_id] = target
         else:
@@ -409,12 +417,16 @@ def main() -> int:
             OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
         )
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+        sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
 
     clock = GameClock()
     quest_log = create_quest_log(quest_defs)
+
+    tileset = load_tileset()
+    sprite_codepoints = apply_sprites(tileset, sprite_manifest, catalog, ASSETS_DIR)
 
     dungeon = dungeon_registry[STARTING_DUNGEON_ID]
     levels = dungeon.levels
@@ -429,11 +441,10 @@ def main() -> int:
         starting_level=starting_level,
         clock=clock,
         quest_log=quest_log,
+        sprite_codepoints=sprite_codepoints,
     )
     active_key = STARTING_DUNGEON_ID
     active_engines: dict[str, Engine] = {active_key: engine}
-
-    tileset = load_tileset()
 
     with tcod.context.new(
         columns=CONSOLE_COLUMNS,
@@ -495,6 +506,7 @@ def main() -> int:
                                     active_key, engine, active_engines,
                                     dungeon_registry, overworld_level, catalog,
                                     clock=clock, quest_log=quest_log,
+                                    sprite_codepoints=sprite_codepoints,
                                 )
                     continue
 
@@ -506,7 +518,7 @@ def main() -> int:
                 animate_combat_feedback(console, context, engine)
                 active_key, engine = resolve_transition(
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
-                    clock=clock, quest_log=quest_log,
+                    clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
                 )
 
 

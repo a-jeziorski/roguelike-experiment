@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from engine.engine import Engine, MessageLog
     from engine.game_map import GameMap
     from engine.quest import Quest
+    from engine.sprites import SpriteCodepoints
 
 TILE_VISUALS = {
     "wall": {"glyph": "#", "dark": (35, 35, 55), "light": (100, 100, 130)},
@@ -112,27 +113,60 @@ def compute_camera(
     return cam_x, cam_y
 
 
-def render_map(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int) -> None:
+def _resolved_glyph(fallback_glyph: str, key: str, lookup: "dict[str, int] | None") -> str:
+    """The one place the sprite-vs-ASCII fallback decision is made. `lookup`
+    is None (no sprite manifest loaded) or a dict with no entry for `key`
+    (nothing mapped for this id/kind yet) - both fall through to the
+    literal authored ASCII glyph, never a missing-glyph box, never a crash.
+    An empty `key` (the player Entity's unset entity_id - see
+    engine/game_map.py's build_game_map) always falls back too, regardless
+    of `lookup`'s contents: no catalog id is ever "", so a sprite entry
+    keyed by "" could never be an intentional mapping for anything."""
+    if key and lookup is not None and key in lookup:
+        return chr(lookup[key])
+    return fallback_glyph
+
+
+def render_map(
+    console: "Console",
+    game_map: "GameMap",
+    cam_x: int,
+    cam_y: int,
+    sprite_codepoints: "SpriteCodepoints | None" = None,
+) -> None:
     visible_width = min(VIEWPORT_WIDTH, game_map.width - cam_x)
     visible_height = min(VIEWPORT_HEIGHT, game_map.height - cam_y)
+    tile_kinds = sprite_codepoints.tile_kinds if sprite_codepoints is not None else None
     for sx in range(visible_width):
         x = cam_x + sx
         for sy in range(visible_height):
             y = cam_y + sy
-            visual = TILE_VISUALS[game_map.kinds[x, y]]
+            kind = game_map.kinds[x, y]
+            visual = TILE_VISUALS[kind]
+            glyph = _resolved_glyph(visual["glyph"], kind, tile_kinds)
             if game_map.visible[x, y]:
-                console.print(sx, sy, visual["glyph"], fg=visual["light"])
+                console.print(sx, sy, glyph, fg=visual["light"])
             elif game_map.explored[x, y]:
-                console.print(sx, sy, visual["glyph"], fg=visual["dark"])
+                console.print(sx, sy, glyph, fg=visual["dark"])
 
 
-def render_entities(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int) -> None:
+def render_entities(
+    console: "Console",
+    game_map: "GameMap",
+    cam_x: int,
+    cam_y: int,
+    sprite_codepoints: "SpriteCodepoints | None" = None,
+) -> None:
     for entity in sorted(game_map.entities, key=lambda e: e.render_priority):
         if not game_map.visible[entity.x, entity.y]:
             continue
         sx, sy = entity.x - cam_x, entity.y - cam_y
         if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
-            console.print(sx, sy, entity.glyph, fg=entity.color)
+            lookup = None
+            if sprite_codepoints is not None:
+                lookup = sprite_codepoints.items if entity.item is not None else sprite_codepoints.entities
+            glyph = _resolved_glyph(entity.glyph, entity.entity_id, lookup)
+            console.print(sx, sy, glyph, fg=entity.color)
 
 
 def projectile_glyph(fx: int, fy: int, tx: int, ty: int) -> str:
@@ -241,8 +275,8 @@ def render_all(console: "Console", engine: "Engine") -> None:
         engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
         engine.player.x, engine.player.y,
     )
-    render_map(console, engine.game_map, cam_x, cam_y)
-    render_entities(console, engine.game_map, cam_x, cam_y)
+    render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_hud(console, engine, hud_y) + 1
@@ -344,8 +378,8 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
         engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
         cursor_x, cursor_y,
     )
-    render_map(console, engine.game_map, cam_x, cam_y)
-    render_entities(console, engine.game_map, cam_x, cam_y)
+    render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = CURSOR_BG
 
     hud_y = VIEWPORT_HEIGHT + 1
@@ -390,8 +424,8 @@ def render_target_frame(
         engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
         cursor_x, cursor_y,
     )
-    render_map(console, engine.game_map, cam_x, cam_y)
-    render_entities(console, engine.game_map, cam_x, cam_y)
+    render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
     console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = (

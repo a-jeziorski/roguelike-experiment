@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 
 import yaml
 from pydantic import ValidationError
@@ -23,7 +23,17 @@ from content.schema import (
     ItemDef,
     LevelDef,
     QuestDef,
+    SpriteManifestDef,
+    SpriteRef,
+    SpriteSheetDef,
+    TileType,
 )
+
+# Every TileType except player_start actually appears in a runtime GameMap -
+# build_game_map always rewrites a player_start cell to "floor" (see
+# engine/game_map.py), so it never exists as a live kind for a sprite to
+# apply to. This is the valid key set for sprites.yaml's tile_kinds section.
+_VALID_SPRITE_TILE_KINDS = set(get_args(TileType)) - {"player_start"}
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -274,6 +284,71 @@ def load_quests(
         raise ContentValidationError(str(path), errors)
 
     return quests
+
+
+@dataclass
+class SpriteManifest:
+    sheets: dict[str, SpriteSheetDef]
+    entities: dict[str, SpriteRef]
+    items: dict[str, SpriteRef]
+    tile_kinds: dict[str, SpriteRef]
+
+
+def load_sprite_manifest(path: Path, catalog: Catalog) -> SpriteManifest:
+    """Loads and validates data/sprites.yaml (see content/schema.py's
+    SpriteManifestDef/SpriteRef/SpriteSheetDef). Stays pure-YAML validation
+    like every other load_* here - no image/pixel decoding happens in this
+    module; actual pixel-bounds checking happens in engine/sprites.py, the
+    layer that opens the binary sheet file anyway. Any catalog id or tile
+    kind with no entry in the returned manifest simply has no sprite -
+    engine/render.py falls back to its authored ASCII glyph, so an empty
+    manifest (or one missing entries) is always valid, never an error."""
+    raw = _load_yaml(path) or {}
+    try:
+        parsed = SpriteManifestDef(**raw)
+    except ValidationError as e:
+        raise ContentValidationError(str(path), [str(e)]) from e
+
+    errors: list[str] = []
+
+    def _check_sheet(section: str, key: str, ref: SpriteRef) -> None:
+        if ref.sheet not in parsed.sheets:
+            errors.append(f"{section}['{key}']: unknown sheet '{ref.sheet}'")
+        elif ref.name is not None and parsed.sheets[ref.sheet].index is None:
+            errors.append(
+                f"{section}['{key}']: addresses by 'name' but sheet "
+                f"'{ref.sheet}' has no 'index' - only a sheet with a name "
+                "index can be addressed this way, use col/row instead"
+            )
+
+    for entity_id, ref in parsed.entities.items():
+        if entity_id not in catalog.entities:
+            errors.append(f"entities['{entity_id}']: unknown entity id")
+        _check_sheet("entities", entity_id, ref)
+
+    for item_id, ref in parsed.items.items():
+        if item_id not in catalog.items:
+            errors.append(f"items['{item_id}']: unknown item id")
+        _check_sheet("items", item_id, ref)
+
+    for kind, ref in parsed.tile_kinds.items():
+        if kind not in _VALID_SPRITE_TILE_KINDS:
+            errors.append(f"tile_kinds['{kind}']: not a recognized tile kind")
+        if ref.recolor:
+            errors.append(
+                f"tile_kinds['{kind}']: recolor is only meaningful for "
+                "entities/items (a tile kind has no .color field to tint "
+                "toward - see EntityDef.color/ItemDef.color)"
+            )
+        _check_sheet("tile_kinds", kind, ref)
+
+    if errors:
+        raise ContentValidationError(str(path), errors)
+
+    return SpriteManifest(
+        sheets=parsed.sheets, entities=parsed.entities,
+        items=parsed.items, tile_kinds=parsed.tile_kinds,
+    )
 
 
 def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:

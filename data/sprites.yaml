@@ -1,0 +1,24 @@
+# Bitmap sprite mapping: which catalog entity/item id, or which overworld
+# tile kind, uses which sprite from which source sheet - see
+# content/schema.py's SpriteManifestDef/SpriteRef/SpriteSheetDef for the
+# full field list and content/loader.py's load_sprite_manifest for
+# validation. Anything not listed under entities/items/tile_kinds simply
+# has no sprite - engine/render.py falls back to that id/kind's authored
+# ASCII glyph, so leaving something out is always safe, never a broken
+# reference.
+#
+# A SpriteRef addresses its tile either by `name` (looked up in the sheet's
+# own name->index JSON, when it has one) or by `col`+`row` (direct grid
+# position) - never both. `recolor: true` retints a shared base sprite
+# toward that catalog entry's own `color` field (see
+# engine/sprites.py's recolor_sprite) - used wherever several entries
+# reuse one base sprite with no distinct art of their own, so they still
+# read as visually distinct from each other.
+
+sheets: {}
+
+entities: {}
+
+items: {}
+
+tile_kinds: {}

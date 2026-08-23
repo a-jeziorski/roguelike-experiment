@@ -10,6 +10,7 @@ from content.loader import (
     load_level,
     load_levels,
     load_overworld,
+    load_sprite_manifest,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -732,3 +733,175 @@ def test_load_level_rejects_dungeon_entrance_tiles():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="dungeon_entrance.*has no meaning inside a dungeon"):
         load_level(FIXTURES_DIR / "level_with_dungeon_entrance.lvl", catalog)
+
+
+def test_load_sprite_manifest_loads_a_valid_minimal_manifest(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "entities:\n"
+        "  rat: {sheet: rltiles, name: rat}\n"
+        "items:\n"
+        "  road_ledger: {sheet: kenney, col: 44, row: 15}\n"
+        "tile_kinds:\n"
+        "  sea: {sheet: kenney, col: 0, row: 2}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)
+
+    assert manifest.entities["rat"].name == "rat"
+    assert manifest.items["road_ledger"].col == 44
+    assert manifest.tile_kinds["sea"].row == 2
+
+
+def test_load_sprite_manifest_rejects_unknown_entity_id(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "entities:\n"
+        "  nonexistent_creature: {sheet: rltiles, name: rat}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="unknown entity id"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_unrecognized_tile_kind(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  player_start: {sheet: kenney, col: 0, row: 0}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="not a recognized tile kind"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_both_name_and_col_row_set(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "entities:\n"
+        "  rat: {sheet: rltiles, name: rat, col: 0, row: 0}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match=r"set either 'name' or 'col'\+'row', not both"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_neither_name_nor_col_row_set(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "entities:\n"
+        "  rat: {sheet: rltiles}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match=r"must set either 'name' or 'col'\+'row'"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_an_unknown_sheet(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets: {}\n"
+        "entities:\n"
+        "  rat: {sheet: nonexistent_sheet, name: rat}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="unknown sheet 'nonexistent_sheet'"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_name_addressing_against_an_index_less_sheet(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "entities:\n"
+        "  rat: {sheet: kenney, name: rat}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="has no 'index'"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_recolor_on_a_tile_kind(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  sea: {sheet: kenney, col: 0, row: 2, recolor: true}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="recolor is only meaningful for entities/items"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_collects_multiple_errors_at_once(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets: {}\n"
+        "entities:\n"
+        "  nonexistent_creature: {sheet: nonexistent_sheet, name: rat}\n"
+        "items:\n"
+        "  nonexistent_item: {sheet: nonexistent_sheet, col: 0, row: 0}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError) as exc_info:
+        load_sprite_manifest(path, catalog)
+    assert len(exc_info.value.errors) == 4  # 2 unknown ids + 2 unknown sheets

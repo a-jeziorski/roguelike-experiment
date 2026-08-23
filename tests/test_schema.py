@@ -1,7 +1,15 @@
 import pytest
 from pydantic import ValidationError
 
-from content.schema import DungeonDef, EntityDef, ItemDef, LegendEntry, LevelDef
+from content.schema import (
+    DungeonDef,
+    EntityDef,
+    ItemDef,
+    LegendEntry,
+    LevelDef,
+    SpriteRef,
+    SpriteSheetDef,
+)
 
 
 def test_entity_def_valid():
@@ -273,3 +281,47 @@ def test_level_def_normalizes_legend():
     )
     assert level.legend["#"].tile == "wall"
     assert level.legend["@"].tile == "player_start"
+
+
+def test_sprite_sheet_def_grid_sheet_requires_columns_and_rows():
+    with pytest.raises(ValidationError, match="must set both 'columns' and 'rows'"):
+        SpriteSheetDef(image="sheet.png", tile_size=16)
+
+
+def test_sprite_sheet_def_indexed_sheet_does_not_require_columns_and_rows():
+    sheet = SpriteSheetDef(image="rltiles-2d.png", tile_size=32, index="rltiles-2d.json")
+    assert sheet.columns is None
+    assert sheet.rows is None
+
+
+def test_sprite_sheet_def_grid_sheet_with_columns_and_rows_is_valid():
+    sheet = SpriteSheetDef(image="sheet.png", tile_size=16, columns=10, rows=5)
+    assert sheet.columns == 10
+    assert sheet.rows == 5
+
+
+def test_sprite_ref_rejects_both_name_and_col_row():
+    with pytest.raises(ValidationError, match="not both"):
+        SpriteRef(sheet="rltiles", name="rat", col=0, row=0)
+
+
+def test_sprite_ref_rejects_neither_name_nor_col_row():
+    with pytest.raises(ValidationError, match="must set either"):
+        SpriteRef(sheet="rltiles")
+
+
+def test_sprite_ref_accepts_name_addressing():
+    ref = SpriteRef(sheet="rltiles", name="rat")
+    assert ref.name == "rat"
+    assert ref.col is None
+
+
+def test_sprite_ref_accepts_grid_addressing():
+    ref = SpriteRef(sheet="kenney", col=6, row=0)
+    assert ref.col == 6
+    assert ref.row == 0
+
+
+def test_sprite_ref_recolor_defaults_false():
+    ref = SpriteRef(sheet="rltiles", name="human")
+    assert ref.recolor is False

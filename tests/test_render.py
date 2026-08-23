@@ -35,6 +35,7 @@ from engine.render import (
     render_shop,
     render_target_frame,
 )
+from engine.sprites import SpriteCodepoints
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -569,6 +570,136 @@ def test_render_entities_hides_entities_scrolled_outside_the_viewport():
 
     text = console_text(console)
     assert "@" not in text
+
+
+def test_render_map_uses_a_sprite_codepoint_when_the_tile_kind_is_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_down"
+    game_map.visible[5, 5] = True
+    sprite_codepoints = SpriteCodepoints(tile_kinds={"stairs_down": 0xE000})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE000
+
+
+def test_render_map_falls_back_to_the_ascii_glyph_when_the_tile_kind_is_unmapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_down"
+    game_map.visible[5, 5] = True
+    # Mapped, but not for stairs_down - the "content added, sprite not made
+    # yet" case this fallback exists for.
+    sprite_codepoints = SpriteCodepoints(tile_kinds={"floor": 0xE000})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert chr(console.rgb[5, 5]["ch"]) == ">"
+
+
+def test_render_map_with_no_sprite_codepoints_argument_is_ascii_identical():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_down"
+    game_map.visible[5, 5] = True
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0)  # sprite_codepoints omitted
+
+    assert chr(console.rgb[5, 5]["ch"]) == ">"
+
+
+def test_render_entities_uses_a_sprite_codepoint_for_a_mapped_entity_id():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    rat = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(rat)
+    sprite_codepoints = SpriteCodepoints(entities={"rat": 0xE001})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE001
+
+
+def test_render_entities_uses_a_sprite_codepoint_for_a_mapped_item_id():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    potion = Entity(
+        5, 5, "!", (220, 40, 100), "Healing Potion",
+        item=ItemEffect(heal_amount=10),
+        entity_id="healing_potion",
+    )
+    game_map.entities.append(potion)
+    sprite_codepoints = SpriteCodepoints(items={"healing_potion": 0xE002})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE002
+
+
+def test_render_entities_falls_back_to_the_ascii_glyph_for_an_unmapped_entity_id():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    rat = Entity(
+        5, 5, "r", (140, 90, 60), "Rat",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=5, hp=5, attack=1, defense=0),
+        entity_id="rat",
+    )
+    game_map.entities.append(rat)
+    # Mapped, but not for "rat".
+    sprite_codepoints = SpriteCodepoints(entities={"goblin": 0xE000})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert chr(console.rgb[5, 5]["ch"]) == "r"
+
+
+def test_render_entities_player_always_falls_back_to_the_ascii_glyph():
+    """The player Entity is hardcoded with no entity_id (see
+    engine/game_map.py's build_game_map) - it should never match a sprite
+    entry, even one that happens to share an empty-string key."""
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    player = Entity(
+        5, 5, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+    )
+    game_map.entities.append(player)
+    sprite_codepoints = SpriteCodepoints(entities={"": 0xE000})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert chr(console.rgb[5, 5]["ch"]) == "@"
+
+
+def test_render_all_threads_engines_sprite_codepoints_through():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "floor"
+    game_map.visible[5, 5] = True
+    player = Entity(
+        5, 5, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+    )
+    game_map.entities.append(player)
+    sprite_codepoints = SpriteCodepoints(tile_kinds={"floor": 0xE010})
+    engine = Engine(game_map, player, "Test Level", sprite_codepoints=sprite_codepoints)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    assert 0xE010 in console.rgb["ch"]
 
 
 def test_render_all_places_hud_at_a_fixed_row_regardless_of_map_height():

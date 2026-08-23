@@ -475,3 +475,71 @@ class DungeonDef(BaseModel):
     # the default, which requires at least one stairs_down somewhere so a
     # level always either goes deeper or is a deliberate ending.
     requires_stairs_down: bool = True
+
+
+class SpriteSheetDef(BaseModel):
+    """One source image referenced by data/sprites.yaml, addressed either by
+    a name->index JSON (RLTiles-style - a sheet with a published tile-name
+    list) or by raw grid position (a plain spritesheet with no such index,
+    e.g. the Kenney packs - see SpriteRef). `columns`/`rows` are required
+    for a grid-only sheet since that's the only way a col/row SpriteRef can
+    be bounds-checked or converted to a pixel box (see engine/sprites.py)."""
+
+    image: str
+    tile_size: int = Field(gt=0)
+    index: str | None = None
+    spacing: int = 0
+    columns: int | None = Field(default=None, gt=0)
+    rows: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def grid_sheets_need_columns_and_rows(self) -> "SpriteSheetDef":
+        if self.index is None and (self.columns is None or self.rows is None):
+            raise ValueError(
+                "a sheet with no 'index' must set both 'columns' and 'rows' - "
+                "that's the only way its tiles can be addressed by col/row"
+            )
+        return self
+
+
+class SpriteRef(BaseModel):
+    """One catalog id's (or tile kind's) sprite: which sheet, and which tile
+    within it - addressed by `name` (looked up in that sheet's own index) or
+    by `col`+`row` (direct grid position), never both. `recolor`, when true,
+    retints the sprite toward the matching EntityDef/ItemDef's own `color`
+    at registration time (see engine/sprites.py's recolor_sprite) - only
+    meaningful on an entities/items entry, since a tile kind has no `.color`
+    field to tint toward (content/loader.py's load_sprite_manifest rejects
+    it on a tile_kinds entry)."""
+
+    sheet: str
+    name: str | None = None
+    col: int | None = Field(default=None, ge=0)
+    row: int | None = Field(default=None, ge=0)
+    recolor: bool = False
+
+    @model_validator(mode="after")
+    def exactly_one_addressing_mode(self) -> "SpriteRef":
+        by_name = self.name is not None
+        by_grid = self.col is not None or self.row is not None
+        if by_name and by_grid:
+            raise ValueError("set either 'name' or 'col'+'row', not both")
+        if not by_name and not by_grid:
+            raise ValueError("must set either 'name' or 'col'+'row'")
+        if by_grid and (self.col is None or self.row is None):
+            raise ValueError("'col' and 'row' must be set together")
+        return self
+
+
+class SpriteManifestDef(BaseModel):
+    """The raw shape of data/sprites.yaml: named source sheets, plus three
+    id-keyed sections mapping a catalog entity id / item id / tile-kind
+    string to a SpriteRef within one of those sheets. Any catalog id or
+    tile kind with no entry here simply has no sprite - engine/render.py
+    falls back to its authored ASCII glyph, so leaving something out is
+    always safe, never a broken reference."""
+
+    sheets: dict[str, SpriteSheetDef] = Field(default_factory=dict)
+    entities: dict[str, SpriteRef] = Field(default_factory=dict)
+    items: dict[str, SpriteRef] = Field(default_factory=dict)
+    tile_kinds: dict[str, SpriteRef] = Field(default_factory=dict)

@@ -24,6 +24,7 @@ from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
+    from engine.sprites import SpriteCodepoints
 
 # Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct/
 # ranged_range.
@@ -82,6 +83,7 @@ class Engine:
         dungeon_inspect_text: dict[str, str] | None = None,
         clock: GameClock | None = None,
         quest_log: QuestLog | None = None,
+        sprite_codepoints: "SpriteCodepoints | None" = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -115,6 +117,12 @@ class Engine:
         # Needed to resolve a stairway's destination id into content when
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog
+        # Shared across every Engine main.py constructs, same "one object,
+        # referenced everywhere" pattern as self.clock/self.quest_log - see
+        # engine/sprites.py. None (the default) means "no sprite manifest
+        # loaded," which engine/render.py treats identically to an empty
+        # one: every glyph falls back to its authored ASCII character.
+        self.sprite_codepoints = sprite_codepoints
         self.levels = levels
         # The level a fresh run begins at, kept so restart() can rebuild from
         # scratch; only required if restarting is supported for this Engine.
