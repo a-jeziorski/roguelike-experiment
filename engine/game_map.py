@@ -6,7 +6,7 @@ from __future__ import annotations
 import numpy as np
 import tcod.map
 
-from content.loader import Catalog, ItemDef, ParsedLevel
+from content.loader import PLAYER_ENTITY_ID, Catalog, ItemDef, ParsedLevel
 from content.schema import TILE_PASSABILITY
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -193,6 +193,7 @@ def build_game_map(
                 attack=PLAYER_ATTACK,
                 defense=PLAYER_DEFENSE,
             ),
+            entity_id=PLAYER_ENTITY_ID,
         )
     else:
         player.x, player.y = px, py

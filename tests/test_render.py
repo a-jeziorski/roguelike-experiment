@@ -663,24 +663,47 @@ def test_render_entities_falls_back_to_the_ascii_glyph_for_an_unmapped_entity_id
     assert chr(console.rgb[5, 5]["ch"]) == "r"
 
 
-def test_render_entities_player_always_falls_back_to_the_ascii_glyph():
-    """The player Entity is hardcoded with no entity_id (see
-    engine/game_map.py's build_game_map) - it should never match a sprite
-    entry, even one that happens to share an empty-string key."""
+def test_render_entities_falls_back_for_an_entity_with_no_entity_id():
+    """An entity_id of "" (never a real catalog id, and never what
+    build_game_map gives the real player - see PLAYER_ENTITY_ID) always
+    falls back, even if a sprite entry happens to share that empty key -
+    defensive coverage for _resolved_glyph's own guard, not a real spawn
+    shape."""
     game_map = make_game_map(10, 10)
     game_map.visible[5, 5] = True
-    player = Entity(
+    entity = Entity(
         5, 5, "@", (255, 255, 255), "Player",
         render_priority=RENDER_PRIORITY_PLAYER,
         fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
     )
-    game_map.entities.append(player)
+    game_map.entities.append(entity)
     sprite_codepoints = SpriteCodepoints(entities={"": 0xE000})
 
     console = tcod.console.Console(20, 20, order="F")
     render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
 
     assert chr(console.rgb[5, 5]["ch"]) == "@"
+
+
+def test_render_entities_uses_a_sprite_codepoint_for_the_mapped_player():
+    """build_game_map gives the real player entity_id="player" (see
+    content.loader.PLAYER_ENTITY_ID) - it resolves a sprite exactly like
+    any other mapped entity once one is registered for that id."""
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    player = Entity(
+        5, 5, "@", (255, 255, 255), "Player",
+        render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=10, hp=10, attack=1, defense=0),
+        entity_id="player",
+    )
+    game_map.entities.append(player)
+    sprite_codepoints = SpriteCodepoints(entities={"player": 0xE003})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE003
 
 
 def test_render_all_threads_engines_sprite_codepoints_through():

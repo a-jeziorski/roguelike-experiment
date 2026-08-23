@@ -765,6 +765,46 @@ def test_load_sprite_manifest_loads_a_valid_minimal_manifest(tmp_path):
     assert manifest.tile_kinds["sea"].row == 2
 
 
+def test_load_sprite_manifest_accepts_the_reserved_player_id(tmp_path):
+    """"player" isn't a real catalog entity (it's hardcoded in
+    engine/game_map.py) - load_sprite_manifest allows it anyway, see
+    content.loader.PLAYER_ENTITY_ID."""
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "entities:\n"
+        "  player: {sheet: rltiles, name: warrior}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)
+
+    assert manifest.entities["player"].name == "warrior"
+
+
+def test_load_sprite_manifest_rejects_recolor_on_the_player_entry(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "entities:\n"
+        "  player: {sheet: rltiles, name: warrior, recolor: true}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="the player has no EntityDef/.color field"):
+        load_sprite_manifest(path, catalog)
+
+
 def test_load_sprite_manifest_rejects_unknown_entity_id(tmp_path):
     catalog = load_catalog()
     path = tmp_path / "sprites.yaml"

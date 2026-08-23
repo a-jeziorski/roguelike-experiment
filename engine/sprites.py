@@ -170,8 +170,13 @@ def build_sprite_codepoints(
         return codepoint
 
     for entity_id in sorted(manifest.entities):
+        # The player isn't a real catalog entry (see
+        # content.loader.PLAYER_ENTITY_ID) - it has no .color to recolor
+        # toward, which load_sprite_manifest already enforces by rejecting
+        # recolor: true on it, so None here is never actually used.
+        edef = catalog.entities.get(entity_id)
         result.entities[entity_id] = _register(
-            manifest.entities[entity_id], catalog.entities[entity_id].color
+            manifest.entities[entity_id], edef.color if edef is not None else None
         )
     for item_id in sorted(manifest.items):
         result.items[item_id] = _register(

@@ -118,10 +118,10 @@ def _resolved_glyph(fallback_glyph: str, key: str, lookup: "dict[str, int] | Non
     is None (no sprite manifest loaded) or a dict with no entry for `key`
     (nothing mapped for this id/kind yet) - both fall through to the
     literal authored ASCII glyph, never a missing-glyph box, never a crash.
-    An empty `key` (the player Entity's unset entity_id - see
-    engine/game_map.py's build_game_map) always falls back too, regardless
-    of `lookup`'s contents: no catalog id is ever "", so a sprite entry
-    keyed by "" could never be an intentional mapping for anything."""
+    An empty `key` always falls back too, regardless of `lookup`'s contents:
+    no catalog id (or reserved id - see content.loader.PLAYER_ENTITY_ID) is
+    ever "", so a sprite entry keyed by "" could never be an intentional
+    mapping for anything."""
     if key and lookup is not None and key in lookup:
         return chr(lookup[key])
     return fallback_glyph

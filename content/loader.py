@@ -35,6 +35,13 @@ from content.schema import (
 # apply to. This is the valid key set for sprites.yaml's tile_kinds section.
 _VALID_SPRITE_TILE_KINDS = set(get_args(TileType)) - {"player_start"}
 
+# The player Entity's entity_id (see engine/game_map.py's build_game_map) -
+# reserved rather than a real catalog entry, since the player is hardcoded
+# outside entities.yaml. load_sprite_manifest allows this one id under
+# sprites.yaml's entities section even though it never appears in
+# Catalog.entities, so a sprite can still be authored for it.
+PLAYER_ENTITY_ID = "player"
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
@@ -322,8 +329,14 @@ def load_sprite_manifest(path: Path, catalog: Catalog) -> SpriteManifest:
             )
 
     for entity_id, ref in parsed.entities.items():
-        if entity_id not in catalog.entities:
+        if entity_id != PLAYER_ENTITY_ID and entity_id not in catalog.entities:
             errors.append(f"entities['{entity_id}']: unknown entity id")
+        if entity_id == PLAYER_ENTITY_ID and ref.recolor:
+            errors.append(
+                "entities['player']: recolor is only meaningful for a real "
+                "catalog entity (the player has no EntityDef/.color field to "
+                "tint toward - it's hardcoded in engine/game_map.py)"
+            )
         _check_sheet("entities", entity_id, ref)
 
     for item_id, ref in parsed.items.items():
