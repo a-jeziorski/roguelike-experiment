@@ -84,6 +84,7 @@ class Engine:
         clock: GameClock | None = None,
         quest_log: QuestLog | None = None,
         sprite_codepoints: "SpriteCodepoints | None" = None,
+        overworld_return_position: tuple[int, int] | None = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -153,6 +154,17 @@ class Engine:
         # cross-Engine handoff). Same pattern as ranged_attack_events above.
         self.wants_overworld = False
         self.pending_dungeon_entry: str | None = None
+        # The overworld coordinate this Engine should hand the player back
+        # to whenever it next leaves for the overworld, overriding
+        # main.py's normal _match_entrance lookup - None (the default, every
+        # normal dungeon/the overworld itself) means "use _match_entrance/
+        # player_start as usual." Only ever set on an overworld-encounter
+        # Engine (see EncounterDef/main.py's resolve_transition), since an
+        # encounter dungeon has no overworld dungeon_entrance tile for
+        # _match_entrance to find - without this, leaving one would
+        # incorrectly land the player at the world's default player_start
+        # instead of back on the road where the encounter interrupted them.
+        self.overworld_return_position = overworld_return_position
         # Where depart_player last saw the player, for arrive_player's
         # "resume exactly where they left" path. Set for real the first time
         # depart_player runs; the initial value just avoids the attribute

@@ -352,6 +352,58 @@ shopkeeper named by its `reward_shop_discount_entity_id` (see
 quest scoped to one shop never affects any other shop's prices, per the
 quests section above.
 
+## 0g. Overworld encounters are content too (`data/encounters.yaml`)
+
+A scripted event that pulls the player off the overworld map into a
+dedicated combat encounter, gated on quest progress - `EncounterDef`
+(`content/schema.py`), loaded by `content/loader.py`'s `load_encounters`
+the same collect-all-errors way as every other content type. One field
+shape:
+
+```yaml
+warning_ambush:
+  trigger_dungeon_id: millhaven      # must depart THIS dungeon for the overworld
+  gate_quest_id: spreading_the_warning
+  gate_quest_status: in_progress     # default - the quest's live status must equal this
+  encounter_dungeon_id: goblin_ambush  # a real dungeon-registry entry to redirect into
+```
+
+`gate_quest_id`/`gate_quest_status` are deliberately **not** named
+`requires_quest_id`/`requires_quest_status` despite the surface similarity
+to `QuestDef.requires_quest_id` (the quest-chain prerequisite, above) -
+that field means "must be `completed`, checked once at grant time"; an
+encounter's gate means "must currently equal this status, checked on every
+departure from `trigger_dungeon_id`" - different enough semantics that
+sharing the name would mislead a future reader. `load_encounters` requires
+(not just optionally cross-checks, unlike `load_quests`' `known_dungeon_ids`)
+that `trigger_dungeon_id`/`encounter_dungeon_id` are both real dungeon ids
+and `gate_quest_id` is a real quest id - an encounter that could never fire
+is worth catching at content-load time.
+
+`encounter_dungeon_id` is a real dungeon-registry entry, loaded and
+validated exactly like any other dungeon (`load_dungeon_registry` has no
+"must be reachable from the overworld" requirement) - it's just
+**deliberately never pointed at by any overworld `dungeon_entrance` tile**,
+so the only way in is through the trigger. `main.py`'s `resolve_transition`/
+`_pending_encounter` do the actual redirect: whenever the player lands back
+on the overworld, if a not-yet-triggered `EncounterDef` matches the
+departing dungeon and the gate quest's live status, the player is
+immediately re-departed from the overworld and handed to the encounter's
+Engine instead - see `Engine.overworld_return_position`, which remembers
+the real overworld coordinate the player should land at once they
+eventually leave the encounter (since an entrance-less dungeon has no
+`dungeon_entrance` tile for the normal `_match_entrance` lookup to find).
+`QuestLog.triggered_encounter_ids` (same shape as `killed_entity_ids`/
+`visited_dungeon_ids`) ensures an encounter only ever fires once per run.
+
+Nothing about the encounter dungeon itself is special content-wise - it's
+authored exactly like any other dungeon (per-dungeon bible first, §0d, no
+exception for a small map), and per the user's explicit choice for
+`goblin_ambush`, an encounter isn't a lock: it uses a normal terminal exit,
+leavable at any time, win or not - see that dungeon's own bible for the
+chokepoint-geometry reasoning (§2's balance methodology applies to an
+encounter exactly as it would to any other first multi-monster fight).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

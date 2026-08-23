@@ -262,6 +262,12 @@ class QuestLog:
     # analogous "only correct for a single spawn" caveat - a dungeon either
     # has been entered or it hasn't, there's no multiplicity concern.
     visited_dungeon_ids: set[str] = field(default_factory=set)
+    # Every EncounterDef id (data/encounters.yaml) that has already fired,
+    # across the whole run - same shape and reasoning as killed_entity_ids/
+    # visited_dungeon_ids, so an overworld encounter never re-triggers on a
+    # later departure once it's already happened once. See
+    # record_encounter_triggered and main.py's _pending_encounter.
+    triggered_encounter_ids: set[str] = field(default_factory=set)
 
     def active_quest(self) -> Quest | None:
         return self.quests.get(self.active_quest_id) if self.active_quest_id else None
@@ -296,6 +302,14 @@ class QuestLog:
         same two-step shape as a fetch quest's pickup vs. delivery or a kill
         quest's kill vs. report."""
         self.visited_dungeon_ids.add(dungeon_id)
+
+    def record_encounter_triggered(self, encounter_id: str) -> None:
+        """Called from main.py's _pending_encounter/resolve_transition the
+        moment an overworld encounter actually fires - unconditional, same
+        reasoning as record_dungeon_arrival/record_entity_killed. Purely a
+        memory of "this has already happened," so _pending_encounter never
+        redirects into the same encounter twice."""
+        self.triggered_encounter_ids.add(encounter_id)
 
     def check_talked_to(self, entity_id: str) -> list[Quest]:
         """Called whenever the player talks to an NPC (Engine.talk_to_adjacent).
@@ -497,24 +511,29 @@ class QuestLog:
     def reset(self) -> None:
         """Every quest back to its own starting status (not-given quests
         stay not-given, already-given quests go back to in-progress), the
-        active pin recomputed, and killed_entity_ids/visited_dungeon_ids
-        cleared. Engine.restart() calls this, since a restart is meant to be
-        a clean slate for shared/global state, not just the current
-        dungeon's local state (see GameClock.reset()).
+        active pin recomputed, and killed_entity_ids/visited_dungeon_ids/
+        triggered_encounter_ids cleared. Engine.restart() calls this, since a
+        restart is meant to be a clean slate for shared/global state, not
+        just the current dungeon's local state (see GameClock.reset()).
 
-        Note: killed_entity_ids/visited_dungeon_ids are shared/global, but
-        Engine.restart() only rebuilds the *current* Engine's map - a
-        dungeon whose Engine isn't the one restarting (e.g. Prison Tower, if
-        the player died elsewhere after killing the Warden there) keeps its
-        cached, Warden-less map even though this clears the record of that
-        kill. A real fix would mean widening restart()'s scope to every
-        cached Engine, which is out of scope here - this is a narrow,
-        pre-existing class of dungeon-state desync (see Engine.restart's
-        docstring), not something this feature introduces."""
+        Note: killed_entity_ids/visited_dungeon_ids/triggered_encounter_ids
+        are shared/global, but Engine.restart() only rebuilds the *current*
+        Engine's map - a dungeon whose Engine isn't the one restarting (e.g.
+        Prison Tower, if the player died elsewhere after killing the Warden
+        there) keeps its cached, Warden-less map even though this clears the
+        record of that kill. Same applies to an already-triggered
+        goblin_ambush Engine: clearing triggered_encounter_ids here means the
+        *next* qualifying departure from Millhaven redirects into it again,
+        but active_engines["goblin_ambush"] isn't evicted, so it resumes
+        whatever state that map was left in (goblins already dead, if the
+        player cleared it before) rather than rebuilding fresh - consistent
+        with this same pre-existing class of dungeon-state desync (see
+        Engine.restart's docstring), not something this feature introduces."""
         for quest in self.quests.values():
             quest.status = quest.initial_status
         self.killed_entity_ids = set()
         self.visited_dungeon_ids = set()
+        self.triggered_encounter_ids = set()
         self.active_quest_id = next(
             (q.id for q in self.quests.values() if q.initial_status == "in_progress"), None
         )

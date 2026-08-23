@@ -1,0 +1,15 @@
+# Scripted overworld encounters. Each entry is one EncounterDef
+# (content/schema.py) - see main.py's resolve_transition/_pending_encounter
+# for what actually checks these. Leaving trigger_dungeon_id for the
+# overworld while gate_quest_id's live status equals gate_quest_status
+# redirects the player into encounter_dungeon_id instead of landing on the
+# overworld, once only per run (QuestLog.triggered_encounter_ids).
+# encounter_dungeon_id must name a real data/dungeons/<id>/ entry that has
+# no overworld dungeon_entrance tile pointing to it - it's only ever
+# reachable through this trigger.
+
+warning_ambush:
+  trigger_dungeon_id: millhaven
+  gate_quest_id: spreading_the_warning
+  gate_quest_status: in_progress
+  encounter_dungeon_id: goblin_ambush

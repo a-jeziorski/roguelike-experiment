@@ -14,6 +14,7 @@ from content.loader import (
     ContentValidationError,
     load_catalog,
     load_dungeon_registry,
+    load_encounters,
     load_overworld,
     load_quests,
     load_sprite_manifest,
@@ -60,6 +61,7 @@ from engine.targeting import find_nearest_target
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
 OVERWORLD_LEVEL_PATH = Path(__file__).resolve().parent / "data" / "overworld.lvl"
 QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
+ENCOUNTERS_PATH = Path(__file__).resolve().parent / "data" / "encounters.yaml"
 SPRITES_PATH = Path(__file__).resolve().parent / "data" / "sprites.yaml"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "tilesets"
 STARTING_DUNGEON_ID = "prison_tower"
@@ -340,6 +342,25 @@ def _match_entrance(overworld_map, from_dungeon_id: str) -> tuple[int, int] | No
     return None
 
 
+def _pending_encounter(from_dungeon_id, quest_log: QuestLog, encounter_registry):
+    """The first not-yet-triggered EncounterDef (data/encounters.yaml) whose
+    trigger_dungeon_id matches from_dungeon_id and whose gate_quest_id is
+    currently at gate_quest_status, or None. First match wins if more than
+    one is ever eligible at once - only one encounter exists today, but this
+    mirrors the same "file order is meaningful" convention already
+    documented for data/quests.yaml's active-quest-pin tiebreak, should a
+    second overlapping encounter ever be added."""
+    for encounter in (encounter_registry or {}).values():
+        if encounter.trigger_dungeon_id != from_dungeon_id:
+            continue
+        if encounter.id in quest_log.triggered_encounter_ids:
+            continue
+        quest = quest_log.quests.get(encounter.gate_quest_id)
+        if quest is not None and quest.status == encounter.gate_quest_status:
+            return encounter
+    return None
+
+
 def resolve_transition(
     active_key: str,
     engine: Engine,
@@ -351,6 +372,7 @@ def resolve_transition(
     clock: GameClock | None = None,
     quest_log: QuestLog | None = None,
     sprite_codepoints=None,
+    encounter_registry=None,
 ) -> tuple[str, Engine]:
     """After a dispatch, checks the active engine's transition mailbox
     (Engine.wants_overworld / Engine.pending_dungeon_entry) and performs the
@@ -365,6 +387,17 @@ def resolve_transition(
     Each dungeon (and the overworld) gets at most one Engine, lazily created
     on first visit and cached in active_engines thereafter, so leaving and
     later returning resumes exactly the state that dungeon was left in.
+
+    `encounter_registry` (data/encounters.yaml, EncounterDef -> ...) is
+    checked every time the player lands on the overworld: if a matching,
+    not-yet-triggered encounter exists (see _pending_encounter), the player
+    is immediately redirected into its encounter_dungeon_id instead - the
+    overworld landing above still happens first (unchanged), it's just
+    invisible, since the player is re-departed from it before anything ever
+    renders that frame, and a cached Engine's message_log is unconditionally
+    reset on its next real arrival anyway. `None` (the default) disables the
+    feature entirely - every existing caller/test that doesn't pass it keeps
+    behaving exactly as before.
     """
     if engine.game_state != "playing":
         return active_key, engine
@@ -374,7 +407,8 @@ def resolve_transition(
         target = active_engines.get(OVERWORLD_KEY)
         if target is None:
             game_map, _ = build_game_map(overworld_level, catalog, player=player)
-            player.x, player.y = _match_entrance(game_map, active_key) or overworld_level.player_start
+            position = engine.overworld_return_position or _match_entrance(game_map, active_key) or overworld_level.player_start
+            player.x, player.y = position
             dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
             target = Engine(
                 game_map, player, overworld_level.name,
@@ -383,8 +417,30 @@ def resolve_transition(
             )
             active_engines[OVERWORLD_KEY] = target
         else:
-            position = _match_entrance(target.game_map, active_key) or overworld_level.player_start
+            position = engine.overworld_return_position or _match_entrance(target.game_map, active_key) or overworld_level.player_start
             target.arrive_player(player, position)
+
+        encounter = _pending_encounter(active_key, target.quest_log, encounter_registry)
+        if encounter is not None:
+            enc_player = target.depart_player()
+            enc_target = active_engines.get(encounter.encounter_dungeon_id)
+            if enc_target is None:
+                dungeon = dungeon_registry[encounter.encounter_dungeon_id]
+                starting_level = dungeon.levels[dungeon.starting_level]
+                enc_map, _ = build_game_map(starting_level, catalog, player=enc_player)
+                enc_target = Engine(
+                    enc_map, enc_player, starting_level.name,
+                    catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+                    clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
+                    overworld_return_position=position,
+                )
+                active_engines[encounter.encounter_dungeon_id] = enc_target
+            else:
+                enc_target.arrive_player(enc_player)
+            enc_target.quest_log.record_dungeon_arrival(encounter.encounter_dungeon_id)
+            enc_target.quest_log.record_encounter_triggered(encounter.id)
+            return encounter.encounter_dungeon_id, enc_target
+
         return OVERWORLD_KEY, target
 
     if engine.pending_dungeon_entry is not None:
@@ -417,6 +473,10 @@ def main() -> int:
             OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
         )
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+        encounter_registry = load_encounters(
+            ENCOUNTERS_PATH,
+            known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
+        )
         sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
@@ -507,6 +567,7 @@ def main() -> int:
                                     dungeon_registry, overworld_level, catalog,
                                     clock=clock, quest_log=quest_log,
                                     sprite_codepoints=sprite_codepoints,
+                                    encounter_registry=encounter_registry,
                                 )
                     continue
 
@@ -519,6 +580,7 @@ def main() -> int:
                 active_key, engine = resolve_transition(
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
+                    encounter_registry=encounter_registry,
                 )
 
 

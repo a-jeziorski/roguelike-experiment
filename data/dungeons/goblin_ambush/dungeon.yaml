@@ -1,0 +1,11 @@
+id: goblin_ambush
+name: The Narrows
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A scripted overworld encounter, not a real place on the map - reached only
+  by leaving Millhaven for the overworld while spreading_the_warning is
+  in_progress (see data/encounters.yaml), never by walking to it. No
+  overworld dungeon_entrance tile targets this dungeon, so inspect_text
+  (below) is never shown - left blank rather than written for an audience
+  that will never see it.
