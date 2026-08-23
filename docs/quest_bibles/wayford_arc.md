@@ -134,24 +134,33 @@ at Millhaven, with no return trip - deliberately, on the reasoning that
 return-trip requirement anyway, for consistency with the kill and fetch
 quests, and it shipped as described above.)*
 
-## Known-quirk note: `reward_shop_discount_pct` is global, not per-shop
+## Formerly a known quirk, now fixed: shop discounts are per-shop
 
-`Engine.shop_price` applies `QuestLog.shop_discount_pct()` - the single
-largest discount from any completed discount-granting quest - to
+`Engine.shop_price` used to apply `QuestLog.shop_discount_pct()` - the
+single largest discount from any completed discount-granting quest - to
 **every** shop in the game, not just the one tied to the quest that
 unlocked it. That was fine when Millhaven's was the only shop in
-existence; it stops being obviously fine the moment Wayford's shop
-exists too, since completing either town's discount quest would then
-quietly discount the *other* town's shop as well.
+existence; it stopped being fine the moment Wayford's shop existed too,
+since completing either town's discount quest would then quietly
+discount the *other* town's shop as well. This arc originally avoided
+stepping on the bug rather than fixing it (neither new quest here grants
+`reward_shop_discount_pct` - see quest 2's Reward note above), but the
+user later asked for the underlying mechanism fixed directly.
 
-This arc doesn't fix that - it's an engine-mechanics question, out of
-scope for a content pass - it just avoids stepping on it: neither new
-quest here grants `reward_shop_discount_pct` (one uses `reward_item_id`,
-the other `reward_gold_amount` - see quest 2's updated Reward note
-above). If a future pass wants a second discount-granting quest, the
-discount mechanism should probably be made per-shopkeeper first. Worth
-raising with the user as a possible follow-up, not deciding unilaterally
-here.
+**Fix, as shipped**: `reward_shop_discount_pct` now always pairs with a
+new field, `reward_shop_discount_entity_id` - the catalog entity id of
+the one shopkeeper the discount applies to (validated by `load_quests`:
+must exist, must have a non-empty `shop_inventory`). `QuestLog.
+shop_discount_pct` takes that entity id as a parameter and only counts a
+completed quest's discount if it's scoped to that same shopkeeper;
+`Engine.shop_price` now takes the adjacent `shopkeeper` entity as a
+parameter so it can key the lookup correctly. `fetch_fungus` (Millhaven's
+only discount quest) was updated with `reward_shop_discount_entity_id:
+shopkeeper`, so its behavior is unchanged in practice - the fix only
+matters once a second shop exists to leak into, which Wayford's
+`wayford_provisioner` now does. If a future quest ever wants to discount
+Wayford's shop instead, it sets `reward_shop_discount_entity_id:
+wayford_provisioner` and the two stay independent.
 
 ## Wayford's own cast (not part of the quest arc, but decided here so
 ## the shared-catalog-id ledger below is complete)
@@ -202,8 +211,9 @@ Every id either dungeon bible must honor. New entries in **bold**.
 - Sunken Mine (the user offered it as an alternative to Millhaven for
   quest 3; Millhaven was chosen since it has NPCs to make "the road
   holds" land as a real place, not an empty ruin - see quest 3's premise).
-- Per-shopkeeper shop discounts - see the known-quirk note above; still
-  out of scope. (Gold rewards *were* originally out of scope here too,
-  but shipped as a follow-up once the user asked for them - see quest 2's
-  updated Reward note.)
+- Per-shopkeeper shop discounts - originally out of scope, see the note
+  above; shipped as a follow-up once the user asked for the underlying
+  global-discount bug fixed directly. (Gold rewards were a similar
+  originally-out-of-scope-then-shipped-as-a-follow-up case - see quest
+  2's updated Reward note.)
 - Any change to `bandit`/`bandit_captain` stats/balance - reused as-is.

@@ -29,6 +29,7 @@ def test_load_quests_loads_the_real_shipped_file():
     assert quests["goblin_warning"].starting_status == "in_progress"
     assert quests["kill_the_warden"].starting_status == "not_given"
     assert quests["fetch_fungus"].reward_shop_discount_pct == 0.2
+    assert quests["fetch_fungus"].reward_shop_discount_entity_id == "shopkeeper"
 
 
 def test_load_quests_end_to_end_matches_pre_refactor_values():
@@ -60,6 +61,7 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     assert fetch_fungus.questgiver_entity_id == "shopkeeper"
     assert fetch_fungus.target_item_id == "pale_fungus"
     assert fetch_fungus.reward_shop_discount_pct == 0.2
+    assert fetch_fungus.reward_shop_discount_entity_id == "shopkeeper"
 
     clearing_the_watch_road = log.quests["clearing_the_watch_road"]
     assert clearing_the_watch_road.status == "not_given"
@@ -126,6 +128,76 @@ def test_load_quests_rejects_unknown_reward_item(tmp_path):
     catalog = load_catalog()
 
     with pytest.raises(ContentValidationError, match="reward_item_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_shop_discount_pct_without_an_entity_id(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_item_id: pale_fungus\n"
+        "  reward_shop_discount_pct: 0.2\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="reward_shop_discount_pct and reward_shop_discount_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_shop_discount_entity_id_without_a_pct(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_item_id: pale_fungus\n"
+        "  reward_shop_discount_entity_id: shopkeeper\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="reward_shop_discount_pct and reward_shop_discount_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_an_unknown_shop_discount_entity(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_item_id: pale_fungus\n"
+        "  reward_shop_discount_pct: 0.2\n"
+        "  reward_shop_discount_entity_id: nonexistent_npc\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="reward_shop_discount_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_shop_discount_entity_with_no_shop_inventory(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_item_id: pale_fungus\n"
+        "  reward_shop_discount_pct: 0.2\n"
+        "  reward_shop_discount_entity_id: village_chief\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="no shop_inventory"):
         load_quests(path, catalog)
 
 

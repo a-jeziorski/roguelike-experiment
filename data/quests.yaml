@@ -90,6 +90,7 @@ fetch_fungus:
   questgiver_entity_id: shopkeeper
   target_item_id: pale_fungus
   reward_shop_discount_pct: 0.2
+  reward_shop_discount_entity_id: shopkeeper
 
 clearing_the_watch_road:
   name: Clearing the Watch Road

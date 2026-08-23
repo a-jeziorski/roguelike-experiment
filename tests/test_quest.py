@@ -624,29 +624,52 @@ def test_check_delivery_ignores_non_matching_inventory_items():
 
 def test_shop_discount_pct_is_zero_with_nothing_completed():
     log = QuestLog()
-    assert log.shop_discount_pct() == 0.0
+    assert log.shop_discount_pct("shopkeeper") == 0.0
 
 
 def test_shop_discount_pct_returns_the_completed_quests_discount():
-    quest = make_quest(status="completed", reward_shop_discount_pct=0.2)
+    quest = make_quest(
+        status="completed", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
+    )
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.shop_discount_pct() == 0.2
+    assert log.shop_discount_pct("shopkeeper") == 0.2
 
 
 def test_shop_discount_pct_ignores_an_in_progress_discount_quest():
-    quest = make_quest(status="in_progress", reward_shop_discount_pct=0.2)
+    quest = make_quest(
+        status="in_progress", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
+    )
     log = QuestLog(quests={quest.id: quest})
 
-    assert log.shop_discount_pct() == 0.0
+    assert log.shop_discount_pct("shopkeeper") == 0.0
 
 
-def test_shop_discount_pct_takes_the_largest_of_multiple_completed_discounts():
-    small = make_quest(id="small", status="completed", reward_shop_discount_pct=0.1)
-    big = make_quest(id="big", status="completed", reward_shop_discount_pct=0.2)
+def test_shop_discount_pct_ignores_a_completed_discount_scoped_to_a_different_shopkeeper():
+    quest = make_quest(
+        status="completed", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="wayford_provisioner",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    assert log.shop_discount_pct("shopkeeper") == 0.0
+    assert log.shop_discount_pct("wayford_provisioner") == 0.2
+
+
+def test_shop_discount_pct_takes_the_largest_of_multiple_completed_discounts_for_the_same_shop():
+    small = make_quest(
+        id="small", status="completed", reward_shop_discount_pct=0.1,
+        reward_shop_discount_entity_id="shopkeeper",
+    )
+    big = make_quest(
+        id="big", status="completed", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
+    )
     log = QuestLog(quests={small.id: small, big.id: big})
 
-    assert log.shop_discount_pct() == 0.2
+    assert log.shop_discount_pct("shopkeeper") == 0.2
 
 
 # --- active_quest / set_active_quest ---
@@ -738,6 +761,7 @@ def test_quest_from_def_copies_every_field():
         given_message="Go get it.", already_done_message="Already done.",
         questgiver_done_dialogue="Thanks.",
         reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
         starting_status="in_progress",
     )
 
@@ -756,6 +780,7 @@ def test_quest_from_def_copies_every_field():
     assert quest.already_done_message == "Already done."
     assert quest.questgiver_done_dialogue == "Thanks."
     assert quest.reward_shop_discount_pct == 0.2
+    assert quest.reward_shop_discount_entity_id == "shopkeeper"
     assert quest.status == "in_progress"
     assert quest.initial_status == "in_progress"  # __post_init__ snapshots starting_status
 

@@ -212,6 +212,13 @@ class QuestDef(BaseModel):
     reward_item_id: str | None = None
     reward_gold_amount: int | None = Field(default=None, gt=0)
     reward_shop_discount_pct: float | None = Field(default=None, gt=0, le=1)
+    # Which shopkeeper's shop this discount applies to - a catalog entity id
+    # with a non-empty shop_inventory (see EntityDef.shop_inventory), e.g.
+    # "shopkeeper" for Millhaven's. Required alongside reward_shop_discount_pct
+    # (enforced below): a discount with no named shop would otherwise apply
+    # everywhere, which is exactly the bug this field exists to close - see
+    # QuestLog.shop_discount_pct/Engine.shop_price.
+    reward_shop_discount_entity_id: str | None = None
     starting_status: QuestStatus = "not_given"
     # Quest log pane override for a fetch quest (target_item_id) while
     # in_progress and the player is actually carrying the target item (not
@@ -270,6 +277,16 @@ class QuestDef(BaseModel):
     def deadline_both_or_neither(self) -> "QuestDef":
         if (self.deadline_year is None) != (self.deadline_day is None):
             raise ValueError("deadline_year and deadline_day must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def reward_shop_discount_pct_and_entity_id_together(self) -> "QuestDef":
+        if (self.reward_shop_discount_pct is None) != (self.reward_shop_discount_entity_id is None):
+            raise ValueError(
+                "reward_shop_discount_pct and reward_shop_discount_entity_id "
+                "must be set together or not at all - a discount needs to "
+                "name which shop it applies to"
+            )
         return self
 
     @model_validator(mode="after")

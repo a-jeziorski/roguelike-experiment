@@ -195,9 +195,22 @@ def load_quests(
             ("questgiver_entity_id", quest.questgiver_entity_id),
             ("target_entity_id", quest.target_entity_id),
             ("target_kill_entity_id", quest.target_kill_entity_id),
+            ("reward_shop_discount_entity_id", quest.reward_shop_discount_entity_id),
         ):
             if entity_id is not None and entity_id not in catalog.entities:
                 errors.append(f"quest '{quest_id}': {label} references unknown entity '{entity_id}'")
+
+        if (
+            quest.reward_shop_discount_entity_id is not None
+            and quest.reward_shop_discount_entity_id in catalog.entities
+            and not catalog.entities[quest.reward_shop_discount_entity_id].shop_inventory
+        ):
+            errors.append(
+                f"quest '{quest_id}': reward_shop_discount_entity_id "
+                f"'{quest.reward_shop_discount_entity_id}' has no shop_inventory - "
+                "it isn't reachable as a shopkeeper (see EntityDef.shop_inventory/"
+                "Engine.adjacent_shopkeeper), so this discount could never apply to anything"
+            )
 
         for label, item_id in (
             ("target_item_id", quest.target_item_id),

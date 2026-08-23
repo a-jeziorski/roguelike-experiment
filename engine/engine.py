@@ -465,20 +465,25 @@ class Engine:
         if quest.reward_gold_amount:
             self.player.gold += quest.reward_gold_amount
             self.message_log.add(f"You receive {quest.reward_gold_amount} gold.")
-        if quest.reward_shop_discount_pct:
+        if quest.reward_shop_discount_pct and quest.reward_shop_discount_entity_id:
             pct = int(quest.reward_shop_discount_pct * 100)
-            self.message_log.add(f"The Millhaven shop now gives you a permanent {pct}% discount.")
+            shop_name = "shop"
+            if self.catalog is not None and quest.reward_shop_discount_entity_id in self.catalog.entities:
+                shop_name = self.catalog.entities[quest.reward_shop_discount_entity_id].name
+            self.message_log.add(f"The {shop_name} now gives you a permanent {pct}% discount.")
 
-    def shop_price(self, item_id: str) -> int:
-        """The gold cost to buy item_id right now, after any permanent shop
-        discount unlocked by a completed quest (see
-        QuestLog.shop_discount_pct). Reused by buy_from_shop (to charge
-        correctly) and main.py's shop screen (to display the same
-        number)."""
+    def shop_price(self, item_id: str, shopkeeper: Entity) -> int:
+        """The gold cost to buy item_id right now from shopkeeper
+        specifically, after any permanent discount unlocked at *that*
+        shopkeeper's shop by a completed quest (see
+        QuestLog.shop_discount_pct, keyed by shopkeeper.entity_id) - a
+        discount quest scoped to a different shopkeeper never affects this
+        price. Reused by buy_from_shop (to charge correctly) and main.py's
+        shop screen (to display the same number)."""
         if self.catalog is None or item_id not in self.catalog.items:
             return 0
         idef = self.catalog.items[item_id]
-        discount = self.quest_log.shop_discount_pct()
+        discount = self.quest_log.shop_discount_pct(shopkeeper.entity_id)
         return round((idef.cost or 0) * (1 - discount))
 
     def buy_from_shop(self, item_id: str) -> str:
@@ -502,7 +507,7 @@ class Engine:
             self.message_log.add(message)
             return message
         idef = self.catalog.items[item_id]
-        cost = self.shop_price(item_id)
+        cost = self.shop_price(item_id, shopkeeper)
         if self.player.gold < cost:
             message = "You can't afford that."
             self.message_log.add(message)

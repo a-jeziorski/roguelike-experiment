@@ -2113,7 +2113,7 @@ def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
     assert quest.status == "completed"
     assert quest.completion_message in engine.message_log.messages
     assert fungus not in player.inventory
-    assert engine.shop_price("healing_potion") == 20  # discount reward granted
+    assert engine.shop_price("healing_potion", shopkeeper) == 20  # discount reward granted
 
 
 def test_talk_to_adjacent_does_not_complete_a_fetch_quest_without_the_item():
@@ -2334,6 +2334,29 @@ def test_complete_quest_with_no_gold_reward_leaves_gold_untouched():
 
 
 def test_complete_quest_with_a_shop_discount_reward_logs_the_discount_message():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+    quest = Quest(
+        id="discount_test", name="Discount Test", description="",
+        completion_message="Done.", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
+    )
+    quest_log.quests[quest.id] = quest
+
+    engine.complete_quest(quest)
+
+    assert "Done." in engine.message_log.messages
+    assert "20% discount" in engine.message_log.messages[-1]
+    assert "Shopkeeper" in engine.message_log.messages[-1]  # names the specific shop, not every shop
+    assert player.inventory == []
+    assert player.gold == 0
+
+
+def test_complete_quest_with_a_shop_discount_reward_and_no_catalog_still_logs_a_message():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     game_map.entities.append(player)
@@ -2342,15 +2365,13 @@ def test_complete_quest_with_a_shop_discount_reward_logs_the_discount_message():
     quest = Quest(
         id="discount_test", name="Discount Test", description="",
         completion_message="Done.", reward_shop_discount_pct=0.2,
+        reward_shop_discount_entity_id="shopkeeper",
     )
     quest_log.quests[quest.id] = quest
 
     engine.complete_quest(quest)
 
-    assert "Done." in engine.message_log.messages
     assert "20% discount" in engine.message_log.messages[-1]
-    assert player.inventory == []
-    assert player.gold == 0
 
 
 def test_complete_quest_with_no_catalog_does_not_crash():
@@ -2664,22 +2685,44 @@ def test_shop_price_is_the_full_cost_with_no_discount_unlocked():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    game_map.entities.append(player)
+    shopkeeper = make_shopkeeper(2, 1)
+    game_map.entities.extend([player, shopkeeper])
     engine = Engine(game_map, player, "Test Level", catalog=catalog)
 
-    assert engine.shop_price("healing_potion") == 25
+    assert engine.shop_price("healing_potion", shopkeeper) == 25
 
 
 def test_shop_price_reflects_the_fungus_quests_discount_once_completed():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
-    game_map.entities.append(player)
+    shopkeeper = make_shopkeeper(2, 1)
+    game_map.entities.extend([player, shopkeeper])
     quest_log = real_quest_log()
     quest_log.quests["fetch_fungus"].status = "completed"
     engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
 
-    assert engine.shop_price("healing_potion") == 20
+    assert engine.shop_price("healing_potion", shopkeeper) == 20
+
+
+def test_shop_price_ignores_the_fungus_quests_discount_at_a_different_shopkeeper():
+    """The actual bug this fix closes: completing Millhaven's discount quest
+    used to discount every shop in the game, including one it was never
+    meant to touch. Now reward_shop_discount_entity_id scopes the discount
+    to the one shopkeeper that earned it."""
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    other_shopkeeper = make_villager(
+        2, 1, entity_id="wayford_provisioner", name="Provisioner",
+        shop_inventory=["healing_potion"],
+    )
+    game_map.entities.extend([player, other_shopkeeper])
+    quest_log = real_quest_log()
+    quest_log.quests["fetch_fungus"].status = "completed"  # scoped to "shopkeeper", not this one
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    assert engine.shop_price("healing_potion", other_shopkeeper) == 25
 
 
 def test_buy_from_shop_charges_the_discounted_price():

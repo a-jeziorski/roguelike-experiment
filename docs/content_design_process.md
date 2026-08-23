@@ -266,10 +266,15 @@ player's gold stat - the correct way to reward gold from a quest; don't
 reach for `reward_item_id` pointed at a `gold_amount` item, which bypasses
 `PickupAction._collect_gold` and would sit inert in inventory instead -
 see `ItemDef.gold_amount`'s own comment in `content/schema.py`), and
-`reward_shop_discount_pct` (a permanent fraction off everything in the
-Millhaven shop, e.g. `0.2` for 20% off - see `Engine.shop_price`), or none
-at all. No shipped quest currently combines more than one reward shape,
-but nothing stops it.
+`reward_shop_discount_pct` (a permanent fraction off everything sold by
+one specific shop, e.g. `0.2` for 20% off - see `Engine.shop_price`), or
+none at all. `reward_shop_discount_pct` always needs
+`reward_shop_discount_entity_id` set alongside it - the catalog entity id
+of the shopkeeper this discount applies to (`load_quests` rejects one
+without the other, and rejects an entity id with no `shop_inventory`) -
+so completing a discount quest never silently discounts every shop in the
+game, only the one it names. No shipped quest currently combines more
+than one reward shape, but nothing stops it.
 
 Which quest is pinned to the HUD at game start is whichever comes first,
 in `data/quests.yaml`'s key order, with `starting_status: in_progress` -
@@ -319,8 +324,12 @@ only set of AI types `adjacent_shopkeeper` ever scans, so a hostile
 monster with a `shop_inventory` would be dead content, and is rejected as
 such. Price itself still lives on `ItemDef.cost`, not on the shopkeeper -
 a fact about the item, not about any one seller, so multiple shopkeepers
-selling the same item charge the same price (modulated by any active
-`reward_shop_discount_pct`, per the quests section above).
+selling the same item charge the same base price. A completed
+`reward_shop_discount_pct` quest only modulates that price at the one
+shopkeeper named by its `reward_shop_discount_entity_id` (see
+`QuestLog.shop_discount_pct`, keyed by `Entity.entity_id`) - a discount
+quest scoped to one shop never affects any other shop's prices, per the
+quests section above.
 
 ## 1. Narrative framing
 

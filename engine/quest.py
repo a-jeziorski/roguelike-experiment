@@ -18,7 +18,8 @@ resolve_transition), and fail via one (clock deadline, see
 Engine._check_quest_deadlines). Three reward shapes exist, not mutually
 exclusive: granting an item straight into inventory (reward_item_id),
 gold straight into the player's gold stat (reward_gold_amount), and a
-permanent Millhaven shop discount (reward_shop_discount_pct) - see
+permanent discount at one specific shop (reward_shop_discount_pct, scoped
+by reward_shop_discount_entity_id - see QuestLog.shop_discount_pct) - see
 Engine.complete_quest.
 
 Three of the four trigger shapes - fetch (target_item_id), kill
@@ -140,12 +141,18 @@ class Quest:
     # for no reward - see Engine.complete_quest. Simpler than reward_item_id:
     # no catalog lookup, just entity.gold += this.
     reward_gold_amount: int | None = None
-    # A permanent fraction off everything in the Millhaven shop, unlocked on
-    # completion (e.g. 0.2 for 20% off) - see QuestLog.shop_discount_pct /
-    # Engine.shop_price. A quest can set this instead of, or alongside,
-    # reward_item_id/reward_gold_amount - none of the three reward shapes
-    # are mutually exclusive.
+    # A permanent fraction off everything sold by reward_shop_discount_entity_id's
+    # shop, unlocked on completion (e.g. 0.2 for 20% off) - see
+    # QuestLog.shop_discount_pct / Engine.shop_price. A quest can set this
+    # instead of, or alongside, reward_item_id/reward_gold_amount - none of
+    # the three reward shapes are mutually exclusive.
     reward_shop_discount_pct: float | None = None
+    # Which shopkeeper's shop reward_shop_discount_pct applies to - a
+    # catalog entity id with a non-empty shop_inventory, e.g. "shopkeeper"
+    # for Millhaven's. Always set together with reward_shop_discount_pct
+    # (content/loader.py enforces this) - the discount is scoped to one
+    # specific shop, not every shop in the game.
+    reward_shop_discount_entity_id: str | None = None
     status: QuestStatus = "not_given"
     # Quest log pane overrides for current_description below - see each
     # field's docstring on content.schema.QuestDef, which this mirrors
@@ -418,13 +425,19 @@ class QuestLog:
             changed.append(quest)
         return changed
 
-    def shop_discount_pct(self) -> float:
-        """The largest permanent shop discount unlocked by any completed
-        quest, or 0.0 if none. Multiple discount-granting quests wouldn't
-        stack - whichever single discount is largest wins."""
+    def shop_discount_pct(self, shopkeeper_entity_id: str) -> float:
+        """The largest permanent discount unlocked at shopkeeper_entity_id's
+        shop specifically by any completed quest, or 0.0 if none - a
+        discount quest whose reward_shop_discount_entity_id names a
+        *different* shopkeeper never counts here, so completing Millhaven's
+        discount quest doesn't quietly discount Wayford's shop too (or vice
+        versa). Multiple discount-granting quests for the *same* shop
+        wouldn't stack - whichever single discount is largest wins."""
         discounts = [
             q.reward_shop_discount_pct for q in self.quests.values()
-            if q.status == "completed" and q.reward_shop_discount_pct
+            if q.status == "completed"
+            and q.reward_shop_discount_pct
+            and q.reward_shop_discount_entity_id == shopkeeper_entity_id
         ]
         return max(discounts, default=0.0)
 
@@ -483,6 +496,7 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_done_dialogue=qdef.target_done_dialogue,
         reward_item_id=qdef.reward_item_id, reward_gold_amount=qdef.reward_gold_amount,
         reward_shop_discount_pct=qdef.reward_shop_discount_pct,
+        reward_shop_discount_entity_id=qdef.reward_shop_discount_entity_id,
         status=qdef.starting_status,
         carrying_item_description=qdef.carrying_item_description,
         target_dead_description=qdef.target_dead_description,
