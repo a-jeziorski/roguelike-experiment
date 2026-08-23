@@ -367,6 +367,7 @@ warning_ambush:
   gate_quest_status: in_progress     # default - the quest's live status must equal this
   encounter_dungeon_id: goblin_ambush  # a real dungeon-registry entry to redirect into
   delay_hours: 3                     # default - overworld hours after arming before it fires
+  encounter_message: "Goblins break from the treeline ahead..."  # optional - logged when it fires
 ```
 
 `gate_quest_id`/`gate_quest_status` are deliberately **not** named
@@ -408,7 +409,11 @@ left through. `QuestLog.triggered_encounter_ids` (same shape as
 `killed_entity_ids`/`visited_dungeon_ids`) ensures an encounter only ever
 fires once per run, checked by both `_armable_encounter` (never re-arms)
 and `_due_encounter` (never fires an already-triggered id even if some
-stale armed-entry lingers).
+stale armed-entry lingers). `encounter_message`, if set, is logged right
+after firing - the generic "You enter `<level_name>`." line every dungeon
+arrival gets doesn't explain *why* the player was just pulled off the
+overworld, so an encounter worth noticing should say so explicitly rather
+than leaving the player to infer an ambush from context.
 
 Nothing about the encounter dungeon itself is special content-wise - it's
 authored exactly like any other dungeon (per-dungeon bible first, §0d, no

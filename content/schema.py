@@ -372,6 +372,13 @@ class EncounterDef(BaseModel):
     # trigger_dungeon_id before the timer fires restarts it from that later
     # departure, rather than continuing the original countdown.
     delay_hours: int = Field(default=3, gt=0)
+    # Logged to the message log the moment this encounter actually fires
+    # (main.py's _redirect_into_encounter), right after the generic "You
+    # enter <level_name>." line every dungeon arrival already gets - explains
+    # *why* the player was just pulled off the overworld, since nothing else
+    # about the transition itself makes that obvious. "" (the default) logs
+    # nothing extra.
+    encounter_message: str = ""
 
 
 class LegendEntry(BaseModel):

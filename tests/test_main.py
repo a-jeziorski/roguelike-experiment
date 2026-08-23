@@ -586,6 +586,7 @@ def _ambush_encounter() -> dict[str, EncounterDef]:
         "warning_ambush": EncounterDef(
             id="warning_ambush", trigger_dungeon_id="millhaven",
             gate_quest_id="spreading_the_warning", encounter_dungeon_id="goblin_ambush",
+            encounter_message="You've been ambushed!",
         ),
     }
 
@@ -664,6 +665,39 @@ def test_resolve_transition_fires_once_the_delay_elapses():
     assert len(goblins) == 3
     assert "warning_ambush" in quest_log.triggered_encounter_ids
     assert "goblin_ambush" in quest_log.visited_dungeon_ids
+    assert "You've been ambushed!" in engine_now.message_log.messages
+    assert engine_now.message_log.messages[-1] == "You've been ambushed!"  # logged right after "You enter..."
+
+
+def test_resolve_transition_fires_with_no_encounter_message_logs_nothing_extra():
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = _quest_log_with_ambush_quest("in_progress")
+    engine = _dungeon_engine(dungeon_registry, catalog, "millhaven", clock=clock, quest_log=quest_log)
+    engine.on_player_reach_stairs(None, "stairs_up")
+    encounter_registry = {
+        "warning_ambush": EncounterDef(
+            id="warning_ambush", trigger_dungeon_id="millhaven",
+            gate_quest_id="spreading_the_warning", encounter_dungeon_id="goblin_ambush",
+        ),  # encounter_message left unset, defaults to ""
+    }
+    active_engines = {"millhaven": engine}
+
+    active_key, overworld_engine = resolve_transition(
+        "millhaven", engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+    )
+    active_engines[OVERWORLD_KEY] = overworld_engine
+
+    for _ in range(3):
+        clock.advance_hour()
+        active_key, engine_now = resolve_transition(
+            active_key, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+            clock=clock, quest_log=quest_log, encounter_registry=encounter_registry,
+        )
+
+    assert active_key == "goblin_ambush"
+    assert engine_now.message_log.messages[-1] == f"You enter {engine_now.level_name}."
 
 
 def test_resolve_transition_fires_at_the_players_current_overworld_position():

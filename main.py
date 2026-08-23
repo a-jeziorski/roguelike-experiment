@@ -393,7 +393,10 @@ def _redirect_into_encounter(
     walking the overworld, timer ran out" call sites in resolve_transition.
     `position` is wherever the player actually was on the overworld the
     moment this fired - see Engine.overworld_return_position, which uses it
-    to hand the player back to that exact spot once they later leave."""
+    to hand the player back to that exact spot once they later leave. Logs
+    encounter.encounter_message (if any) right after the generic "You enter
+    <level_name>." line every arrival already gets, explaining to the
+    player why they were just pulled off the overworld."""
     enc_player = overworld_engine.depart_player()
     enc_target = active_engines.get(encounter.encounter_dungeon_id)
     if enc_target is None:
@@ -409,6 +412,8 @@ def _redirect_into_encounter(
         active_engines[encounter.encounter_dungeon_id] = enc_target
     else:
         enc_target.arrive_player(enc_player)
+    if encounter.encounter_message:
+        enc_target.message_log.add(encounter.encounter_message)
     enc_target.quest_log.record_dungeon_arrival(encounter.encounter_dungeon_id)
     enc_target.quest_log.record_encounter_triggered(encounter.id)
     return encounter.encounter_dungeon_id, enc_target
