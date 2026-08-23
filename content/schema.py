@@ -345,7 +345,12 @@ class LegendEntry(BaseModel):
     Level files may write a legend value as a plain tile-type string (e.g. "wall"),
     or as a mapping. Shorthands:
       - {entity: rat} / {item: healing_potion}: a floor tile with that entity/item
-        on it.
+        on it. Add `tile: <kind>` to stand it on something other than plain
+        floor - {entity: villager, tile: plains} for a villager in an
+        outdoor town square, say - the entity/item and everything else
+        about the shorthand works identically; only the underlying ground
+        tile (and its sprite - see engine/sprites.py's composite_sprite_over_terrain)
+        changes. Bare {entity: rat} still defaults to floor.
       - {stairs_down: level_02a}: a stairway tile leading to that level id. A bare
         "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
         leaves the dungeon and returns to the overworld. A level can have multiple
@@ -407,11 +412,11 @@ class LegendEntry(BaseModel):
             description = raw.get("description")
             if "entity" in raw:
                 return cls(
-                    tile="floor", entity=raw["entity"], description=description,
+                    tile=raw.get("tile", "floor"), entity=raw["entity"], description=description,
                     dialogue=raw.get("dialogue"),
                 )
             if "item" in raw:
-                return cls(tile="floor", item=raw["item"], description=description)
+                return cls(tile=raw.get("tile", "floor"), item=raw["item"], description=description)
             if "stairs_down" in raw:
                 return cls(tile="stairs_down", next_level=raw["stairs_down"], description=description)
             if "stairs_up" in raw:

@@ -95,6 +95,18 @@ def test_legend_entry_from_item_mapping():
     assert entry.item == "healing_potion"
 
 
+def test_legend_entry_from_entity_mapping_with_a_tile_override():
+    entry = LegendEntry.from_raw({"entity": "villager", "tile": "plains"})
+    assert entry.tile == "plains"
+    assert entry.entity == "villager"
+
+
+def test_legend_entry_from_item_mapping_with_a_tile_override():
+    entry = LegendEntry.from_raw({"item": "healing_potion", "tile": "road"})
+    assert entry.tile == "road"
+    assert entry.item == "healing_potion"
+
+
 def test_legend_entry_from_stairs_up_mapping():
     entry = LegendEntry.from_raw({"stairs_up": "level_01"})
     assert entry.tile == "stairs_up"
