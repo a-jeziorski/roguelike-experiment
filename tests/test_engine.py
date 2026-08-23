@@ -2116,6 +2116,60 @@ def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
     assert engine.shop_price("healing_potion", shopkeeper) == 20  # discount reward granted
 
 
+def test_talk_to_adjacent_chains_spreading_the_warning_after_goblin_warning():
+    """Full requires_quest_id chain against the real shipped content: the
+    Village Chief's follow-up quest is withheld until goblin_warning is
+    actually completed, needs a second Talk to grant (check_questgiver runs
+    before check_talked_to within the same call, so the chain quest can't
+    grant itself in the same Talk that completes its prerequisite), and the
+    Chief's post-completion line updates instead of getting stuck on
+    goblin_warning's own line (the followup_dialogue reversed-order fix)."""
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(1, 1)
+    chief = make_villager(2, 1, dialogue="Let's hear it.", entity_id="village_chief", name="Village Chief")
+    warden = make_villager(2, 3, entity_id="wayford_road_warden", name="Road Warden")
+    game_map.entities.extend([player, chief, warden])
+    quest_log = real_quest_log()
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    goblin_warning = quest_log.quests["goblin_warning"]
+    chained = quest_log.quests["spreading_the_warning"]
+    assert goblin_warning.status == "in_progress"  # starts in_progress, no questgiver needed
+    assert chained.status == "not_given"
+
+    engine.talk_to_adjacent()  # delivers the warning to the Chief
+
+    assert goblin_warning.status == "completed"
+    assert chained.status == "not_given"  # not granted in the same Talk that completed the prerequisite
+
+    engine.talk_to_adjacent()  # talk to the Chief again
+
+    assert chained.status == "in_progress"
+    # this talk's spoken line is still goblin_warning's done-dialogue (spreading_the_warning
+    # isn't completed yet, so it doesn't win the followup_dialogue precedence check below);
+    # the new quest's given_message is a separate line logged right after it
+    assert engine.message_log.messages[-2] == f'Village Chief: "{goblin_warning.target_done_dialogue}"'
+    assert engine.message_log.messages[-1] == chained.given_message
+
+    player.x, player.y = 1, 3  # move to be adjacent to the Road Warden instead
+    engine.talk_to_adjacent()  # completes spreading_the_warning by talking to its target
+
+    assert chained.status == "completed"
+    assert chained.completion_message in engine.message_log.messages
+
+    engine.talk_to_adjacent()  # talk to the Warden again: his own line updates too
+
+    assert engine.message_log.messages[-1] == f'Road Warden: "{chained.target_done_dialogue}"'
+
+    player.x, player.y = 1, 1  # back to the Chief
+    engine.talk_to_adjacent()
+
+    # both quests involving the Chief are now completed - the later-defined
+    # one (spreading_the_warning) wins over goblin_warning's stale line
+    assert engine.message_log.messages[-1] == f'Village Chief: "{chained.questgiver_done_dialogue}"'
+
+
 def test_talk_to_adjacent_does_not_complete_a_fetch_quest_without_the_item():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)

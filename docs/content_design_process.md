@@ -260,6 +260,27 @@ missing it, along with a `not_given` quest missing one (nothing else can
 ever grant it) and a bad entity/item/dungeon reference. `deadline_year`/
 `deadline_day` must be set together or not at all.
 
+**Quest chains**: `requires_quest_id` names another quest's id that must be
+`completed` before this one is ever granted by `QuestLog.check_questgiver` -
+a `not_given` quest with it set is silently withheld (the questgiver's
+normal line plays, nothing else happens) until the prerequisite completes,
+and stays withheld forever if the prerequisite instead ends `failed` (a
+missed deadline never gets a second chance at whatever it was gating). Only
+meaningful alongside `questgiver_entity_id` (`load_quests` rejects it
+without one), and `load_quests` also rejects an unknown or self-referencing
+id. Granting the chained quest needs a Talk *after* the one that completes
+its prerequisite, never the same one - `check_questgiver` runs before
+`check_talked_to`/`check_delivery`/`check_kill_report`/`check_dungeon_report`
+inside `Engine.talk_to_adjacent`, so the prerequisite's status hasn't
+flipped yet within that same call. See `spreading_the_warning` for the
+first real chain (gated on `goblin_warning`), and note the
+`QuestLog.followup_dialogue` consequence it surfaced: once an NPC is
+involved in two quests with done-dialogue lines, `followup_dialogue`
+prefers the later-defined one in `data/quests.yaml` - correct for an
+actual chain (completion order is forced to match file order), only a
+heuristic for two unrelated quests sharing an NPC coincidentally (see that
+method's own docstring for the scope limit).
+
 Reward is any combination of `reward_item_id` (grants a catalog item
 straight into inventory), `reward_gold_amount` (adds straight to the
 player's gold stat - the correct way to reward gold from a quest; don't

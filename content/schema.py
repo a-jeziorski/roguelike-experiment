@@ -219,6 +219,13 @@ class QuestDef(BaseModel):
     # everywhere, which is exactly the bug this field exists to close - see
     # QuestLog.shop_discount_pct/Engine.shop_price.
     reward_shop_discount_entity_id: str | None = None
+    # Another quest's id that must be `completed` before this one can ever
+    # be granted via QuestLog.check_questgiver - the general form of a
+    # quest chain (e.g. a follow-up quest from the same NPC, unlockable
+    # only once an earlier quest is done). None means no prerequisite -
+    # grantable as soon as the questgiver is talked to, same as every
+    # quest today.
+    requires_quest_id: str | None = None
     starting_status: QuestStatus = "not_given"
     # Quest log pane override for a fetch quest (target_item_id) while
     # in_progress and the player is actually carrying the target item (not
@@ -286,6 +293,16 @@ class QuestDef(BaseModel):
                 "reward_shop_discount_pct and reward_shop_discount_entity_id "
                 "must be set together or not at all - a discount needs to "
                 "name which shop it applies to"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def requires_quest_id_needs_a_questgiver(self) -> "QuestDef":
+        if self.requires_quest_id is not None and self.questgiver_entity_id is None:
+            raise ValueError(
+                "requires_quest_id is set but questgiver_entity_id isn't - "
+                "QuestLog.check_questgiver is the only place requires_quest_id "
+                "is ever checked, so a quest with no questgiver could never use it"
             )
         return self
 

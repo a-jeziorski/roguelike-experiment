@@ -175,6 +175,20 @@ during capture, then "delivering" it by talking - a real inconsistency
 (see this document's Tone notes below) fixed by making the message
 verbal from the start.
 
+*Update - a follow-up quest*: once `goblin_warning` is completed, the
+Chief has a second ask (`spreading_the_warning`, `data/quests.yaml`) -
+carry the same warning on to Wayford, gated on the first quest via
+`requires_quest_id` so it's only ever offered after the player has
+actually delivered here. Same verbal framing, no letter this time
+either. Granting it needs a Talk *after* the one that completes
+`goblin_warning` (`QuestLog.check_questgiver` runs before
+`QuestLog.check_talked_to` within one Talk, so a quest can't chain into
+its own follow-up in the same turn it completes) - the Chief's spoken
+line on that first return visit is still `goblin_warning`'s own
+`target_done_dialogue` ("The warning's out now..."), with the new
+quest's `given_message` following as a second, separate log line right
+after it.
+
 ### 7. The Escaped Prisoner
 
 Tucked into the green's southern stretch, off to one side rather than

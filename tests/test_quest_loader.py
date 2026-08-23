@@ -18,6 +18,7 @@ def write_quests(tmp_path: Path, text: str) -> Path:
 ALL_SHIPPED_QUEST_IDS = {
     "goblin_warning", "kill_the_warden", "fetch_fungus",
     "clearing_the_watch_road", "a_record_worth_keeping", "word_down_the_road",
+    "spreading_the_warning",
 }
 
 
@@ -80,6 +81,12 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     assert word_down_the_road.questgiver_entity_id == "wayford_caravan_master"
     assert word_down_the_road.target_dungeon_id == "millhaven"
     assert word_down_the_road.reward_item_id is None
+
+    spreading_the_warning = log.quests["spreading_the_warning"]
+    assert spreading_the_warning.status == "not_given"
+    assert spreading_the_warning.questgiver_entity_id == "village_chief"
+    assert spreading_the_warning.requires_quest_id == "goblin_warning"
+    assert spreading_the_warning.target_entity_id == "wayford_road_warden"
 
 
 def test_load_quests_rejects_unknown_questgiver_entity(tmp_path):
@@ -315,6 +322,86 @@ def test_load_quests_rejects_a_dungeon_arrival_quest_with_no_questgiver(tmp_path
 
     with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_rejects_requires_quest_id_without_a_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  requires_quest_id: goblin_warning\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires_quest_id is set but questgiver_entity_id isn't"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_an_unknown_requires_quest_id(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_entity_id: village_chief\n"
+        "  requires_quest_id: nonexistent_quest\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires_quest_id references unknown quest"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_requires_quest_id_referencing_itself(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_entity_id: village_chief\n"
+        "  requires_quest_id: bad_quest\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires_quest_id can't reference itself"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_allows_a_requires_quest_id_referencing_a_quest_defined_later(tmp_path):
+    """requires_quest_id is checked against the whole raw YAML dict, already
+    fully parsed before the per-quest loop starts - so, unlike a two-pass
+    cross-file check, file order between the two quests doesn't matter."""
+    path = write_quests(
+        tmp_path,
+        "second_quest:\n"
+        "  name: Second Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_entity_id: escaped_prisoner\n"
+        "  requires_quest_id: first_quest\n"
+        "first_quest:\n"
+        "  name: First Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["second_quest"].requires_quest_id == "first_quest"
 
 
 def test_load_quests_rejects_a_not_given_quest_with_no_questgiver(tmp_path):

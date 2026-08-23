@@ -328,6 +328,48 @@ def test_check_questgiver_jumps_straight_to_completed_if_dungeon_already_visited
     assert quest.status == "completed"
 
 
+def test_check_questgiver_withholds_a_quest_whose_prerequisite_is_not_yet_completed():
+    prereq = make_quest(id="prereq", status="in_progress", target_entity_id="village_chief")
+    chained = make_quest(
+        id="chained", status="not_given",
+        questgiver_entity_id="village_chief", requires_quest_id="prereq",
+    )
+    log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
+
+    changed = log.check_questgiver("village_chief")
+
+    assert changed == []
+    assert chained.status == "not_given"
+
+
+def test_check_questgiver_grants_a_quest_once_its_prerequisite_is_completed():
+    prereq = make_quest(id="prereq", status="completed", target_entity_id="village_chief")
+    chained = make_quest(
+        id="chained", status="not_given",
+        questgiver_entity_id="village_chief", requires_quest_id="prereq",
+    )
+    log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
+
+    changed = log.check_questgiver("village_chief")
+
+    assert changed == [chained]
+    assert chained.status == "in_progress"
+
+
+def test_check_questgiver_withholds_a_quest_whose_prerequisite_failed():
+    prereq = make_quest(id="prereq", status="failed", target_entity_id="village_chief")
+    chained = make_quest(
+        id="chained", status="not_given",
+        questgiver_entity_id="village_chief", requires_quest_id="prereq",
+    )
+    log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
+
+    changed = log.check_questgiver("village_chief")
+
+    assert changed == []
+    assert chained.status == "not_given"  # permanently ungrantable - correct, not a bug
+
+
 # --- followup_dialogue ---
 
 
@@ -380,6 +422,24 @@ def test_followup_dialogue_none_for_non_matching_entity():
     log = QuestLog(quests={quest.id: quest})
 
     assert log.followup_dialogue("villager") is None
+
+
+def test_followup_dialogue_prefers_the_later_defined_quest_for_a_chained_npc():
+    """The Village Chief's real-world case: target_entity_id for goblin_warning
+    (defined first) and questgiver_entity_id for its requires_quest_id-gated
+    follow-up (defined after it). Once both are completed, the later quest's
+    line should win, not get stuck on the earlier one forever."""
+    earlier = make_quest(
+        id="earlier", status="completed",
+        target_entity_id="village_chief", target_done_dialogue="The warning's out now.",
+    )
+    later = make_quest(
+        id="later", status="completed",
+        questgiver_entity_id="village_chief", questgiver_done_dialogue="Word's on its way to Wayford now.",
+    )
+    log = QuestLog(quests={earlier.id: earlier, later.id: later})
+
+    assert log.followup_dialogue("village_chief") == "Word's on its way to Wayford now."
 
 
 # --- record_entity_killed ---
@@ -762,6 +822,7 @@ def test_quest_from_def_copies_every_field():
         questgiver_done_dialogue="Thanks.",
         reward_shop_discount_pct=0.2,
         reward_shop_discount_entity_id="shopkeeper",
+        requires_quest_id="some_other_quest",
         starting_status="in_progress",
     )
 
@@ -781,6 +842,7 @@ def test_quest_from_def_copies_every_field():
     assert quest.questgiver_done_dialogue == "Thanks."
     assert quest.reward_shop_discount_pct == 0.2
     assert quest.reward_shop_discount_entity_id == "shopkeeper"
+    assert quest.requires_quest_id == "some_other_quest"
     assert quest.status == "in_progress"
     assert quest.initial_status == "in_progress"  # __post_init__ snapshots starting_status
 

@@ -251,6 +251,15 @@ def load_quests(
                 "without a questgiver can never complete"
             )
 
+        if quest.requires_quest_id is not None and quest.requires_quest_id not in raw:
+            errors.append(
+                f"quest '{quest_id}': requires_quest_id references unknown "
+                f"quest '{quest.requires_quest_id}'"
+            )
+
+        if quest.requires_quest_id == quest_id:
+            errors.append(f"quest '{quest_id}': requires_quest_id can't reference itself")
+
         if quest.questgiver_entity_id is None and quest.starting_status == "not_given":
             errors.append(
                 f"quest '{quest_id}': starting_status is 'not_given' but no "

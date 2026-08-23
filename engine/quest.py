@@ -119,6 +119,11 @@ class Quest:
     # matching catalog entity id (see QuestLog.check_questgiver) instead of
     # being given at game start.
     questgiver_entity_id: str | None = None
+    # Another quest's id that must be "completed" before QuestLog.check_questgiver
+    # will ever grant this one - the general form of a quest chain. None
+    # means no prerequisite. See check_questgiver's docstring for what
+    # happens while the prerequisite is unmet or ends "failed" instead.
+    requires_quest_id: str | None = None
     given_message: str = ""
     # Shown instead of given_message if the kill-target was already recorded
     # dead (see killed_entity_ids) or the target dungeon already recorded
@@ -314,13 +319,30 @@ class QuestLog:
         'in_progress', so the caller can tell the two outcomes apart by
         checking the returned quest's status and log the right message
         (given_message vs already_done_message). A fetch quest has no
-        equivalent retroactive check - see check_delivery's docstring."""
+        equivalent retroactive check - see check_delivery's docstring.
+
+        A quest with requires_quest_id set is silently skipped (not added to
+        `changed` at all - the NPC just says their normal line) unless that
+        prerequisite quest's own status is exactly 'completed'. If the
+        prerequisite instead ends 'failed' (e.g. a missed deadline), this
+        quest stays 'not_given' forever - correct here, not a bug to route
+        around: nothing was actually accomplished for the questgiver to
+        follow up on. Because this runs before check_talked_to/check_delivery/
+        check_kill_report/check_dungeon_report within the same
+        talk_to_adjacent call, a quest can't grant its own chained follow-up
+        in the same Talk that completes it - the player needs to talk to the
+        questgiver again afterward, same one-Talk lag as followup_dialogue's
+        done-dialogue switch."""
         changed = []
         for quest in self.quests.values():
             if quest.status != "not_given":
                 continue
             if quest.questgiver_entity_id != entity_id:
                 continue
+            if quest.requires_quest_id is not None:
+                prereq = self.quests.get(quest.requires_quest_id)
+                if prereq is None or prereq.status != "completed":
+                    continue
             already_done = (
                 quest.target_kill_entity_id in self.killed_entity_ids
                 or quest.target_dungeon_id in self.visited_dungeon_ids
@@ -337,8 +359,26 @@ class QuestLog:
         target_done_dialogue. Returns None (use the NPC's normal line) if no
         such quest exists yet, which is also the case for every Talk before
         completion - so the same NPC naturally acts as normal first, then
-        switches over permanently once the relevant quest is done."""
-        for quest in self.quests.values():
+        switches over permanently once the relevant quest is done.
+
+        Iterates in *reverse* data/quests.yaml file order, so when the same
+        NPC is involved in more than one quest with a done-dialogue, the
+        later-defined quest wins - e.g. the Village Chief is target_entity_id
+        for goblin_warning and, once that's completed, questgiver_entity_id
+        for its requires_quest_id-gated follow-up defined after it in the
+        file; without reversing, he'd stay stuck on goblin_warning's line
+        forever even once the follow-up also completes. This is only
+        *guaranteed* correct when actual completion order matches file
+        order - true for a requires_quest_id chain by construction, since the
+        prerequisite must complete first - but not for two unrelated quests
+        that just happen to share an NPC (e.g. wayford_road_warden is
+        questgiver for clearing_the_watch_road, defined earlier, and target
+        for this same follow-up, defined later: if a player completes the
+        kill quest *after* the unrelated warning chain, he'll still show the
+        warning line, not the kill-quest one). Accepted as a known scope
+        limit - a real fix needs per-quest completion timestamps, more
+        machinery than this cosmetic case justifies."""
+        for quest in reversed(list(self.quests.values())):
             if quest.status != "completed":
                 continue
             if quest.questgiver_entity_id == entity_id and quest.questgiver_done_dialogue:
@@ -490,7 +530,8 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_dungeon_id=qdef.target_dungeon_id, target_entity_id=qdef.target_entity_id,
         target_kill_entity_id=qdef.target_kill_entity_id, target_item_id=qdef.target_item_id,
         deadline_year=qdef.deadline_year, deadline_day=qdef.deadline_day,
-        questgiver_entity_id=qdef.questgiver_entity_id, given_message=qdef.given_message,
+        questgiver_entity_id=qdef.questgiver_entity_id, requires_quest_id=qdef.requires_quest_id,
+        given_message=qdef.given_message,
         already_done_message=qdef.already_done_message,
         questgiver_done_dialogue=qdef.questgiver_done_dialogue,
         target_done_dialogue=qdef.target_done_dialogue,
