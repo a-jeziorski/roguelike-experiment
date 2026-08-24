@@ -168,6 +168,15 @@ class Quest:
     target_visited_description: str = ""
     completed_description: str = ""
     failed_description: str = ""
+    # If this quest is still in_progress when its deadline passes, also
+    # raze this dungeon - see content.schema.QuestDef and
+    # Engine.destroy_dungeon. None means an ordinary deadline failure with
+    # no further consequence.
+    on_fail_destroy_dungeon_id: str | None = None
+    # This quest can never be completed once this dungeon has been
+    # destroyed - see QuestLog.void_by_dungeon. None means this quest is
+    # unaffected by any dungeon's destruction.
+    voided_by_dungeon_id: str | None = None
 
     def __post_init__(self) -> None:
         # Not a dataclass field on purpose - stays out of __eq__/repr, so
@@ -278,6 +287,12 @@ class QuestLog:
     # incorrectly resurrect, and main.py's _due_encounter re-checks the
     # gate quest's live status at fire time regardless. See arm_encounter.
     armed_encounters: dict[str, tuple[int, int, int]] = field(default_factory=dict)
+    # Every dungeon id ever destroyed via Engine.destroy_dungeon, across the
+    # whole run - same shape and reasoning as visited_dungeon_ids/
+    # triggered_encounter_ids. engine/save.py persists this so a reloaded
+    # save re-applies the destruction to the freshly rebuilt overworld
+    # GameMap (see restore_save) rather than silently un-razing it.
+    destroyed_dungeon_ids: set[str] = field(default_factory=set)
 
     def active_quest(self) -> Quest | None:
         return self.quests.get(self.active_quest_id) if self.active_quest_id else None
@@ -298,6 +313,26 @@ class QuestLog:
             if (clock.year, clock.day) > (quest.deadline_year, quest.deadline_day):
                 quest.status = "failed"
                 changed.append(quest)
+        return changed
+
+    def void_by_dungeon(self, dungeon_id: str) -> list[tuple[Quest, bool]]:
+        """Called from Engine.destroy_dungeon the moment a dungeon is
+        razed. Force-fails every not_given/in_progress quest whose
+        voided_by_dungeon_id matches - its questgiver or completion target
+        lived there and is gone now. An already-terminal quest
+        (completed/failed) is left untouched, same re-fire guard as
+        check_deadlines. Returns (quest, was_in_progress) pairs - captured
+        *before* the status flip - so the caller can tell a quest the
+        player actually knew about (in_progress, worth a failure_message)
+        apart from one they never received (not_given, silent - announcing
+        the failure of a quest never given would be confusing)."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.voided_by_dungeon_id != dungeon_id or quest.status not in ("not_given", "in_progress"):
+                continue
+            was_in_progress = quest.status == "in_progress"
+            quest.status = "failed"
+            changed.append((quest, was_in_progress))
         return changed
 
     def record_dungeon_arrival(self, dungeon_id: str) -> None:
@@ -532,7 +567,8 @@ class QuestLog:
         """Every quest back to its own starting status (not-given quests
         stay not-given, already-given quests go back to in-progress), the
         active pin recomputed, and killed_entity_ids/visited_dungeon_ids/
-        triggered_encounter_ids/armed_encounters cleared. Engine.restart()
+        triggered_encounter_ids/armed_encounters/destroyed_dungeon_ids
+        cleared. Engine.restart()
         calls this, since a restart is meant to be a clean slate for
         shared/global state, not just the current dungeon's local state
         (see GameClock.reset()) - a restart should re-arm any in-flight
@@ -550,13 +586,17 @@ class QuestLog:
         whatever state that map was left in (goblins already dead, if the
         player cleared it before) rather than rebuilding fresh - consistent
         with this same pre-existing class of dungeon-state desync (see
-        Engine.restart's docstring), not something this feature introduces."""
+        Engine.restart's docstring), not something this feature introduces -
+        destroyed_dungeon_ids joins that same class: clearing it here
+        doesn't un-raze an already-mutated overworld GameMap unless the
+        overworld happens to be the Engine actually restarting."""
         for quest in self.quests.values():
             quest.status = quest.initial_status
         self.killed_entity_ids = set()
         self.visited_dungeon_ids = set()
         self.triggered_encounter_ids = set()
         self.armed_encounters = {}
+        self.destroyed_dungeon_ids = set()
         self.active_quest_id = next(
             (q.id for q in self.quests.values() if q.initial_status == "in_progress"), None
         )
@@ -586,6 +626,8 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_visited_description=qdef.target_visited_description,
         completed_description=qdef.completed_description,
         failed_description=qdef.failed_description,
+        on_fail_destroy_dungeon_id=qdef.on_fail_destroy_dungeon_id,
+        voided_by_dungeon_id=qdef.voided_by_dungeon_id,
     )
 
 

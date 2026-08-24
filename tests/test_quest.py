@@ -114,6 +114,70 @@ def test_check_deadlines_ignores_a_quest_with_no_deadline():
     assert quest.status == "in_progress"
 
 
+# --- void_by_dungeon ---
+
+
+def test_void_by_dungeon_fails_an_in_progress_quest_and_reports_it_was_in_progress():
+    quest = make_quest(voided_by_dungeon_id="wayford", status="in_progress")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.void_by_dungeon("wayford")
+
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"
+
+
+def test_void_by_dungeon_fails_a_not_given_quest_and_reports_it_was_not_in_progress():
+    quest = make_quest(voided_by_dungeon_id="wayford", status="not_given")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.void_by_dungeon("wayford")
+
+    assert changed == [(quest, False)]
+    assert quest.status == "failed"
+
+
+def test_void_by_dungeon_ignores_a_quest_voided_by_a_different_dungeon():
+    quest = make_quest(voided_by_dungeon_id="millhaven", status="in_progress")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.void_by_dungeon("wayford")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_void_by_dungeon_leaves_a_completed_quest_untouched():
+    quest = make_quest(voided_by_dungeon_id="wayford", status="completed")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.void_by_dungeon("wayford")
+
+    assert changed == []
+    assert quest.status == "completed"
+
+
+def test_void_by_dungeon_leaves_an_already_failed_quest_untouched():
+    quest = make_quest(voided_by_dungeon_id="wayford", status="failed")
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.void_by_dungeon("wayford")
+
+    assert changed == []
+
+
+# --- reset ---
+
+
+def test_reset_clears_destroyed_dungeon_ids():
+    quest = make_quest(status="in_progress")
+    log = QuestLog(quests={quest.id: quest}, destroyed_dungeon_ids={"wayford"})
+
+    log.reset()
+
+    assert log.destroyed_dungeon_ids == set()
+
+
 # --- record_dungeon_arrival ---
 
 

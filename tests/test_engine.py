@@ -1868,6 +1868,125 @@ def test_process_turn_does_not_touch_quest_state_in_a_dungeon():
     assert engine.message_log.messages == ["You enter Test Level."]
 
 
+# --- destroy_dungeon ---
+
+
+def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+    )
+
+    engine.destroy_dungeon("wayford")
+
+    assert (2, 0) not in game_map.dungeon_entrances
+    assert game_map.kinds[2, 0] == "road"
+    assert bool(game_map.walkable[2, 0]) is True
+    assert game_map.tile_descriptions[(2, 0)] == "Ash and quiet."
+    assert "wayford" in engine.quest_log.destroyed_dungeon_ids
+
+
+def test_destroy_dungeon_voids_matching_quests_and_logs_only_in_progress_ones():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    in_progress_quest = Quest(
+        id="q1", name="Q1", description="", completion_message="done",
+        failure_message="q1 failed", voided_by_dungeon_id="wayford", status="in_progress",
+    )
+    not_given_quest = Quest(
+        id="q2", name="Q2", description="", completion_message="done",
+        failure_message="q2 failed", voided_by_dungeon_id="wayford", status="not_given",
+    )
+    unrelated_quest = Quest(
+        id="q3", name="Q3", description="", completion_message="done",
+        voided_by_dungeon_id="millhaven", status="in_progress",
+    )
+    quest_log = QuestLog(quests={
+        in_progress_quest.id: in_progress_quest,
+        not_given_quest.id: not_given_quest,
+        unrelated_quest.id: unrelated_quest,
+    })
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+    )
+
+    engine.destroy_dungeon("wayford")
+
+    assert in_progress_quest.status == "failed"
+    assert not_given_quest.status == "failed"
+    assert unrelated_quest.status == "in_progress"
+    assert "q1 failed" in engine.message_log.messages
+    assert "q2 failed" not in engine.message_log.messages
+
+
+def test_destroy_dungeon_is_a_safe_no_op_for_an_unmapped_dungeon_id():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.destroy_dungeon("nonexistent")  # no ruin data registered - must not raise
+
+    assert engine.quest_log.destroyed_dungeon_ids == set()
+
+
+def test_destroy_dungeon_is_idempotent_when_called_twice():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+    )
+
+    engine.destroy_dungeon("wayford")
+    engine.destroy_dungeon("wayford")  # already gone from dungeon_entrances - must not raise
+
+    assert (2, 0) not in game_map.dungeon_entrances
+
+
+def test_process_turn_destroys_dungeon_when_a_deadline_quest_with_on_fail_destroy_dungeon_id_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail_destroy_dungeon_id="wayford", status="in_progress",
+    )
+    voided_quest = Quest(
+        id="clearing_the_watch_road", name="Clearing the Watch Road", description="",
+        completion_message="done", failure_message="wayford is gone",
+        voided_by_dungeon_id="wayford", status="in_progress",
+    )
+    quest_log = QuestLog(quests={quest.id: quest, voided_quest.id: voided_quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - both deadlines cross
+
+    assert quest.status == "failed"
+    assert voided_quest.status == "failed"
+    assert (2, 0) not in game_map.dungeon_entrances
+    assert game_map.kinds[2, 0] == "road"
+    assert "too late" in engine.message_log.messages
+    assert "wayford is gone" in engine.message_log.messages
+    assert "wayford" in quest_log.destroyed_dungeon_ids
+
+
 def test_restart_resets_the_shared_quest_log():
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)

@@ -487,6 +487,56 @@ other cross-checked field here. Every outdoor/settlement level authored so
 far (`goblin_ambush`, the overworld, and every town's `level_01`) sets
 this; a plain indoor dungeon floor can leave it at the default.
 
+## 0j. Timed world consequences (`on_fail_destroy_dungeon_id` / `voided_by_dungeon_id`)
+
+A quest deadline (`QuestDef.deadline_year`/`deadline_day`,
+`QuestLog.check_deadlines`) can do more than log a failure message: set
+`on_fail_destroy_dungeon_id: <dungeon_id>` on the quest, and missing the
+deadline razes that dungeon's overworld entrance the instant it's
+crossed - see `Engine.destroy_dungeon`, `engine/game_map.py`'s
+`apply_dungeon_destruction`. The target dungeon's own manifest describes
+what's left: `DungeonDef.ruined_tile`/`ruined_description` (both-or-
+neither, validated) replace its entrance tile and look-mode text, the same
+way `inspect_text` already describes it intact - pick `ruined_tile` to
+match whatever terrain the entrance already sits against on the overworld
+map (same reasoning as `player_start_tile` above), not a generic default.
+`content/loader.py` cross-checks that any dungeon named by
+`on_fail_destroy_dungeon_id` actually has `ruined_tile` set, so a wired-up
+consequence with no authored ruins content fails at load time rather than
+silently doing nothing in play.
+
+Any *other* quest whose questgiver or completion target lives in that
+same dungeon should set `voided_by_dungeon_id: <dungeon_id>` - the moment
+the dungeon is razed, `QuestLog.void_by_dungeon` force-fails every
+matching `not_given`/`in_progress` quest (that NPC is gone; the quest can
+never be completed). A quest the player already knew about
+(`in_progress`) gets its `failure_message` logged; one they never
+received (`not_given`) fails silently - announcing the failure of a quest
+the player was never given would be confusing. `failed_description` is
+normally only valid alongside a real deadline, but a `voided_by_dungeon_id`
+quest is exempt from that check (it fails via a different trigger
+entirely) - see the loosened `failed_description_requires_a_deadline_or_voiding_dungeon`
+validator.
+
+Two invariants worth knowing before touching this: the world clock only
+advances while the player is standing on the overworld itself
+(`Engine._advance_world_clock`, gated on `is_overworld`), so a deadline
+can only ever be crossed - and a dungeon razed - while the overworld
+Engine is active; the player can never be standing inside the dungeon
+being destroyed. And a live destruction only mutates that run's
+in-memory overworld `GameMap` - `engine/save.py` separately persists
+`QuestLog.destroyed_dungeon_ids` and reapplies every entry to the
+freshly-rebuilt overworld map on `restore_save`, or a save made after a
+razing would silently un-raze it on reload.
+
+`spreading_the_warning`/Wayford is the reference example: it requires its
+own prerequisite quest (`goblin_warning`) to be `completed` first
+(`requires_quest_id`), which has an earlier deadline of its own - a
+player who finishes that prerequisite right at its deadline has *less*
+than the nominal window left to also beat `spreading_the_warning`'s
+deadline. Treated as an intended difficulty curve (cutting the first
+warning close costs you on the second), not a bug to route around.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

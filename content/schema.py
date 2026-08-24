@@ -251,9 +251,26 @@ class QuestDef(BaseModel):
     # falls back to `description`.
     completed_description: str = ""
     # Quest log pane override once this quest is "failed" - only meaningful
-    # alongside a deadline (see the validator below), since that's the only
-    # way a quest ever fails. "" falls back to `description`.
+    # alongside a deadline or voided_by_dungeon_id (see the validator
+    # below), the only two ways a quest ever fails. "" falls back to
+    # `description`.
     failed_description: str = ""
+    # If this quest is still in_progress when its deadline passes (see
+    # QuestLog.check_deadlines), also raze the named dungeon - its
+    # overworld entrance is replaced by DungeonDef.ruined_tile/
+    # ruined_description, and every quest with voided_by_dungeon_id set to
+    # the same id is force-failed (see Engine.destroy_dungeon,
+    # QuestLog.void_by_dungeon). Only meaningful alongside a real deadline
+    # - a quest that can never fail can never trigger this either. None
+    # means an ordinary deadline failure with no further consequence.
+    on_fail_destroy_dungeon_id: str | None = None
+    # This quest can never be completed once the named dungeon has been
+    # destroyed (see on_fail_destroy_dungeon_id above) - its questgiver or
+    # completion target lives there. QuestLog.void_by_dungeon force-fails
+    # any not_given/in_progress quest with this set the moment that
+    # dungeon is razed. None means this quest is unaffected by any
+    # dungeon's destruction.
+    voided_by_dungeon_id: str | None = None
 
     @model_validator(mode="after")
     def at_most_one_trigger(self) -> "QuestDef":
@@ -270,13 +287,13 @@ class QuestDef(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def failed_description_requires_a_deadline(self) -> "QuestDef":
-        if self.failed_description and self.deadline_year is None:
+    def failed_description_requires_a_deadline_or_voiding_dungeon(self) -> "QuestDef":
+        if self.failed_description and self.deadline_year is None and self.voided_by_dungeon_id is None:
             raise ValueError(
-                "failed_description is set but there's no deadline - "
-                "QuestLog.check_deadlines is the only way a quest ever "
-                "fails, so a quest with no deadline_year/deadline_day can "
-                "never show it"
+                "failed_description is set but there's no deadline and no "
+                "voided_by_dungeon_id - QuestLog.check_deadlines and "
+                "QuestLog.void_by_dungeon are the only ways a quest ever "
+                "fails, so a quest with neither can never show it"
             )
         return self
 
@@ -566,6 +583,21 @@ class DungeonDef(BaseModel):
     # the default, which requires at least one stairs_down somewhere so a
     # level always either goes deeper or is a deliberate ending.
     requires_stairs_down: bool = True
+    # What this dungeon's overworld entrance becomes if some quest's
+    # on_fail_destroy_dungeon_id names it (see QuestDef, Engine.destroy_dungeon)
+    # - the entrance tile is replaced with ruined_tile, and ruined_description
+    # becomes its look-mode text (see GameMap.tile_descriptions), in place
+    # of the entrance disappearing into the dungeon it used to lead to.
+    # Both are optional and only meaningful together (validated below) -
+    # most dungeons are never destroyable and leave both unset.
+    ruined_tile: TileType | None = None
+    ruined_description: str = ""
+
+    @model_validator(mode="after")
+    def ruined_tile_and_description_together(self) -> "DungeonDef":
+        if (self.ruined_tile is None) != (self.ruined_description == ""):
+            raise ValueError("ruined_tile and ruined_description must be set together or not at all")
+        return self
 
 
 class SpriteSheetDef(BaseModel):

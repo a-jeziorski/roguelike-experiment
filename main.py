@@ -519,9 +519,14 @@ def resolve_transition(
             position = engine.overworld_return_position or _match_entrance(game_map, active_key) or overworld_level.player_start
             player.x, player.y = position
             dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
+            dungeon_ruin_data = {
+                d_id: (d.ruined_tile, d.ruined_description)
+                for d_id, d in dungeon_registry.items() if d.ruined_tile
+            }
             target = Engine(
                 game_map, player, overworld_level.name,
                 catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
+                dungeon_ruin_data=dungeon_ruin_data,
                 clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[OVERWORLD_KEY] = target
@@ -593,6 +598,31 @@ def fresh_start(
     return active_key, active_engines, clock, quest_log
 
 
+def _check_destroyable_dungeons_have_ruin_content(quest_defs: dict, dungeon_registry: dict) -> None:
+    """A quest's on_fail_destroy_dungeon_id (see QuestDef, Engine.destroy_dungeon)
+    is only useful if the dungeon it names actually has ruined_tile/
+    ruined_description authored (content/schema.py's DungeonDef) - without
+    them, Engine.destroy_dungeon has nothing to show and silently no-ops.
+    Neither load_quests nor load_dungeon_registry can catch this alone
+    (each only sees one side), so it's checked here, right after both are
+    loaded, with the same ContentValidationError reporting shape as every
+    other content problem."""
+    errors: list[str] = []
+    for quest_id, quest in quest_defs.items():
+        dungeon_id = quest.on_fail_destroy_dungeon_id
+        if dungeon_id is None:
+            continue
+        dungeon = dungeon_registry.get(dungeon_id)
+        if dungeon is not None and dungeon.ruined_tile is None:
+            errors.append(
+                f"quest '{quest_id}': on_fail_destroy_dungeon_id '{dungeon_id}' "
+                "has no ruined_tile/ruined_description set in its dungeon.yaml - "
+                "Engine.destroy_dungeon would have nothing to show"
+            )
+    if errors:
+        raise ContentValidationError(str(QUESTS_PATH), errors)
+
+
 def build_initial_state(
     catalog, dungeon_registry: dict, overworld_level, quest_defs: dict, encounter_registry,
     sprite_codepoints, console: tcod.console.Console, context: tcod.context.Context, save_path: Path,
@@ -628,6 +658,7 @@ def main() -> int:
             OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
         )
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+        _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)
         encounter_registry = load_encounters(
             ENCOUNTERS_PATH,
             known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),

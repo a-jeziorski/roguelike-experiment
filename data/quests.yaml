@@ -116,11 +116,17 @@ clearing_the_watch_road:
     plate armor, salvaged from who knows where, and call it a fair trade
     for a clear road.
   completion_message: The captain's dead. Whatever this cost him to hold that tower, it's someone else's problem now - if anyone even bothers.
+  failed_description: >
+    Wayford's gone - burned before you ever got back to report the
+    captain's death. Whatever the Road Warden meant to do about Broken
+    Watch, that's nobody's problem to hand off to now.
   given_message: "New quest: Clearing the Watch Road - the Road Warden wants whoever's leading the bandits at Broken Watch dealt with, so the road west is safe to use again."
+  failure_message: "There's no one left in Wayford to hear about Broken Watch. Whatever came of that captain's death, it doesn't reach anyone there anymore."
   questgiver_done_dialogue: Word's already reached me - the road's clear. Don't know who's fool enough to try holding that tower next, but it won't be for a while.
   questgiver_entity_id: wayford_road_warden
   target_kill_entity_id: bandit_captain
   reward_item_id: bone_plate
+  voided_by_dungeon_id: wayford
 
 a_record_worth_keeping:
   name: A Record Worth Keeping
@@ -138,11 +144,17 @@ a_record_worth_keeping:
     own strongbox - requisitioned, not gifted, they're careful to point
     out - and thank you like they mean it.
   completion_message: The ledger changes hands. Whatever those old roads used to connect, someone in Wayford cares enough now to write it back down.
+  failed_description: >
+    The Clerk's office is ash now, same as the rest of Wayford. Whatever
+    that old ledger might have proven, there's no one left there who'd
+    have cared to read it.
   given_message: "New quest: A Record Worth Keeping - the Town Clerk wants an old route ledger recovered from Broken Watch, left behind in whatever passed for its duty room."
+  failure_message: "The Town Clerk won't be reading that ledger. Wayford isn't there to read anything, anymore."
   questgiver_done_dialogue: Every road we used to keep, listed plain as anything. Worth more than what I just paid you for it, and I mean that literally.
   questgiver_entity_id: wayford_clerk
   target_item_id: road_ledger
   reward_gold_amount: 30
+  voided_by_dungeon_id: wayford
 
 word_down_the_road:
   name: Word Down the Road
@@ -160,11 +172,17 @@ word_down_the_road:
     again before the season's through - the first one in longer than
     anyone here will admit to.
   completion_message: The road holds. Whatever else has changed, that much hasn't.
+  failed_description: >
+    There's no cart leaving Wayford for Millhaven, not anymore, and no
+    Caravan Master left to send one. Whatever proof you gathered on that
+    road, it has nowhere left to go.
   given_message: "New quest: Word Down the Road - the Caravan Master wants proof the road to Millhaven is still safe to travel, before risking an actual caravan on it."
+  failure_message: "The Caravan Master isn't waiting on that news. Wayford isn't waiting on anything, anymore."
   already_done_message: You tell the Caravan Master the road's already proven itself - you made that trip before they ever asked. They don't seem to mind hearing it secondhand. 'Good enough,' they say. 'Cart goes out either way.'
   questgiver_done_dialogue: You made it there and back in one piece - that's all I needed to hear. I'll get a cart moving before the season's out.
   questgiver_entity_id: wayford_caravan_master
   target_dungeon_id: millhaven
+  voided_by_dungeon_id: wayford
 
 spreading_the_warning:
   name: Spreading the Warning
@@ -178,10 +196,18 @@ spreading_the_warning:
     Warden in person - no letter, same as with the Chief. He didn't seem
     surprised, just grim. Whatever's moving out there, two towns are
     watching for it now instead of one.
+  failed_description: >
+    The deadline passed before you ever reached Wayford's Road Warden.
+    What the horde did with that unguarded warning, you didn't have to
+    guess for long - the road east doesn't lead to a town anymore.
   completion_message: The warning's passed on again - Wayford knows what's coming now too, same as Millhaven did.
+  failure_message: "Too late. Word never reached Wayford in time - if the horde was already close, there was nothing left to slow it down."
   given_message: "New quest: Spreading the Warning - the Village Chief wants the goblin warning carried on to Wayford's Road Warden, before the horde gets there first."
   questgiver_done_dialogue: Word's on its way to Wayford now, thanks to you. Whatever's coming, at least two towns will see it before it arrives instead of one.
   target_done_dialogue: Goblins on the move, is it. Wouldn't be the first horde to think this crossroads makes an easy path through. We'll keep eyes on the eastern road - appreciate the warning, whatever it's worth.
   questgiver_entity_id: village_chief
   requires_quest_id: goblin_warning
   target_entity_id: wayford_road_warden
+  deadline_year: 87
+  deadline_day: 64
+  on_fail_destroy_dungeon_id: wayford

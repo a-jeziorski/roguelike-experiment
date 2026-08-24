@@ -45,6 +45,19 @@ def _prison_tower_engine(dungeon_registry, catalog, clock, quest_log) -> Engine:
     )
 
 
+def _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log) -> Engine:
+    game_map, player = build_game_map(overworld_level, catalog)
+    dungeon_ruin_data = {
+        d_id: (d.ruined_tile, d.ruined_description)
+        for d_id, d in dungeon_registry.items() if d.ruined_tile
+    }
+    return Engine(
+        game_map, player, overworld_level.name,
+        catalog=catalog, is_overworld=True, dungeon_ruin_data=dungeon_ruin_data,
+        clock=clock, quest_log=quest_log,
+    )
+
+
 def _round_trip(save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry):
     path = tmp_path / "save.json"
     save_to_path(save, path)
@@ -124,6 +137,35 @@ def test_round_trip_preserves_a_cleared_non_current_level(tmp_path):
     assert "level_01" in engine2.visited_maps
     level_01_map = engine2.visited_maps["level_01"]
     assert not any(e.name in ("Guard", "Crossbow Guard") for e in level_01_map.entities)
+
+
+def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
+    """The gap this closes: build_game_map always rebuilds the overworld
+    from the static, unmodified level file - without restore_save
+    re-applying every entry in destroyed_dungeon_ids, a save made after
+    Wayford's destruction would silently un-raze it on reload."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    entrance_coord = next(
+        c for c, d_id in engine.game_map.dungeon_entrances.items() if d_id == "wayford"
+    )
+
+    engine.destroy_dungeon("wayford")
+    assert entrance_coord not in engine.game_map.dungeon_entrances
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+    engine2 = active_engines2[active_key]
+
+    assert quest_log2.destroyed_dungeon_ids == {"wayford"}
+    assert entrance_coord not in engine2.game_map.dungeon_entrances
+    assert engine2.game_map.kinds[entrance_coord] == "road"
+    assert engine2.game_map.tile_descriptions[entrance_coord] != ""
 
 
 def test_round_trip_preserves_an_item_dropped_by_equipping_over_it(tmp_path):
