@@ -12,7 +12,7 @@ map: |
   F,,,,,,,g,,,,,,,F
   F,,,,,,,,,,,,,,,F
   F,,,,,,,,,,,,,,,F
-  F#######,#######F
+  F,,,,,,,,,,,,,,,F
   F,,,,,,,,,,,,,,,F
   F,,,,,,,,,,,,,,,F
   F,,,,,,,,,,,,,,,F
@@ -22,7 +22,6 @@ map: |
 
 legend:
   "F": forest
-  "#": { tile: wall, description: "Felled trees, dragged in and piled deliberately - not natural deadfall. Whoever did this wanted exactly one way through." }
   ",": plains
   "@": player_start
-  "g": { entity: goblin }
+  "g": { entity: goblin , tile: plains}
