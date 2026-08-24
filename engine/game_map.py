@@ -61,6 +61,17 @@ class GameMap:
         # constructor param.
         self.open_boundary = False
         self.open_boundary_message = ""
+        # spawn-list-index -> the Entity build_game_map produced for it, for
+        # ParsedLevel.entity_spawns/item_spawns respectively - populated by
+        # build_game_map as it spawns each one. Purely additive bookkeeping
+        # read only by engine/save.py's save/load reconciliation (matching a
+        # possibly-moved/possibly-damaged live entity back to the specific
+        # spawn it originated from, since that's the only way to preserve a
+        # level-authored per-spawn dialogue override on reload without
+        # reconstructing entities from scratch) - nothing else in the engine
+        # reads these two dicts.
+        self.entity_spawn_index: dict[int, Entity] = {}
+        self.item_spawn_index: dict[int, Entity] = {}
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -157,7 +168,7 @@ def build_game_map(
     for desc_spawn in level.tile_descriptions:
         game_map.tile_descriptions[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
 
-    for spawn in level.entity_spawns:
+    for index, spawn in enumerate(level.entity_spawns):
         edef = spawn.entity
         entity = Entity(
             spawn.x,
@@ -181,10 +192,12 @@ def build_game_map(
             entity_id=edef.id,
         )
         game_map.entities.append(entity)
+        game_map.entity_spawn_index[index] = entity
 
-    for spawn in level.item_spawns:
+    for index, spawn in enumerate(level.item_spawns):
         entity = item_entity_from_def(spawn.item, spawn.x, spawn.y)
         game_map.entities.append(entity)
+        game_map.item_spawn_index[index] = entity
 
     px, py = level.player_start
     if player is None:

@@ -540,6 +540,21 @@ def render_quest_log(
     )
 
 
+def render_continue_prompt(console: "Console") -> None:
+    """The startup "continue a saved game?" screen - like render_quest_log,
+    draws no map, just text and a footer hint. No selection/cursor state at
+    all (a plain yes/no, not a navigable list), so unlike every other mode
+    screen this one takes no extra params beyond the console itself."""
+    console.clear()
+    width = console.width
+    y = console.height // 2 - 1
+    y += console.print(0, y, "A saved game was found.", fg=HUD_FG, width=width)
+    y += console.print(0, y, "Continue it?", fg=HUD_FG, width=width)
+
+    y = console.height - 1
+    console.print(0, y, "[y] continue saved game  [n] start a new game", fg=HUD_FG, width=width)
+
+
 def render_shop(
     console: "Console",
     catalog: "Catalog",

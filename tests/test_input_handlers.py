@@ -11,10 +11,12 @@ from engine.actions import (
     LookAction,
     QuestLogAction,
     RestartAction,
+    SaveGameAction,
     ShopAction,
     WaitAction,
 )
 from engine.input_handlers import (
+    handle_continue_prompt_event,
     handle_event,
     handle_look_event,
     handle_quest_log_event,
@@ -73,6 +75,26 @@ def test_handle_event_q_returns_quest_log_action():
 
 def test_handle_event_b_returns_shop_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.B)), ShopAction)
+
+
+def test_handle_event_s_returns_save_game_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.S)), SaveGameAction)
+
+
+def test_handle_continue_prompt_event_y_returns_yes():
+    assert handle_continue_prompt_event(key_down(tcod.event.KeySym.Y)) == "yes"
+
+
+def test_handle_continue_prompt_event_n_returns_no():
+    assert handle_continue_prompt_event(key_down(tcod.event.KeySym.N)) == "no"
+
+
+def test_handle_continue_prompt_event_escape_returns_no():
+    assert handle_continue_prompt_event(key_down(tcod.event.KeySym.ESCAPE)) == "no"
+
+
+def test_handle_continue_prompt_event_unmapped_key_returns_none():
+    assert handle_continue_prompt_event(key_down(tcod.event.KeySym.A)) is None
 
 
 def test_handle_event_unmapped_key_returns_none():

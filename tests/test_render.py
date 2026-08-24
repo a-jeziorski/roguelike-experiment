@@ -32,6 +32,7 @@ from engine.render import (
     projectile_glyph,
     projectile_path,
     render_all,
+    render_continue_prompt,
     render_entities,
     render_look_frame,
     render_map,
@@ -245,6 +246,17 @@ def test_render_quest_log_shows_the_caller_supplied_description():
     assert "A resolved description, not warden.description itself." in text
     assert "Kill the Warden of Prison Tower." not in text
     assert "Warn the town." not in text
+
+
+def test_render_continue_prompt_shows_the_prompt_and_footer_hint():
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_continue_prompt(console)
+
+    text = console_text(console)
+    assert "saved game" in text.lower()
+    assert "[y]" in text.lower()
+    assert "[n]" in text.lower()
 
 
 def test_render_shop_lists_items_with_cost_and_shows_gold():
