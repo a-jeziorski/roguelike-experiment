@@ -150,7 +150,7 @@ def build_game_map(
 
     for y, row in enumerate(level.tiles):
         for x, tile in enumerate(row):
-            kind = "floor" if tile == "player_start" else tile
+            kind = level.player_start_tile if tile == "player_start" else tile
             game_map.kinds[x, y] = kind
             walkable, transparent = TILE_PASSABILITY.get(kind, (True, True))
             game_map.walkable[x, y] = walkable

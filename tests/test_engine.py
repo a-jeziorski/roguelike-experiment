@@ -1489,6 +1489,51 @@ def test_build_game_map_populates_entity_and_item_spawn_index(tmp_path):
     assert potion in game_map.entities
 
 
+def test_build_game_map_player_start_cell_defaults_to_floor(tmp_path):
+    level_path = tmp_path / "default_start.lvl"
+    level_path.write_text(
+        "id: default_start\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@>\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, player = build_game_map(level, catalog)
+
+    assert game_map.kinds[player.x, player.y] == "floor"
+
+
+def test_build_game_map_player_start_cell_uses_the_configured_override(tmp_path):
+    level_path = tmp_path / "custom_start.lvl"
+    level_path.write_text(
+        "id: custom_start\n"
+        "name: Test Level\n"
+        "player_start_tile: plains\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@>\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, player = build_game_map(level, catalog)
+
+    assert game_map.kinds[player.x, player.y] == "plains"
+
+
 def test_build_game_map_entity_dialogue_prefers_spawn_override(tmp_path):
     level_path = tmp_path / "with_dialogue.lvl"
     level_path.write_text(

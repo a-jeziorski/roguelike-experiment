@@ -465,6 +465,28 @@ unaffected; only the *outer* perimeter opened up) and why `player_start`
 sits a couple tiles inboard of the now-open edge rather than directly
 against it.
 
+## 0i. Player-start terrain (`LevelDef.player_start_tile`)
+
+`engine/game_map.py`'s `build_game_map` never lets a live `player_start`
+kind reach the runtime `GameMap` - it always substitutes something
+walkable, defaulting to `floor`. That default is fine for an indoor
+dungeon where `floor` is already the ambient ground everywhere, but reads
+as a visible seam on an outdoor or terrain-textured level: a town square
+authored in `plains`, or a gate corridor authored in `road`, gets one
+mismatched `floor` tile sitting exactly where the player starts, which
+becomes obvious the moment they step off it.
+
+`player_start_tile: <kind>` on the level file overrides the substitution -
+set it to whatever terrain kind actually surrounds the `player_start`
+symbol on the map (`plains` for an open clearing/town square, `road` for a
+gate, `forest`, etc.). `content/schema.py` rejects anything unwalkable
+(`wall`/`door`/`mountain`/`sea`) or special-purpose
+(`stairs_down`/`stairs_up`/`dungeon_entrance`/`player_start` itself) at
+load time, the same "fail loudly at content-load time" posture as every
+other cross-checked field here. Every outdoor/settlement level authored so
+far (`goblin_ambush`, the overworld, and every town's `level_01`) sets
+this; a plain indoor dungeon floor can leave it at the default.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
