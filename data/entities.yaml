@@ -247,3 +247,110 @@ stone_sentinel:
   defense: 3
   ai: hostile_basic
   description: A construct of seamless, grown stone, posted at the Cairn since before anyone kept records. Slow. Patient. Still on duty.
+
+# Bestiary expansion - not yet placed in any level, kept here for future
+# dungeons to draw on (see docs/content_design_process.md's balance
+# methodology for the hits-to-kill math these stats were checked against).
+
+cave_spider:
+  name: Cave Spider
+  glyph: x
+  color: [120, 90, 130]
+  hp: 7
+  attack: 3
+  defense: 0
+  ai: skittish
+  flee_hp_pct: 0.4
+  description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
+
+giant_rat:
+  name: Giant Rat
+  glyph: n
+  color: [110, 75, 55]
+  hp: 10
+  attack: 3
+  defense: 0
+  ai: hostile_basic
+  description: Bigger and bolder than the sewer kind, and it doesn't scatter when you swing.
+
+wolf:
+  name: Wolf
+  glyph: w
+  color: [120, 120, 130]
+  hp: 14
+  attack: 5
+  defense: 1
+  ai: hostile_basic
+  description: Lean and half-feral, running with whatever's left of a pack. Circles before it commits.
+
+kobold:
+  name: Kobold
+  glyph: k
+  color: [150, 120, 60]
+  hp: 8
+  attack: 3
+  defense: 0
+  ai: hostile_basic
+  description: Small, wiry, and quick to pile in three-deep rather than fight fair alone.
+
+kobold_shaman:
+  name: Kobold Shaman
+  glyph: K
+  color: [140, 90, 150]
+  hp: 9
+  attack: 3
+  defense: 0
+  ai: ranged_basic
+  ranged_range: 4
+  description: Chants something old and half-remembered, and the air around its hand does something anyway.
+
+orc:
+  name: Orc
+  glyph: o
+  color: [80, 110, 70]
+  hp: 15
+  attack: 5
+  defense: 1
+  ai: hostile_basic
+  description: Broad-shouldered and unhurried about closing the distance - it's confident it doesn't need to be fast.
+
+hobgoblin:
+  name: Hobgoblin
+  glyph: h
+  color: [70, 130, 90]
+  hp: 18
+  attack: 6
+  defense: 2
+  ai: hostile_basic
+  description: Disciplined where its smaller kin are chaos - drills the ones under it, and fights like it too.
+
+wraith:
+  name: Wraith
+  glyph: "Y"
+  color: [90, 90, 130]
+  hp: 20
+  attack: 6
+  defense: 2
+  ai: sleeping_guard
+  alert_radius: 4
+  description: A shape the light won't quite settle on, guarding something that predates whatever built the walls around it.
+
+gray_ooze:
+  name: Gray Ooze
+  glyph: j
+  color: [130, 140, 120]
+  hp: 16
+  attack: 4
+  defense: 1
+  ai: hostile_basic
+  description: Formless, patient, and indifferent to the difference between stone and flesh. Both wear down eventually.
+
+giant_spider:
+  name: Giant Spider
+  glyph: "X"
+  color: [70, 50, 80]
+  hp: 20
+  attack: 7
+  defense: 1
+  ai: hostile_basic
+  description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.

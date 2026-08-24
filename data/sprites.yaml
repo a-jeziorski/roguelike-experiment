@@ -78,16 +78,35 @@ entities:
   bandit_captain:          {sheet: rltiles, name: captain}
   drowned_wretch:          {sheet: rltiles, name: human_zombie, recolor: true}
   stone_sentinel:          {sheet: rltiles, name: stone_golem}
+  cave_spider:             {sheet: rltiles, name: cave_spider}
+  giant_rat:               {sheet: rltiles, name: giant_rat}
+  wolf:                    {sheet: rltiles, name: wolf}
+  kobold:                  {sheet: rltiles, name: kobold}
+  kobold_shaman:           {sheet: rltiles, name: kobold_shaman}
+  orc:                     {sheet: rltiles, name: orc}
+  hobgoblin:               {sheet: rltiles, name: hobgoblin}
+  wraith:                  {sheet: rltiles, name: wraith}
+  gray_ooze:               {sheet: rltiles, name: gray_ooze}
+  giant_spider:            {sheet: rltiles, name: giant_spider}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
   teleportation_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
+  broadsword:            {sheet: rltiles, name: broadsword}
+  battle_axe:            {sheet: rltiles, name: battle_axe}
+  war_hammer:            {sheet: rltiles, name: war_hammer}
   rusty_key:       {sheet: rltiles, name: skeleton_key}
   leather_armor:   {sheet: rltiles, name: leather_armor}
   bone_plate:      {sheet: rltiles, name: plate_mail}
+  studded_leather_armor: {sheet: rltiles, name: studded_leather_armor}
+  chain_mail:            {sheet: rltiles, name: chain_mail}
+  banded_mail:           {sheet: rltiles, name: banded_mail}
   hunting_bow:     {sheet: rltiles, name: bow}
+  orcish_bow:            {sheet: rltiles, name: orcish_bow}
+  crossbow:              {sheet: rltiles, name: crossbow}
+  elder_bow:             {sheet: rltiles, name: elven_bow}
   arrows:          {sheet: rltiles, name: arrow}
   gold_pile:       {sheet: rltiles, name: gold}
   gold_stash:      {sheet: rltiles, name: gold_piece}

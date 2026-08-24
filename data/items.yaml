@@ -31,6 +31,27 @@ iron_sword:
   attack_bonus: 4
   description: A well-balanced blade, heavier and sharper than any dagger.
 
+broadsword:
+  name: Broadsword
+  glyph: "\\"
+  color: [190, 190, 200]
+  attack_bonus: 5
+  description: Wider and heavier than any blade a dungeon guard was issued. Takes both hands to swing well.
+
+battle_axe:
+  name: Battle Axe
+  glyph: "&"
+  color: [170, 160, 150]
+  attack_bonus: 6
+  description: Built to cleave, not parry. Whoever swung this last wasn't planning on a second exchange.
+
+war_hammer:
+  name: War Hammer
+  glyph: P
+  color: [140, 130, 120]
+  attack_bonus: 7
+  description: All the subtlety of a collapsing wall, and about as easy to argue with.
+
 rusty_key:
   name: Rusty Key
   glyph: "-"
@@ -53,6 +74,27 @@ bone_plate:
   defense_bonus: 3
   description: Armor fashioned from the ossuary's dead. Unsettling, but it holds.
 
+studded_leather_armor:
+  name: Studded Leather Armor
+  glyph: "{"
+  color: [130, 95, 55]
+  defense_bonus: 2
+  description: Leather reinforced with a lattice of iron studs. Not much heavier, considerably harder to open up.
+
+chain_mail:
+  name: Chain Mail
+  glyph: "<"
+  color: [180, 185, 195]
+  defense_bonus: 4
+  description: Thousands of interlocking rings, all of it Old Kingdom-issue. Whoever wore it last isn't wearing it now.
+
+banded_mail:
+  name: Banded Mail
+  glyph: ":"
+  color: [160, 155, 130]
+  defense_bonus: 6
+  description: Overlapping steel bands over a leather backing. Heavy enough that you'll feel every hour of it, and glad of that in the one hour it matters.
+
 hunting_bow:
   name: Hunting Bow
   glyph: "}"
@@ -60,6 +102,30 @@ hunting_bow:
   ranged_attack_bonus: 3
   range: 5
   description: A worn hunting bow. Strike from a distance before they close in.
+
+orcish_bow:
+  name: Orcish Bow
+  glyph: "+"
+  color: [100, 90, 60]
+  ranged_attack_bonus: 4
+  range: 5
+  description: Crude and asymmetric, strung with something you'd rather not ask about. Still shoots true.
+
+crossbow:
+  name: Crossbow
+  glyph: ";"
+  color: [110, 95, 75]
+  ranged_attack_bonus: 6
+  range: 4
+  description: Slower to draw than a bow, and it doesn't matter once the bolt lands. Trades reach for a much harder hit.
+
+elder_bow:
+  name: Elder Bow
+  glyph: "("
+  color: [150, 190, 170]
+  ranged_attack_bonus: 5
+  range: 6
+  description: Finer work than anything the Kingdom's armories turned out - light, silent, and older than whoever last strung it.
 
 arrows:
   name: Arrows
