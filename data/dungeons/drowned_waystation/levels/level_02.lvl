@@ -8,8 +8,8 @@ map: |
   #######.~~~~~~~~~~~.#..>.#
   #######.~~~~].~~~~~.#....#
   #######.~~~~.d~~~~~.#....#
-  #######.~~~~.~~~~~~.#....#
-  #######.~~~~.~~~~~~.#....#
+  #######.~~~~.~~~~~~.#.=..#
+  #######.~~~~j~~~~~~.#....#
   #######.~~~~.~~~~~~.#..d.#
   #######..!......d........#
   ##########################
@@ -22,5 +22,7 @@ legend:
   ">": stairs_down
   "~": { tile: sea, description: "Black water fills the cellar wall to wall - deep enough that the floor beneath it is only a guess." }
   "d": { entity: drowned_wretch }
+  "j": { entity: gray_ooze }
   "!": { item: healing_potion }
   "]": { item: bone_plate }
+  "=": { item: waystation_manifest, description: "A stack of paper gone to pulp in most places, but the topmost pages somehow held - pinned flat by the same water that ruined the rest." }

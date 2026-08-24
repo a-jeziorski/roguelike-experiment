@@ -208,6 +208,28 @@ wayford_provisioner:
   dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
   shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor]
 
+saltmarsh_elder:
+  name: Elder
+  glyph: E
+  color: [200, 190, 160]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Remembers Saltmarsh before the Drowned Waystation was a ruin offshore, and still asks after anyone who's been near it.
+
+stonebridge_lookout:
+  name: Lookout
+  glyph: N
+  color: [180, 170, 140]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Keeps watch from the gatehouse nook toward the hills and Broken Watch beyond them - the one post in Stonebridge that's never left empty.
+
 bandit:
   name: Bandit
   glyph: b

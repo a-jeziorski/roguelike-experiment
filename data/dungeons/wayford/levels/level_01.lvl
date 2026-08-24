@@ -63,7 +63,7 @@ legend:
   "@": player_start
   "x": { stairs_up: null, description: "Wayford's north gate, where the high road passes through the wall into town." }
   "+": { tile: landmark, description: "Three roads still meet here, worn smooth by cart-wheels that mostly don't come anymore. A fourth used to run east, if the old paving under the grass is anything to go by." }
-  "R": { entity: wayford_road_warden }
+  "R": { entity: wayford_road_warden, flag_dialogue: [{ flag: stonebridge_raided, line: "Heard it from a cart that turned back early - Stonebridge held the wall, but not all of it. Been saying that road wasn't safe for weeks. Wish just once I'd been wrong." }] }
   "c": { entity: wayford_clerk }
   "M": { entity: wayford_caravan_master }
   "P": { entity: wayford_provisioner }

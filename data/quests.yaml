@@ -213,3 +213,57 @@ spreading_the_warning:
   on_fail:
     - destroy_dungeon_id: wayford
     - set_flag: wayford_razed
+
+a_wall_worth_holding:
+  name: A Wall Worth Holding
+  description: >
+    The Lookout's counted too many watch-fires on the hills toward Broken
+    Watch these last few nights - more than idle bandits keep lit.
+    Whoever's leading them out there needs to be dealt with before those
+    fires start meaning something more than firelight.
+  target_dead_description: >
+    The captain's dead - word travels fast on a road this quiet. Get back
+    up to the lookout post and let them know the hill's gone dark again.
+  completed_description: >
+    The captain's dead, and the Lookout's watched three nights straight
+    without a single fire on the hill to report. Whatever this cost, it
+    bought Stonebridge some actual quiet, not just the practiced kind.
+  failed_description: >
+    Nobody dealt with Broken Watch in time, and the hill stopped just
+    glowing at night. Stonebridge held its wall as long as it could -
+    what's left of the town is smaller for it, and everyone here knows
+    exactly how close a warning that goes unanswered comes to this.
+  completion_message: The fires on the hill are out. However long that lasts, it's more than Stonebridge had before you.
+  failure_message: "The fires on the hill came down off the hill. Stonebridge is still standing - not everyone in it is."
+  given_message: "New quest: A Wall Worth Holding - the Lookout wants whoever's leading the bandits at Broken Watch dealt with, before their watch-fires turn into an actual raid."
+  questgiver_done_dialogue: Hill's been dark three nights running, thanks to you. I'd almost forgotten what that looked like.
+  questgiver_entity_id: stonebridge_lookout
+  target_kill_entity_id: bandit_captain
+  deadline_year: 87
+  deadline_day: 70
+  reward_gold_amount: 25
+  on_fail:
+    - set_flag: stonebridge_raided
+
+what_the_tide_kept:
+  name: What the Tide Kept
+  description: >
+    The Elder remembers when boats still stopped at the Drowned
+    Waystation, before the sea took it whole - and wants proof of what
+    this coast used to trade, if anything of its old paperwork survived
+    the flood.
+  carrying_item_description: >
+    You've got the manifest - waterlogged, but the seals still hold.
+    Whatever it says about this coast's old trade, it's not worth
+    anything left sitting in a ruin. Bring it back to Saltmarsh.
+  completed_description: >
+    The Elder reads slower than the water damage should really allow,
+    tracing what's left of the old shipping lists with one finger. In the
+    end they just nod, like something's been confirmed rather than
+    learned, and press a little coin into your hand for the trouble.
+  completion_message: The Elder reads every legible line twice before setting it down. Whatever it confirmed, they don't say - just thank you, and mean it.
+  given_message: "New quest: What the Tide Kept - the Elder wants an old shipping manifest recovered from the Drowned Waystation, if any of it survived the flood."
+  questgiver_done_dialogue: Still turning that manifest over some nights, if you're wondering. Coast remembers longer than people do, given the chance.
+  questgiver_entity_id: saltmarsh_elder
+  target_item_id: waystation_manifest
+  reward_gold_amount: 15

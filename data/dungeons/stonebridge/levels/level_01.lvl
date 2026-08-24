@@ -4,22 +4,23 @@ name: Stonebridge Ward
 player_start_tile: road
 
 map: |
-  #######################
-  #########x@############
-  #,,,,,,,,..,,,,,L,,,,,#
-  #,,,,,###..###,,,,,,,,#
-  #,,,,,,##..##,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#
-  #,,v,,,,,,,,,,,,,,,v,,#
-  #,,,,,,,,,o,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#
-  #,,,####,,,,,,,####,,,#
-  #,,,####,,v,,v,####,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,v,,,,,,,,,,,,v,,,#
-  #,,,,,p,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#
-  #######################
+  #########################
+  ##########x@#############
+  #,,,,,,,,,..,,###,,,,,,,#
+  #,,,,,,,,,,,,,#L#,,,,,,,#
+  #,,,,,,,,,,,,,#W#,,,,,,,#
+  #,,,,,###,,,###,,,1,,,,,#
+  #,,,,,##,,,,,##,,,,,2,,,#
+  #,,,,,,,,,o,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,####,,,,,,,,####,,,,#
+  #,,,####,3,4,,,,,,####,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,5,,,,,,,,,,,,,,,,,,#
+  #,,,,T,,,,,,,,,,,,,,,,,,#
+  #,,,,,p,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#
+  #########################
 
 legend:
   "#": wall
@@ -27,7 +28,13 @@ legend:
   ".": road
   "@": player_start
   "x": { stairs_up: null, description: "The town gate - barred at night, watched always. The only way in or out of Stonebridge." }
-  "v": { entity: villager, tile: plains }
-  "o": { tile: landmark, description: "The town well, iron-bound, its winch worn smooth by hands used to hauling more than water." }
   "L": { tile: landmark, description: "A lookout nook built into the gatehouse wall - an arrow-slit facing the road, and the hills beyond it." }
-  "p": { item: healing_potion, tile: plains, description: "A stitched bandage roll and a stoppered vial, kept ready in a niche near the wall. Someone expects to need these." }
+  "o": { tile: landmark, description: "The town well, iron-bound, its winch worn smooth by hands used to hauling under more than water." }
+  "W": { entity: stonebridge_lookout, tile: plains, dialogue: "Watch those hills long enough and you learn which fires are cookfires and which ones aren't. Lately, too many of the second kind.", flag_dialogue: [{ flag: stonebridge_raided, line: "Didn't see them in time. Wall held, mostly - not everyone behind it did. Doesn't feel like a job well done, watching it happen anyway." }] }
+  "T": { entity: town_guard, tile: plains, dialogue: "Wall's manned day and night. Has been since before I took this post, will be after." }
+  "1": { entity: villager, tile: plains, dialogue: "Lookout's been up there more than usual lately. Might be worth finding out why, if you've got the stomach for the climb." }
+  "2": { entity: villager, tile: plains, dialogue: "Well's never run dry, not even the year everything else did. Small mercy, but I'll take it.", flag_dialogue: [{ flag: wayford_razed, line: "Word came through with a trader - Wayford's gone. Whatever came for them, I've taken to watching our own wall a little longer than I used to." }] }
+  "3": { entity: villager, tile: plains, dialogue: "Wall's not just for looking at - every stone in it gets checked before winter, every year, no exceptions." }
+  "4": { entity: villager, tile: plains, dialogue: "Gate's barred the second the sun's down. Doesn't matter who's still on the road when it happens." }
+  "5": { entity: villager, tile: plains, dialogue: "Keep that potion where you can reach it. Nobody out here likes to need it, but somebody always does eventually.", flag_dialogue: [{ flag: stonebridge_raided, line: "Lost the granary and two houses before the guard turned them back. Wall held. Didn't feel like it at the time." }] }
+  "p": { item: healing_potion, tile: plains }

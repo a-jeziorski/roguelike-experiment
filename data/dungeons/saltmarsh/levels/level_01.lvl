@@ -8,11 +8,11 @@ map: |
   #x@,,,,,,,,,,,,~~~
   #,,##,,,,,##,,,~~~
   #,,##,,,,,##,,,~~~
-  #,,,,,.,,,,,,,,~~~
-  #,,,v.,,##,,,,,~~~
-  #,,,,.,,##,v,,,~~~
+  #,,,,,.,,,,,E,,~~~
+  #,,,1.,,##,,,,,~~~
+  #,,,,.,,##,2,,,~~~
   #,,,,.,,,,,,,,.~~~
-  #,,,,.,,,,!,v,.~~~
+  #,,,,.,,,,!,3,.~~~
   #,,,,,,,,,,,,,.~~~
   #,,,,,,,,,,,,,...~
   ##################
@@ -24,5 +24,8 @@ legend:
   "~": sea
   "@": player_start
   "x": { stairs_up: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes." }
-  "v": { entity: villager, tile: plains }
+  "E": { entity: saltmarsh_elder, tile: plains, dialogue: "Boats used to stop at the old Waystation before the sea took it whole. Sometimes I wonder what they were even carrying, back then." }
+  "1": { entity: villager, tile: plains, dialogue: "Nets won't mend themselves. Neither will anything else out here, come to that." }
+  "2": { entity: villager, tile: plains, dialogue: "Tide's been strange this season. Nothing you'd call wrong, exactly - just strange.", flag_dialogue: [{ flag: wayford_razed, line: "Word came down the coast road with a trader - a whole town gone, inland. Makes this stretch of nowhere feel like the safer bet, some days." }] }
+  "3": { entity: villager, tile: plains, dialogue: "Drying racks fill faster than we can salt what's on them. Not the worst problem to have." }
   "!": { item: healing_potion, tile: plains }

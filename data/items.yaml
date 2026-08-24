@@ -160,3 +160,9 @@ road_ledger:
   glyph: "="
   color: [200, 190, 160]
   description: A water-stained Kingdom ledger, listing roads and waystations nobody's maintained in a generation. Worth more to a clerk than to anyone who took this place.
+
+waystation_manifest:
+  name: Waystation Manifest
+  glyph: "="
+  color: [140, 175, 195]
+  description: A waterlogged shipping manifest from the Drowned Waystation, its ink long since run - the stamped seals on the cover are still legible, if nothing else.
