@@ -606,13 +606,26 @@ class SpriteRef(BaseModel):
     at registration time (see engine/sprites.py's recolor_sprite) - only
     meaningful on an entities/items entry, since a tile kind has no `.color`
     field to tint toward (content/loader.py's load_sprite_manifest rejects
-    it on a tile_kinds entry)."""
+    it on a tile_kinds entry).
+
+    `backdrop`, when set, names another key in sprites.yaml's tile_kinds
+    section to composite this sprite over, once, at registration time (see
+    engine/sprites.py's composite_sprite_over_terrain) - for an icon-style
+    sprite (a single tree/peak/tower silhouette on an otherwise transparent
+    square, unlike a full-bleed texture like plains/sea/wall) whose
+    transparent background would otherwise render as the console's plain
+    black clear-color. Only meaningful on a tile_kinds or dungeon_entrances
+    entry - entities/items already get this dynamically, per the actual
+    tile they're standing on (see engine/render.py's _resolved_entity_glyph),
+    which content/loader.py's load_sprite_manifest enforces by rejecting
+    `backdrop` on an entities/items entry."""
 
     sheet: str
     name: str | None = None
     col: int | None = Field(default=None, ge=0)
     row: int | None = Field(default=None, ge=0)
     recolor: bool = False
+    backdrop: str | None = None
 
     @model_validator(mode="after")
     def exactly_one_addressing_mode(self) -> "SpriteRef":

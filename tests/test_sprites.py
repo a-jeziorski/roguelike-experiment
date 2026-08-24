@@ -405,6 +405,118 @@ def test_build_sprite_codepoints_dungeon_entrances_do_not_disturb_base_pass_dete
     assert result.dungeon_entrances["prison_tower"] == PUA_START + 1
 
 
+def _half_transparent_sheet(opaque_color, tile_size=16):
+    """A single tile_size x tile_size tile, opaque on the left half
+    (opaque_color) and fully transparent on the right half - a minimal
+    stand-in for an icon-style sprite (a tree/peak/tower on an otherwise
+    transparent square)."""
+    sheet = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
+    px = sheet.load()
+    for x in range(tile_size // 2):
+        for y in range(tile_size):
+            px[x, y] = opaque_color
+    return sheet
+
+
+def test_build_sprite_codepoints_applies_backdrop_to_a_tile_kind():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={
+            "plains": SpriteRef(sheet="test", col=1, row=0),
+            "forest": SpriteRef(sheet="test", col=0, row=0, backdrop="plains"),
+        },
+    )
+    sheet = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+    icon = _half_transparent_sheet((200, 30, 30, 255))
+    sheet.paste(icon, (0, 0))
+    plains_tile = Image.new("RGBA", (16, 16), (30, 150, 30, 255))
+    sheet.paste(plains_tile, (16, 0))
+    sheet_images = {"test": sheet}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    forest_tile = tileset.get_tile(result.tile_kinds["forest"])
+    assert tuple(forest_tile[0, 0]) == (200, 30, 30, 255)  # the icon's own opaque half, untouched
+    assert tuple(forest_tile[0, 15]) == (30, 150, 30, 255)  # the transparent half, now backdrop-filled
+
+
+def test_build_sprite_codepoints_tile_kind_without_backdrop_stays_transparent():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={"forest": SpriteRef(sheet="test", col=0, row=0)},  # no backdrop
+    )
+    sheet_images = {"test": _half_transparent_sheet((200, 30, 30, 255))}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    forest_tile = tileset.get_tile(result.tile_kinds["forest"])
+    assert forest_tile[0, 15][3] == 0  # still transparent - opt-in only
+
+
+def test_build_sprite_codepoints_applies_backdrop_to_a_dungeon_entrance():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={"plains": SpriteRef(sheet="test", col=1, row=0)},
+        dungeon_entrances={
+            "prison_tower": SpriteRef(sheet="test", col=0, row=0, backdrop="plains"),
+        },
+    )
+    sheet = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+    sheet.paste(_half_transparent_sheet((90, 90, 90, 255)), (0, 0))
+    sheet.paste(Image.new("RGBA", (16, 16), (30, 150, 30, 255)), (16, 0))
+    sheet_images = {"test": sheet}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    entrance_tile = tileset.get_tile(result.dungeon_entrances["prison_tower"])
+    assert tuple(entrance_tile[0, 15]) == (30, 150, 30, 255)
+
+
+def test_build_sprite_codepoints_entity_composite_uses_the_backdrop_fixed_tile():
+    """An entity standing on a backdrop-fixed tile kind should composite
+    against the FIXED pixels (backdrop already baked in), not the raw
+    transparent original - otherwise the entity's own transparent margins
+    would still show black even after fixing the tile kind itself."""
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=3, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={"rat": SpriteRef(sheet="test", col=2, row=0)},  # fully opaque, irrelevant here
+        items={},
+        tile_kinds={
+            "plains": SpriteRef(sheet="test", col=1, row=0),
+            "forest": SpriteRef(sheet="test", col=0, row=0, backdrop="plains"),
+        },
+    )
+    sheet = Image.new("RGBA", (48, 16), (0, 0, 0, 0))
+    sheet.paste(_half_transparent_sheet((200, 30, 30, 255)), (0, 0))
+    sheet.paste(Image.new("RGBA", (16, 16), (30, 150, 30, 255)), (16, 0))
+    sheet.paste(_half_transparent_sheet((10, 10, 200, 255)), (32, 0))  # rat: opaque left, transparent right
+    sheet_images = {"test": sheet}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    composite = tileset.get_tile(result.entities_on_tile[("rat", "forest")])
+    # Right half (x >= 8, i.e. column index >= 8): both the rat AND
+    # forest's own icon are transparent there, so it should fall through
+    # to forest's backdrop-fixed pixels (plains green), never raw black.
+    # Array indexing is [row, col] = [y, x].
+    assert tuple(composite[5, 10]) == (30, 150, 30, 255)
+
+
 def test_apply_sprites_loads_real_files_from_disk(tmp_path):
     catalog = make_catalog()
     Image.new("RGBA", (16, 16), (9, 9, 9, 255)).save(tmp_path / "sheet.png")

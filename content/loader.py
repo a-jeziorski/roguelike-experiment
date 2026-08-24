@@ -386,6 +386,25 @@ def load_sprite_manifest(
                 "index can be addressed this way, use col/row instead"
             )
 
+    def _check_backdrop(section: str, key: str, ref: SpriteRef) -> None:
+        if ref.backdrop is None:
+            return
+        if ref.backdrop not in parsed.tile_kinds:
+            errors.append(
+                f"{section}['{key}']: backdrop '{ref.backdrop}' is not a "
+                "tile_kinds entry - backdrop always references tile_kinds, "
+                "the canonical set of full-bleed ground textures to "
+                "composite an icon-style sprite over"
+            )
+        elif parsed.tile_kinds[ref.backdrop].backdrop is not None:
+            errors.append(
+                f"{section}['{key}']: backdrop '{ref.backdrop}' itself has a "
+                "backdrop set - chaining isn't supported, point backdrop at "
+                "a full-bleed base texture (e.g. plains/floor) directly"
+            )
+        if section == "tile_kinds" and ref.backdrop == key:
+            errors.append(f"tile_kinds['{key}']: backdrop can't reference itself")
+
     for entity_id, ref in parsed.entities.items():
         if entity_id != PLAYER_ENTITY_ID and entity_id not in catalog.entities:
             errors.append(f"entities['{entity_id}']: unknown entity id")
@@ -395,11 +414,25 @@ def load_sprite_manifest(
                 "catalog entity (the player has no EntityDef/.color field to "
                 "tint toward - it's hardcoded in engine/game_map.py)"
             )
+        if ref.backdrop is not None:
+            errors.append(
+                f"entities['{entity_id}']: backdrop is only meaningful for "
+                "tile_kinds/dungeon_entrances - an entity/item already gets "
+                "this dynamically, composited over whatever tile it's "
+                "actually standing on (see _resolved_entity_glyph)"
+            )
         _check_sheet("entities", entity_id, ref)
 
     for item_id, ref in parsed.items.items():
         if item_id not in catalog.items:
             errors.append(f"items['{item_id}']: unknown item id")
+        if ref.backdrop is not None:
+            errors.append(
+                f"items['{item_id}']: backdrop is only meaningful for "
+                "tile_kinds/dungeon_entrances - an item already gets this "
+                "dynamically, composited over whatever tile it's actually "
+                "sitting on (see _resolved_entity_glyph)"
+            )
         _check_sheet("items", item_id, ref)
 
     for kind, ref in parsed.tile_kinds.items():
@@ -412,6 +445,7 @@ def load_sprite_manifest(
                 "toward - see EntityDef.color/ItemDef.color)"
             )
         _check_sheet("tile_kinds", kind, ref)
+        _check_backdrop("tile_kinds", kind, ref)
 
     for dungeon_id, ref in parsed.dungeon_entrances.items():
         if known_dungeon_ids is not None and dungeon_id not in known_dungeon_ids:
@@ -422,6 +456,7 @@ def load_sprite_manifest(
                 "meaningful for entities/items (no .color field to tint toward)"
             )
         _check_sheet("dungeon_entrances", dungeon_id, ref)
+        _check_backdrop("dungeon_entrances", dungeon_id, ref)
 
     if errors:
         raise ContentValidationError(str(path), errors)

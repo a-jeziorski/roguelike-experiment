@@ -15,6 +15,15 @@
 # reuse one base sprite with no distinct art of their own, so they still
 # read as visually distinct from each other.
 #
+# `backdrop: <tile_kind>` composites an icon-style tile_kinds/
+# dungeon_entrances sprite (a single tree/peak/tower on an otherwise
+# transparent square, unlike a full-bleed texture like plains/sea/wall)
+# over that tile_kinds entry once, at registration time - otherwise its
+# transparent background renders as the console's plain black. Only
+# meaningful on tile_kinds/dungeon_entrances (entities/items already get
+# this dynamically, over whatever they're actually standing on); the
+# referenced tile_kind must itself have no backdrop (no chaining).
+#
 # Sources (see assets/tilesets/LICENSE_*.txt): RLTiles (public domain,
 # https://github.com/statico/rltiles) for most creatures/items, dungeon
 # features (wall/floor/door/stairs), and the player; Kenney's Roguelike/RPG
@@ -87,17 +96,17 @@ items:
 tile_kinds:
   wall:             {sheet: rltiles, name: dngn_rock_wall_00}
   floor:            {sheet: rltiles, name: floor_of_a_room}
-  stairs_down:      {sheet: rltiles, name: staircase_down}
-  stairs_up:        {sheet: rltiles, name: staircase_up}
+  stairs_down:      {sheet: rltiles, name: staircase_down, backdrop: floor}
+  stairs_up:        {sheet: rltiles, name: staircase_up, backdrop: floor}
   door:             {sheet: rltiles, name: closed_door_h}
   sea:              {sheet: kenney_roguelike, col: 0,  row: 2}
   plains:           {sheet: kenney_roguelike, col: 5,  row: 0}
   road:             {sheet: kenney_roguelike, col: 6,  row: 0}
-  forest:           {sheet: kenney_roguelike, col: 23, row: 9}
-  landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
+  forest:           {sheet: kenney_roguelike, col: 23, row: 9, backdrop: plains}
+  landmark:         {sheet: kenney_roguelike, col: 51, row: 11, backdrop: plains}
   town:             {sheet: kenney_tiny_town, col: 7, row: 5}
-  dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
-  mountain:         {sheet: kenney_roguelike, col: 54, row: 21}
+  dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6, backdrop: plains}
+  mountain:         {sheet: kenney_roguelike, col: 54, row: 21, backdrop: plains}
 
 # Per-dungeon overworld entrance icons - keyed by dungeon registry id, not
 # tile kind, since every dungeon_entrance cell shares one TileType but
@@ -106,7 +115,7 @@ tile_kinds:
 # tile_kinds' generic dungeon_entrance archway above, then to ASCII - see
 # engine/render.py's _resolved_tile_glyph.
 dungeon_entrances:
-  prison_tower: {sheet: kenney_roguelike, col: 50, row: 10}   # a grey stone keep/tower icon
+  prison_tower: {sheet: kenney_roguelike, col: 50, row: 10, backdrop: plains}   # a grey stone keep/tower icon
   millhaven:    {sheet: kenney_tiny_town, col: 7, row: 5}     # the same roof-peak used for `town` above
   wayford:      {sheet: kenney_tiny_town, col: 7, row: 5}
   stonebridge:  {sheet: kenney_tiny_town, col: 7, row: 5}
