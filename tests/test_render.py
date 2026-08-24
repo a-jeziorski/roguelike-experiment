@@ -719,6 +719,51 @@ def test_render_map_falls_back_to_the_ascii_glyph_when_the_tile_kind_is_unmapped
     assert chr(console.rgb[5, 5]["ch"]) == ">"
 
 
+def test_render_map_uses_the_per_dungeon_sprite_for_a_mapped_dungeon_entrance():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "dungeon_entrance"
+    game_map.visible[5, 5] = True
+    game_map.dungeon_entrances[(5, 5)] = "prison_tower"
+    sprite_codepoints = SpriteCodepoints(
+        tile_kinds={"dungeon_entrance": 0xE050},  # the generic archway - should lose to the specific one
+        dungeon_entrances={"prison_tower": 0xE100},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE100
+
+
+def test_render_map_falls_back_to_the_generic_dungeon_entrance_sprite_when_this_dungeon_has_none():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "dungeon_entrance"
+    game_map.visible[5, 5] = True
+    game_map.dungeon_entrances[(5, 5)] = "forgotten_ruins"
+    sprite_codepoints = SpriteCodepoints(
+        tile_kinds={"dungeon_entrance": 0xE050},
+        dungeon_entrances={"prison_tower": 0xE100},  # nothing for forgotten_ruins
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE050
+
+
+def test_render_map_falls_back_to_ascii_for_a_dungeon_entrance_when_nothing_is_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "dungeon_entrance"
+    game_map.visible[5, 5] = True
+    game_map.dungeon_entrances[(5, 5)] = "forgotten_ruins"
+    sprite_codepoints = SpriteCodepoints()  # nothing mapped at all
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert chr(console.rgb[5, 5]["ch"]) == TILE_VISUALS["dungeon_entrance"]["glyph"]
+
+
 def test_render_map_with_no_sprite_codepoints_argument_is_ascii_identical():
     game_map = make_game_map(10, 10)
     game_map.kinds[5, 5] = "stairs_down"

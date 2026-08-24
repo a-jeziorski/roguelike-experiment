@@ -128,6 +128,24 @@ def _resolved_glyph(fallback_glyph: str, key: str, lookup: "dict[str, int] | Non
     return fallback_glyph
 
 
+def _resolved_tile_glyph(
+    kind: str, x: int, y: int, game_map: "GameMap", sprite_codepoints: "SpriteCodepoints | None"
+) -> str:
+    """The tile-kind counterpart to _resolved_entity_glyph: every kind
+    behaves exactly like _resolved_glyph, except a dungeon_entrance cell
+    prefers a sprite specific to the dungeon it leads to
+    (game_map.dungeon_entrances[(x,y)]) over the generic dungeon_entrance
+    tile-kind sprite - falling back to that generic sprite, then to ASCII,
+    exactly like every other per-cell resolution in this file."""
+    if kind == "dungeon_entrance" and sprite_codepoints is not None:
+        dungeon_id = game_map.dungeon_entrances.get((x, y))
+        codepoint = sprite_codepoints.dungeon_entrances.get(dungeon_id) if dungeon_id else None
+        if codepoint is not None:
+            return chr(codepoint)
+    tile_kinds = sprite_codepoints.tile_kinds if sprite_codepoints is not None else None
+    return _resolved_glyph(TILE_VISUALS[kind]["glyph"], kind, tile_kinds)
+
+
 def render_map(
     console: "Console",
     game_map: "GameMap",
@@ -137,14 +155,13 @@ def render_map(
 ) -> None:
     visible_width = min(VIEWPORT_WIDTH, game_map.width - cam_x)
     visible_height = min(VIEWPORT_HEIGHT, game_map.height - cam_y)
-    tile_kinds = sprite_codepoints.tile_kinds if sprite_codepoints is not None else None
     for sx in range(visible_width):
         x = cam_x + sx
         for sy in range(visible_height):
             y = cam_y + sy
             kind = game_map.kinds[x, y]
             visual = TILE_VISUALS[kind]
-            glyph = _resolved_glyph(visual["glyph"], kind, tile_kinds)
+            glyph = _resolved_tile_glyph(kind, x, y, game_map, sprite_codepoints)
             if game_map.visible[x, y]:
                 console.print(sx, sy, glyph, fg=visual["light"])
             elif game_map.explored[x, y]:

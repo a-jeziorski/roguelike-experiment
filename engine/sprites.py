@@ -76,13 +76,21 @@ class SpriteCodepoints:
     terrain instead of a plain black square. Missing a (actor_id, tile_kind)
     pair - e.g. the tile kind has no sprite mapped at all - falls back to
     the actor's plain codepoint above; see engine/render.py's
-    _resolved_entity_glyph for the full fallback chain."""
+    _resolved_entity_glyph for the full fallback chain.
+
+    dungeon_entrances holds a third kind: a dungeon registry id -> the
+    codepoint for that specific dungeon's own overworld entrance icon (a
+    house for a town, a tower for a keep) - a complete standalone tile
+    image, never composited over anything, same as tile_kinds. A dungeon
+    id missing here falls back to tile_kinds' generic dungeon_entrance
+    sprite, then to ASCII - see engine/render.py's _resolved_tile_glyph."""
 
     entities: dict[str, int] = field(default_factory=dict)
     items: dict[str, int] = field(default_factory=dict)
     tile_kinds: dict[str, int] = field(default_factory=dict)
     entities_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
     items_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
+    dungeon_entrances: dict[str, int] = field(default_factory=dict)
 
 
 def _is_skin_tone(h: float, s: float) -> bool:
@@ -184,8 +192,11 @@ def build_sprite_codepoints(
     EntityDef/ItemDef in catalog - no new authoring), registers it into
     `tileset` at a fresh sequential PUA codepoint, and returns the lookup
     render.py needs. Deterministic assignment order (entities, then items,
-    then tile_kinds, each sorted by key) so re-running with the same
-    manifest always assigns the same codepoints.
+    then tile_kinds, then dungeon_entrances, each sorted by key) so
+    re-running with the same manifest always assigns the same codepoints.
+    dungeon_entrances is registered the same way as tile_kinds (no color/
+    recolor, a complete standalone tile image) - it's keyed by dungeon id
+    rather than tile kind, but is otherwise just another base-pass entry.
 
     A second pass then registers every (entity/item, tile_kind) composite
     (see composite_sprite_over_terrain) for every actor and tile kind that
@@ -238,6 +249,9 @@ def build_sprite_codepoints(
         codepoint, rgba = _register(manifest.tile_kinds[kind], None)
         result.tile_kinds[kind] = codepoint
         tile_pixels[kind] = rgba
+    for dungeon_id in sorted(manifest.dungeon_entrances):
+        codepoint, _rgba = _register(manifest.dungeon_entrances[dungeon_id], None)
+        result.dungeon_entrances[dungeon_id] = codepoint
 
     for entity_id in sorted(entity_pixels):
         for kind in sorted(tile_pixels):

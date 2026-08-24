@@ -347,6 +347,64 @@ def test_build_sprite_codepoints_no_composite_for_an_unmapped_tile_kind():
     assert "rat" in result.entities  # the plain sprite still registers
 
 
+def test_build_sprite_codepoints_registers_a_codepoint_per_dungeon_entrance():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        dungeon_entrances={
+            "prison_tower": SpriteRef(sheet="test", col=0, row=0),
+            "millhaven": SpriteRef(sheet="test", col=1, row=0),
+        },
+    )
+    sheet_images = {"test": _solid_sheet([(255, 0, 0, 255), (0, 255, 0, 255)], 16, 2)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert set(result.dungeon_entrances) == {"prison_tower", "millhaven"}
+
+
+def test_build_sprite_codepoints_dungeon_entrance_codepoint_holds_its_own_pixels():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        dungeon_entrances={"prison_tower": SpriteRef(sheet="test", col=1, row=0)},
+    )
+    sheet_images = {"test": _solid_sheet([(1, 1, 1, 255), (200, 30, 30, 255)], 16, 2)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    tile = tileset.get_tile(result.dungeon_entrances["prison_tower"])
+    assert tuple(tile[0, 0]) == (200, 30, 30, 255)  # the second (col=1) tile, not the first
+
+
+def test_build_sprite_codepoints_dungeon_entrances_do_not_disturb_base_pass_determinism():
+    """The new dungeon_entrances registration loop is additive, appended
+    after tile_kinds and before the composite pass - existing callers'
+    entities/items/tile_kinds codepoints must stay exactly where they were."""
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={"rat": SpriteRef(sheet="test", col=0, row=0)},
+        items={},
+        tile_kinds={},
+        dungeon_entrances={"prison_tower": SpriteRef(sheet="test", col=0, row=0)},
+    )
+    sheet_images = {"test": _solid_sheet([(1, 1, 1, 255)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert result.entities["rat"] == PUA_START
+    assert result.dungeon_entrances["prison_tower"] == PUA_START + 1
+
+
 def test_apply_sprites_loads_real_files_from_disk(tmp_path):
     catalog = make_catalog()
     Image.new("RGBA", (16, 16), (9, 9, 9, 255)).save(tmp_path / "sheet.png")

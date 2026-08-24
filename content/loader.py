@@ -8,7 +8,7 @@ with a clear message, before the engine ever sees it.
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, get_args
 
@@ -348,17 +348,24 @@ class SpriteManifest:
     entities: dict[str, SpriteRef]
     items: dict[str, SpriteRef]
     tile_kinds: dict[str, SpriteRef]
+    dungeon_entrances: dict[str, SpriteRef] = field(default_factory=dict)
 
 
-def load_sprite_manifest(path: Path, catalog: Catalog) -> SpriteManifest:
+def load_sprite_manifest(
+    path: Path, catalog: Catalog, known_dungeon_ids: set[str] | None = None,
+) -> SpriteManifest:
     """Loads and validates data/sprites.yaml (see content/schema.py's
     SpriteManifestDef/SpriteRef/SpriteSheetDef). Stays pure-YAML validation
     like every other load_* here - no image/pixel decoding happens in this
     module; actual pixel-bounds checking happens in engine/sprites.py, the
-    layer that opens the binary sheet file anyway. Any catalog id or tile
-    kind with no entry in the returned manifest simply has no sprite -
-    engine/render.py falls back to its authored ASCII glyph, so an empty
-    manifest (or one missing entries) is always valid, never an error."""
+    layer that opens the binary sheet file anyway. Any catalog id, tile
+    kind, or dungeon id with no entry in the returned manifest simply has
+    no sprite - engine/render.py falls back accordingly, so an empty
+    manifest (or one missing entries) is always valid, never an error.
+
+    `known_dungeon_ids` cross-checks dungeon_entrances the same way
+    load_quests checks target_dungeon_id - pass None to skip (e.g. a test
+    not loading the full dungeon registry)."""
     raw = _load_yaml(path) or {}
     try:
         parsed = SpriteManifestDef(**raw)
@@ -404,12 +411,23 @@ def load_sprite_manifest(path: Path, catalog: Catalog) -> SpriteManifest:
             )
         _check_sheet("tile_kinds", kind, ref)
 
+    for dungeon_id, ref in parsed.dungeon_entrances.items():
+        if known_dungeon_ids is not None and dungeon_id not in known_dungeon_ids:
+            errors.append(f"dungeon_entrances['{dungeon_id}']: unknown dungeon '{dungeon_id}'")
+        if ref.recolor:
+            errors.append(
+                f"dungeon_entrances['{dungeon_id}']: recolor is only "
+                "meaningful for entities/items (no .color field to tint toward)"
+            )
+        _check_sheet("dungeon_entrances", dungeon_id, ref)
+
     if errors:
         raise ContentValidationError(str(path), errors)
 
     return SpriteManifest(
         sheets=parsed.sheets, entities=parsed.entities,
         items=parsed.items, tile_kinds=parsed.tile_kinds,
+        dungeon_entrances=parsed.dungeon_entrances,
     )
 
 

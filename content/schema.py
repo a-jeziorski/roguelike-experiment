@@ -596,14 +596,24 @@ class SpriteRef(BaseModel):
 
 
 class SpriteManifestDef(BaseModel):
-    """The raw shape of data/sprites.yaml: named source sheets, plus three
+    """The raw shape of data/sprites.yaml: named source sheets, plus four
     id-keyed sections mapping a catalog entity id / item id / tile-kind
-    string to a SpriteRef within one of those sheets. Any catalog id or
-    tile kind with no entry here simply has no sprite - engine/render.py
-    falls back to its authored ASCII glyph, so leaving something out is
-    always safe, never a broken reference."""
+    string / dungeon registry id to a SpriteRef within one of those sheets.
+    Any catalog id, tile kind, or dungeon id with no entry here simply has
+    no sprite - engine/render.py falls back to its authored ASCII glyph
+    (or, for a dungeon_entrance cell whose dungeon id has no entry in
+    dungeon_entrances, to tile_kinds' generic dungeon_entrance sprite
+    first - see _resolved_tile_glyph), so leaving something out is always
+    safe, never a broken reference.
+
+    dungeon_entrances is keyed by dungeon registry id, not tile kind -
+    every dungeon_entrance cell on the overworld shares the same
+    TileType, but which dungeon it actually leads to (see
+    GameMap.dungeon_entrances) is what a per-dungeon entrance icon (a
+    house for a town, a tower for a keep) needs to key off instead."""
 
     sheets: dict[str, SpriteSheetDef] = Field(default_factory=dict)
     entities: dict[str, SpriteRef] = Field(default_factory=dict)
     items: dict[str, SpriteRef] = Field(default_factory=dict)
     tile_kinds: dict[str, SpriteRef] = Field(default_factory=dict)
+    dungeon_entrances: dict[str, SpriteRef] = Field(default_factory=dict)

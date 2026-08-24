@@ -98,3 +98,21 @@ tile_kinds:
   town:             {sheet: kenney_tiny_town, col: 6, row: 5}
   dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
   mountain:         {sheet: kenney_roguelike, col: 54, row: 21}
+
+# Per-dungeon overworld entrance icons - keyed by dungeon registry id, not
+# tile kind, since every dungeon_entrance cell shares one TileType but
+# which dungeon it actually leads to (game_map.dungeon_entrances) is what
+# picks the icon here. A dungeon id with no entry falls back to
+# tile_kinds' generic dungeon_entrance archway above, then to ASCII - see
+# engine/render.py's _resolved_tile_glyph.
+dungeon_entrances:
+  prison_tower: {sheet: kenney_roguelike, col: 50, row: 10}   # a grey stone keep/tower icon
+  millhaven:    {sheet: kenney_tiny_town, col: 6, row: 5}     # the same roof-peak used for `town` above
+  wayford:      {sheet: kenney_tiny_town, col: 6, row: 5}
+  stonebridge:  {sheet: kenney_tiny_town, col: 6, row: 5}
+  saltmarsh:    {sheet: kenney_tiny_town, col: 6, row: 5}
+  # forgotten_ruins/elder_cairn/broken_watch/sunken_mine/drowned_waystation:
+  # intentionally omitted - no sprite in either sheet fit well enough to be
+  # worth forcing (same principle as mountain, above, before it was
+  # hand-picked). Falls back to the generic archway. Add a line here
+  # whenever a fitting one is found - zero code change required.

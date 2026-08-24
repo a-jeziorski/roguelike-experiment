@@ -632,7 +632,9 @@ def main() -> int:
             ENCOUNTERS_PATH,
             known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
         )
-        sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
+        sprite_manifest = load_sprite_manifest(
+            SPRITES_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        )
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
