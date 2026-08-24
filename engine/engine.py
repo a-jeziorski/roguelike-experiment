@@ -18,7 +18,7 @@ from content.schema import (
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
-from engine.entity import Entity
+from engine.entity import POTION_KINDS, Entity
 from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
 from engine.quest import Quest, QuestLog
 
@@ -591,6 +591,14 @@ class Engine:
         message = f"You buy a {reward.name} for {cost} gold."
         self.message_log.add(message)
         return message
+
+    def cycle_selected_potion_kind(self) -> None:
+        """Free, non-turn action (see main.py's CyclePotionKindAction branch):
+        advances player.selected_potion_kind to the next POTION_KINDS entry,
+        wrapping around - this is what UseItemAction drinks."""
+        i = POTION_KINDS.index(self.player.selected_potion_kind)
+        self.player.selected_potion_kind = POTION_KINDS[(i + 1) % len(POTION_KINDS)]
+        self.message_log.add(f"Selected potion: {self.player.selected_potion_kind}.")
 
     def talk_to_adjacent(self) -> None:
         """Free, non-turn action (see main.py's TalkAction branch): shows an

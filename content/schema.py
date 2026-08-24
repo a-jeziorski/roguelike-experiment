@@ -136,6 +136,9 @@ class ItemDef(BaseModel):
     is_key: bool = False
     # An ammo item stacks: one pickup can be worth several shots.
     is_ammo: bool = False
+    # Drinking this exits the current dungeon to the overworld - see
+    # engine/actions.py's UseItemAction and engine/entity.py's POTION_KINDS.
+    is_teleport: bool = False
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).

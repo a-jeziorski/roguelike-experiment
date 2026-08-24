@@ -7,6 +7,7 @@ import tcod.event
 from engine.actions import (
     Action,
     BumpAction,
+    CyclePotionKindAction,
     EscapeAction,
     FireModeAction,
     LookAction,
@@ -57,6 +58,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.U:
             return UseItemAction()
+
+        if sym == tcod.event.KeySym.C:
+            return CyclePotionKindAction()
 
         if sym == tcod.event.KeySym.R:
             return RestartAction()

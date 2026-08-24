@@ -222,6 +222,19 @@ def test_item_def_accepts_ammo_with_quantity():
     assert arrows.quantity == 5
 
 
+def test_item_def_is_teleport_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.is_teleport is False
+
+
+def test_item_def_accepts_is_teleport():
+    potion = ItemDef(
+        id="teleportation_potion", name="Teleportation Potion", glyph="?",
+        color=(1, 2, 3), is_teleport=True,
+    )
+    assert potion.is_teleport is True
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

@@ -8,6 +8,14 @@ healing_potion:
   cost: 25
   description: A vial of crimson liquid that mends wounds.
 
+teleportation_potion:
+  name: Teleportation Potion
+  glyph: "?"
+  color: [80, 120, 240]
+  is_teleport: true
+  cost: 50
+  description: A vial of shifting blue liquid, cold to the touch. Drinking it pulls you clean out of wherever you are.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

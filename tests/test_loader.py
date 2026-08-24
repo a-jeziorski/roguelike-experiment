@@ -32,7 +32,7 @@ def test_load_catalog_loads_real_data():
 
 def test_load_catalog_real_shopkeeper_has_shop_inventory():
     catalog = load_catalog()
-    assert catalog.entities["shopkeeper"].shop_inventory == ["healing_potion"]
+    assert catalog.entities["shopkeeper"].shop_inventory == ["healing_potion", "teleportation_potion"]
 
 
 def test_load_catalog_rejects_shop_inventory_referencing_unknown_item(tmp_path):

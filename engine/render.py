@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 import tcod.los
 
+from engine.entity import potion_kind
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -248,7 +249,9 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     player = engine.player
     fighter = player.fighter
     inventory = player.inventory
-    potions = sum(1 for it in inventory if it.item.heal_amount)
+    healing_potions = sum(1 for it in inventory if potion_kind(it.item) == "healing")
+    teleport_potions = sum(1 for it in inventory if potion_kind(it.item) == "teleport")
+    selected_potion = player.selected_potion_kind
     keys = sum(1 for it in inventory if it.item.key_id)
     ammo = sum(it.item.quantity for it in inventory if it.item.is_ammo)
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
@@ -275,8 +278,13 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         fg=HUD_FG,
         width=width,
     )
+    healing_marker = ">" if selected_potion == "healing" else " "
+    teleport_marker = ">" if selected_potion == "teleport" else " "
     y += console.print(
-        0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
+        0, y,
+        f"Potions: {healing_marker}Healing {healing_potions} "
+        f"{teleport_marker}Teleport {teleport_potions}  "
+        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
         fg=HUD_FG, width=width,
     )
     if engine.game_state == "dead":

@@ -80,7 +80,8 @@ entities:
   stone_sentinel:          {sheet: rltiles, name: stone_golem}
 
 items:
-  healing_potion:  {sheet: rltiles, name: misc_bottle, recolor: true}
+  healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
+  teleportation_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
   rusty_key:       {sheet: rltiles, name: skeleton_key}

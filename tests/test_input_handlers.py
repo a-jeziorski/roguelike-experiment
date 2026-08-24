@@ -6,6 +6,7 @@ import tcod.event
 
 from engine.actions import (
     BumpAction,
+    CyclePotionKindAction,
     EscapeAction,
     FireModeAction,
     LookAction,
@@ -79,6 +80,10 @@ def test_handle_event_b_returns_shop_action():
 
 def test_handle_event_s_returns_save_game_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.S)), SaveGameAction)
+
+
+def test_handle_event_c_returns_cycle_potion_kind_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.C)), CyclePotionKindAction)
 
 
 def test_handle_continue_prompt_event_y_returns_yes():

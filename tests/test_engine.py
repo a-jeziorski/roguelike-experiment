@@ -98,6 +98,15 @@ def make_potion(x: int, y: int, heal_amount=10) -> Entity:
     )
 
 
+def make_teleport_potion(x: int, y: int) -> Entity:
+    return Entity(
+        x, y, "?", (80, 120, 240), "Teleportation Potion",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(is_teleport=True),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -702,6 +711,89 @@ def test_pickup_and_use_healing_potion():
     engine.process_turn(UseItemAction())
     assert player.fighter.hp == min(player.fighter.max_hp, 5 + 10)
     assert len(player.inventory) == 0
+
+
+def test_use_item_action_ignores_wrong_kind_potion_in_inventory():
+    """Selection actually filters, not just grabs the first match - the one
+    genuinely new UseItemAction behavior vs. the old blind next()."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=10)
+    player.fighter.hp = 5
+    healing = make_potion(1, 1, heal_amount=10)
+    player.inventory.append(healing)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "teleport"
+
+    engine.process_turn(UseItemAction())
+
+    assert healing in player.inventory  # not consumed
+    assert player.fighter.hp == 5  # not healed
+    assert engine.message_log.messages[-1] == "You have no teleport potion to use."
+
+
+def test_use_item_action_drinks_teleport_potion_and_sets_wants_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_teleport_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
+    player.selected_potion_kind = "teleport"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert engine.wants_overworld is True
+
+
+def test_use_item_action_teleport_guards_against_already_being_on_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_teleport_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+    player.selected_potion_kind = "teleport"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion in player.inventory  # not consumed
+    assert engine.wants_overworld is False
+    assert engine.message_log.messages[-1] == "You're already on the surface."
+
+
+def test_cycle_selected_potion_kind_wraps_around():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert player.selected_potion_kind == "healing"
+    engine.cycle_selected_potion_kind()
+    assert player.selected_potion_kind == "teleport"
+    assert engine.message_log.messages[-1] == "Selected potion: teleport."
+    engine.cycle_selected_potion_kind()
+    assert player.selected_potion_kind == "healing"
+
+
+def test_restart_resets_selected_potion_kind():
+    """restart() allocates a brand-new player Entity via build_game_map, so
+    the selection resets to the default for free - no explicit reset line
+    needed in Engine.restart()."""
+    catalog = load_catalog()
+    levels = load_levels(PRISON_TOWER_LEVELS_DIR, catalog)
+    level_01 = levels["level_01"]
+    game_map, player = build_game_map(level_01, catalog)
+    engine = Engine(
+        game_map, player, level_01.name,
+        catalog=catalog, levels=levels, starting_level=level_01,
+    )
+    player.selected_potion_kind = "teleport"
+
+    engine.restart()
+
+    assert engine.player.selected_potion_kind == "healing"
 
 
 def test_first_weapon_pickup_equips_directly():
@@ -1377,7 +1469,7 @@ def test_use_item_action_never_consumes_a_key():
     engine.process_turn(UseItemAction())
 
     assert key in player.inventory  # not consumed
-    assert engine.message_log.messages[-1] == "You have nothing to use."
+    assert engine.message_log.messages[-1] == "You have no healing potion to use."
 
 
 def test_restart_after_reaching_terminal_stairs_returns_to_starting_level():
@@ -1487,6 +1579,34 @@ def test_build_game_map_populates_entity_and_item_spawn_index(tmp_path):
     assert villager in game_map.entities
     assert goblin in game_map.entities
     assert potion in game_map.entities
+
+
+def test_build_game_map_threads_is_teleport_through_item_entity(tmp_path):
+    """item_entity_from_def hand-copies each ItemDef field into ItemEffect -
+    confirms is_teleport is one of them, not silently dropped."""
+    level_path = tmp_path / "teleport_spawn.lvl"
+    level_path.write_text(
+        "id: teleport_spawn\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@t>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "t": { item: teleportation_potion }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    potion = game_map.item_spawn_index[0]
+    assert potion.item.is_teleport is True
+    assert potion.item.heal_amount is None
 
 
 def test_build_game_map_player_start_cell_defaults_to_floor(tmp_path):

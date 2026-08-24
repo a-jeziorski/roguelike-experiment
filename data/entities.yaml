@@ -146,7 +146,7 @@ shopkeeper:
   stationary: true
   description: Deals in coin, on the rare occasion anyone still has any to deal in.
   dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
-  shop_inventory: [healing_potion]
+  shop_inventory: [healing_potion, teleportation_potion]
 
 town_guard:
   name: Town Guard
@@ -206,7 +206,7 @@ wayford_provisioner:
   stationary: true
   description: Runs the biggest stall in Wayford's market, and has for years. Coin spends here without a second thought.
   dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
-  shop_inventory: [healing_potion, rusty_dagger, leather_armor]
+  shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor]
 
 bandit:
   name: Bandit

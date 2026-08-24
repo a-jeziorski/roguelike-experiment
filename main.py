@@ -21,6 +21,7 @@ from content.loader import (
 )
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
+    CyclePotionKindAction,
     EscapeAction,
     FireAction,
     FireModeAction,
@@ -706,6 +707,11 @@ def main() -> int:
                 if isinstance(action, TalkAction):
                     if engine.game_state == "playing":
                         engine.talk_to_adjacent()
+                    continue
+
+                if isinstance(action, CyclePotionKindAction):
+                    if engine.game_state == "playing":
+                        engine.cycle_selected_potion_kind()
                     continue
 
                 if isinstance(action, QuestLogAction):

@@ -106,6 +106,33 @@ def test_render_hud_does_not_show_control_hints():
     assert "[esc] quit" not in text
 
 
+def test_render_hud_shows_per_kind_potion_counts_with_selected_marker():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.inventory.append(
+        Entity(
+            0, 0, "!", (220, 40, 100), "Healing Potion",
+            render_priority=RENDER_PRIORITY_ITEM, item=ItemEffect(heal_amount=10),
+        )
+    )
+    player.inventory.append(
+        Entity(
+            0, 0, "?", (80, 120, 240), "Teleportation Potion",
+            render_priority=RENDER_PRIORITY_ITEM, item=ItemEffect(is_teleport=True),
+        )
+    )
+    engine = Engine(game_map, player, level.name, is_overworld=False)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert ">Healing 1" in text
+    assert " Teleport 1" in text
+    assert "[" not in text  # no bracket-style control-hint marker
+
+
 def test_render_message_log_colors_each_category():
     log = MessageLog()
     log.add("You enter Millhaven Green.")  # default "info" category

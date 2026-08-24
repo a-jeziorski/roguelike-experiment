@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from engine.combat import resolve_attack, resolve_ranged_attack
+from engine.entity import potion_kind
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -305,17 +306,43 @@ class PickupAction(Action):
 
 
 class UseItemAction(Action):
-    """Drinks the first usable (healing) item in inventory. Keys are never
-    selected here - they're consumed automatically when unlocking a matching
-    door (see MovementAction), not "used" on demand."""
+    """Drinks the potion of entity.selected_potion_kind (see POTION_KINDS/
+    potion_kind, engine/entity.py), cycled via CyclePotionKindAction below.
+    Keys are never selected here - they're consumed automatically when
+    unlocking a matching door (see MovementAction), not "used" on demand."""
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
-        item_entity = next((it for it in entity.inventory if it.item.heal_amount), None)
+        kind = entity.selected_potion_kind
+        item_entity = next(
+            (it for it in entity.inventory if potion_kind(it.item) == kind), None
+        )
         if item_entity is None:
-            engine.message_log.add("You have nothing to use.")
+            engine.message_log.add(f"You have no {kind} potion to use.")
+            return
+
+        if kind == "teleport" and engine.is_overworld:
+            engine.message_log.add("You're already on the surface.")
             return
 
         entity.inventory.remove(item_entity)
-        heal = item_entity.item.heal_amount
-        entity.fighter.hp = min(entity.fighter.max_hp, entity.fighter.hp + heal)
-        engine.message_log.add(f"You drink the {item_entity.name} and recover {heal} HP.")
+        if kind == "healing":
+            heal = item_entity.item.heal_amount
+            entity.fighter.hp = min(entity.fighter.max_hp, entity.fighter.hp + heal)
+            engine.message_log.add(f"You drink the {item_entity.name} and recover {heal} HP.")
+        elif kind == "teleport":
+            engine.message_log.add(
+                f"You drink the {item_entity.name} and the world lurches sideways."
+            )
+            engine.wants_overworld = True
+
+
+class CyclePotionKindAction(Action):
+    """Cycles entity.selected_potion_kind through POTION_KINDS - free, costs
+    no turn, same shape as TalkAction. main.py recognizes this before it
+    would ever reach Engine.process_turn and calls
+    Engine.cycle_selected_potion_kind() directly instead; perform() is never
+    actually called in practice, kept only so CyclePotionKindAction
+    satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass

@@ -32,7 +32,22 @@ class ItemEffect:
     range: int | None = None
     key_id: str | None = None
     is_ammo: bool = False
+    is_teleport: bool = False
     quantity: int = 1
+
+
+# Cycle order for UseItemAction's potion-kind selection (see
+# Entity.selected_potion_kind and Engine.cycle_selected_potion_kind).
+POTION_KINDS: tuple[str, ...] = ("healing", "teleport")
+
+
+def potion_kind(item: ItemEffect) -> str | None:
+    """Which POTION_KINDS entry this item is, or None if it's not a potion."""
+    if item.heal_amount:
+        return "healing"
+    if item.is_teleport:
+        return "teleport"
+    return None
 
 
 class Entity:
@@ -100,6 +115,11 @@ class Entity:
         # from ItemEffect.gold_amount on purpose, matching how is_key/key_id
         # already don't mirror 1:1 between the two classes.
         self.gold = gold
+        # Which potion kind UseItemAction drinks (see POTION_KINDS/potion_kind) -
+        # lives here rather than on Engine because the player Entity instance
+        # itself is what survives every dungeon-to-dungeon hand-off unchanged
+        # (depart_player/arrive_player pass the same instance).
+        self.selected_potion_kind = POTION_KINDS[0]
 
     @property
     def is_alive(self) -> bool:

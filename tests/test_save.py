@@ -4,6 +4,7 @@ Engine/GameMap objects, direct state mutation (killing/picking
 up/unlocking) mirroring how combat/pickup actions actually mutate state
 rather than hand-building synthetic ParsedLevel/GameMap fixtures."""
 
+import json
 from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_encounters, load_overworld, load_quests
@@ -102,6 +103,47 @@ def test_round_trip_preserves_death_pickup_unlock_exploration_and_quest_progress
     assert (clock2.year, clock2.day, clock2.hour) == (clock.year, clock.day, clock.hour)
     assert engine2.player.x == engine.player.x
     assert engine2.player.y == engine.player.y
+
+
+def test_round_trip_preserves_selected_potion_kind(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.selected_potion_kind = "teleport"
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert active_engines2[active_key].player.selected_potion_kind == "teleport"
+
+
+def test_restore_save_defaults_selected_potion_kind_for_an_old_format_save(tmp_path):
+    """A save file written before selected_potion_kind existed has no such
+    field - pydantic should fill in the default rather than erroring, so
+    old saves keep loading."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "old_save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["selected_potion_kind"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, _clock2, _quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    assert active_engines2[active_key].player.selected_potion_kind == "healing"
 
 
 def test_round_trip_preserves_a_cleared_non_current_level(tmp_path):
