@@ -7,6 +7,7 @@ import random
 from pathlib import Path
 
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
+from content.schema import WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
@@ -2082,7 +2083,7 @@ def test_process_turn_destroys_dungeon_when_a_deadline_quest_with_on_fail_destro
         id="spreading_the_warning", name="Spreading the Warning", description="",
         completion_message="done", failure_message="too late",
         deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
-        on_fail_destroy_dungeon_id="wayford", status="in_progress",
+        on_fail=[WorldConsequence(destroy_dungeon_id="wayford")], status="in_progress",
     )
     voided_quest = Quest(
         id="clearing_the_watch_road", name="Clearing the Watch Road", description="",
@@ -2105,6 +2106,60 @@ def test_process_turn_destroys_dungeon_when_a_deadline_quest_with_on_fail_destro
     assert "too late" in engine.message_log.messages
     assert "wayford is gone" in engine.message_log.messages
     assert "wayford" in quest_log.destroyed_dungeon_ids
+
+
+def test_process_turn_sets_world_flag_when_a_deadline_quest_with_on_fail_set_flag_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest = Quest(
+        id="a_quiet_failure", name="A Quiet Failure", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail=[WorldConsequence(set_flag="wayford_population_thinned")], status="in_progress",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        # No dungeon_ruin_data/dungeon_entrances at all - a set_flag
+        # consequence needs no dungeon involvement whatsoever.
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses
+
+    assert quest.status == "failed"
+    assert quest_log.world_flags == {"wayford_population_thinned"}
+    assert game_map.dungeon_entrances == {}
+
+
+def test_process_turn_applies_both_consequences_when_on_fail_has_a_destroy_and_a_flag():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail=[
+            WorldConsequence(destroy_dungeon_id="wayford"),
+            WorldConsequence(set_flag="wayford_razed"),
+        ],
+        status="in_progress",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses
+
+    assert (2, 0) not in game_map.dungeon_entrances
+    assert "wayford" in quest_log.destroyed_dungeon_ids
+    assert quest_log.world_flags == {"wayford_razed"}
 
 
 def test_restart_resets_the_shared_quest_log():

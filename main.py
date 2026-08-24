@@ -600,26 +600,27 @@ def fresh_start(
 
 
 def _check_destroyable_dungeons_have_ruin_content(quest_defs: dict, dungeon_registry: dict) -> None:
-    """A quest's on_fail_destroy_dungeon_id (see QuestDef, Engine.destroy_dungeon)
-    is only useful if the dungeon it names actually has ruined_tile/
-    ruined_description authored (content/schema.py's DungeonDef) - without
-    them, Engine.destroy_dungeon has nothing to show and silently no-ops.
-    Neither load_quests nor load_dungeon_registry can catch this alone
-    (each only sees one side), so it's checked here, right after both are
-    loaded, with the same ContentValidationError reporting shape as every
-    other content problem."""
+    """Any WorldConsequence(destroy_dungeon_id=...) in a quest's on_fail
+    (see QuestDef, Engine.destroy_dungeon) is only useful if the dungeon it
+    names actually has ruined_tile/ruined_description authored
+    (content/schema.py's DungeonDef) - without them, Engine.destroy_dungeon
+    has nothing to show and silently no-ops. Neither load_quests nor
+    load_dungeon_registry can catch this alone (each only sees one side),
+    so it's checked here, right after both are loaded, with the same
+    ContentValidationError reporting shape as every other content problem."""
     errors: list[str] = []
     for quest_id, quest in quest_defs.items():
-        dungeon_id = quest.on_fail_destroy_dungeon_id
-        if dungeon_id is None:
-            continue
-        dungeon = dungeon_registry.get(dungeon_id)
-        if dungeon is not None and dungeon.ruined_tile is None:
-            errors.append(
-                f"quest '{quest_id}': on_fail_destroy_dungeon_id '{dungeon_id}' "
-                "has no ruined_tile/ruined_description set in its dungeon.yaml - "
-                "Engine.destroy_dungeon would have nothing to show"
-            )
+        for consequence in quest.on_fail:
+            dungeon_id = consequence.destroy_dungeon_id
+            if dungeon_id is None:
+                continue
+            dungeon = dungeon_registry.get(dungeon_id)
+            if dungeon is not None and dungeon.ruined_tile is None:
+                errors.append(
+                    f"quest '{quest_id}': on_fail destroy_dungeon_id '{dungeon_id}' "
+                    "has no ruined_tile/ruined_description set in its dungeon.yaml - "
+                    "Engine.destroy_dungeon would have nothing to show"
+                )
     if errors:
         raise ContentValidationError(str(QUESTS_PATH), errors)
 

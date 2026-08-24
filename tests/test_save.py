@@ -210,6 +210,28 @@ def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
     assert engine2.game_map.tile_descriptions[entrance_coord] != ""
 
 
+def test_round_trip_preserves_world_flags(tmp_path):
+    """world_flags is plain bookkeeping with no map-mutation side effect
+    (unlike destroyed_dungeon_ids above) - unlike that test, there's no
+    real trigger to simulate here, just the save/restore plumbing, so this
+    sets the flag directly rather than driving it through a real deadline
+    (Engine._apply_world_consequences is covered separately in
+    tests/test_engine.py)."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    quest_log.world_flags.add("wayford_population_thinned")
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert quest_log2.world_flags == {"wayford_population_thinned"}
+
+
 def test_round_trip_preserves_an_item_dropped_by_equipping_over_it(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
