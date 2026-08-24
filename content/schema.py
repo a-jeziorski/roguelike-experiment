@@ -164,6 +164,38 @@ class ItemDef(BaseModel):
         return self
 
 
+class WorldConsequence(BaseModel):
+    """One thing that happens automatically when a quest's on_fail list
+    fires (see QuestDef.on_fail, QuestLog.check_deadlines,
+    Engine._apply_world_consequences). Exactly one of the two actions
+    below - never both, never neither - so a quest's on_fail is a *list*
+    of these, letting one deadline trigger more than one consequence (e.g.
+    raze a dungeon AND record a flag) without a one-consequence limit."""
+
+    # Raze this dungeon's overworld entrance - see Engine.destroy_dungeon.
+    # Only meaningful if the target dungeon has ruined_tile/
+    # ruined_description authored (content/loader.py's load_quests and
+    # main.py's _check_destroyable_dungeons_have_ruin_content cross-check
+    # this at content-load time).
+    destroy_dungeon_id: str | None = None
+    # Records this name in QuestLog.world_flags, permanently for the rest
+    # of the run - a bare fact ("this happened") with no reader yet;
+    # nothing branches on world_flags today, that's a later milestone. Not
+    # cross-referenced against any registry of known flag names - there is
+    # no such registry yet, since nothing consumes them.
+    set_flag: str | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_action(self) -> "WorldConsequence":
+        actions = [self.destroy_dungeon_id, self.set_flag]
+        if sum(a is not None for a in actions) != 1:
+            raise ValueError(
+                "a WorldConsequence must set exactly one of "
+                "destroy_dungeon_id/set_flag"
+            )
+        return self
+
+
 class QuestDef(BaseModel):
     """A quest, as defined once in data/quests.yaml. Field-for-field the raw
     authored shape of engine/quest.py's runtime Quest, minus Quest's mutable
@@ -255,15 +287,15 @@ class QuestDef(BaseModel):
     # below), the only two ways a quest ever fails. "" falls back to
     # `description`.
     failed_description: str = ""
-    # If this quest is still in_progress when its deadline passes (see
-    # QuestLog.check_deadlines), also raze the named dungeon - its
-    # overworld entrance is replaced by DungeonDef.ruined_tile/
-    # ruined_description, and every quest with voided_by_dungeon_id set to
-    # the same id is force-failed (see Engine.destroy_dungeon,
-    # QuestLog.void_by_dungeon). Only meaningful alongside a real deadline
-    # - a quest that can never fail can never trigger this either. None
-    # means an ordinary deadline failure with no further consequence.
-    on_fail_destroy_dungeon_id: str | None = None
+    # Every consequence applied the moment this quest's deadline passes
+    # while still in_progress (see QuestLog.check_deadlines,
+    # Engine._apply_world_consequences) - a list so one lapsed deadline can
+    # fire more than one consequence (e.g. raze a dungeon AND record a
+    # flag), not just one. Empty (the default) means an ordinary deadline
+    # failure with no further consequence. Only meaningful alongside a
+    # real deadline - a quest that can never fail can never trigger these
+    # either.
+    on_fail: list["WorldConsequence"] = Field(default_factory=list)
     # This quest can never be completed once the named dungeon has been
     # destroyed (see on_fail_destroy_dungeon_id above) - its questgiver or
     # completion target lives there. QuestLog.void_by_dungeon force-fails
@@ -584,8 +616,9 @@ class DungeonDef(BaseModel):
     # level always either goes deeper or is a deliberate ending.
     requires_stairs_down: bool = True
     # What this dungeon's overworld entrance becomes if some quest's
-    # on_fail_destroy_dungeon_id names it (see QuestDef, Engine.destroy_dungeon)
-    # - the entrance tile is replaced with ruined_tile, and ruined_description
+    # on_fail names it via a WorldConsequence(destroy_dungeon_id=...) (see
+    # QuestDef, Engine.destroy_dungeon) - the entrance tile is replaced
+    # with ruined_tile, and ruined_description
     # becomes its look-mode text (see GameMap.tile_descriptions), in place
     # of the entrance disappearing into the dungeon it used to lead to.
     # Both are optional and only meaningful together (validated below) -

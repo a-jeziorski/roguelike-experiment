@@ -76,7 +76,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from content.schema import QuestStatus
+from content.schema import QuestStatus, WorldConsequence
 from engine.clock import GameClock
 
 if TYPE_CHECKING:
@@ -168,11 +168,11 @@ class Quest:
     target_visited_description: str = ""
     completed_description: str = ""
     failed_description: str = ""
-    # If this quest is still in_progress when its deadline passes, also
-    # raze this dungeon - see content.schema.QuestDef and
-    # Engine.destroy_dungeon. None means an ordinary deadline failure with
-    # no further consequence.
-    on_fail_destroy_dungeon_id: str | None = None
+    # Every consequence applied the moment this quest's deadline passes -
+    # see content.schema.QuestDef.on_fail and Engine._apply_world_consequences.
+    # Empty (the default) means an ordinary deadline failure with no
+    # further consequence.
+    on_fail: list[WorldConsequence] = field(default_factory=list)
     # This quest can never be completed once this dungeon has been
     # destroyed - see QuestLog.void_by_dungeon. None means this quest is
     # unaffected by any dungeon's destruction.
@@ -293,6 +293,12 @@ class QuestLog:
     # save re-applies the destruction to the freshly rebuilt overworld
     # GameMap (see restore_save) rather than silently un-razing it.
     destroyed_dungeon_ids: set[str] = field(default_factory=set)
+    # Every flag name ever set via a WorldConsequence(set_flag=...) firing,
+    # across the whole run - same shape and reasoning as
+    # destroyed_dungeon_ids. Nothing reads this yet (see
+    # content.schema.WorldConsequence) - that's a later milestone; this
+    # only exists so a consequence has somewhere to land.
+    world_flags: set[str] = field(default_factory=set)
 
     def active_quest(self) -> Quest | None:
         return self.quests.get(self.active_quest_id) if self.active_quest_id else None
@@ -567,8 +573,8 @@ class QuestLog:
         """Every quest back to its own starting status (not-given quests
         stay not-given, already-given quests go back to in-progress), the
         active pin recomputed, and killed_entity_ids/visited_dungeon_ids/
-        triggered_encounter_ids/armed_encounters/destroyed_dungeon_ids
-        cleared. Engine.restart()
+        triggered_encounter_ids/armed_encounters/destroyed_dungeon_ids/
+        world_flags cleared. Engine.restart()
         calls this, since a restart is meant to be a clean slate for
         shared/global state, not just the current dungeon's local state
         (see GameClock.reset()) - a restart should re-arm any in-flight
@@ -597,6 +603,7 @@ class QuestLog:
         self.triggered_encounter_ids = set()
         self.armed_encounters = {}
         self.destroyed_dungeon_ids = set()
+        self.world_flags = set()
         self.active_quest_id = next(
             (q.id for q in self.quests.values() if q.initial_status == "in_progress"), None
         )
@@ -626,7 +633,7 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_visited_description=qdef.target_visited_description,
         completed_description=qdef.completed_description,
         failed_description=qdef.failed_description,
-        on_fail_destroy_dungeon_id=qdef.on_fail_destroy_dungeon_id,
+        on_fail=list(qdef.on_fail),
         voided_by_dungeon_id=qdef.voided_by_dungeon_id,
     )
 

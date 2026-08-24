@@ -106,6 +106,7 @@ class SavedQuestLogState(BaseModel):
     triggered_encounter_ids: list[str] = Field(default_factory=list)
     armed_encounters: dict[str, tuple[int, int, int]] = Field(default_factory=dict)
     destroyed_dungeon_ids: list[str] = Field(default_factory=list)
+    world_flags: list[str] = Field(default_factory=list)
 
 
 class SavedPlayer(BaseModel):
@@ -237,6 +238,7 @@ def capture_save(
         triggered_encounter_ids=sorted(quest_log.triggered_encounter_ids),
         armed_encounters=dict(quest_log.armed_encounters),
         destroyed_dungeon_ids=sorted(quest_log.destroyed_dungeon_ids),
+        world_flags=sorted(quest_log.world_flags),
     )
 
     return SaveGame(
@@ -337,6 +339,7 @@ def restore_save(
     quest_log.triggered_encounter_ids = set(save.quest_log.triggered_encounter_ids)
     quest_log.armed_encounters = dict(save.quest_log.armed_encounters)
     quest_log.destroyed_dungeon_ids = set(save.quest_log.destroyed_dungeon_ids)
+    quest_log.world_flags = set(save.quest_log.world_flags)
 
     player = _build_player(save.player, catalog)
     dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}

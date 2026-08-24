@@ -248,18 +248,32 @@ def load_quests(
                     f"dungeon '{quest.target_dungeon_id}'"
                 )
 
-        for label, dungeon_id in (
-            ("on_fail_destroy_dungeon_id", quest.on_fail_destroy_dungeon_id),
-            ("voided_by_dungeon_id", quest.voided_by_dungeon_id),
+        if (
+            quest.voided_by_dungeon_id is not None
+            and known_dungeon_ids is not None
+            and quest.voided_by_dungeon_id not in known_dungeon_ids
         ):
-            if dungeon_id is not None and known_dungeon_ids is not None and dungeon_id not in known_dungeon_ids:
-                errors.append(f"quest '{quest_id}': {label} references unknown dungeon '{dungeon_id}'")
-
-        if quest.on_fail_destroy_dungeon_id is not None and quest.deadline_year is None:
             errors.append(
-                f"quest '{quest_id}': on_fail_destroy_dungeon_id is set but "
-                "there's no deadline - QuestLog.check_deadlines is the only "
-                "trigger for it, so this quest could never destroy anything"
+                f"quest '{quest_id}': voided_by_dungeon_id references unknown "
+                f"dungeon '{quest.voided_by_dungeon_id}'"
+            )
+
+        for consequence in quest.on_fail:
+            if (
+                consequence.destroy_dungeon_id is not None
+                and known_dungeon_ids is not None
+                and consequence.destroy_dungeon_id not in known_dungeon_ids
+            ):
+                errors.append(
+                    f"quest '{quest_id}': on_fail destroy_dungeon_id references "
+                    f"unknown dungeon '{consequence.destroy_dungeon_id}'"
+                )
+
+        if quest.on_fail and quest.deadline_year is None:
+            errors.append(
+                f"quest '{quest_id}': on_fail is set but there's no deadline - "
+                "QuestLog.check_deadlines is the only trigger for it, so this "
+                "quest could never fire any of its consequences"
             )
 
         if quest.target_item_id is not None and quest.questgiver_entity_id is None:

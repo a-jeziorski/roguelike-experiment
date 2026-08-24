@@ -7,8 +7,10 @@ from content.schema import (
     ItemDef,
     LegendEntry,
     LevelDef,
+    QuestDef,
     SpriteRef,
     SpriteSheetDef,
+    WorldConsequence,
 )
 
 
@@ -387,3 +389,32 @@ def test_sprite_ref_accepts_grid_addressing():
 def test_sprite_ref_recolor_defaults_false():
     ref = SpriteRef(sheet="rltiles", name="human")
     assert ref.recolor is False
+
+
+def test_world_consequence_accepts_destroy_dungeon_id_alone():
+    consequence = WorldConsequence(destroy_dungeon_id="wayford")
+    assert consequence.destroy_dungeon_id == "wayford"
+    assert consequence.set_flag is None
+
+
+def test_world_consequence_accepts_set_flag_alone():
+    consequence = WorldConsequence(set_flag="wayford_population_thinned")
+    assert consequence.set_flag == "wayford_population_thinned"
+    assert consequence.destroy_dungeon_id is None
+
+
+def test_world_consequence_rejects_both_destroy_dungeon_id_and_set_flag():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence(destroy_dungeon_id="wayford", set_flag="wayford_razed")
+
+
+def test_world_consequence_rejects_neither_destroy_dungeon_id_nor_set_flag():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence()
+
+
+def test_quest_def_on_fail_defaults_to_empty_list():
+    quest = QuestDef(
+        id="q1", name="Test Quest", description="A test.", completion_message="Done.",
+    )
+    assert quest.on_fail == []

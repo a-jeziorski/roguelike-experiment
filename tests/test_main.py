@@ -1001,9 +1001,9 @@ def test_overworld_has_all_ten_shipped_entrances_mutually_reachable():
 
 def test_real_shipped_content_has_ruin_content_for_every_destroyable_dungeon():
     """The real data/quests.yaml + dungeon registry must never ship a quest
-    with on_fail_destroy_dungeon_id pointing at a dungeon with no
-    ruined_tile/ruined_description authored - Engine.destroy_dungeon would
-    have nothing to show. Regression net for spreading_the_warning/wayford."""
+    with an on_fail destroy_dungeon_id consequence pointing at a dungeon
+    with no ruined_tile/ruined_description authored - Engine.destroy_dungeon
+    would have nothing to show. Regression net for spreading_the_warning/wayford."""
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     quest_defs = load_quests(
@@ -1015,17 +1015,17 @@ def test_real_shipped_content_has_ruin_content_for_every_destroyable_dungeon():
 def test_check_destroyable_dungeons_have_ruin_content_rejects_a_dungeon_with_no_ruins():
     from types import SimpleNamespace
 
-    quest_defs = {"q": SimpleNamespace(on_fail_destroy_dungeon_id="wayford")}
+    quest_defs = {"q": SimpleNamespace(on_fail=[SimpleNamespace(destroy_dungeon_id="wayford")])}
     dungeon_registry = {"wayford": SimpleNamespace(ruined_tile=None)}
 
-    with pytest.raises(ContentValidationError, match="on_fail_destroy_dungeon_id"):
+    with pytest.raises(ContentValidationError, match="on_fail destroy_dungeon_id"):
         _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)
 
 
 def test_check_destroyable_dungeons_have_ruin_content_accepts_ruins_present():
     from types import SimpleNamespace
 
-    quest_defs = {"q": SimpleNamespace(on_fail_destroy_dungeon_id="wayford")}
+    quest_defs = {"q": SimpleNamespace(on_fail=[SimpleNamespace(destroy_dungeon_id="wayford")])}
     dungeon_registry = {"wayford": SimpleNamespace(ruined_tile="road")}
 
     _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)  # must not raise

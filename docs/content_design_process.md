@@ -487,47 +487,74 @@ other cross-checked field here. Every outdoor/settlement level authored so
 far (`goblin_ambush`, the overworld, and every town's `level_01`) sets
 this; a plain indoor dungeon floor can leave it at the default.
 
-## 0j. Timed world consequences (`on_fail_destroy_dungeon_id` / `voided_by_dungeon_id`)
+## 0j. Timed world consequences (`QuestDef.on_fail` / `voided_by_dungeon_id`)
 
 A quest deadline (`QuestDef.deadline_year`/`deadline_day`,
 `QuestLog.check_deadlines`) can do more than log a failure message: set
-`on_fail_destroy_dungeon_id: <dungeon_id>` on the quest, and missing the
-deadline razes that dungeon's overworld entrance the instant it's
-crossed - see `Engine.destroy_dungeon`, `engine/game_map.py`'s
-`apply_dungeon_destruction`. The target dungeon's own manifest describes
-what's left: `DungeonDef.ruined_tile`/`ruined_description` (both-or-
-neither, validated) replace its entrance tile and look-mode text, the same
-way `inspect_text` already describes it intact - pick `ruined_tile` to
-match whatever terrain the entrance already sits against on the overworld
-map (same reasoning as `player_start_tile` above), not a generic default.
-`content/loader.py` cross-checks that any dungeon named by
-`on_fail_destroy_dungeon_id` actually has `ruined_tile` set, so a wired-up
-consequence with no authored ruins content fails at load time rather than
-silently doing nothing in play.
+`on_fail: [<WorldConsequence>, ...]` on the quest, and missing the
+deadline fires every consequence in that list, in order, the instant it's
+crossed (`Engine._apply_world_consequences`, called from
+`Engine._check_quest_deadlines`). `on_fail` is a *list* specifically so one
+missed deadline can trigger more than one consequence - e.g. razing a
+dungeon and separately recording a flag - rather than being limited to a
+single effect. Each entry is a `WorldConsequence` (`content/schema.py`)
+with exactly one of two actions set (validated - a `WorldConsequence` with
+both or neither is rejected at load time):
 
-Any *other* quest whose questgiver or completion target lives in that
-same dungeon should set `voided_by_dungeon_id: <dungeon_id>` - the moment
-the dungeon is razed, `QuestLog.void_by_dungeon` force-fails every
-matching `not_given`/`in_progress` quest (that NPC is gone; the quest can
-never be completed). A quest the player already knew about
-(`in_progress`) gets its `failure_message` logged; one they never
-received (`not_given`) fails silently - announcing the failure of a quest
-the player was never given would be confusing. `failed_description` is
-normally only valid alongside a real deadline, but a `voided_by_dungeon_id`
-quest is exempt from that check (it fails via a different trigger
-entirely) - see the loosened `failed_description_requires_a_deadline_or_voiding_dungeon`
-validator.
+- `destroy_dungeon_id: <dungeon_id>` - razes that dungeon's overworld
+  entrance (see `Engine.destroy_dungeon`, `engine/game_map.py`'s
+  `apply_dungeon_destruction`). The target dungeon's own manifest
+  describes what's left: `DungeonDef.ruined_tile`/`ruined_description`
+  (both-or-neither, validated) replace its entrance tile and look-mode
+  text, the same way `inspect_text` already describes it intact - pick
+  `ruined_tile` to match whatever terrain the entrance already sits
+  against on the overworld map (same reasoning as `player_start_tile`
+  above), not a generic default. `content/loader.py` cross-checks that
+  any dungeon named by an `on_fail` entry's `destroy_dungeon_id` actually
+  has `ruined_tile` set, so a wired-up consequence with no authored ruins
+  content fails at load time rather than silently doing nothing in play.
+- `set_flag: <name>` - records that name, permanently, in
+  `QuestLog.world_flags`. As of this writing nothing *reads* `world_flags`
+  yet - no dialogue, shop, or level variant branches on it. It exists
+  purely so a consequence can record "something happened" without also
+  having to be a dungeon destruction; a later milestone adds the
+  content-side machinery to react to it. Not cross-checked against any
+  registry (there isn't one yet) - a typo in a flag name is currently
+  silent, same caveat as any other free-text field with no consumer.
+
+`content/loader.py` also rejects `on_fail` set with no `deadline_year` -
+`QuestLog.check_deadlines` is `on_fail`'s only trigger, so a quest with
+neither could never fire any of its consequences, whether it's a
+`destroy_dungeon_id` or a `set_flag`.
+
+Any *other* quest whose questgiver or completion target lives in a
+dungeon a `destroy_dungeon_id` consequence might raze should set
+`voided_by_dungeon_id: <dungeon_id>` - the moment the dungeon is razed,
+`QuestLog.void_by_dungeon` force-fails every matching `not_given`/
+`in_progress` quest (that NPC is gone; the quest can never be completed).
+This is a separate, orthogonal mechanism from `on_fail` - it's the
+"reacts to a destruction" side, regardless of which quest's `on_fail`
+caused it, and doesn't fire for a `set_flag` consequence. A quest the
+player already knew about (`in_progress`) gets its `failure_message`
+logged; one they never received (`not_given`) fails silently -
+announcing the failure of a quest the player was never given would be
+confusing. `failed_description` is normally only valid alongside a real
+deadline, but a `voided_by_dungeon_id` quest is exempt from that check
+(it fails via a different trigger entirely) - see the loosened
+`failed_description_requires_a_deadline_or_voiding_dungeon` validator.
 
 Two invariants worth knowing before touching this: the world clock only
 advances while the player is standing on the overworld itself
 (`Engine._advance_world_clock`, gated on `is_overworld`), so a deadline
-can only ever be crossed - and a dungeon razed - while the overworld
-Engine is active; the player can never be standing inside the dungeon
-being destroyed. And a live destruction only mutates that run's
-in-memory overworld `GameMap` - `engine/save.py` separately persists
-`QuestLog.destroyed_dungeon_ids` and reapplies every entry to the
-freshly-rebuilt overworld map on `restore_save`, or a save made after a
-razing would silently un-raze it on reload.
+can only ever be crossed - and its `on_fail` list fired - while the
+overworld Engine is active; the player can never be standing inside a
+dungeon that a `destroy_dungeon_id` consequence is about to raze. And a
+live destruction only mutates that run's in-memory overworld `GameMap` -
+`engine/save.py` separately persists `QuestLog.destroyed_dungeon_ids` and
+reapplies every entry to the freshly-rebuilt overworld map on
+`restore_save`, or a save made after a razing would silently un-raze it
+on reload. `world_flags` needs no such reapplication - it's plain
+persisted state with no map-mutation side effect to redo.
 
 `spreading_the_warning`/Wayford is the reference example: it requires its
 own prerequisite quest (`goblin_warning`) to be `completed` first

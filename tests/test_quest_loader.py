@@ -252,11 +252,12 @@ def test_load_quests_rejects_unknown_on_fail_destroy_dungeon_id(tmp_path):
         "  starting_status: in_progress\n"
         "  deadline_year: 87\n"
         "  deadline_day: 60\n"
-        "  on_fail_destroy_dungeon_id: nonexistent_dungeon\n",
+        "  on_fail:\n"
+        "    - destroy_dungeon_id: nonexistent_dungeon\n",
     )
     catalog = load_catalog()
 
-    with pytest.raises(ContentValidationError, match="on_fail_destroy_dungeon_id"):
+    with pytest.raises(ContentValidationError, match="on_fail destroy_dungeon_id"):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
 
 
@@ -276,7 +277,7 @@ def test_load_quests_rejects_unknown_voided_by_dungeon_id(tmp_path):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
 
 
-def test_load_quests_rejects_on_fail_destroy_dungeon_id_with_no_deadline(tmp_path):
+def test_load_quests_rejects_on_fail_with_no_deadline(tmp_path):
     path = write_quests(
         tmp_path,
         "bad_quest:\n"
@@ -284,7 +285,25 @@ def test_load_quests_rejects_on_fail_destroy_dungeon_id_with_no_deadline(tmp_pat
         "  description: x\n"
         "  completion_message: x\n"
         "  starting_status: in_progress\n"
-        "  on_fail_destroy_dungeon_id: millhaven\n",
+        "  on_fail:\n"
+        "    - destroy_dungeon_id: millhaven\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="there's no deadline"):
+        load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_rejects_on_fail_set_flag_with_no_deadline(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  on_fail:\n"
+        "    - set_flag: some_flag\n",
     )
     catalog = load_catalog()
 

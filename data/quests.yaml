@@ -210,4 +210,5 @@ spreading_the_warning:
   target_entity_id: wayford_road_warden
   deadline_year: 87
   deadline_day: 64
-  on_fail_destroy_dungeon_id: wayford
+  on_fail:
+    - destroy_dungeon_id: wayford

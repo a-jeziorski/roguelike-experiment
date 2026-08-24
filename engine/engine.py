@@ -123,8 +123,9 @@ class Engine:
         # dungeon_entrance tiles to describe, so an empty dict is correct.
         self.dungeon_inspect_text = dungeon_inspect_text or {}
         # dungeon_id -> (ruined_tile, ruined_description), for Engine.destroy_dungeon
-        # to apply once a quest's on_fail_destroy_dungeon_id fires (see
-        # content.schema.DungeonDef). Same "only ever populated for the
+        # to apply once a quest's on_fail fires a destroy_dungeon_id
+        # consequence (see content.schema.DungeonDef, WorldConsequence).
+        # Same "only ever populated for the
         # overworld Engine" restriction as dungeon_inspect_text above -
         # destroy_dungeon is only ever called while is_overworld is True.
         self.dungeon_ruin_data = dungeon_ruin_data or {}
@@ -435,13 +436,27 @@ class Engine:
         logged here. A separate method (not folded into _advance_world_clock)
         so deadline logic is testable independent of clock/healing mechanics.
         Only ever called while self.is_overworld (see the one call site in
-        process_turn) - a newly-failed quest's on_fail_destroy_dungeon_id,
-        if set, is safe to act on immediately via destroy_dungeon, since
-        self.game_map is guaranteed to be the overworld's own map here."""
+        process_turn) - a newly-failed quest's on_fail entries are safe to
+        act on immediately, since self.game_map is guaranteed to be the
+        overworld's own map here."""
         for quest in self.quest_log.check_deadlines(self.clock):
             self.message_log.add(quest.failure_message)
-            if quest.on_fail_destroy_dungeon_id:
-                self.destroy_dungeon(quest.on_fail_destroy_dungeon_id)
+            self._apply_world_consequences(quest)
+
+    def _apply_world_consequences(self, quest: Quest) -> None:
+        """Applies every WorldConsequence in quest.on_fail, in list order -
+        the sole call site is _check_quest_deadlines, on_fail's only
+        trigger. destroy_dungeon_id defers to destroy_dungeon (already
+        idempotent, so two quests naming the same dungeon in one tick is
+        safe); set_flag just records a name in quest_log.world_flags,
+        inert until a later milestone gives content a way to read it. The
+        two kinds don't interact, so list order has no observable effect
+        today - kept anyway for a future consumer that might care."""
+        for consequence in quest.on_fail:
+            if consequence.destroy_dungeon_id is not None:
+                self.destroy_dungeon(consequence.destroy_dungeon_id)
+            elif consequence.set_flag is not None:
+                self.quest_log.world_flags.add(consequence.set_flag)
 
     def destroy_dungeon(self, dungeon_id: str) -> None:
         """Razes dungeon_id's overworld entrance (see
