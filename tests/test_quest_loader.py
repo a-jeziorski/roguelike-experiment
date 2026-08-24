@@ -33,6 +33,18 @@ def test_load_quests_loads_the_real_shipped_file():
     assert quests["fetch_fungus"].reward_shop_discount_entity_id == "shopkeeper"
 
 
+def test_real_shipped_content_spreading_the_warning_tightens_a_wall_worth_holding():
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+
+    tighten = next(
+        c.tighten_deadline for c in quests["spreading_the_warning"].on_fail
+        if c.tighten_deadline is not None
+    )
+    assert tighten.quest_id == "a_wall_worth_holding"
+    assert tighten.new_day == 66
+
+
 def test_load_quests_end_to_end_matches_pre_refactor_values():
     """Regression net for the move from hardcoded Quest instances to
     data/quests.yaml: pins the same field values the old
@@ -309,6 +321,131 @@ def test_load_quests_rejects_on_fail_set_flag_with_no_deadline(tmp_path):
 
     with pytest.raises(ContentValidationError, match="there's no deadline"):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_rejects_an_on_fail_tighten_deadline_referencing_itself(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 60\n"
+        "  on_fail:\n"
+        "    - tighten_deadline: { quest_id: bad_quest, new_day: 55 }\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="on_fail tighten_deadline can't target itself"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_an_unknown_on_fail_tighten_deadline_quest_id(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 60\n"
+        "  on_fail:\n"
+        "    - tighten_deadline: { quest_id: nonexistent_quest, new_day: 55 }\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="on_fail tighten_deadline references unknown quest"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_an_on_fail_tighten_deadline_targeting_a_quest_with_no_deadline(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 60\n"
+        "  on_fail:\n"
+        "    - tighten_deadline: { quest_id: no_deadline_quest, new_day: 55 }\n"
+        "no_deadline_quest:\n"
+        "  name: No Deadline Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="has no deadline_year set"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_allows_an_on_fail_tighten_deadline_referencing_a_quest_defined_later(tmp_path):
+    """Mirrors requires_quest_id's own forward-reference test - tighten_deadline
+    is checked against the whole raw YAML dict too, so file order between the
+    two quests doesn't matter."""
+    path = write_quests(
+        tmp_path,
+        "first_quest:\n"
+        "  name: First Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 60\n"
+        "  on_fail:\n"
+        "    - tighten_deadline: { quest_id: second_quest, new_day: 66 }\n"
+        "second_quest:\n"
+        "  name: Second Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 70\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["first_quest"].on_fail[0].tighten_deadline.quest_id == "second_quest"
+    assert quests["first_quest"].on_fail[0].tighten_deadline.new_day == 66
+
+
+def test_load_quests_allows_a_valid_on_fail_tighten_deadline(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "second_quest:\n"
+        "  name: Second Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 70\n"
+        "first_quest:\n"
+        "  name: First Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  starting_status: in_progress\n"
+        "  deadline_year: 87\n"
+        "  deadline_day: 60\n"
+        "  on_fail:\n"
+        "    - tighten_deadline: { quest_id: second_quest, new_day: 66 }\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    tighten = quests["first_quest"].on_fail[0].tighten_deadline
+    assert tighten.quest_id == "second_quest"
+    assert tighten.new_day == 66
 
 
 def test_load_quests_rejects_two_trigger_fields_set_at_once(tmp_path):

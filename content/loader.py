@@ -271,6 +271,24 @@ def load_quests(
                     f"unknown dungeon '{consequence.destroy_dungeon_id}'"
                 )
 
+            if consequence.tighten_deadline is not None:
+                target_id = consequence.tighten_deadline.quest_id
+                if target_id == quest_id:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline can't target itself"
+                    )
+                elif target_id not in raw:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline references "
+                        f"unknown quest '{target_id}'"
+                    )
+                elif raw[target_id].get("deadline_year") is None:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline targets quest "
+                        f"'{target_id}', which has no deadline_year set - there's "
+                        "nothing to shorten"
+                    )
+
         if quest.on_fail and quest.deadline_year is None:
             errors.append(
                 f"quest '{quest_id}': on_fail is set but there's no deadline - "

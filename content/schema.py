@@ -167,13 +167,27 @@ class ItemDef(BaseModel):
         return self
 
 
+class TightenDeadline(BaseModel):
+    """One WorldConsequence action's payload: shortens ANOTHER quest's own
+    deadline_day the moment this WorldConsequence's owning quest's deadline
+    lapses (see Engine._tighten_deadline). Nested, not two flat fields on
+    WorldConsequence, since the two pieces of data only mean anything
+    together - same shape as FlagDialogue. Never extends a deadline - see
+    Engine._tighten_deadline's own guard. No year field: every quest with
+    a deadline today shares deadline_year 87."""
+
+    quest_id: str
+    new_day: int
+
+
 class WorldConsequence(BaseModel):
     """One thing that happens automatically when a quest's on_fail list
     fires (see QuestDef.on_fail, QuestLog.check_deadlines,
-    Engine._apply_world_consequences). Exactly one of the two actions
-    below - never both, never neither - so a quest's on_fail is a *list*
-    of these, letting one deadline trigger more than one consequence (e.g.
-    raze a dungeon AND record a flag) without a one-consequence limit."""
+    Engine._apply_world_consequences). Exactly one of the three actions
+    below - never more than one, never none - so a quest's on_fail is a
+    *list* of these, letting one deadline trigger more than one
+    consequence (e.g. raze a dungeon AND record a flag) without a
+    one-consequence limit."""
 
     # Raze this dungeon's overworld entrance - see Engine.destroy_dungeon.
     # Only meaningful if the target dungeon has ruined_tile/
@@ -185,14 +199,21 @@ class WorldConsequence(BaseModel):
     # of the run - see FlagDialogue for the first (and so far only) thing
     # that reads world_flags back.
     set_flag: str | None = None
+    # Shortens another quest's own deadline_day - see TightenDeadline,
+    # Engine._tighten_deadline. The one action that reaches into a
+    # DIFFERENT quest's own clock - requires_quest_id only gates granting,
+    # voided_by_dungeon_id only force-fails on a dungeon's destruction,
+    # and destroy_dungeon_id/set_flag above only ever affect the failing
+    # quest's own target, not another quest's timing.
+    tighten_deadline: TightenDeadline | None = None
 
     @model_validator(mode="after")
     def exactly_one_action(self) -> "WorldConsequence":
-        actions = [self.destroy_dungeon_id, self.set_flag]
+        actions = [self.destroy_dungeon_id, self.set_flag, self.tighten_deadline]
         if sum(a is not None for a in actions) != 1:
             raise ValueError(
                 "a WorldConsequence must set exactly one of "
-                "destroy_dungeon_id/set_flag"
+                "destroy_dungeon_id/set_flag/tighten_deadline"
             )
         return self
 

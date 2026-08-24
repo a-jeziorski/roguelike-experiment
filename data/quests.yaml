@@ -213,6 +213,7 @@ spreading_the_warning:
   on_fail:
     - destroy_dungeon_id: wayford
     - set_flag: wayford_razed
+    - tighten_deadline: { quest_id: a_wall_worth_holding, new_day: 66 }
 
 a_wall_worth_holding:
   name: A Wall Worth Holding

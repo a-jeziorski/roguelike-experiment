@@ -107,6 +107,19 @@ class SavedQuestLogState(BaseModel):
     armed_encounters: dict[str, tuple[int, int, int]] = Field(default_factory=dict)
     destroyed_dungeon_ids: list[str] = Field(default_factory=list)
     world_flags: list[str] = Field(default_factory=list)
+    # Every quest's current deadline_day, keyed by quest id - captured for
+    # every quest with a deadline, not just ones Engine._tighten_deadline
+    # has touched (simpler than tracking "did this change from the
+    # authored default," and harmless for an untouched quest since
+    # restoring its own unchanged value is a no-op). Needed because
+    # deadline_day was a write-once field (set from QuestDef, never
+    # mutated) until _tighten_deadline - a save made after a tighten
+    # fires would otherwise silently revert to the authored default on
+    # reload, since restore_save always rebuilds every Quest fresh via
+    # create_quest_log. An old save missing this field just gets {} (the
+    # default), which is exactly correct for a save made before this
+    # field existed - nothing was ever tightened.
+    deadline_days: dict[str, int] = Field(default_factory=dict)
 
 
 class SavedPlayer(BaseModel):
@@ -241,6 +254,10 @@ def capture_save(
         armed_encounters=dict(quest_log.armed_encounters),
         destroyed_dungeon_ids=sorted(quest_log.destroyed_dungeon_ids),
         world_flags=sorted(quest_log.world_flags),
+        deadline_days={
+            qid: quest.deadline_day for qid, quest in quest_log.quests.items()
+            if quest.deadline_day is not None
+        },
     )
 
     return SaveGame(
@@ -343,6 +360,9 @@ def restore_save(
     quest_log.armed_encounters = dict(save.quest_log.armed_encounters)
     quest_log.destroyed_dungeon_ids = set(save.quest_log.destroyed_dungeon_ids)
     quest_log.world_flags = set(save.quest_log.world_flags)
+    for quest_id, day in save.quest_log.deadline_days.items():
+        if quest_id in quest_log.quests:
+            quest_log.quests[quest_id].deadline_day = day
 
     player = _build_player(save.player, catalog)
     dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
