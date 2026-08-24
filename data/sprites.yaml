@@ -95,7 +95,7 @@ tile_kinds:
   road:             {sheet: kenney_roguelike, col: 6,  row: 0}
   forest:           {sheet: kenney_roguelike, col: 23, row: 9}
   landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
-  town:             {sheet: kenney_tiny_town, col: 6, row: 5}
+  town:             {sheet: kenney_tiny_town, col: 7, row: 5}
   dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
   mountain:         {sheet: kenney_roguelike, col: 54, row: 21}
 
@@ -107,10 +107,10 @@ tile_kinds:
 # engine/render.py's _resolved_tile_glyph.
 dungeon_entrances:
   prison_tower: {sheet: kenney_roguelike, col: 50, row: 10}   # a grey stone keep/tower icon
-  millhaven:    {sheet: kenney_tiny_town, col: 6, row: 5}     # the same roof-peak used for `town` above
-  wayford:      {sheet: kenney_tiny_town, col: 6, row: 5}
-  stonebridge:  {sheet: kenney_tiny_town, col: 6, row: 5}
-  saltmarsh:    {sheet: kenney_tiny_town, col: 6, row: 5}
+  millhaven:    {sheet: kenney_tiny_town, col: 7, row: 5}     # the same roof-peak used for `town` above
+  wayford:      {sheet: kenney_tiny_town, col: 7, row: 5}
+  stonebridge:  {sheet: kenney_tiny_town, col: 7, row: 5}
+  saltmarsh:    {sheet: kenney_tiny_town, col: 7, row: 5}
   # forgotten_ruins/elder_cairn/broken_watch/sunken_mine/drowned_waystation:
   # intentionally omitted - no sprite in either sheet fit well enough to be
   # worth forcing (same principle as mountain, above, before it was
