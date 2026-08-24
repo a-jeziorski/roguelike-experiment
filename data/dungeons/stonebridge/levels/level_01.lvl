@@ -27,7 +27,7 @@ legend:
   ".": road
   "@": player_start
   "x": { stairs_up: null, description: "The town gate - barred at night, watched always. The only way in or out of Stonebridge." }
-  "v": { entity: villager }
+  "v": { entity: villager, tile: plains }
   "o": { tile: landmark, description: "The town well, iron-bound, its winch worn smooth by hands used to hauling more than water." }
   "L": { tile: landmark, description: "A lookout nook built into the gatehouse wall - an arrow-slit facing the road, and the hills beyond it." }
-  "p": { item: healing_potion, description: "A stitched bandage roll and a stoppered vial, kept ready in a niche near the wall. Someone expects to need these." }
+  "p": { item: healing_potion, tile: plains, description: "A stitched bandage roll and a stoppered vial, kept ready in a niche near the wall. Someone expects to need these." }

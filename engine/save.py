@@ -118,6 +118,7 @@ class SavedPlayer(BaseModel):
     equipped_weapon: SavedItemSlot | None = None
     equipped_armor: SavedItemSlot | None = None
     equipped_ranged_weapon: SavedItemSlot | None = None
+    selected_potion_kind: str = "healing"
 
 
 class SaveGame(BaseModel):
@@ -223,6 +224,7 @@ def capture_save(
         equipped_weapon=_save_item_slot(player.equipped_weapon),
         equipped_armor=_save_item_slot(player.equipped_armor),
         equipped_ranged_weapon=_save_item_slot(player.equipped_ranged_weapon),
+        selected_potion_kind=player.selected_potion_kind,
     )
 
     places = {
@@ -265,6 +267,7 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
         entity_id=PLAYER_ENTITY_ID, gold=saved.gold,
     )
     player.inventory = [_build_item_entity(slot, catalog) for slot in saved.inventory]
+    player.selected_potion_kind = saved.selected_potion_kind
     player.equipped_weapon = _build_item_entity(saved.equipped_weapon, catalog) if saved.equipped_weapon else None
     player.equipped_armor = _build_item_entity(saved.equipped_armor, catalog) if saved.equipped_armor else None
     player.equipped_ranged_weapon = (

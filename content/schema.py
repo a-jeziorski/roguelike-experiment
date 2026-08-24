@@ -136,6 +136,9 @@ class ItemDef(BaseModel):
     is_key: bool = False
     # An ammo item stacks: one pickup can be worth several shots.
     is_ammo: bool = False
+    # Drinking this exits the current dungeon to the overworld - see
+    # engine/actions.py's UseItemAction and engine/entity.py's POTION_KINDS.
+    is_teleport: bool = False
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).
@@ -450,7 +453,12 @@ class LegendEntry(BaseModel):
     Level files may write a legend value as a plain tile-type string (e.g. "wall"),
     or as a mapping. Shorthands:
       - {entity: rat} / {item: healing_potion}: a floor tile with that entity/item
-        on it.
+        on it. Add `tile: <kind>` to stand it on something other than plain
+        floor - {entity: villager, tile: plains} for a villager in an
+        outdoor town square, say - the entity/item and everything else
+        about the shorthand works identically; only the underlying ground
+        tile (and its sprite - see engine/sprites.py's composite_sprite_over_terrain)
+        changes. Bare {entity: rat} still defaults to floor.
       - {stairs_down: level_02a}: a stairway tile leading to that level id. A bare
         "stairs_down" string (no mapping) means a *terminal* stairway - reaching it
         leaves the dungeon and returns to the overworld. A level can have multiple
@@ -524,11 +532,11 @@ class LegendEntry(BaseModel):
             description = raw.get("description")
             if "entity" in raw:
                 return cls(
-                    tile="floor", entity=raw["entity"], description=description,
+                    tile=raw.get("tile", "floor"), entity=raw["entity"], description=description,
                     dialogue=raw.get("dialogue"), flag_dialogue=raw.get("flag_dialogue") or [],
                 )
             if "item" in raw:
-                return cls(tile="floor", item=raw["item"], description=description)
+                return cls(tile=raw.get("tile", "floor"), item=raw["item"], description=description)
             if "stairs_down" in raw:
                 return cls(tile="stairs_down", next_level=raw["stairs_down"], description=description)
             if "stairs_up" in raw:
@@ -692,13 +700,26 @@ class SpriteRef(BaseModel):
     at registration time (see engine/sprites.py's recolor_sprite) - only
     meaningful on an entities/items entry, since a tile kind has no `.color`
     field to tint toward (content/loader.py's load_sprite_manifest rejects
-    it on a tile_kinds entry)."""
+    it on a tile_kinds entry).
+
+    `backdrop`, when set, names another key in sprites.yaml's tile_kinds
+    section to composite this sprite over, once, at registration time (see
+    engine/sprites.py's composite_sprite_over_terrain) - for an icon-style
+    sprite (a single tree/peak/tower silhouette on an otherwise transparent
+    square, unlike a full-bleed texture like plains/sea/wall) whose
+    transparent background would otherwise render as the console's plain
+    black clear-color. Only meaningful on a tile_kinds or dungeon_entrances
+    entry - entities/items already get this dynamically, per the actual
+    tile they're standing on (see engine/render.py's _resolved_entity_glyph),
+    which content/loader.py's load_sprite_manifest enforces by rejecting
+    `backdrop` on an entities/items entry."""
 
     sheet: str
     name: str | None = None
     col: int | None = Field(default=None, ge=0)
     row: int | None = Field(default=None, ge=0)
     recolor: bool = False
+    backdrop: str | None = None
 
     @model_validator(mode="after")
     def exactly_one_addressing_mode(self) -> "SpriteRef":
@@ -714,14 +735,24 @@ class SpriteRef(BaseModel):
 
 
 class SpriteManifestDef(BaseModel):
-    """The raw shape of data/sprites.yaml: named source sheets, plus three
+    """The raw shape of data/sprites.yaml: named source sheets, plus four
     id-keyed sections mapping a catalog entity id / item id / tile-kind
-    string to a SpriteRef within one of those sheets. Any catalog id or
-    tile kind with no entry here simply has no sprite - engine/render.py
-    falls back to its authored ASCII glyph, so leaving something out is
-    always safe, never a broken reference."""
+    string / dungeon registry id to a SpriteRef within one of those sheets.
+    Any catalog id, tile kind, or dungeon id with no entry here simply has
+    no sprite - engine/render.py falls back to its authored ASCII glyph
+    (or, for a dungeon_entrance cell whose dungeon id has no entry in
+    dungeon_entrances, to tile_kinds' generic dungeon_entrance sprite
+    first - see _resolved_tile_glyph), so leaving something out is always
+    safe, never a broken reference.
+
+    dungeon_entrances is keyed by dungeon registry id, not tile kind -
+    every dungeon_entrance cell on the overworld shares the same
+    TileType, but which dungeon it actually leads to (see
+    GameMap.dungeon_entrances) is what a per-dungeon entrance icon (a
+    house for a town, a tower for a keep) needs to key off instead."""
 
     sheets: dict[str, SpriteSheetDef] = Field(default_factory=dict)
     entities: dict[str, SpriteRef] = Field(default_factory=dict)
     items: dict[str, SpriteRef] = Field(default_factory=dict)
     tile_kinds: dict[str, SpriteRef] = Field(default_factory=dict)
+    dungeon_entrances: dict[str, SpriteRef] = Field(default_factory=dict)

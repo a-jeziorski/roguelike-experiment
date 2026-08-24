@@ -21,6 +21,7 @@ from content.loader import (
 )
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
+    CyclePotionKindAction,
     EscapeAction,
     FireAction,
     FireModeAction,
@@ -341,7 +342,7 @@ def animate_ranged_attacks(
             time.sleep(PROJECTILE_FRAME_SECONDS)
 
         render_all(console, engine)
-        flash_impact(console, cam_x, cam_y, tx, ty)
+        flash_impact(console, engine.game_map, cam_x, cam_y, tx, ty)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 
@@ -361,7 +362,7 @@ def animate_melee_attacks(
 
     for x, y in events:
         render_all(console, engine)
-        flash_impact(console, cam_x, cam_y, x, y)
+        flash_impact(console, engine.game_map, cam_x, cam_y, x, y)
         context.present(console)
         time.sleep(IMPACT_FLASH_SECONDS)
 
@@ -693,7 +694,9 @@ def main() -> int:
             ENCOUNTERS_PATH,
             known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
         )
-        sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
+        sprite_manifest = load_sprite_manifest(
+            SPRITES_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        )
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
@@ -734,6 +737,11 @@ def main() -> int:
                 if isinstance(action, TalkAction):
                     if engine.game_state == "playing":
                         engine.talk_to_adjacent()
+                    continue
+
+                if isinstance(action, CyclePotionKindAction):
+                    if engine.game_state == "playing":
+                        engine.cycle_selected_potion_kind()
                     continue
 
                 if isinstance(action, QuestLogAction):

@@ -124,6 +124,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             range=idef.range,
             key_id=idef.id if idef.is_key else None,
             is_ammo=idef.is_ammo,
+            is_teleport=idef.is_teleport,
             quantity=idef.quantity,
         ),
         description=idef.description,

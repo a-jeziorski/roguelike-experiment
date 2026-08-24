@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 import tcod.los
 
+from engine.entity import potion_kind
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -128,6 +129,24 @@ def _resolved_glyph(fallback_glyph: str, key: str, lookup: "dict[str, int] | Non
     return fallback_glyph
 
 
+def _resolved_tile_glyph(
+    kind: str, x: int, y: int, game_map: "GameMap", sprite_codepoints: "SpriteCodepoints | None"
+) -> str:
+    """The tile-kind counterpart to _resolved_entity_glyph: every kind
+    behaves exactly like _resolved_glyph, except a dungeon_entrance cell
+    prefers a sprite specific to the dungeon it leads to
+    (game_map.dungeon_entrances[(x,y)]) over the generic dungeon_entrance
+    tile-kind sprite - falling back to that generic sprite, then to ASCII,
+    exactly like every other per-cell resolution in this file."""
+    if kind == "dungeon_entrance" and sprite_codepoints is not None:
+        dungeon_id = game_map.dungeon_entrances.get((x, y))
+        codepoint = sprite_codepoints.dungeon_entrances.get(dungeon_id) if dungeon_id else None
+        if codepoint is not None:
+            return chr(codepoint)
+    tile_kinds = sprite_codepoints.tile_kinds if sprite_codepoints is not None else None
+    return _resolved_glyph(TILE_VISUALS[kind]["glyph"], kind, tile_kinds)
+
+
 def render_map(
     console: "Console",
     game_map: "GameMap",
@@ -137,14 +156,13 @@ def render_map(
 ) -> None:
     visible_width = min(VIEWPORT_WIDTH, game_map.width - cam_x)
     visible_height = min(VIEWPORT_HEIGHT, game_map.height - cam_y)
-    tile_kinds = sprite_codepoints.tile_kinds if sprite_codepoints is not None else None
     for sx in range(visible_width):
         x = cam_x + sx
         for sy in range(visible_height):
             y = cam_y + sy
             kind = game_map.kinds[x, y]
             visual = TILE_VISUALS[kind]
-            glyph = _resolved_glyph(visual["glyph"], kind, tile_kinds)
+            glyph = _resolved_tile_glyph(kind, x, y, game_map, sprite_codepoints)
             if game_map.visible[x, y]:
                 console.print(sx, sy, glyph, fg=visual["light"])
             elif game_map.explored[x, y]:
@@ -217,10 +235,10 @@ def render_projectile(console: "Console", cam_x: int, cam_y: int, x: int, y: int
         console.print(sx, sy, glyph, fg=PROJECTILE_FG)
 
 
-def flash_impact(console: "Console", cam_x: int, cam_y: int, x: int, y: int) -> None:
+def flash_impact(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int, x: int, y: int) -> None:
     sx, sy = x - cam_x, y - cam_y
     if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
-        console.rgb[sx, sy]["bg"] = IMPACT_BG
+        _print_highlighted_cell(console, game_map, sx, sy, x, y, IMPACT_BG)
 
 
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
@@ -231,7 +249,9 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     player = engine.player
     fighter = player.fighter
     inventory = player.inventory
-    potions = sum(1 for it in inventory if it.item.heal_amount)
+    healing_potions = sum(1 for it in inventory if potion_kind(it.item) == "healing")
+    teleport_potions = sum(1 for it in inventory if potion_kind(it.item) == "teleport")
+    selected_potion = player.selected_potion_kind
     keys = sum(1 for it in inventory if it.item.key_id)
     ammo = sum(it.item.quantity for it in inventory if it.item.is_ammo)
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
@@ -258,8 +278,13 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         fg=HUD_FG,
         width=width,
     )
+    healing_marker = ">" if selected_potion == "healing" else " "
+    teleport_marker = ">" if selected_potion == "teleport" else " "
     y += console.print(
-        0, y, f"Potions: {potions}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
+        0, y,
+        f"Potions: {healing_marker}Healing {healing_potions} "
+        f"{teleport_marker}Teleport {teleport_potions}  "
+        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
         fg=HUD_FG, width=width,
     )
     if engine.game_state == "dead":
@@ -393,6 +418,45 @@ def render_look_hud(
     return y
 
 
+def _ascii_cell_visual(game_map: "GameMap", x: int, y: int) -> tuple[str, tuple[int, int, int]] | None:
+    """What (x, y) would show under pure-ASCII rendering, ignoring any
+    sprite entirely: the topmost visible entity's glyph/color if any
+    (matching render_entities' own render_priority ordering), else the
+    tile kind's own glyph (light if currently visible, dark if only
+    explored). None if the cell is neither visible nor explored -
+    render_map/render_entities draw nothing there either."""
+    if game_map.visible[x, y]:
+        entities_here = [e for e in game_map.entities if e.x == x and e.y == y]
+        if entities_here:
+            topmost = max(entities_here, key=lambda e: e.render_priority)
+            return topmost.glyph, topmost.color
+        kind = game_map.kinds[x, y]
+        return TILE_VISUALS[kind]["glyph"], TILE_VISUALS[kind]["light"]
+    if game_map.explored[x, y]:
+        kind = game_map.kinds[x, y]
+        return TILE_VISUALS[kind]["glyph"], TILE_VISUALS[kind]["dark"]
+    return None
+
+
+def _print_highlighted_cell(
+    console: "Console", game_map: "GameMap", sx: int, sy: int, x: int, y: int,
+    bg_color: tuple[int, int, int],
+) -> None:
+    """Reverts a single cell to its ASCII glyph before applying a bg
+    highlight - a fully opaque bitmap tile (every mapped sprite is opaque,
+    whether it's plain terrain or an entity composited over its terrain -
+    see engine/sprites.py) would otherwise completely cover any bg color
+    set on top of it, since a Console cell holds only one glyph and tcod
+    draws that glyph's own pixels over the cell's bg, not blended with it.
+    The only three places a background highlight is ever applied - look
+    mode, target mode, and flash_impact - all go through this."""
+    visual = _ascii_cell_visual(game_map, x, y)
+    if visual is not None:
+        glyph, color = visual
+        console.print(sx, sy, glyph, fg=color)
+    console.rgb[sx, sy]["bg"] = bg_color
+
+
 def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, cursor_y: int) -> None:
     """Centers the camera on the cursor rather than the player: look mode's
     cursor can roam anywhere on the map, unlike targeting's range-limited one,
@@ -404,7 +468,9 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
     )
     render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
-    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = CURSOR_BG
+    _print_highlighted_cell(
+        console, engine.game_map, cursor_x - cam_x, cursor_y - cam_y, cursor_x, cursor_y, CURSOR_BG
+    )
 
     hud_y = VIEWPORT_HEIGHT + 1
     log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
@@ -452,8 +518,9 @@ def render_target_frame(
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
-    console.rgb[cursor_x - cam_x, cursor_y - cam_y]["bg"] = (
-        TARGET_VALID_BG if valid else TARGET_INVALID_BG
+    _print_highlighted_cell(
+        console, engine.game_map, cursor_x - cam_x, cursor_y - cam_y, cursor_x, cursor_y,
+        TARGET_VALID_BG if valid else TARGET_INVALID_BG,
     )
 
     hud_y = VIEWPORT_HEIGHT + 1

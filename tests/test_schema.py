@@ -110,6 +110,18 @@ def test_legend_entry_from_item_mapping():
     assert entry.item == "healing_potion"
 
 
+def test_legend_entry_from_entity_mapping_with_a_tile_override():
+    entry = LegendEntry.from_raw({"entity": "villager", "tile": "plains"})
+    assert entry.tile == "plains"
+    assert entry.entity == "villager"
+
+
+def test_legend_entry_from_item_mapping_with_a_tile_override():
+    entry = LegendEntry.from_raw({"item": "healing_potion", "tile": "road"})
+    assert entry.tile == "road"
+    assert entry.item == "healing_potion"
+
+
 def test_legend_entry_from_stairs_up_mapping():
     entry = LegendEntry.from_raw({"stairs_up": "level_01"})
     assert entry.tile == "stairs_up"
@@ -223,6 +235,19 @@ def test_item_def_accepts_ammo_with_quantity():
     )
     assert arrows.is_ammo is True
     assert arrows.quantity == 5
+
+
+def test_item_def_is_teleport_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.is_teleport is False
+
+
+def test_item_def_accepts_is_teleport():
+    potion = ItemDef(
+        id="teleportation_potion", name="Teleportation Potion", glyph="?",
+        color=(1, 2, 3), is_teleport=True,
+    )
+    assert potion.is_teleport is True
 
 
 def test_item_def_gold_amount_defaults_none():

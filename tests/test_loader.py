@@ -33,7 +33,7 @@ def test_load_catalog_loads_real_data():
 
 def test_load_catalog_real_shopkeeper_has_shop_inventory():
     catalog = load_catalog()
-    assert catalog.entities["shopkeeper"].shop_inventory == ["healing_potion"]
+    assert catalog.entities["shopkeeper"].shop_inventory == ["healing_potion", "teleportation_potion"]
 
 
 def test_load_catalog_rejects_shop_inventory_referencing_unknown_item(tmp_path):
@@ -1081,6 +1081,209 @@ def test_load_sprite_manifest_rejects_recolor_on_a_tile_kind(tmp_path):
     )
 
     with pytest.raises(ContentValidationError, match="recolor is only meaningful for entities/items"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_accepts_a_valid_dungeon_entrances_entry(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "dungeon_entrances:\n"
+        "  prison_tower: {sheet: kenney, col: 50, row: 10}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog, known_dungeon_ids={"prison_tower"})
+
+    assert manifest.dungeon_entrances["prison_tower"].col == 50
+
+
+def test_load_sprite_manifest_rejects_an_unknown_dungeon_id(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "dungeon_entrances:\n"
+        "  nonexistent_dungeon: {sheet: kenney, col: 50, row: 10}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="unknown dungeon 'nonexistent_dungeon'"):
+        load_sprite_manifest(path, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_sprite_manifest_skips_dungeon_id_check_when_known_dungeon_ids_is_none(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "dungeon_entrances:\n"
+        "  nonexistent_dungeon: {sheet: kenney, col: 50, row: 10}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)  # known_dungeon_ids defaults to None
+
+    assert "nonexistent_dungeon" in manifest.dungeon_entrances
+
+
+def test_load_sprite_manifest_rejects_recolor_on_a_dungeon_entrance(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "dungeon_entrances:\n"
+        "  prison_tower: {sheet: kenney, col: 50, row: 10, recolor: true}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="recolor is only meaningful for entities/items"):
+        load_sprite_manifest(path, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_sprite_manifest_accepts_a_valid_backdrop(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  plains: {sheet: kenney, col: 5, row: 0}\n"
+        "  forest: {sheet: kenney, col: 23, row: 9, backdrop: plains}\n"
+        "dungeon_entrances:\n"
+        "  prison_tower: {sheet: kenney, col: 50, row: 10, backdrop: plains}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog, known_dungeon_ids={"prison_tower"})
+
+    assert manifest.tile_kinds["forest"].backdrop == "plains"
+    assert manifest.dungeon_entrances["prison_tower"].backdrop == "plains"
+
+
+def test_load_sprite_manifest_rejects_backdrop_on_an_entity(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  plains: {sheet: kenney, col: 5, row: 0}\n"
+        "entities:\n"
+        "  rat: {sheet: kenney, col: 0, row: 0, backdrop: plains}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="backdrop is only meaningful for tile_kinds"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_backdrop_on_an_item(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  plains: {sheet: kenney, col: 5, row: 0}\n"
+        "items:\n"
+        "  healing_potion: {sheet: kenney, col: 0, row: 0, backdrop: plains}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="backdrop is only meaningful for tile_kinds"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_a_backdrop_that_is_not_a_tile_kind(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  forest: {sheet: kenney, col: 23, row: 9, backdrop: nonexistent}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="is not a tile_kinds entry"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_a_tile_kind_backdropping_itself(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  forest: {sheet: kenney, col: 23, row: 9, backdrop: forest}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="backdrop can't reference itself"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_chained_backdrops(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  plains: {sheet: kenney, col: 5, row: 0}\n"
+        "  forest: {sheet: kenney, col: 23, row: 9, backdrop: plains}\n"
+        "  landmark: {sheet: kenney, col: 51, row: 11, backdrop: forest}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="chaining isn't supported"):
         load_sprite_manifest(path, catalog)
 
 

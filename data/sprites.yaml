@@ -15,6 +15,15 @@
 # reuse one base sprite with no distinct art of their own, so they still
 # read as visually distinct from each other.
 #
+# `backdrop: <tile_kind>` composites an icon-style tile_kinds/
+# dungeon_entrances sprite (a single tree/peak/tower on an otherwise
+# transparent square, unlike a full-bleed texture like plains/sea/wall)
+# over that tile_kinds entry once, at registration time - otherwise its
+# transparent background renders as the console's plain black. Only
+# meaningful on tile_kinds/dungeon_entrances (entities/items already get
+# this dynamically, over whatever they're actually standing on); the
+# referenced tile_kind must itself have no backdrop (no chaining).
+#
 # Sources (see assets/tilesets/LICENSE_*.txt): RLTiles (public domain,
 # https://github.com/statico/rltiles) for most creatures/items, dungeon
 # features (wall/floor/door/stairs), and the player; Kenney's Roguelike/RPG
@@ -69,15 +78,35 @@ entities:
   bandit_captain:          {sheet: rltiles, name: captain}
   drowned_wretch:          {sheet: rltiles, name: human_zombie, recolor: true}
   stone_sentinel:          {sheet: rltiles, name: stone_golem}
+  cave_spider:             {sheet: rltiles, name: cave_spider}
+  giant_rat:               {sheet: rltiles, name: giant_rat}
+  wolf:                    {sheet: rltiles, name: wolf}
+  kobold:                  {sheet: rltiles, name: kobold}
+  kobold_shaman:           {sheet: rltiles, name: kobold_shaman}
+  orc:                     {sheet: rltiles, name: orc}
+  hobgoblin:               {sheet: rltiles, name: hobgoblin}
+  wraith:                  {sheet: rltiles, name: wraith}
+  gray_ooze:               {sheet: rltiles, name: gray_ooze}
+  giant_spider:            {sheet: rltiles, name: giant_spider}
 
 items:
-  healing_potion:  {sheet: rltiles, name: misc_bottle, recolor: true}
+  healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
+  teleportation_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
+  broadsword:            {sheet: rltiles, name: broadsword}
+  battle_axe:            {sheet: rltiles, name: battle_axe}
+  war_hammer:            {sheet: rltiles, name: war_hammer}
   rusty_key:       {sheet: rltiles, name: skeleton_key}
   leather_armor:   {sheet: rltiles, name: leather_armor}
   bone_plate:      {sheet: rltiles, name: plate_mail}
+  studded_leather_armor: {sheet: rltiles, name: studded_leather_armor}
+  chain_mail:            {sheet: rltiles, name: chain_mail}
+  banded_mail:           {sheet: rltiles, name: banded_mail}
   hunting_bow:     {sheet: rltiles, name: bow}
+  orcish_bow:            {sheet: rltiles, name: orcish_bow}
+  crossbow:              {sheet: rltiles, name: crossbow}
+  elder_bow:             {sheet: rltiles, name: elven_bow}
   arrows:          {sheet: rltiles, name: arrow}
   gold_pile:       {sheet: rltiles, name: gold}
   gold_stash:      {sheet: rltiles, name: gold_piece}
@@ -87,17 +116,32 @@ items:
 tile_kinds:
   wall:             {sheet: rltiles, name: dngn_rock_wall_00}
   floor:            {sheet: rltiles, name: floor_of_a_room}
-  stairs_down:      {sheet: rltiles, name: staircase_down}
-  stairs_up:        {sheet: rltiles, name: staircase_up}
+  stairs_down:      {sheet: rltiles, name: staircase_down, backdrop: floor}
+  stairs_up:        {sheet: rltiles, name: staircase_up, backdrop: floor}
   door:             {sheet: rltiles, name: closed_door_h}
   sea:              {sheet: kenney_roguelike, col: 0,  row: 2}
   plains:           {sheet: kenney_roguelike, col: 5,  row: 0}
   road:             {sheet: kenney_roguelike, col: 6,  row: 0}
-  forest:           {sheet: kenney_roguelike, col: 23, row: 9}
-  landmark:         {sheet: kenney_roguelike, col: 51, row: 11}
-  town:             {sheet: kenney_tiny_town, col: 6, row: 5}
-  dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6}
-  # mountain: intentionally omitted - too important for a rough stand-in;
-  # the user will hand-pick a proper sprite later. Add a `mountain: {...}`
-  # line here whenever that's chosen - zero code change required, falls
-  # back to '^' until then.
+  forest:           {sheet: kenney_roguelike, col: 23, row: 9, backdrop: plains}
+  landmark:         {sheet: kenney_roguelike, col: 51, row: 11, backdrop: plains}
+  town:             {sheet: kenney_tiny_town, col: 7, row: 5}
+  dungeon_entrance: {sheet: kenney_tiny_town, col: 2, row: 6, backdrop: plains}
+  mountain:         {sheet: kenney_roguelike, col: 54, row: 21, backdrop: plains}
+
+# Per-dungeon overworld entrance icons - keyed by dungeon registry id, not
+# tile kind, since every dungeon_entrance cell shares one TileType but
+# which dungeon it actually leads to (game_map.dungeon_entrances) is what
+# picks the icon here. A dungeon id with no entry falls back to
+# tile_kinds' generic dungeon_entrance archway above, then to ASCII - see
+# engine/render.py's _resolved_tile_glyph.
+dungeon_entrances:
+  prison_tower: {sheet: kenney_roguelike, col: 50, row: 10, backdrop: plains}   # a grey stone keep/tower icon
+  millhaven:    {sheet: kenney_tiny_town, col: 7, row: 5}     # the same roof-peak used for `town` above
+  wayford:      {sheet: kenney_tiny_town, col: 7, row: 5}
+  stonebridge:  {sheet: kenney_tiny_town, col: 7, row: 5}
+  saltmarsh:    {sheet: kenney_tiny_town, col: 7, row: 5}
+  # forgotten_ruins/elder_cairn/broken_watch/sunken_mine/drowned_waystation:
+  # intentionally omitted - no sprite in either sheet fit well enough to be
+  # worth forcing (same principle as mountain, above, before it was
+  # hand-picked). Falls back to the generic archway. Add a line here
+  # whenever a fitting one is found - zero code change required.

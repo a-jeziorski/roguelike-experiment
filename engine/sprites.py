@@ -22,6 +22,14 @@ terrain that should be visible there. build_sprite_codepoints
 precomputes every (entity/item, tile_kind) composite once at startup so
 render.py never needs live Tileset access during play.
 
+The same problem also hits an icon-style tile_kinds/dungeon_entrances
+sprite directly (a single tree/peak/tower silhouette on an otherwise
+transparent square, unlike a full-bleed texture like plains/sea/wall) -
+there's no "what's it standing on" question to answer dynamically for a
+tile kind, so SpriteRef.backdrop names another tile_kinds entry to
+composite it over once, at registration time, baked permanently into the
+same codepoint - no new fallback logic, no render.py change needed.
+
 Split for testability: recolor_sprite(), composite_sprite_over_terrain(),
 and build_sprite_codepoints() are pure functions over already-decoded PIL
 Images / numpy arrays - no file I/O - so tests can exercise them with tiny
@@ -76,13 +84,21 @@ class SpriteCodepoints:
     terrain instead of a plain black square. Missing a (actor_id, tile_kind)
     pair - e.g. the tile kind has no sprite mapped at all - falls back to
     the actor's plain codepoint above; see engine/render.py's
-    _resolved_entity_glyph for the full fallback chain."""
+    _resolved_entity_glyph for the full fallback chain.
+
+    dungeon_entrances holds a third kind: a dungeon registry id -> the
+    codepoint for that specific dungeon's own overworld entrance icon (a
+    house for a town, a tower for a keep) - a complete standalone tile
+    image, never composited over anything, same as tile_kinds. A dungeon
+    id missing here falls back to tile_kinds' generic dungeon_entrance
+    sprite, then to ASCII - see engine/render.py's _resolved_tile_glyph."""
 
     entities: dict[str, int] = field(default_factory=dict)
     items: dict[str, int] = field(default_factory=dict)
     tile_kinds: dict[str, int] = field(default_factory=dict)
     entities_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
     items_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
+    dungeon_entrances: dict[str, int] = field(default_factory=dict)
 
 
 def _is_skin_tone(h: float, s: float) -> bool:
@@ -184,8 +200,11 @@ def build_sprite_codepoints(
     EntityDef/ItemDef in catalog - no new authoring), registers it into
     `tileset` at a fresh sequential PUA codepoint, and returns the lookup
     render.py needs. Deterministic assignment order (entities, then items,
-    then tile_kinds, each sorted by key) so re-running with the same
-    manifest always assigns the same codepoints.
+    then tile_kinds, then dungeon_entrances, each sorted by key) so
+    re-running with the same manifest always assigns the same codepoints.
+    dungeon_entrances is registered the same way as tile_kinds (no color/
+    recolor, a complete standalone tile image) - it's keyed by dungeon id
+    rather than tile kind, but is otherwise just another base-pass entry.
 
     A second pass then registers every (entity/item, tile_kind) composite
     (see composite_sprite_over_terrain) for every actor and tile kind that
@@ -238,6 +257,33 @@ def build_sprite_codepoints(
         codepoint, rgba = _register(manifest.tile_kinds[kind], None)
         result.tile_kinds[kind] = codepoint
         tile_pixels[kind] = rgba
+    dungeon_entrance_pixels: dict[str, np.ndarray] = {}
+    for dungeon_id in sorted(manifest.dungeon_entrances):
+        codepoint, rgba = _register(manifest.dungeon_entrances[dungeon_id], None)
+        result.dungeon_entrances[dungeon_id] = codepoint
+        dungeon_entrance_pixels[dungeon_id] = rgba
+
+    # Backdrop pass: an icon-style tile_kinds/dungeon_entrances sprite (a
+    # single tree/peak/tower silhouette, unlike a full-bleed texture like
+    # plains/sea/wall) has its own transparent background composited over
+    # its declared backdrop tile, once, here - baked into the SAME
+    # already-registered codepoint (no new codepoint, no render.py change
+    # needed). Runs before the entity/item composite pass below so an
+    # entity standing on a backdrop-fixed tile kind (e.g. stairs_down)
+    # composites against the fixed version, not the raw transparent one.
+    for kind in sorted(manifest.tile_kinds):
+        backdrop = manifest.tile_kinds[kind].backdrop
+        if backdrop is None:
+            continue
+        fixed = composite_sprite_over_terrain(tile_pixels[kind], tile_pixels[backdrop])
+        tileset[result.tile_kinds[kind]] = fixed
+        tile_pixels[kind] = fixed
+    for dungeon_id in sorted(manifest.dungeon_entrances):
+        backdrop = manifest.dungeon_entrances[dungeon_id].backdrop
+        if backdrop is None:
+            continue
+        fixed = composite_sprite_over_terrain(dungeon_entrance_pixels[dungeon_id], tile_pixels[backdrop])
+        tileset[result.dungeon_entrances[dungeon_id]] = fixed
 
     for entity_id in sorted(entity_pixels):
         for kind in sorted(tile_pixels):
