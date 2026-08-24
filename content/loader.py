@@ -31,9 +31,10 @@ from content.schema import (
 )
 
 # Every TileType except player_start actually appears in a runtime GameMap -
-# build_game_map always rewrites a player_start cell to "floor" (see
-# engine/game_map.py), so it never exists as a live kind for a sprite to
-# apply to. This is the valid key set for sprites.yaml's tile_kinds section.
+# build_game_map always rewrites a player_start cell to that level's
+# player_start_tile (see engine/game_map.py), so player_start itself never
+# exists as a live kind for a sprite to apply to. This is the valid key set
+# for sprites.yaml's tile_kinds section.
 _VALID_SPRITE_TILE_KINDS = set(get_args(TileType)) - {"player_start"}
 
 # The player Entity's entity_id (see engine/game_map.py's build_game_map) -
@@ -128,6 +129,7 @@ class ParsedLevel:
     height: int
     tiles: list[list[str]]
     player_start: tuple[int, int]
+    player_start_tile: str
     entity_spawns: list[EntitySpawn]
     item_spawns: list[ItemSpawn]
     stairs: list[StairsSpawn]
@@ -691,6 +693,7 @@ def load_level(
         height=height,
         tiles=tiles,
         player_start=player_starts[0],
+        player_start_tile=level.player_start_tile,
         entity_spawns=entity_spawns,
         item_spawns=item_spawns,
         stairs=stairs,
@@ -796,6 +799,7 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
         height=height,
         tiles=tiles,
         player_start=player_starts[0],
+        player_start_tile=level.player_start_tile,
         entity_spawns=[],
         item_spawns=[],
         stairs=[],

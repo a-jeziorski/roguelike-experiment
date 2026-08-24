@@ -3,6 +3,7 @@ name: The Narrows
 
 open_boundary: true
 open_boundary_message: "You break off and put the trees behind you, back toward the open road."
+player_start_tile: plains
 
 map: |
   FFFFFFFFFFFFFFFFF

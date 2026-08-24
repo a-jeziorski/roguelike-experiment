@@ -298,6 +298,30 @@ def test_level_def_accepts_an_explicit_open_boundary():
     assert level.open_boundary_message == "You break off into the trees."
 
 
+def test_level_def_player_start_tile_defaults_to_floor():
+    level = LevelDef(id="l1", name="Test", map="#@#\n", legend={"#": "wall", "@": "player_start"})
+    assert level.player_start_tile == "floor"
+
+
+def test_level_def_accepts_a_walkable_player_start_tile_override():
+    level = LevelDef(
+        id="l1", name="Test", map="#@#\n", legend={"#": "wall", "@": "player_start"},
+        player_start_tile="plains",
+    )
+    assert level.player_start_tile == "plains"
+
+
+@pytest.mark.parametrize(
+    "kind", ["wall", "door", "mountain", "sea", "stairs_down", "stairs_up", "dungeon_entrance", "player_start"]
+)
+def test_level_def_rejects_an_unwalkable_or_special_purpose_player_start_tile(kind):
+    with pytest.raises(ValidationError):
+        LevelDef(
+            id="l1", name="Test", map="#@#\n", legend={"#": "wall", "@": "player_start"},
+            player_start_tile=kind,
+        )
+
+
 def test_sprite_sheet_def_grid_sheet_requires_columns_and_rows():
     with pytest.raises(ValidationError, match="must set both 'columns' and 'rows'"):
         SpriteSheetDef(image="sheet.png", tile_size=16)

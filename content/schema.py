@@ -479,6 +479,18 @@ class LegendEntry(BaseModel):
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 
 
+# player_start_tile kinds that would be nonsensical as "the ambient terrain
+# under the player's starting square" - either not a real terrain kind
+# (player_start itself), or a special-purpose kind whose meaning depends on
+# being a distinct, singular thing (a stairway, a dungeon_entrance).
+# Anything impassable (wall/mountain/sea/door, per TILE_PASSABILITY) is
+# rejected too, checked separately below since that's already the single
+# source of truth for walkability.
+_INVALID_PLAYER_START_TILE_KINDS = {
+    "player_start", "stairs_down", "stairs_up", "dungeon_entrance",
+}
+
+
 class LevelDef(BaseModel):
     """A hand-authored level file: an ASCII map plus a legend mapping symbols to
     tiles/entities/items. Stairway destinations live per-symbol in the legend
@@ -489,6 +501,14 @@ class LevelDef(BaseModel):
     name: str
     map: str
     legend: dict[str, LegendEntry]
+    # The tile kind rendered under the player's starting square once the map
+    # is built (see engine/game_map.py's build_game_map, which never lets a
+    # live "player_start" kind reach the GameMap - it's always substituted
+    # for something walkable). Defaults to "floor" for backward compatibility;
+    # override it when the starting square sits amid non-floor terrain (e.g.
+    # "plains" for an outdoor clearing/town square, "road" for a gate) so it
+    # doesn't render as a mismatched patch the instant the player steps off it.
+    player_start_tile: TileType = "floor"
     # True makes every edge of this level's map a valid way to leave (see
     # engine/actions.py's MovementAction, engine/engine.py's
     # on_player_reach_map_edge) - always returns to the overworld, the
@@ -510,6 +530,18 @@ class LevelDef(BaseModel):
     @classmethod
     def normalize_legend(cls, v: dict) -> dict[str, LegendEntry]:
         return {symbol: LegendEntry.from_raw(raw) for symbol, raw in v.items()}
+
+    @field_validator("player_start_tile")
+    @classmethod
+    def validate_player_start_tile(cls, v: str) -> str:
+        walkable, _ = TILE_PASSABILITY.get(v, (True, True))
+        if not walkable or v in _INVALID_PLAYER_START_TILE_KINDS:
+            raise ValueError(
+                f"player_start_tile '{v}' must be a walkable ambient-terrain kind "
+                "(e.g. floor/forest/road/plains/town/landmark) - not a wall/door/"
+                "stairway/dungeon_entrance/player_start kind"
+            )
+        return v
 
 
 class DungeonDef(BaseModel):

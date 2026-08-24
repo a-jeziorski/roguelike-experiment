@@ -277,6 +277,36 @@ def test_open_boundary_with_a_fully_walled_perimeter_is_rejected(tmp_path):
         load_level(level_path, catalog, require_stairs_down=False)
 
 
+def test_load_level_player_start_tile_defaults_to_floor():
+    catalog = load_catalog()
+    level = load_level(FIXTURES_DIR / "only_stairs_up.lvl", catalog, require_stairs_down=False)
+    assert level.player_start_tile == "floor"
+
+
+def test_load_level_carries_through_an_explicit_player_start_tile(tmp_path):
+    level_path = tmp_path / "custom_start.lvl"
+    level_path.write_text(
+        "id: custom_start\n"
+        "name: Test Level\n"
+        "player_start_tile: plains\n"
+        "open_boundary: true\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@,\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ",": plains\n'
+        '  "@": player_start\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog, require_stairs_down=False)
+
+    assert level.player_start_tile == "plains"
+
+
 def test_dangling_stairs_reference_is_rejected_when_known_ids_given():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="level_nonexistent"):

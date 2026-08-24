@@ -1,6 +1,8 @@
 id: level_01
 name: Saltmarsh Shore
 
+player_start_tile: plains
+
 map: |
   ##################
   #x@,,,,,,,,,,,,~~~

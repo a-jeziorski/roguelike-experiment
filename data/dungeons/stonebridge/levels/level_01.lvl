@@ -1,6 +1,8 @@
 id: level_01
 name: Stonebridge Ward
 
+player_start_tile: road
+
 map: |
   #######################
   #########x@############
