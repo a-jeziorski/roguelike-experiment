@@ -134,6 +134,8 @@ class ParsedLevel:
     doors: list[DoorSpawn]
     dungeon_entrances: list[DungeonEntranceSpawn]
     tile_descriptions: list[TileDescriptionSpawn]
+    open_boundary: bool
+    open_boundary_message: str
 
 
 def _load_yaml(path: Path) -> dict:
@@ -644,11 +646,23 @@ def load_level(
     if require_stairs_down:
         if not any(s.kind == "stairs_down" for s in stairs):
             errors.append("map must contain at least one stairs_down tile, found 0")
-    elif not stairs:
+    elif not stairs and not level.open_boundary:
         errors.append(
             "map has requires_stairs_down: false but contains no stairway "
-            "(stairs_up or stairs_down) - there would be no way to leave"
+            "(stairs_up or stairs_down) and open_boundary isn't set - "
+            "there would be no way to leave"
         )
+
+    if level.open_boundary:
+        edge_cells = (
+            [(x, 0) for x in range(width)] + [(x, height - 1) for x in range(width)]
+            + [(0, y) for y in range(height)] + [(width - 1, y) for y in range(height)]
+        )
+        if not any(TILE_PASSABILITY.get(tiles[y][x], (True, True))[0] for x, y in edge_cells):
+            errors.append(
+                "open_boundary is set but no perimeter tile is walkable - "
+                "there would be no way to ever reach the edge and leave"
+            )
 
     next_level_targets: dict[str, list[tuple[int, int]]] = {}
     for s in stairs:
@@ -683,6 +697,8 @@ def load_level(
         doors=doors,
         dungeon_entrances=[],
         tile_descriptions=tile_descriptions,
+        open_boundary=level.open_boundary,
+        open_boundary_message=level.open_boundary_message,
     )
 
 
@@ -786,6 +802,8 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
         doors=[],
         dungeon_entrances=dungeon_entrances,
         tile_descriptions=tile_descriptions,
+        open_boundary=False,
+        open_boundary_message="",
     )
 
 

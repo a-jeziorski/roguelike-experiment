@@ -1040,6 +1040,61 @@ def test_reaching_terminal_stairs_up_also_signals_wants_overworld():
     assert "retreat" in engine.message_log.messages[-1]
 
 
+def test_stepping_off_an_open_boundary_map_edge_signals_wants_overworld():
+    game_map = make_open_map(3, 3)
+    game_map.open_boundary = True
+    game_map.open_boundary_message = "You break off into the trees."
+    player = make_player(0, 1)  # already on the west edge
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(-1, 0))  # step further west, off the grid
+
+    assert engine.wants_overworld is True
+    assert engine.game_state == "playing"
+    assert engine.message_log.messages[-1] == "You break off into the trees."
+    assert (player.x, player.y) == (0, 1)  # left in place, not moved out of bounds
+
+
+def test_stepping_off_an_open_boundary_map_edge_with_no_custom_message_uses_the_default():
+    game_map = make_open_map(3, 3)
+    game_map.open_boundary = True
+    player = make_player(0, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(-1, 0))
+
+    assert engine.wants_overworld is True
+    assert engine.message_log.messages[-1] == "You walk past the edge of the map, back onto open ground."
+
+
+def test_stepping_off_a_non_open_boundary_map_edge_is_silently_blocked():
+    game_map = make_open_map(3, 3)  # open_boundary left at its default (False)
+    player = make_player(0, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(-1, 0))
+
+    assert engine.wants_overworld is False
+    assert (player.x, player.y) == (0, 1)
+
+
+def test_monster_stepping_off_an_open_boundary_map_edge_is_blocked_and_never_transitions():
+    game_map = make_open_map(3, 3)
+    game_map.open_boundary = True
+    player = make_player(1, 1)
+    monster = make_monster(0, 1, hp=10, ai=None)  # already on the west edge
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    BumpAction(-1, 0).perform(engine, monster)
+
+    assert engine.wants_overworld is False
+    assert (monster.x, monster.y) == (0, 1)
+
+
 def test_descending_stairs_swaps_level_and_preserves_player():
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)

@@ -295,6 +295,21 @@ def test_level_def_normalizes_legend():
     assert level.legend["@"].tile == "player_start"
 
 
+def test_level_def_open_boundary_defaults_to_false():
+    level = LevelDef(id="l1", name="Test", map="#@#\n", legend={"#": "wall", "@": "player_start"})
+    assert level.open_boundary is False
+    assert level.open_boundary_message == ""
+
+
+def test_level_def_accepts_an_explicit_open_boundary():
+    level = LevelDef(
+        id="l1", name="Test", map="#@#\n", legend={"#": "wall", "@": "player_start"},
+        open_boundary=True, open_boundary_message="You break off into the trees.",
+    )
+    assert level.open_boundary is True
+    assert level.open_boundary_message == "You break off into the trees."
+
+
 def test_sprite_sheet_def_grid_sheet_requires_columns_and_rows():
     with pytest.raises(ValidationError, match="must set both 'columns' and 'rows'"):
         SpriteSheetDef(image="sheet.png", tile_size=16)

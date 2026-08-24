@@ -78,6 +78,9 @@ def summarize(level) -> str:
         f"size: {level.width}x{level.height}",
         f"player_start: {level.player_start}",
     ]
+    if level.open_boundary:
+        lines.append("open_boundary: true (leave from any map edge)")
+
     if level.stairs:
         lines.append("stairways:")
         for stairs in level.stairs:

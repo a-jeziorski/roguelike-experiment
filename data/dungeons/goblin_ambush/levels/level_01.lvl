@@ -1,24 +1,27 @@
 id: level_01
 name: The Narrows
 
+open_boundary: true
+open_boundary_message: "You break off and put the trees behind you, back toward the open road."
+
 map: |
-  #################
-  #,,,,,,,,,,,,,,,#
-  #,,,,g,,,,,g,,,,#
-  #,,,,,,,g,,,,,,,#
-  #,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#
-  ########,########
-  #,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#
-  #,,,,,,x@,,,,,,,#
-  #################
+  FFFFFFFFFFFFFFFFF
+  F,,,,,,,,,,,,,,,F
+  F,,,,g,,,,,g,,,,F
+  F,,,,,,,g,,,,,,,F
+  F,,,,,,,,,,,,,,,F
+  F,,,,,,,,,,,,,,,F
+  F#######,#######F
+  F,,,,,,,,,,,,,,,F
+  F,,,,,,,,,,,,,,,F
+  F,,,,,,,,,,,,,,,F
+  F,,,,,,,@,,,,,,,F
+  F,,,,,,,,,,,,,,,F
+  FFFFFFFFFFFFFFFFF
 
 legend:
+  "F": forest
   "#": { tile: wall, description: "Felled trees, dragged in and piled deliberately - not natural deadfall. Whoever did this wanted exactly one way through." }
   ",": plains
   "@": player_start
-  "x": { stairs_up: null, description: "Open ground back toward the road - nothing stopping you from breaking off here." }
   "g": { entity: goblin }

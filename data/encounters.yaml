@@ -9,7 +9,9 @@
 # per run (QuestLog.triggered_encounter_ids). encounter_dungeon_id must
 # name a real data/dungeons/<id>/ entry that has no overworld
 # dungeon_entrance tile pointing to it - it's only ever reachable through
-# this trigger.
+# this trigger. encounter_message (optional) is logged the moment the
+# encounter actually fires, explaining to the player why they were just
+# pulled off the overworld.
 
 warning_ambush:
   trigger_dungeon_id: millhaven
@@ -17,3 +19,4 @@ warning_ambush:
   gate_quest_status: in_progress
   encounter_dungeon_id: goblin_ambush
   delay_hours: 3
+  encounter_message: "Goblins break from the treeline ahead - they were waiting for you, not just anyone on this road."

@@ -153,6 +153,10 @@ class MovementAction(Action):
             if entity is engine.player:
                 engine.message_log.add(f"You use the {matching_key.name} to unlock the door.")
 
+        if not engine.game_map.in_bounds(dest_x, dest_y):
+            if entity is engine.player and engine.game_map.open_boundary:
+                engine.on_player_reach_map_edge()
+            return
         if not engine.game_map.is_walkable(dest_x, dest_y):
             return
         if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
