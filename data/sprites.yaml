@@ -90,6 +90,7 @@ entities:
   wraith:                  {sheet: rltiles, name: wraith}
   gray_ooze:               {sheet: rltiles, name: gray_ooze}
   giant_spider:            {sheet: rltiles, name: giant_spider}
+  saltmarsh_witch:         {sheet: rltiles, name: priestess}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}

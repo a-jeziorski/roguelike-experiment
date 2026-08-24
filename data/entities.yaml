@@ -208,6 +208,19 @@ wayford_provisioner:
   dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
   shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor]
 
+saltmarsh_witch:
+  name: Witch
+  glyph: W
+  color: [210, 175, 90]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Brews potions for the townsfolk. They tolerate her eccentricity in exchange.
+  dialogue: Step right up deary. Have I got brews for you!
+  shop_inventory: [healing_potion, teleportation_potion]
+
 saltmarsh_elder:
   name: Elder
   glyph: E

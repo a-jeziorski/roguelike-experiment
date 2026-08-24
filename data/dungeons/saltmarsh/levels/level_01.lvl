@@ -11,9 +11,9 @@ map: |
   #,,,,,.,,,,,E,,~~~
   #,,,1.,,##,,,,,~~~
   #,,,,.,,##,2,,,~~~
-  #,,,,.,,,,,,,,.~~~
-  #,,,,.,,,,!,3,.~~~
-  #,,,,,,,,,,,,,.~~~
+  #,,,#.#,,,,,,,.~~~
+  #,,,#W#,,,!,3,.~~~
+  #,,,###,,,,,,,.~~~
   #,,,,,,,,,,,,,...~
   ##################
 
@@ -28,4 +28,5 @@ legend:
   "1": { entity: villager, tile: plains, dialogue: "Nets won't mend themselves. Neither will anything else out here, come to that." }
   "2": { entity: villager, tile: plains, dialogue: "Tide's been strange this season. Nothing you'd call wrong, exactly - just strange.", flag_dialogue: [{ flag: wayford_razed, line: "Word came down the coast road with a trader - a whole town gone, inland. Makes this stretch of nowhere feel like the safer bet, some days." }] }
   "3": { entity: villager, tile: plains, dialogue: "Drying racks fill faster than we can salt what's on them. Not the worst problem to have." }
+  "W": { entity: saltmarsh_witch, tile: road }
   "!": { item: healing_potion, tile: plains }
