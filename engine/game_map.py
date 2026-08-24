@@ -188,6 +188,11 @@ def build_game_map(
             stationary=edef.stationary,
             description=edef.description,
             dialogue=spawn.dialogue or edef.dialogue,
+            # No "or edef.flag_dialogue" fallback (unlike dialogue above) -
+            # deliberately spawn-only, since a world-flag reaction is about
+            # this specific placement, not a generic trait of the monster/
+            # NPC type (EntityDef has no flag_dialogue field at all).
+            flag_dialogue=spawn.flag_dialogue,
             shop_inventory=edef.shop_inventory,
             entity_id=edef.id,
         )

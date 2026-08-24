@@ -448,10 +448,11 @@ class Engine:
         the sole call site is _check_quest_deadlines, on_fail's only
         trigger. destroy_dungeon_id defers to destroy_dungeon (already
         idempotent, so two quests naming the same dungeon in one tick is
-        safe); set_flag just records a name in quest_log.world_flags,
-        inert until a later milestone gives content a way to read it. The
-        two kinds don't interact, so list order has no observable effect
-        today - kept anyway for a future consumer that might care."""
+        safe); set_flag just records a name in quest_log.world_flags, read
+        back by Entity.flag_dialogue/talk_to_adjacent (see
+        content.schema.FlagDialogue). The two kinds don't interact, so
+        list order has no observable effect today - kept anyway for a
+        future consumer that might care."""
         for consequence in quest.on_fail:
             if consequence.destroy_dungeon_id is not None:
                 self.destroy_dungeon(consequence.destroy_dungeon_id)
@@ -624,8 +625,17 @@ class Engine:
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
             return
+        # A world-flag reaction takes priority over followup_dialogue: it
+        # means something happened in the world that supersedes whatever
+        # per-quest thank-you line would otherwise show (see
+        # content.schema.FlagDialogue, docs/content_design_process.md §0k).
+        flag_line = next(
+            (fd.line for fd in target.flag_dialogue if fd.flag in self.quest_log.world_flags),
+            None,
+        )
         line = (
-            self.quest_log.followup_dialogue(target.entity_id)
+            flag_line
+            or self.quest_log.followup_dialogue(target.entity_id)
             or target.dialogue
             or _DEFAULT_TALK_LINE
         )

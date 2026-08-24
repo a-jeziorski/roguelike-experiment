@@ -179,10 +179,8 @@ class WorldConsequence(BaseModel):
     # this at content-load time).
     destroy_dungeon_id: str | None = None
     # Records this name in QuestLog.world_flags, permanently for the rest
-    # of the run - a bare fact ("this happened") with no reader yet;
-    # nothing branches on world_flags today, that's a later milestone. Not
-    # cross-referenced against any registry of known flag names - there is
-    # no such registry yet, since nothing consumes them.
+    # of the run - see FlagDialogue for the first (and so far only) thing
+    # that reads world_flags back.
     set_flag: str | None = None
 
     @model_validator(mode="after")
@@ -430,6 +428,21 @@ class EncounterDef(BaseModel):
     encounter_message: str = ""
 
 
+class FlagDialogue(BaseModel):
+    """One line an `{entity: ...}` legend spawn says instead of its normal
+    dialogue once a named world flag is set (see QuestLog.world_flags,
+    WorldConsequence.set_flag, Engine.talk_to_adjacent). Both fields are
+    required - unlike WorldConsequence there's no "exactly one of"
+    ambiguity, a FlagDialogue only ever does one thing.
+
+    LegendEntry.flag_dialogue is a *list* so a single spawn can react to
+    more than one possible world outcome; checked in author list order,
+    first match wins - same "list, order matters" shape as on_fail."""
+
+    flag: str
+    line: str
+
+
 class LegendEntry(BaseModel):
     """A normalized legend entry: what tile a symbol represents, and optionally
     which entity/item spawns there, or which level a stairway leads to.
@@ -480,6 +493,17 @@ class LegendEntry(BaseModel):
     things built before the Sundering."} gives this one villager a unique
     line; `description` here would instead override what look-mode says
     about the ground they're standing on.
+
+    An `{entity: ...}` mapping may also carry `flag_dialogue` - a list of
+    {flag: <name>, line: <text>} entries (see FlagDialogue). If <name> is
+    in QuestLog.world_flags when the player talks to this spawn, <text> is
+    shown instead of both this entry's own `dialogue` and any active
+    QuestLog.followup_dialogue line (see Engine.talk_to_adjacent) - a
+    world-state reaction takes priority over per-spawn or per-quest text,
+    since it means something happened that supersedes whatever this NPC
+    would otherwise be saying. Checked in list order, first matching flag
+    wins: {entity: village_chief, flag_dialogue: [{flag: wayford_razed,
+    line: "..."}]}.
     """
 
     tile: TileType
@@ -490,6 +514,7 @@ class LegendEntry(BaseModel):
     dungeon_id: str | None = None
     description: str | None = None
     dialogue: str | None = None
+    flag_dialogue: list[FlagDialogue] = Field(default_factory=list)
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
@@ -500,7 +525,7 @@ class LegendEntry(BaseModel):
             if "entity" in raw:
                 return cls(
                     tile="floor", entity=raw["entity"], description=description,
-                    dialogue=raw.get("dialogue"),
+                    dialogue=raw.get("dialogue"), flag_dialogue=raw.get("flag_dialogue") or [],
                 )
             if "item" in raw:
                 return cls(tile="floor", item=raw["item"], description=description)
@@ -524,6 +549,7 @@ class LegendEntry(BaseModel):
                 dungeon_id=raw.get("dungeon_id"),
                 description=description,
                 dialogue=raw.get("dialogue"),
+                flag_dialogue=raw.get("flag_dialogue") or [],
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from content.schema import FlagDialogue
+
 Color = tuple[int, int, int]
 
 # Draw order when multiple entities could occupy visual space: items under actors.
@@ -55,6 +57,7 @@ class Entity:
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
+        flag_dialogue: list[FlagDialogue] | None = None,
         shop_inventory: list[str] | None = None,
         entity_id: str = "",
         equipped_weapon: "Entity | None" = None,
@@ -83,6 +86,12 @@ class Entity:
         # identifies *which* NPC was talked to, since display names aren't
         # guaranteed unique/stable the way catalog ids are.
         self.dialogue = dialogue
+        # World-state-reactive dialogue overrides, checked in list order
+        # against QuestLog.world_flags (see Engine.talk_to_adjacent) -
+        # takes priority over both self.dialogue and any active
+        # QuestLog.followup_dialogue line. Defensively copied, same
+        # reasoning as shop_inventory below.
+        self.flag_dialogue: list[FlagDialogue] = list(flag_dialogue) if flag_dialogue is not None else []
         # Catalog item ids this entity sells, if any - empty means "not a
         # shopkeeper" (see Engine.adjacent_shopkeeper). Defensively copied so
         # every spawned Entity gets its own list, never aliasing the

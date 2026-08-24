@@ -39,6 +39,7 @@ from main import (
     OVERWORLD_LEVEL_PATH,
     STARTING_DUNGEON_ID,
     _check_destroyable_dungeons_have_ruin_content,
+    _check_flag_dialogue_references_known_flags,
     build_initial_state,
     dispatch_action,
     fire_mode_gate,
@@ -1029,3 +1030,46 @@ def test_check_destroyable_dungeons_have_ruin_content_accepts_ruins_present():
     dungeon_registry = {"wayford": SimpleNamespace(ruined_tile="road")}
 
     _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)  # must not raise
+
+
+def test_real_shipped_content_has_known_flags_for_every_flag_dialogue_reference():
+    """The real data/quests.yaml + dungeon registry must never ship a
+    flag_dialogue entry naming a flag no quest's on_fail ever sets - the
+    line could never show. Regression net for wayford_razed/village_chief."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    quest_defs = load_quests(
+        DATA_DIR / "quests.yaml", catalog, known_dungeon_ids=set(dungeon_registry),
+    )
+    _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)  # must not raise
+
+
+def test_check_flag_dialogue_references_known_flags_rejects_an_unknown_flag():
+    from types import SimpleNamespace
+
+    quest_defs = {"q": SimpleNamespace(on_fail=[SimpleNamespace(set_flag="wayford_razed")])}
+    dungeon_registry = {
+        "millhaven": SimpleNamespace(levels={
+            "level_01": SimpleNamespace(entity_spawns=[
+                SimpleNamespace(flag_dialogue=[SimpleNamespace(flag="nonexistent_flag")]),
+            ]),
+        }),
+    }
+
+    with pytest.raises(ContentValidationError, match="flag_dialogue"):
+        _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)
+
+
+def test_check_flag_dialogue_references_known_flags_accepts_a_known_flag():
+    from types import SimpleNamespace
+
+    quest_defs = {"q": SimpleNamespace(on_fail=[SimpleNamespace(set_flag="wayford_razed")])}
+    dungeon_registry = {
+        "millhaven": SimpleNamespace(levels={
+            "level_01": SimpleNamespace(entity_spawns=[
+                SimpleNamespace(flag_dialogue=[SimpleNamespace(flag="wayford_razed")]),
+            ]),
+        }),
+    }
+
+    _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)  # must not raise

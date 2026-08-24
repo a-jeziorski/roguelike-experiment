@@ -12,6 +12,7 @@ from content.loader import (
     load_overworld,
     load_sprite_manifest,
 )
+from content.schema import FlagDialogue
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
@@ -577,6 +578,59 @@ def test_load_level_entity_spawn_without_dialogue_leaves_it_none(tmp_path):
     level = load_level(level_path, catalog)
 
     assert level.entity_spawns[0].dialogue is None
+
+
+def test_load_level_collects_per_spawn_flag_dialogue(tmp_path):
+    level_path = tmp_path / "with_flag_dialogue.lvl"
+    level_path.write_text(
+        "id: with_flag_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, flag_dialogue: [{ flag: wayford_razed, line: "It is gone." }] }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.entity_spawns) == 1
+    assert level.entity_spawns[0].flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It is gone.")]
+
+
+def test_load_level_entity_spawn_without_flag_dialogue_defaults_to_empty_list(tmp_path):
+    level_path = tmp_path / "no_flag_dialogue.lvl"
+    level_path.write_text(
+        "id: no_flag_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert level.entity_spawns[0].flag_dialogue == []
 
 
 def test_load_level_rejects_a_door_with_a_second_route_around_it(tmp_path):

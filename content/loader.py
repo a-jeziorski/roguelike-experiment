@@ -8,7 +8,7 @@ with a clear message, before the engine ever sees it.
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, get_args
 
@@ -21,6 +21,7 @@ from content.schema import (
     DungeonDef,
     EncounterDef,
     EntityDef,
+    FlagDialogue,
     ItemDef,
     LevelDef,
     QuestDef,
@@ -73,6 +74,7 @@ class EntitySpawn:
     y: int
     entity: EntityDef
     dialogue: str | None = None
+    flag_dialogue: list[FlagDialogue] = field(default_factory=list)
 
 
 @dataclass
@@ -652,7 +654,7 @@ def load_level(
                     entity_spawns.append(
                         EntitySpawn(
                             x=x, y=y, entity=catalog.entities[entry.entity],
-                            dialogue=entry.dialogue,
+                            dialogue=entry.dialogue, flag_dialogue=entry.flag_dialogue,
                         )
                     )
 

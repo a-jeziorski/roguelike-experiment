@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from content.schema import (
     DungeonDef,
     EntityDef,
+    FlagDialogue,
     ItemDef,
     LegendEntry,
     LevelDef,
@@ -89,6 +90,18 @@ def test_legend_entry_from_entity_mapping():
     entry = LegendEntry.from_raw({"entity": "rat"})
     assert entry.tile == "floor"
     assert entry.entity == "rat"
+
+
+def test_legend_entry_flag_dialogue_defaults_to_empty_list():
+    entry = LegendEntry.from_raw({"entity": "rat"})
+    assert entry.flag_dialogue == []
+
+
+def test_legend_entry_from_entity_mapping_parses_flag_dialogue():
+    entry = LegendEntry.from_raw(
+        {"entity": "village_chief", "flag_dialogue": [{"flag": "wayford_razed", "line": "It's gone."}]}
+    )
+    assert entry.flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It's gone.")]
 
 
 def test_legend_entry_from_item_mapping():
@@ -418,3 +431,19 @@ def test_quest_def_on_fail_defaults_to_empty_list():
         id="q1", name="Test Quest", description="A test.", completion_message="Done.",
     )
     assert quest.on_fail == []
+
+
+def test_flag_dialogue_requires_flag():
+    with pytest.raises(ValidationError):
+        FlagDialogue(line="It's gone.")
+
+
+def test_flag_dialogue_requires_line():
+    with pytest.raises(ValidationError):
+        FlagDialogue(flag="wayford_razed")
+
+
+def test_flag_dialogue_accepts_both_fields():
+    fd = FlagDialogue(flag="wayford_razed", line="It's gone.")
+    assert fd.flag == "wayford_razed"
+    assert fd.line == "It's gone."
