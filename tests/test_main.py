@@ -8,10 +8,17 @@ swallowing the SystemExit that EscapeAction.perform() would otherwise raise."""
 
 from pathlib import Path
 
-from content.loader import load_catalog, load_dungeon_registry, load_levels, load_overworld
+from content.loader import (
+    load_catalog,
+    load_dungeon_registry,
+    load_encounters,
+    load_levels,
+    load_overworld,
+    load_quests,
+)
 from content.schema import EncounterDef
 from engine.actions import BumpAction, EscapeAction, FireAction, RestartAction, WaitAction
-from engine.clock import HOURS_PER_DAY, GameClock
+from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -23,7 +30,18 @@ from engine.entity import (
 )
 from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog
-from main import DUNGEONS_DIR, OVERWORLD_KEY, OVERWORLD_LEVEL_PATH, dispatch_action, fire_mode_gate, resolve_transition, shop_gate
+from main import (
+    DUNGEONS_DIR,
+    OVERWORLD_KEY,
+    OVERWORLD_LEVEL_PATH,
+    STARTING_DUNGEON_ID,
+    build_initial_state,
+    dispatch_action,
+    fire_mode_gate,
+    handle_save_game_action,
+    resolve_transition,
+    shop_gate,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 LEVELS_DIR = DATA_DIR / "dungeons" / "forgotten_ruins" / "levels"
@@ -251,6 +269,59 @@ def _dungeon_engine(dungeon_registry, catalog, dungeon_id: str, clock=None, ques
         catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
         clock=clock, quest_log=quest_log,
     )
+
+
+def test_handle_save_game_action_writes_a_save_file_and_logs_a_message(tmp_path):
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = QuestLog()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", clock=clock, quest_log=quest_log)
+    active_engines = {"prison_tower": engine}
+    save_path = tmp_path / "save.json"
+
+    handle_save_game_action(engine, "prison_tower", active_engines, clock, quest_log, overworld_level, save_path)
+
+    assert save_path.exists()
+    assert "Game saved." in engine.message_log.messages
+
+
+def test_handle_save_game_action_does_nothing_while_dead(tmp_path):
+    catalog, dungeon_registry, overworld_level = _world()
+    clock = GameClock()
+    quest_log = QuestLog()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower", clock=clock, quest_log=quest_log)
+    engine.game_state = "dead"
+    active_engines = {"prison_tower": engine}
+    save_path = tmp_path / "save.json"
+
+    handle_save_game_action(engine, "prison_tower", active_engines, clock, quest_log, overworld_level, save_path)
+
+    assert not save_path.exists()
+    assert "Game saved." not in engine.message_log.messages
+
+
+def test_build_initial_state_with_no_save_file_starts_fresh(tmp_path):
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_defs = load_quests(
+        DUNGEONS_DIR.parent / "quests.yaml", catalog, known_dungeon_ids=set(dungeon_registry),
+    )
+    encounter_registry = load_encounters(
+        DUNGEONS_DIR.parent / "encounters.yaml",
+        known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
+    )
+    missing_save_path = tmp_path / "save.json"
+    assert not missing_save_path.exists()
+
+    # console/context are never touched when save_path doesn't exist - the
+    # whole point of this test is that no SDL dependency is needed here.
+    active_key, active_engines, clock, quest_log = build_initial_state(
+        catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+        None, None, None, missing_save_path,
+    )
+
+    assert active_key == STARTING_DUNGEON_ID
+    assert set(active_engines) == {STARTING_DUNGEON_ID}
+    assert (clock.year, clock.day, clock.hour) == (STARTING_YEAR, STARTING_DAY, STARTING_HOUR)
 
 
 def test_resolve_transition_first_overworld_visit_lands_at_matched_entrance():

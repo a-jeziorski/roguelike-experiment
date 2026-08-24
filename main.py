@@ -27,6 +27,7 @@ from engine.actions import (
     LookAction,
     QuestLogAction,
     RestartAction,
+    SaveGameAction,
     ShopAction,
     TalkAction,
 )
@@ -34,8 +35,10 @@ from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
 from engine.quest import QuestLog, create_quest_log
+from engine.save import capture_save, load_from_path, restore_save, save_to_path
 from engine.sprites import apply_sprites
 from engine.input_handlers import (
+    handle_continue_prompt_event,
     handle_event,
     handle_look_event,
     handle_quest_log_event,
@@ -50,6 +53,7 @@ from engine.render import (
     projectile_glyph,
     projectile_path,
     render_all,
+    render_continue_prompt,
     render_look_frame,
     render_projectile,
     render_quest_log,
@@ -64,6 +68,7 @@ QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
 ENCOUNTERS_PATH = Path(__file__).resolve().parent / "data" / "encounters.yaml"
 SPRITES_PATH = Path(__file__).resolve().parent / "data" / "sprites.yaml"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "tilesets"
+SAVE_PATH = Path(__file__).resolve().parent / "saves" / "save.json"
 STARTING_DUNGEON_ID = "prison_tower"
 OVERWORLD_KEY = "overworld"
 
@@ -144,6 +149,23 @@ def shop_gate(engine: Engine) -> str | None:
     if engine.adjacent_shopkeeper() is None:
         return "There's no one here to buy from."
     return None
+
+
+def handle_save_game_action(
+    engine: Engine, active_key: str, active_engines: dict[str, Engine],
+    clock: GameClock, quest_log: QuestLog, overworld_level, save_path: Path,
+) -> None:
+    """Captures and writes the current run to save_path, or does nothing
+    while dead (no gate function needed - unlike fire_mode_gate/shop_gate,
+    the only condition is game_state, the same inline check every other
+    free/non-turn action already uses - see TalkAction/QuestLogAction's
+    handling in main()). Pulled out of main()'s loop so it's testable
+    without SDL, same reasoning as dispatch_action/resolve_transition."""
+    if engine.game_state != "playing":
+        return
+    save = capture_save(active_key, active_engines, clock, quest_log, overworld_level)
+    save_to_path(save, save_path)
+    engine.message_log.add("Game saved.")
 
 
 def run_target_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> tuple[int, int] | None:
@@ -266,6 +288,26 @@ def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, 
                 selected = (selected + 1) % len(item_ids)
             if result == "buy" and item_ids:
                 status = engine.buy_from_shop(item_ids[selected])
+
+
+def prompt_continue_saved_game(console: tcod.console.Console, context: tcod.context.Context) -> bool:
+    """Nested event loop for the startup "continue a saved game?" screen -
+    no Engine yet at this point (that's the whole reason this exists as a
+    standalone loop rather than one of the run_X_mode screens above, which
+    all take an already-built Engine). Returns True to load the save,
+    False to start a new game."""
+    while True:
+        render_continue_prompt(console)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_continue_prompt_event(event)
+
+            if result == "yes":
+                return True
+            if result == "no":
+                return False
 
 
 def animate_ranged_attacks(
@@ -521,28 +563,15 @@ def resolve_transition(
     return active_key, engine
 
 
-def main() -> int:
-    try:
-        catalog = load_catalog()
-        dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
-        overworld_level = load_overworld(
-            OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
-        )
-        quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
-        encounter_registry = load_encounters(
-            ENCOUNTERS_PATH,
-            known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
-        )
-        sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
-    except ContentValidationError as e:
-        print(str(e), file=sys.stderr)
-        return 1
-
+def fresh_start(
+    catalog, dungeon_registry: dict, overworld_level, quest_defs: dict, sprite_codepoints,
+) -> tuple[str, dict[str, Engine], GameClock, QuestLog]:
+    """A brand-new run in STARTING_DUNGEON_ID - exactly what main() always
+    built before save/load existed, pulled out unchanged so
+    build_initial_state can fall back to it when there's no save to
+    continue (or the player declines it)."""
     clock = GameClock()
     quest_log = create_quest_log(quest_defs)
-
-    tileset = load_tileset()
-    sprite_codepoints = apply_sprites(tileset, sprite_manifest, catalog, ASSETS_DIR)
 
     dungeon = dungeon_registry[STARTING_DUNGEON_ID]
     levels = dungeon.levels
@@ -561,6 +590,55 @@ def main() -> int:
     )
     active_key = STARTING_DUNGEON_ID
     active_engines: dict[str, Engine] = {active_key: engine}
+    return active_key, active_engines, clock, quest_log
+
+
+def build_initial_state(
+    catalog, dungeon_registry: dict, overworld_level, quest_defs: dict, encounter_registry,
+    sprite_codepoints, console: tcod.console.Console, context: tcod.context.Context, save_path: Path,
+) -> tuple[str, dict[str, Engine], GameClock, QuestLog]:
+    """Either restores save_path (if it exists, is readable, and the player
+    confirms via prompt_continue_saved_game) or falls back to fresh_start -
+    the one place main() decides which. A save that fails to restore (e.g.
+    it references a quest/dungeon id that no longer exists in the
+    currently loaded content, following a content update since it was
+    written) falls back to a fresh start rather than crashing, same spirit
+    as a ContentValidationError being reported rather than propagated raw.
+    Takes save_path explicitly (main()'s only real caller passes SAVE_PATH)
+    rather than reading that module constant directly, so a test can point
+    it at a tmp_path location instead."""
+    if save_path.exists():
+        save = load_from_path(save_path)
+        if save is not None and prompt_continue_saved_game(console, context):
+            try:
+                return restore_save(
+                    save, catalog, dungeon_registry, overworld_level, quest_defs,
+                    encounter_registry, sprite_codepoints, OVERWORLD_KEY,
+                )
+            except (KeyError, ValueError):
+                pass
+    return fresh_start(catalog, dungeon_registry, overworld_level, quest_defs, sprite_codepoints)
+
+
+def main() -> int:
+    try:
+        catalog = load_catalog()
+        dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+        overworld_level = load_overworld(
+            OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        )
+        quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+        encounter_registry = load_encounters(
+            ENCOUNTERS_PATH,
+            known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
+        )
+        sprite_manifest = load_sprite_manifest(SPRITES_PATH, catalog)
+    except ContentValidationError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+    tileset = load_tileset()
+    sprite_codepoints = apply_sprites(tileset, sprite_manifest, catalog, ASSETS_DIR)
 
     with tcod.context.new(
         columns=CONSOLE_COLUMNS,
@@ -569,6 +647,12 @@ def main() -> int:
         title="Claude-Authored Roguelike",
     ) as context:
         console = tcod.console.Console(CONSOLE_COLUMNS, CONSOLE_ROWS, order="F")
+
+        active_key, active_engines, clock, quest_log = build_initial_state(
+            catalog, dungeon_registry, overworld_level, quest_defs,
+            encounter_registry, sprite_codepoints, console, context, SAVE_PATH,
+        )
+        engine = active_engines[active_key]
 
         while True:
             render_all(console, engine)
@@ -594,6 +678,12 @@ def main() -> int:
                 if isinstance(action, QuestLogAction):
                     if engine.game_state == "playing":
                         run_quest_log_mode(console, context, engine)
+                    continue
+
+                if isinstance(action, SaveGameAction):
+                    handle_save_game_action(
+                        engine, active_key, active_engines, clock, quest_log, overworld_level, SAVE_PATH,
+                    )
                     continue
 
                 if isinstance(action, ShopAction):

@@ -71,6 +71,17 @@ class QuestLogAction(Action):
         pass
 
 
+class SaveGameAction(Action):
+    """Saves the current run to disk - free, costs no turn, same shape as
+    QuestLogAction/LookAction. main.py recognizes this before it would ever
+    reach Engine.process_turn and writes the save file directly instead;
+    perform() is never actually called in practice, kept only so
+    SaveGameAction satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class ShopAction(Action):
     """Enters the shop screen: a free, non-turn screen for buying from a
     nearby shopkeeper. main.py recognizes this before it would ever reach

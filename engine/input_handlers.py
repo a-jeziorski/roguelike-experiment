@@ -13,6 +13,7 @@ from engine.actions import (
     PickupAction,
     QuestLogAction,
     RestartAction,
+    SaveGameAction,
     ShopAction,
     TalkAction,
     UseItemAction,
@@ -74,6 +75,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.B:
             return ShopAction()
+
+        if sym == tcod.event.KeySym.S:
+            return SaveGameAction()
 
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()
@@ -144,6 +148,26 @@ def handle_quest_log_event(event: tcod.event.Event) -> str | None:
 
         if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.Q):
             return "exit"
+
+    return None
+
+
+def handle_continue_prompt_event(event: tcod.event.Event) -> str | None:
+    """Input while inside the startup continue-saved-game prompt: Y
+    continues, N (or Escape - same "give up on this screen" meaning as
+    every other mode's Escape binding) starts a new game. Returns "yes",
+    "no", or None."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym == tcod.event.KeySym.Y:
+            return "yes"
+
+        if sym in (tcod.event.KeySym.N, tcod.event.KeySym.ESCAPE):
+            return "no"
 
     return None
 

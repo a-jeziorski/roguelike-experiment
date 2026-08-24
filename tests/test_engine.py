@@ -1440,6 +1440,55 @@ def test_build_game_map_populates_tile_descriptions():
     assert game_map.tile_descriptions == {(3, 1): "A black stone tower."}
 
 
+def test_build_game_map_populates_entity_and_item_spawn_index(tmp_path):
+    """GameMap.entity_spawn_index/item_spawn_index (see engine/save.py) map
+    each ParsedLevel.entity_spawns/item_spawns list index to the exact
+    Entity build_game_map produced for it, in the same order - the stable
+    identity a save file reconciles against."""
+    level_path = tmp_path / "indexed.lvl"
+    level_path.write_text(
+        "id: indexed\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@..#\n"
+        "  #v.g#\n"
+        "  #.!>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, dialogue: "First spawn." }\n'
+        '  "g": { entity: goblin }\n'
+        '  "!": { item: healing_potion }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    assert set(game_map.entity_spawn_index) == {0, 1}
+    villager = game_map.entity_spawn_index[0]
+    goblin = game_map.entity_spawn_index[1]
+    assert villager.name == "Villager"
+    assert villager.dialogue == "First spawn."
+    assert goblin.name == "Goblin"
+    assert (villager.x, villager.y) == (1, 2)
+    assert (goblin.x, goblin.y) == (3, 2)
+
+    assert set(game_map.item_spawn_index) == {0}
+    potion = game_map.item_spawn_index[0]
+    assert potion.name == "Healing Potion"
+    assert (potion.x, potion.y) == (2, 3)
+
+    # every indexed entity is a real member of game_map.entities, not a copy
+    assert villager in game_map.entities
+    assert goblin in game_map.entities
+    assert potion in game_map.entities
+
+
 def test_build_game_map_entity_dialogue_prefers_spawn_override(tmp_path):
     level_path = tmp_path / "with_dialogue.lvl"
     level_path.write_text(
