@@ -412,9 +412,19 @@ def test_load_dungeon_loads_manifest_and_levels():
     assert dungeon.name == "The Forgotten Ruins"
     assert dungeon.starting_level == "level_01"
     assert dungeon.inspect_text != ""  # shown when its overworld entrance is inspected
+    assert dungeon.ruined_tile is None  # not a destroyable dungeon
+    assert dungeon.ruined_description == ""
     assert set(dungeon.levels) == {
         "level_01", "level_02a", "level_02b", "level_03", "level_04", "level_05",
     }
+
+
+def test_load_dungeon_carries_through_ruin_content():
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "wayford", catalog)
+
+    assert dungeon.ruined_tile == "road"
+    assert dungeon.ruined_description != ""
 
 
 def test_load_dungeon_rejects_unknown_starting_level(tmp_path):

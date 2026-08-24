@@ -19,7 +19,7 @@ from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
 from engine.entity import Entity
-from engine.game_map import GameMap, build_game_map, item_entity_from_def
+from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
 from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
@@ -87,6 +87,7 @@ class Engine:
         starting_level: "ParsedLevel | None" = None,
         is_overworld: bool = False,
         dungeon_inspect_text: dict[str, str] | None = None,
+        dungeon_ruin_data: dict[str, tuple[str, str]] | None = None,
         clock: GameClock | None = None,
         quest_log: QuestLog | None = None,
         sprite_codepoints: "SpriteCodepoints | None" = None,
@@ -121,6 +122,12 @@ class Engine:
         # ever populated for the overworld Engine - every other Engine has no
         # dungeon_entrance tiles to describe, so an empty dict is correct.
         self.dungeon_inspect_text = dungeon_inspect_text or {}
+        # dungeon_id -> (ruined_tile, ruined_description), for Engine.destroy_dungeon
+        # to apply once a quest's on_fail_destroy_dungeon_id fires (see
+        # content.schema.DungeonDef). Same "only ever populated for the
+        # overworld Engine" restriction as dungeon_inspect_text above -
+        # destroy_dungeon is only ever called while is_overworld is True.
+        self.dungeon_ruin_data = dungeon_ruin_data or {}
         # Needed to resolve a stairway's destination id into content when
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog
@@ -426,9 +433,37 @@ class Engine:
         """Sibling to _advance_world_clock, called the same turn: any in-progress
         quest whose deadline the clock just crossed gets its failure message
         logged here. A separate method (not folded into _advance_world_clock)
-        so deadline logic is testable independent of clock/healing mechanics."""
+        so deadline logic is testable independent of clock/healing mechanics.
+        Only ever called while self.is_overworld (see the one call site in
+        process_turn) - a newly-failed quest's on_fail_destroy_dungeon_id,
+        if set, is safe to act on immediately via destroy_dungeon, since
+        self.game_map is guaranteed to be the overworld's own map here."""
         for quest in self.quest_log.check_deadlines(self.clock):
             self.message_log.add(quest.failure_message)
+            if quest.on_fail_destroy_dungeon_id:
+                self.destroy_dungeon(quest.on_fail_destroy_dungeon_id)
+
+    def destroy_dungeon(self, dungeon_id: str) -> None:
+        """Razes dungeon_id's overworld entrance (see
+        engine.game_map.apply_dungeon_destruction) and force-fails every
+        quest voided by its destruction (QuestLog.void_by_dungeon) -
+        their questgiver or completion target lived there and is gone now.
+        A voided quest the player never received (not_given) fails
+        silently; one they'd already started (in_progress) gets its
+        failure_message logged, same as an ordinary deadline failure.
+        No-ops if dungeon_id has no ruin content registered (shouldn't
+        happen once content is validated, see main.py's
+        _check_destroyable_dungeons_have_ruin_content, but defensive
+        rather than crashing on a misconfigured quest)."""
+        ruin_data = self.dungeon_ruin_data.get(dungeon_id)
+        if ruin_data is None:
+            return
+        ruined_tile, ruined_description = ruin_data
+        apply_dungeon_destruction(self.game_map, dungeon_id, ruined_tile, ruined_description)
+        self.quest_log.destroyed_dungeon_ids.add(dungeon_id)
+        for quest, was_in_progress in self.quest_log.void_by_dungeon(dungeon_id):
+            if was_in_progress and quest.failure_message:
+                self.message_log.add(quest.failure_message)
 
     def _find_adjacent_peaceful_npc(
         self, entity_id: str | None = None, requires_shop: bool = False

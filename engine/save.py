@@ -43,6 +43,7 @@ from engine.game_map import (
     PLAYER_DEFENSE,
     PLAYER_MAX_HP,
     GameMap,
+    apply_dungeon_destruction,
     build_game_map,
     item_entity_from_def,
 )
@@ -104,6 +105,7 @@ class SavedQuestLogState(BaseModel):
     visited_dungeon_ids: list[str] = Field(default_factory=list)
     triggered_encounter_ids: list[str] = Field(default_factory=list)
     armed_encounters: dict[str, tuple[int, int, int]] = Field(default_factory=dict)
+    destroyed_dungeon_ids: list[str] = Field(default_factory=list)
 
 
 class SavedPlayer(BaseModel):
@@ -234,6 +236,7 @@ def capture_save(
         visited_dungeon_ids=sorted(quest_log.visited_dungeon_ids),
         triggered_encounter_ids=sorted(quest_log.triggered_encounter_ids),
         armed_encounters=dict(quest_log.armed_encounters),
+        destroyed_dungeon_ids=sorted(quest_log.destroyed_dungeon_ids),
     )
 
     return SaveGame(
@@ -333,9 +336,14 @@ def restore_save(
     quest_log.visited_dungeon_ids = set(save.quest_log.visited_dungeon_ids)
     quest_log.triggered_encounter_ids = set(save.quest_log.triggered_encounter_ids)
     quest_log.armed_encounters = dict(save.quest_log.armed_encounters)
+    quest_log.destroyed_dungeon_ids = set(save.quest_log.destroyed_dungeon_ids)
 
     player = _build_player(save.player, catalog)
     dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
+    dungeon_ruin_data = {
+        d_id: (d.ruined_tile, d.ruined_description)
+        for d_id, d in dungeon_registry.items() if d.ruined_tile
+    }
 
     active_engines: dict[str, Engine] = {}
     for key, place in save.places.items():
@@ -358,11 +366,18 @@ def restore_save(
         if is_current:
             game_map.entities.append(player)
 
+        if is_overworld:
+            for dungeon_id in quest_log.destroyed_dungeon_ids:
+                ruin_data = dungeon_ruin_data.get(dungeon_id)
+                if ruin_data is not None:
+                    apply_dungeon_destruction(game_map, dungeon_id, *ruin_data)
+
         engine = Engine(
             game_map, player, level.name,
             catalog=catalog, levels=levels_dict, starting_level=starting_level,
             is_overworld=is_overworld,
             dungeon_inspect_text=dungeon_inspect_text if is_overworld else None,
+            dungeon_ruin_data=dungeon_ruin_data if is_overworld else None,
             clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             overworld_return_position=(
                 tuple(place.overworld_return_position) if place.overworld_return_position else None

@@ -248,6 +248,20 @@ def load_quests(
                     f"dungeon '{quest.target_dungeon_id}'"
                 )
 
+        for label, dungeon_id in (
+            ("on_fail_destroy_dungeon_id", quest.on_fail_destroy_dungeon_id),
+            ("voided_by_dungeon_id", quest.voided_by_dungeon_id),
+        ):
+            if dungeon_id is not None and known_dungeon_ids is not None and dungeon_id not in known_dungeon_ids:
+                errors.append(f"quest '{quest_id}': {label} references unknown dungeon '{dungeon_id}'")
+
+        if quest.on_fail_destroy_dungeon_id is not None and quest.deadline_year is None:
+            errors.append(
+                f"quest '{quest_id}': on_fail_destroy_dungeon_id is set but "
+                "there's no deadline - QuestLog.check_deadlines is the only "
+                "trigger for it, so this quest could never destroy anything"
+            )
+
         if quest.target_item_id is not None and quest.questgiver_entity_id is None:
             errors.append(
                 f"quest '{quest_id}': target_item_id (a fetch/delivery quest) "
@@ -919,6 +933,8 @@ class Dungeon:
     description: str
     inspect_text: str
     requires_stairs_down: bool
+    ruined_tile: str | None
+    ruined_description: str
     levels: dict[str, ParsedLevel]
 
 
@@ -952,6 +968,8 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         description=manifest.description,
         inspect_text=manifest.inspect_text,
         requires_stairs_down=manifest.requires_stairs_down,
+        ruined_tile=manifest.ruined_tile,
+        ruined_description=manifest.ruined_description,
         levels=levels,
     )
 

@@ -222,3 +222,36 @@ def build_game_map(
     game_map.entities.append(player)
 
     return game_map, player
+
+
+def apply_dungeon_destruction(
+    game_map: GameMap, dungeon_id: str, ruined_tile: str, ruined_description: str
+) -> None:
+    """Razes dungeon_id's overworld entrance on game_map: pops it from
+    dungeon_entrances (sealing it - engine/actions.py's MovementAction only
+    ever finds pending_dungeon_entry through that dict, so a missing entry
+    is just an ordinary move onto whatever kinds[x,y] says next), swaps the
+    tile to ruined_tile (updating walkable/transparent in lockstep, same
+    pattern as GameMap.unlock_door), and sets tile_descriptions to
+    ruined_description so look mode shows the ruins text.
+
+    Called from both Engine.destroy_dungeon (the moment the deadline that
+    triggers it is crossed) and engine/save.py's restore_save (reapplying
+    every already-destroyed dungeon to a freshly rebuilt overworld GameMap,
+    since build_game_map always rebuilds from the static, unmodified level
+    file). Knows nothing about QuestLog - a pure GameMap mutation, which is
+    what lets both callers share it. Silently no-ops if dungeon_id isn't
+    found in dungeon_entrances (already razed, or never had an entrance on
+    this map) - restore_save calls this unconditionally for every entry in
+    QuestLog.destroyed_dungeon_ids, so it must be safe to call more than
+    once."""
+    coord = next((c for c, d_id in game_map.dungeon_entrances.items() if d_id == dungeon_id), None)
+    if coord is None:
+        return
+    game_map.dungeon_entrances.pop(coord)
+    x, y = coord
+    game_map.kinds[x, y] = ruined_tile
+    walkable, transparent = TILE_PASSABILITY.get(ruined_tile, (True, True))
+    game_map.walkable[x, y] = walkable
+    game_map.transparent[x, y] = transparent
+    game_map.tile_descriptions[coord] = ruined_description

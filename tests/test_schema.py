@@ -284,6 +284,29 @@ def test_dungeon_def_accepts_requires_stairs_down_false():
     assert dungeon.requires_stairs_down is False
 
 
+def test_dungeon_def_ruin_fields_default_to_unset():
+    dungeon = DungeonDef(id="wayford", name="Wayford", starting_level="level_01")
+    assert dungeon.ruined_tile is None
+    assert dungeon.ruined_description == ""
+
+
+def test_dungeon_def_accepts_ruin_fields_set_together():
+    dungeon = DungeonDef(
+        id="wayford", name="Wayford", starting_level="level_01",
+        ruined_tile="road", ruined_description="Ash and quiet.",
+    )
+    assert dungeon.ruined_tile == "road"
+    assert dungeon.ruined_description == "Ash and quiet."
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"ruined_tile": "road"}, {"ruined_description": "Ash and quiet."}]
+)
+def test_dungeon_def_rejects_ruin_fields_set_alone(kwargs):
+    with pytest.raises(ValidationError):
+        DungeonDef(id="wayford", name="Wayford", starting_level="level_01", **kwargs)
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",
