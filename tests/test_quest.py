@@ -166,6 +166,68 @@ def test_void_by_dungeon_leaves_an_already_failed_quest_untouched():
     assert changed == []
 
 
+# --- fail_intimidate_by_death ---
+
+
+def test_fail_intimidate_by_death_fails_an_in_progress_quest_and_reports_it_was_in_progress():
+    quest = make_quest(
+        target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor", status="in_progress",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.fail_intimidate_by_death("millhaven_debtor")
+
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"
+
+
+def test_fail_intimidate_by_death_fails_a_not_given_quest_and_reports_it_was_not_in_progress():
+    quest = make_quest(
+        target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor", status="not_given",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.fail_intimidate_by_death("millhaven_debtor")
+
+    assert changed == [(quest, False)]
+    assert quest.status == "failed"
+
+
+def test_fail_intimidate_by_death_ignores_a_different_entitys_death():
+    quest = make_quest(
+        target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor", status="in_progress",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.fail_intimidate_by_death("rat")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_fail_intimidate_by_death_leaves_a_completed_quest_untouched():
+    quest = make_quest(
+        target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor", status="completed",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.fail_intimidate_by_death("millhaven_debtor")
+
+    assert changed == []
+    assert quest.status == "completed"
+
+
+def test_fail_intimidate_by_death_leaves_an_already_failed_quest_untouched():
+    quest = make_quest(
+        target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor", status="failed",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.fail_intimidate_by_death("millhaven_debtor")
+
+    assert changed == []
+
+
 # --- reset ---
 
 
@@ -387,6 +449,21 @@ def test_check_questgiver_jumps_straight_to_completed_if_dungeon_already_visited
     log = QuestLog(quests={quest.id: quest}, visited_dungeon_ids={"millhaven"})
 
     changed = log.check_questgiver("wayford_caravan_master")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_questgiver_jumps_straight_to_completed_if_intimidate_target_already_intimidated():
+    quest = make_quest(
+        status="not_given",
+        questgiver_entity_id="wayford_provisioner",
+        target_dungeon_id=None,
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_questgiver("wayford_provisioner")
 
     assert changed == [quest]
     assert quest.status == "completed"
@@ -667,6 +744,171 @@ def test_check_kill_report_ignores_a_different_recorded_death():
     assert quest.status == "in_progress"
 
 
+# --- record_entity_intimidated ---
+
+
+def test_record_entity_intimidated_records_unconditionally():
+    log = QuestLog()
+
+    log.record_entity_intimidated("millhaven_debtor")
+
+    assert "millhaven_debtor" in log.intimidated_entity_ids
+
+
+def test_record_entity_intimidated_records_but_never_completes_an_in_progress_quest():
+    """record_entity_intimidated only remembers the hit now - an intimidate
+    quest doesn't complete on the hit itself, only when reported (see
+    check_intimidate_report below)."""
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    result = log.record_entity_intimidated("millhaven_debtor")
+
+    assert result is None
+    assert quest.status == "in_progress"
+    assert "millhaven_debtor" in log.intimidated_entity_ids
+
+
+def test_record_entity_intimidated_records_a_not_given_quests_target_too():
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    log.record_entity_intimidated("millhaven_debtor")
+
+    assert quest.status == "not_given"
+    assert "millhaven_debtor" in log.intimidated_entity_ids
+
+
+def test_record_entity_intimidated_ignores_non_matching_quests():
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None, target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    log.record_entity_intimidated("villager")
+
+    assert quest.status == "in_progress"
+    assert "villager" in log.intimidated_entity_ids
+
+
+# --- check_intimidate_report ---
+
+
+def test_check_intimidate_report_completes_when_talking_to_questgiver_after_the_hit():
+    quest = make_quest(
+        status="in_progress",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_intimidate_report_is_a_no_op_before_the_target_is_hit():
+    quest = make_quest(
+        status="in_progress",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_intimidate_report_is_a_no_op_when_talking_to_a_different_npc():
+    quest = make_quest(
+        status="in_progress",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_intimidate_report("village_chief")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_intimidate_report_is_a_no_op_on_a_not_given_quest():
+    """A target hit before the quest is even granted is handled by
+    check_questgiver jumping straight to 'completed' at grant time, not by
+    check_intimidate_report - see already_done_message."""
+    quest = make_quest(
+        status="not_given",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == []
+    assert quest.status == "not_given"
+
+
+def test_check_intimidate_report_does_not_refire_on_an_already_terminal_quest():
+    quest = make_quest(
+        status="completed",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == []
+
+
+def test_check_intimidate_report_is_a_no_op_on_a_quest_already_failed_by_the_targets_death():
+    """A lethal hit results in 'failed', never 'completed' - check_intimidate_report's
+    status != "in_progress" guard means a dead target's quest is simply
+    skipped here, never wrongly completed even though the hit also got
+    recorded in intimidated_entity_ids (see engine/combat.py's _apply_damage)."""
+    quest = make_quest(
+        status="failed",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == []
+    assert quest.status == "failed"
+
+
+def test_check_intimidate_report_ignores_a_different_recorded_hit():
+    quest = make_quest(
+        status="in_progress",
+        target_dungeon_id=None,
+        questgiver_entity_id="wayford_provisioner",
+        target_intimidate_entity_id="millhaven_debtor",
+    )
+    log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"villager"})
+
+    changed = log.check_intimidate_report("wayford_provisioner")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
 # --- check_delivery ---
 
 
@@ -870,6 +1112,12 @@ def test_reset_clears_killed_entity_ids():
     assert log.killed_entity_ids == set()
 
 
+def test_reset_clears_intimidated_entity_ids():
+    log = QuestLog(intimidated_entity_ids={"millhaven_debtor"})
+    log.reset()
+    assert log.intimidated_entity_ids == set()
+
+
 def test_reset_clears_triggered_encounter_ids():
     log = QuestLog(triggered_encounter_ids={"warning_ambush"})
     log.reset()
@@ -1014,7 +1262,7 @@ def test_format_for_hud_not_given():
 
 def test_current_description_defaults_to_description_when_in_progress():
     quest = make_quest(status="in_progress", description="The starting pitch.")
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_uses_completed_description_when_set():
@@ -1022,12 +1270,12 @@ def test_current_description_uses_completed_description_when_set():
         status="completed", description="The starting pitch.",
         completed_description="All done, here's what you got.",
     )
-    assert quest.current_description([], set(), set()) == "All done, here's what you got."
+    assert quest.current_description([], set(), set(), set()) == "All done, here's what you got."
 
 
 def test_current_description_completed_falls_back_to_description_when_unset():
     quest = make_quest(status="completed", description="The starting pitch.")
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_uses_failed_description_when_set():
@@ -1035,12 +1283,12 @@ def test_current_description_uses_failed_description_when_set():
         status="failed", description="The starting pitch.",
         failed_description="Too late - here's what that cost you.",
     )
-    assert quest.current_description([], set(), set()) == "Too late - here's what that cost you."
+    assert quest.current_description([], set(), set(), set()) == "Too late - here's what that cost you."
 
 
 def test_current_description_failed_falls_back_to_description_when_unset():
     quest = make_quest(status="failed", description="The starting pitch.")
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_uses_carrying_item_description_when_holding_the_item():
@@ -1051,7 +1299,7 @@ def test_current_description_uses_carrying_item_description_when_holding_the_ite
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory, set(), set()) == "You've got it - bring it back."
+    assert quest.current_description(inventory, set(), set(), set()) == "You've got it - bring it back."
 
 
 def test_current_description_ignores_carrying_item_description_without_the_item():
@@ -1060,7 +1308,7 @@ def test_current_description_ignores_carrying_item_description_without_the_item(
         target_item_id="pale_fungus", questgiver_entity_id="shopkeeper",
         carrying_item_description="You've got it - bring it back.",
     )
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_ignores_carrying_item_description_for_a_non_fetch_quest():
@@ -1075,7 +1323,7 @@ def test_current_description_ignores_carrying_item_description_for_a_non_fetch_q
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory, set(), set()) == "The starting pitch."
+    assert quest.current_description(inventory, set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_completed_takes_priority_over_carrying_item_description():
@@ -1087,7 +1335,7 @@ def test_current_description_completed_takes_priority_over_carrying_item_descrip
     )
     inventory = [_FakeInventoryItem("pale_fungus")]
 
-    assert quest.current_description(inventory, set(), set()) == "All done."
+    assert quest.current_description(inventory, set(), set(), set()) == "All done."
 
 
 def test_current_description_uses_target_dead_description_when_recorded_dead():
@@ -1096,7 +1344,7 @@ def test_current_description_uses_target_dead_description_when_recorded_dead():
         target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
         target_dead_description="It's done - go tell them.",
     )
-    assert quest.current_description([], {"warden"}, set()) == "It's done - go tell them."
+    assert quest.current_description([], {"warden"}, set(), set()) == "It's done - go tell them."
 
 
 def test_current_description_ignores_target_dead_description_before_the_kill():
@@ -1105,7 +1353,7 @@ def test_current_description_ignores_target_dead_description_before_the_kill():
         target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
         target_dead_description="It's done - go tell them.",
     )
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_ignores_target_dead_description_for_a_different_death():
@@ -1114,7 +1362,7 @@ def test_current_description_ignores_target_dead_description_for_a_different_dea
         target_kill_entity_id="warden", questgiver_entity_id="escaped_prisoner",
         target_dead_description="It's done - go tell them.",
     )
-    assert quest.current_description([], {"rat"}, set()) == "The starting pitch."
+    assert quest.current_description([], {"rat"}, set(), set()) == "The starting pitch."
 
 
 def test_current_description_ignores_target_dead_description_for_a_non_kill_quest():
@@ -1127,7 +1375,7 @@ def test_current_description_ignores_target_dead_description_for_a_non_kill_ques
         target_entity_id="village_chief", target_kill_entity_id=None,
         target_dead_description="Should never show.",
     )
-    assert quest.current_description([], {"warden"}, set()) == "The starting pitch."
+    assert quest.current_description([], {"warden"}, set(), set()) == "The starting pitch."
 
 
 def test_current_description_completed_takes_priority_over_target_dead_description():
@@ -1137,7 +1385,7 @@ def test_current_description_completed_takes_priority_over_target_dead_descripti
         target_dead_description="It's done - go tell them.",
         completed_description="All done.",
     )
-    assert quest.current_description([], {"warden"}, set()) == "All done."
+    assert quest.current_description([], {"warden"}, set(), set()) == "All done."
 
 
 def test_current_description_uses_target_visited_description_when_recorded_visited():
@@ -1146,7 +1394,7 @@ def test_current_description_uses_target_visited_description_when_recorded_visit
         target_dungeon_id="millhaven", questgiver_entity_id="wayford_caravan_master",
         target_visited_description="You've been - go tell them.",
     )
-    assert quest.current_description([], set(), {"millhaven"}) == "You've been - go tell them."
+    assert quest.current_description([], set(), {"millhaven"}, set()) == "You've been - go tell them."
 
 
 def test_current_description_ignores_target_visited_description_before_the_visit():
@@ -1155,7 +1403,7 @@ def test_current_description_ignores_target_visited_description_before_the_visit
         target_dungeon_id="millhaven", questgiver_entity_id="wayford_caravan_master",
         target_visited_description="You've been - go tell them.",
     )
-    assert quest.current_description([], set(), set()) == "The starting pitch."
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
 
 
 def test_current_description_ignores_target_visited_description_for_a_different_dungeon():
@@ -1164,7 +1412,7 @@ def test_current_description_ignores_target_visited_description_for_a_different_
         target_dungeon_id="millhaven", questgiver_entity_id="wayford_caravan_master",
         target_visited_description="You've been - go tell them.",
     )
-    assert quest.current_description([], set(), {"forgotten_ruins"}) == "The starting pitch."
+    assert quest.current_description([], set(), {"forgotten_ruins"}, set()) == "The starting pitch."
 
 
 def test_current_description_ignores_target_visited_description_for_a_non_dungeon_quest():
@@ -1177,7 +1425,7 @@ def test_current_description_ignores_target_visited_description_for_a_non_dungeo
         target_entity_id="village_chief", target_dungeon_id=None,
         target_visited_description="Should never show.",
     )
-    assert quest.current_description([], set(), {"millhaven"}) == "The starting pitch."
+    assert quest.current_description([], set(), {"millhaven"}, set()) == "The starting pitch."
 
 
 def test_current_description_completed_takes_priority_over_target_visited_description():
@@ -1187,4 +1435,61 @@ def test_current_description_completed_takes_priority_over_target_visited_descri
         target_visited_description="You've been - go tell them.",
         completed_description="All done.",
     )
-    assert quest.current_description([], set(), {"millhaven"}) == "All done."
+    assert quest.current_description([], set(), {"millhaven"}, set()) == "All done."
+
+
+def test_current_description_uses_target_intimidated_description_when_recorded_intimidated():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_intimidate_entity_id="millhaven_debtor", questgiver_entity_id="wayford_provisioner",
+        target_intimidated_description="Done, not yet reported - go tell them.",
+    )
+    assert (
+        quest.current_description([], set(), set(), {"millhaven_debtor"})
+        == "Done, not yet reported - go tell them."
+    )
+
+
+def test_current_description_ignores_target_intimidated_description_before_the_hit():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_intimidate_entity_id="millhaven_debtor", questgiver_entity_id="wayford_provisioner",
+        target_intimidated_description="Done, not yet reported - go tell them.",
+    )
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
+
+
+def test_current_description_ignores_target_intimidated_description_for_a_different_target():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_intimidate_entity_id="millhaven_debtor", questgiver_entity_id="wayford_provisioner",
+        target_intimidated_description="Done, not yet reported - go tell them.",
+    )
+    assert quest.current_description([], set(), set(), {"villager"}) == "The starting pitch."
+
+
+def test_current_description_ignores_target_intimidated_description_for_a_non_intimidate_quest():
+    """A Talk/fetch/kill/dungeon quest has no target_intimidate_entity_id, so
+    target_intimidated_description (even if somehow set) never applies -
+    matches content/schema.py's own validator rejecting that combination at
+    content-load time; this just confirms the runtime side agrees."""
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_entity_id="village_chief", target_dungeon_id=None, target_intimidate_entity_id=None,
+        target_intimidated_description="Should never show.",
+    )
+    assert quest.current_description([], set(), set(), {"millhaven_debtor"}) == "The starting pitch."
+
+
+def test_current_description_completed_takes_priority_over_target_intimidated_description():
+    quest = make_quest(
+        status="completed", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_intimidate_entity_id="millhaven_debtor", questgiver_entity_id="wayford_provisioner",
+        target_intimidated_description="Done, not yet reported - go tell them.",
+        completed_description="All done.",
+    )
+    assert quest.current_description([], set(), set(), {"millhaven_debtor"}) == "All done."

@@ -210,6 +210,13 @@ class Engine:
             # anymore, only when reported to its questgiver (see
             # talk_to_adjacent's check_kill_report loop).
             self.quest_log.record_entity_killed(entity.entity_id)
+            # Unlike every other trigger shape, an intimidate quest can
+            # fail right here, immediately - a dead target can never be
+            # "intimidated" per the quest's own premise, so this can't wait
+            # for the player's next report the way check_kill_report does.
+            for quest, was_in_progress in self.quest_log.fail_intimidate_by_death(entity.entity_id):
+                if was_in_progress and quest.failure_message:
+                    self.message_log.add(quest.failure_message)
             if entity.xp_reward:
                 self._award_xp(entity.xp_reward, "kill")
 
@@ -779,8 +786,11 @@ class Engine:
         target's already been recorded dead (see QuestLog.check_kill_report),
         or completes a dungeon-arrival quest they're the questgiver for
         because its target dungeon's already been recorded visited (see
-        QuestLog.check_dungeon_report). Never touches self.clock or calls
-        _handle_enemy_turns - talking costs nothing."""
+        QuestLog.check_dungeon_report), or completes an intimidate quest
+        they're the questgiver for because its target's already been
+        recorded intimidated (see QuestLog.check_intimidate_report). Never
+        touches self.clock or calls _handle_enemy_turns - talking costs
+        nothing."""
         target = self._find_adjacent_peaceful_npc()
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
@@ -821,6 +831,9 @@ class Engine:
             self.complete_quest(quest)
 
         for quest in self.quest_log.check_dungeon_report(target.entity_id):
+            self.complete_quest(quest)
+
+        for quest in self.quest_log.check_intimidate_report(target.entity_id):
             self.complete_quest(quest)
 
     def process_player_action(self, action: Action) -> bool:

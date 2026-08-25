@@ -416,6 +416,26 @@ def test_round_trip_preserves_world_flags(tmp_path):
     assert quest_log2.world_flags == {"wayford_population_thinned"}
 
 
+def test_round_trip_preserves_intimidated_entity_ids(tmp_path):
+    """Same shape and reasoning as killed_entity_ids/visited_dungeon_ids -
+    without persisting this, a save made after intimidating an
+    intimidate-quest target (but before reporting it) would silently lose
+    that progress on reload."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    quest_log.record_entity_intimidated("millhaven_debtor")
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert quest_log2.intimidated_entity_ids == {"millhaven_debtor"}
+
+
 def test_capture_save_records_a_tightened_deadline(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()

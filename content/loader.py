@@ -258,9 +258,23 @@ def load_quests(
             ("target_entity_id", quest.target_entity_id),
             ("target_kill_entity_id", quest.target_kill_entity_id),
             ("reward_shop_discount_entity_id", quest.reward_shop_discount_entity_id),
+            ("target_intimidate_entity_id", quest.target_intimidate_entity_id),
         ):
             if entity_id is not None and entity_id not in catalog.entities:
                 errors.append(f"quest '{quest_id}': {label} references unknown entity '{entity_id}'")
+
+        if (
+            quest.target_intimidate_entity_id is not None
+            and quest.target_intimidate_entity_id in catalog.entities
+            and catalog.entities[quest.target_intimidate_entity_id].ai not in PEACEFUL_AI_TYPES
+        ):
+            errors.append(
+                f"quest '{quest_id}': target_intimidate_entity_id "
+                f"'{quest.target_intimidate_entity_id}' isn't a peaceful entity - "
+                "engine/combat.py only ever records an intimidation against a "
+                "peaceful defender (see PEACEFUL_AI_TYPES), so a hostile target "
+                "could never complete this quest"
+            )
 
         if (
             quest.reward_shop_discount_entity_id is not None
@@ -356,6 +370,15 @@ def load_quests(
                 "quest) requires questgiver_entity_id too - "
                 "QuestLog.check_dungeon_report only ever completes a "
                 "dungeon-arrival quest by talking to its questgiver, so one "
+                "without a questgiver can never complete"
+            )
+
+        if quest.target_intimidate_entity_id is not None and quest.questgiver_entity_id is None:
+            errors.append(
+                f"quest '{quest_id}': target_intimidate_entity_id (an "
+                "intimidate quest) requires questgiver_entity_id too - "
+                "QuestLog.check_intimidate_report only ever completes an "
+                "intimidate quest by talking to its questgiver, so one "
                 "without a questgiver can never complete"
             )
 

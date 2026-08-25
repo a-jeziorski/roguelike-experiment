@@ -310,6 +310,20 @@ class QuestDef(BaseModel):
     target_entity_id: str | None = None
     target_kill_entity_id: str | None = None
     target_item_id: str | None = None
+    # A fifth trigger shape: intimidate, don't kill. Same two-step
+    # "record the deed, complete only on report" pattern as
+    # target_kill_entity_id (see QuestLog.record_entity_intimidated/
+    # check_intimidate_report), except the deed here is the player
+    # attacking (not necessarily damaging) this catalog entity while it
+    # survives - engine/combat.py's _apply_damage records it under the
+    # same condition that already flips a settlement's guards hostile
+    # (attacker is the player, defender.ai in PEACEFUL_AI_TYPES), so
+    # content/loader.py's load_quests requires this to name a peaceful
+    # entity. If the target dies instead, QuestLog.fail_intimidate_by_death
+    # force-fails the quest immediately - the codebase's first
+    # action-triggered failure; every other failure is deadline- or
+    # dungeon-destruction-based (see failed_description's validator below).
+    target_intimidate_entity_id: str | None = None
     deadline_year: int | None = None
     deadline_day: int | None = None
     questgiver_entity_id: str | None = None
@@ -358,14 +372,21 @@ class QuestDef(BaseModel):
     # Quest.current_description. Same shape again, for the arrive-then-report
     # trigger. Only meaningful alongside target_dungeon_id.
     target_visited_description: str = ""
+    # Quest log pane override for an intimidate quest (target_intimidate_entity_id)
+    # while in_progress and its target has actually been recorded
+    # intimidated (not yet reported to the questgiver) - see
+    # Quest.current_description. Same shape again, for the
+    # intimidate-then-report trigger. Only meaningful alongside
+    # target_intimidate_entity_id.
+    target_intimidated_description: str = ""
     # Quest log pane override once this quest is "completed" - a summary of
     # what happened and what was earned, not just the original pitch. ""
     # falls back to `description`.
     completed_description: str = ""
     # Quest log pane override once this quest is "failed" - only meaningful
-    # alongside a deadline or voided_by_dungeon_id (see the validator
-    # below), the only two ways a quest ever fails. "" falls back to
-    # `description`.
+    # alongside a deadline, voided_by_dungeon_id, or target_intimidate_entity_id
+    # (see the validator below) - the only three ways a quest ever fails.
+    # "" falls back to `description`.
     failed_description: str = ""
     # Every consequence applied the moment this quest's deadline passes
     # while still in_progress (see QuestLog.check_deadlines,
@@ -389,23 +410,32 @@ class QuestDef(BaseModel):
         triggers = [
             self.target_dungeon_id, self.target_entity_id,
             self.target_kill_entity_id, self.target_item_id,
+            self.target_intimidate_entity_id,
         ]
         if sum(t is not None for t in triggers) > 1:
             raise ValueError(
                 "a quest can set at most one of target_dungeon_id/"
-                "target_entity_id/target_kill_entity_id/target_item_id "
-                "(ambiguous which completion trigger applies)"
+                "target_entity_id/target_kill_entity_id/target_item_id/"
+                "target_intimidate_entity_id (ambiguous which completion "
+                "trigger applies)"
             )
         return self
 
     @model_validator(mode="after")
     def failed_description_requires_a_deadline_or_voiding_dungeon(self) -> "QuestDef":
-        if self.failed_description and self.deadline_year is None and self.voided_by_dungeon_id is None:
+        if (
+            self.failed_description
+            and self.deadline_year is None
+            and self.voided_by_dungeon_id is None
+            and self.target_intimidate_entity_id is None
+        ):
             raise ValueError(
-                "failed_description is set but there's no deadline and no "
-                "voided_by_dungeon_id - QuestLog.check_deadlines and "
-                "QuestLog.void_by_dungeon are the only ways a quest ever "
-                "fails, so a quest with neither can never show it"
+                "failed_description is set but there's no deadline, no "
+                "voided_by_dungeon_id, and no target_intimidate_entity_id - "
+                "QuestLog.check_deadlines, QuestLog.void_by_dungeon, and "
+                "QuestLog.fail_intimidate_by_death are the only ways a "
+                "quest ever fails, so a quest with none of these can never "
+                "show it"
             )
         return self
 
@@ -463,6 +493,17 @@ class QuestDef(BaseModel):
                 "isn't - this override only ever applies to a dungeon-arrival "
                 "quest, checked against whether the dungeon's been recorded "
                 "visited"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_intimidated_description_requires_an_intimidate_target(self) -> "QuestDef":
+        if self.target_intimidated_description and self.target_intimidate_entity_id is None:
+            raise ValueError(
+                "target_intimidated_description is set but "
+                "target_intimidate_entity_id isn't - this override only "
+                "ever applies to an intimidate quest, checked against "
+                "whether the target's been recorded intimidated"
             )
         return self
 

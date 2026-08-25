@@ -224,7 +224,7 @@ when a quest is granted, what a reward does - and turns a validated
 Adding a new quest never means touching `engine/quest.py` - it means
 adding an entry to `data/quests.yaml`.
 
-A quest completes via exactly one of four trigger shapes, picked by which
+A quest completes via exactly one of five trigger shapes, picked by which
 single field is set (`QuestDef` rejects setting more than one):
 
 | Trigger field | Fires when | Checked in |
@@ -233,32 +233,37 @@ single field is set (`QuestDef` rejects setting more than one):
 | `target_entity_id` | player talks to that catalog entity | `Engine.talk_to_adjacent` -> `QuestLog.check_talked_to` |
 | `target_kill_entity_id` | player talks to `questgiver_entity_id` *after* that catalog entity has died (anywhere, any time - see `killed_entity_ids`) | `Engine.talk_to_adjacent` -> `QuestLog.check_kill_report` |
 | `target_item_id` | player talks to `questgiver_entity_id` *while holding* a matching item | `Engine.talk_to_adjacent` -> `QuestLog.check_delivery` |
+| `target_intimidate_entity_id` | player talks to `questgiver_entity_id` *after* attacking (not killing) that peaceful catalog entity (see `intimidated_entity_ids`) - see §0l for the full shape, including its unique immediate-failure path | `Engine.talk_to_adjacent` -> `QuestLog.check_intimidate_report` |
 
 None is valid too, for a quest with no completion trigger authored yet.
-The dungeon-arrival, kill, and fetch shapes are all deliberately two
-steps, not one: the deed itself (arriving, the kill, the pickup) only
-records that it happened (`QuestLog.record_dungeon_arrival`/
-`record_entity_killed`, or an ordinary `PickupAction` with no special
+The dungeon-arrival, kill, fetch, and intimidate shapes are all
+deliberately two steps, not one: the deed itself (arriving, the kill, the
+pickup, the hit) only records that it happened
+(`QuestLog.record_dungeon_arrival`/`record_entity_killed`/
+`record_entity_intimidated`, or an ordinary `PickupAction` with no special
 case) - only reporting back to `questgiver_entity_id` actually completes
 the quest and, for a fetch quest, removes the item from inventory. Talk
 (`target_entity_id`) is the one trigger that stays single-step - talking
-*is* the deed, there's nothing to split it from. The one exception across
-all three two-step shapes: if the target was already dead/visited
+*is* the deed, there's nothing to split it from. One exception across all
+four two-step shapes: if the target was already dead/visited/intimidated
 *before* the quest was ever granted, `check_questgiver` jumps straight to
 "completed" the moment it's granted (talking to the questgiver in that
-case is itself the report) - see `already_done_message`.
+case is itself the report) - see `already_done_message`. Intimidate has no
+symmetric retroactive *failure* case (target already dead before the
+quest is granted) - see §0l.
 
 `questgiver_entity_id` is a separate concept from the trigger: setting it
 means the quest starts `starting_status: not_given` and is granted by
 *talking* to that NPC (`QuestLog.check_questgiver`), rather than being
 live from game start (`starting_status: in_progress`, no questgiver
 needed - see `goblin_warning`). A `target_item_id` (fetch),
-`target_kill_entity_id` (kill), or `target_dungeon_id` (dungeon-arrival)
-quest always needs a `questgiver_entity_id` too - all three only ever
-complete by talking to that NPC - and `load_quests` rejects any of them
-missing it, along with a `not_given` quest missing one (nothing else can
-ever grant it) and a bad entity/item/dungeon reference. `deadline_year`/
-`deadline_day` must be set together or not at all.
+`target_kill_entity_id` (kill), `target_dungeon_id` (dungeon-arrival), or
+`target_intimidate_entity_id` (intimidate) quest always needs a
+`questgiver_entity_id` too - all four only ever complete by talking to
+that NPC - and `load_quests` rejects any of them missing it, along with a
+`not_given` quest missing one (nothing else can ever grant it) and a bad
+entity/item/dungeon reference. `deadline_year`/`deadline_day` must be set
+together or not at all.
 
 **Quest chains**: `requires_quest_id` names another quest's id that must be
 `completed` before this one is ever granted by `QuestLog.check_questgiver` -
@@ -306,17 +311,18 @@ one quest starts `in_progress`.
 
 **The quest log's detail pane isn't stuck on `description` forever.**
 `Quest.current_description` (`engine/quest.py`) resolves what to actually
-show against the quest's live progress, and four optional overrides let
+show against the quest's live progress, and five optional overrides let
 content say more as a quest moves along - any left unset ("") just keeps
 showing `description` at that stage:
 
 | Override | Shown when |
 |---|---|
 | `completed_description` | `status == "completed"` - a summary of what happened and what was earned, not just the original pitch |
-| `failed_description` | `status == "failed"` - only meaningful alongside a deadline, since that's the only way a quest ever fails; `load_quests` rejects it otherwise |
+| `failed_description` | `status == "failed"` - only meaningful alongside a deadline, `voided_by_dungeon_id`, or `target_intimidate_entity_id`, since those are the only ways a quest ever fails; `load_quests` rejects it otherwise |
 | `carrying_item_description` | a fetch quest (`target_item_id`), still `in_progress`, while the target item is actually in the player's inventory (not yet delivered) - only meaningful alongside `target_item_id`; `load_quests` rejects it otherwise |
 | `target_dead_description` | a kill quest (`target_kill_entity_id`), still `in_progress`, while the target's actually been recorded dead (not yet reported) - only meaningful alongside `target_kill_entity_id`; `load_quests` rejects it otherwise |
 | `target_visited_description` | a dungeon-arrival quest (`target_dungeon_id`), still `in_progress`, while the target dungeon's actually been recorded visited (not yet reported) - only meaningful alongside `target_dungeon_id`; `load_quests` rejects it otherwise |
+| `target_intimidated_description` | an intimidate quest (`target_intimidate_entity_id`), still `in_progress`, while the target's actually been recorded intimidated (not yet reported) - only meaningful alongside `target_intimidate_entity_id`; `load_quests` rejects it otherwise; see §0l |
 
 Write these whenever a quest's premise would otherwise go stale in the
 log - `fetch_fungus` is the fullest fetch example (starting pitch ->
@@ -638,6 +644,61 @@ unconditionally, since NPCs have no meaning there.
 authored content, reconstructed fresh by `build_game_map` on every load
 exactly like `dialogue` already is, unlike `world_flags` itself (which
 *is* runtime-mutable state and is what M1 persists).
+
+## 0l. Intimidate-and-report quests (`target_intimidate_entity_id`)
+
+The fifth quest trigger shape, and the first one built directly on top of
+another player-facing mechanic rather than an ordinary game event: the
+attack-confirmation prompt that already guards against *accidentally*
+attacking a peaceful NPC (`Engine.would_attack_peaceful_npc`). Since
+attacking a peaceful NPC is now always a deliberate choice, it's a natural
+quest verb in its own right - "rough someone up, don't kill them."
+
+Same two-step record/report pattern as the kill, fetch, and
+dungeon-arrival shapes: attacking a peaceful catalog entity (recorded
+unconditionally by `engine/combat.py`'s `_apply_damage`, in
+`QuestLog.intimidated_entity_ids`, via `record_entity_intimidated`) never
+completes anything by itself - only reporting back to
+`questgiver_entity_id` afterward does (`QuestLog.check_intimidate_report`,
+called from `Engine.talk_to_adjacent` alongside every other report check).
+`target_intimidated_description` overrides the quest log pane once the
+target's been hit but not yet reported, mirroring `target_dead_description`
+exactly.
+
+Where it diverges: an intimidate quest can also fail, and it's the only
+trigger shape in this codebase that fails from an *action* instead of a
+clock or a dungeon's destruction. If the target dies from the hit (or a
+later one) instead of surviving it, `QuestLog.fail_intimidate_by_death`
+force-fails the quest **immediately**, from `Engine.on_entity_death` - it
+doesn't wait for the player's next report the way a missed deadline or a
+razed dungeon's `void_by_dungeon` effectively do at their own trigger
+points. A killed target can never be "intimidated" per the quest's own
+premise, so there's nothing to wait for. `content/schema.py`'s
+`failed_description_requires_a_deadline_or_voiding_dungeon` validator
+accepts `target_intimidate_entity_id` as a third valid reason to set
+`failed_description`, alongside a deadline and `voided_by_dungeon_id`.
+
+The "consequence" for attacking the target - guards in that settlement
+turning hostile - needs **no new wiring at all**. It's the existing
+`game_map.player_attacked_peaceful_npc` flag, already flipped by the same
+`_apply_damage` condition that now also calls
+`record_entity_intimidated`, and already read by every `town_guard`'s AI
+(`_perform_ai`'s `AI_TOWN_GUARD` branch) on that same map. Authoring an
+intimidate quest doesn't require touching guard behavior at all - the
+consequence is automatic the moment the deed happens, quest or no quest.
+A cooldown on that hostility (so it doesn't stay permanent) is a known
+gap, deliberately out of scope for this pass.
+
+`content/loader.py`'s `load_quests` additionally requires
+`target_intimidate_entity_id` to name a catalog entity whose `ai` is in
+`PEACEFUL_AI_TYPES` - `_apply_damage` only ever records an intimidation
+against a peaceful defender, so a hostile target could never complete
+this quest, and the content-load-time check catches that mistake instead
+of shipping a quest that can never be finished. `a_debt_worth_collecting`
+(`data/quests.yaml`) is the reference example: the Wayford Provisioner
+sends the player to rough up `millhaven_debtor` in Millhaven, not kill
+them - killing the debtor instead force-fails the quest and leaves
+Millhaven's guards hostile with nothing collected.
 
 ## 1. Narrative framing
 

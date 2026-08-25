@@ -615,6 +615,7 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
             description = quest.current_description(
                 engine.player.inventory, engine.quest_log.killed_entity_ids,
                 engine.quest_log.visited_dungeon_ids,
+                engine.quest_log.intimidated_entity_ids,
             )
             print(f"    {description}")
 

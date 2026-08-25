@@ -170,6 +170,18 @@ millhaven_trainer:
   dialogue: Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would.
   trainer_perks: [toughness_1, weapon_training_1, shield_training_1, marksman_training_1]
 
+millhaven_debtor:
+  name: Debtor
+  glyph: b
+  color: [150, 110, 90]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Owes coin to someone back in Wayford, and has clearly been hoping the debt would just be forgotten.
+  dialogue: I know what I owe, and I know who to. Tell them I'm good for it - just not yet.
+
 town_guard:
   name: Town Guard
   glyph: T

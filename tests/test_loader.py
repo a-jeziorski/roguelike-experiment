@@ -578,7 +578,7 @@ def test_millhaven_level_01_content():
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
     assert entity_names == (
-        ["Escaped Prisoner", "Old Drillmaster", "Shopkeeper", "Town Guard", "Village Chief"]
+        ["Debtor", "Escaped Prisoner", "Old Drillmaster", "Shopkeeper", "Town Guard", "Village Chief"]
         + ["Villager"] * 5
     )
 

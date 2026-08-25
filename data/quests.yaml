@@ -4,19 +4,23 @@
 # exactly one trigger shape: target_dungeon_id (arriving somewhere, then
 # reporting it to questgiver_entity_id), target_entity_id (talking to
 # someone - the one single-step shape), target_kill_entity_id (killing a
-# specific catalog entity, then reporting it to questgiver_entity_id), or
+# specific catalog entity, then reporting it to questgiver_entity_id),
 # target_item_id (delivering a specific item to questgiver_entity_id while
-# holding it) - see engine/quest.py for what each one actually checks. The
-# dungeon-arrival, kill, and fetch shapes are all two steps: the deed
-# (arriving/killing/picking up) alone never completes anything, only
-# reporting back to the questgiver does.
+# holding it), or target_intimidate_entity_id (hitting - not killing - a
+# specific peaceful catalog entity, then reporting it to
+# questgiver_entity_id; killing the target instead force-fails the quest
+# immediately) - see engine/quest.py for what each one actually checks. The
+# dungeon-arrival, kill, fetch, and intimidate shapes are all two steps: the
+# deed (arriving/killing/picking up/hitting) alone never completes anything,
+# only reporting back to the questgiver does.
 #
 # description is only the quest log's *starting* pane text - completed_
 # description/failed_description, carrying_item_description (fetch quests,
 # once the item's in inventory), target_dead_description (kill quests, once
-# the target's been recorded dead), and target_visited_description
-# (dungeon-arrival quests, once the dungeon's been recorded visited)
-# override it once the quest actually progresses; see
+# the target's been recorded dead), target_visited_description
+# (dungeon-arrival quests, once the dungeon's been recorded visited), and
+# target_intimidated_description (intimidate quests, once the target's been
+# recorded intimidated) override it once the quest actually progresses; see
 # Quest.current_description (engine/quest.py) for exactly when each one
 # applies. Leave any of them unset ("") to just keep showing `description`
 # at that stage.
@@ -277,3 +281,31 @@ what_the_tide_kept:
   target_item_id: waystation_manifest
   reward_gold_amount: 15
   reward_xp_amount: 20
+
+a_debt_worth_collecting:
+  name: A Debt Worth Collecting
+  description: >
+    The Provisioner is owed coin by a debtor who ran off to Millhaven
+    thinking distance would settle it. They don't want the debtor dead -
+    a corpse doesn't pay - just rattled enough to remember what's owed.
+    Make your point, then leave them breathing.
+  target_intimidated_description: >
+    The debtor's rattled and still breathing - exactly what the
+    Provisioner asked for. Get back to Wayford and let them know the
+    message landed.
+  completed_description: >
+    You told the Provisioner it's done - the debtor's had their scare and
+    lived to remember it. The Provisioner counts out a share of whatever
+    gets collected, no questions about how you made your point.
+  failed_description: >
+    The debtor's dead. Whatever the Provisioner was owed, a corpse in
+    Millhaven isn't going to pay it - and Millhaven's guards haven't
+    forgotten who came through swinging.
+  completion_message: The debtor's alive and considerably more motivated to pay. That's worth more to the Provisioner than a body ever would've been.
+  given_message: "New quest: A Debt Worth Collecting - the Provisioner wants a debtor in Millhaven roughed up, not killed, as a reminder of what's owed."
+  failure_message: "The debtor's dead, and dead men don't pay. Whatever the Provisioner was owed, it isn't coming back now."
+  questgiver_done_dialogue: Debt's as good as collected now, thanks to a little reminder. Didn't need to hear the details.
+  questgiver_entity_id: wayford_provisioner
+  target_intimidate_entity_id: millhaven_debtor
+  reward_gold_amount: 20
+  reward_xp_amount: 25

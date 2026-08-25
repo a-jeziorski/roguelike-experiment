@@ -17,9 +17,14 @@ def _apply_damage(
     # Triggers on the attack itself, not on damage dealt (a 0-damage hit
     # still counts) - matches "attacks the villagers," not "hurts the
     # villagers." Only the player's own attacks count; no monster ever
-    # attacks a peaceful NPC today.
+    # attacks a peaceful NPC today. Also records the hit for an
+    # intimidate-quest target (QuestLog.record_entity_intimidated) - same
+    # condition, unconditional even if this hit turns out lethal (see
+    # QuestLog.fail_intimidate_by_death, triggered separately below via
+    # on_entity_death).
     if attacker is engine.player and defender.ai in PEACEFUL_AI_TYPES:
         engine.game_map.player_attacked_peaceful_npc = True
+        engine.quest_log.record_entity_intimidated(defender.entity_id)
 
     damage = max(0, attack_value - defender.effective_defense)
 

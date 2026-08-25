@@ -19,6 +19,7 @@ ALL_SHIPPED_QUEST_IDS = {
     "goblin_warning", "kill_the_warden", "fetch_fungus",
     "clearing_the_watch_road", "a_record_worth_keeping", "word_down_the_road",
     "spreading_the_warning", "a_wall_worth_holding", "what_the_tide_kept",
+    "a_debt_worth_collecting",
 }
 
 
@@ -31,6 +32,8 @@ def test_load_quests_loads_the_real_shipped_file():
     assert quests["kill_the_warden"].starting_status == "not_given"
     assert quests["fetch_fungus"].reward_shop_discount_pct == 0.2
     assert quests["fetch_fungus"].reward_shop_discount_entity_id == "shopkeeper"
+    assert quests["a_debt_worth_collecting"].questgiver_entity_id == "wayford_provisioner"
+    assert quests["a_debt_worth_collecting"].target_intimidate_entity_id == "millhaven_debtor"
 
 
 def test_real_shipped_content_spreading_the_warning_tightens_a_wall_worth_holding():
@@ -234,6 +237,44 @@ def test_load_quests_rejects_unknown_target_dungeon(tmp_path):
 
     with pytest.raises(ContentValidationError, match="target_dungeon_id"):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_rejects_unknown_target_intimidate_entity(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_intimidate_entity_id: nonexistent_npc\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_intimidate_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_hostile_target_intimidate_entity(tmp_path):
+    """engine/combat.py's _apply_damage only ever records an intimidation
+    against a peaceful defender - a quest targeting a hostile catalog
+    entity (e.g. the warden, ai: hostile_basic) could never complete, so
+    load_quests catches it at content-load time instead."""
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_intimidate_entity_id: warden\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="isn't a peaceful entity"):
+        load_quests(path, catalog)
 
 
 def test_load_quests_skips_dungeon_check_when_known_dungeon_ids_is_none(tmp_path):
@@ -465,6 +506,24 @@ def test_load_quests_rejects_two_trigger_fields_set_at_once(tmp_path):
         load_quests(path, catalog)
 
 
+def test_load_quests_rejects_intimidate_and_another_trigger_set_at_once(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_intimidate_entity_id: millhaven_debtor\n"
+        "  target_kill_entity_id: warden\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="at most one"):
+        load_quests(path, catalog)
+
+
 def test_load_quests_rejects_one_deadline_field_without_the_other(tmp_path):
     path = write_quests(
         tmp_path,
@@ -528,6 +587,22 @@ def test_load_quests_rejects_a_dungeon_arrival_quest_with_no_questgiver(tmp_path
 
     with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
         load_quests(path, catalog, known_dungeon_ids={"millhaven"})
+
+
+def test_load_quests_rejects_an_intimidate_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_intimidate_entity_id: millhaven_debtor\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
+        load_quests(path, catalog)
 
 
 def test_load_quests_rejects_requires_quest_id_without_a_questgiver(tmp_path):
@@ -677,6 +752,23 @@ def test_load_quests_rejects_target_visited_description_without_a_dungeon_target
         load_quests(path, catalog)
 
 
+def test_load_quests_rejects_target_intimidated_description_without_an_intimidate_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  target_intimidated_description: They're rattled.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_intimidated_description"):
+        load_quests(path, catalog)
+
+
 def test_load_quests_rejects_carrying_item_description_without_a_fetch_target(tmp_path):
     path = write_quests(
         tmp_path,
@@ -731,6 +823,25 @@ def test_load_quests_accepts_failed_description_with_voided_by_dungeon_id_and_no
     assert quests["bad_quest"].voided_by_dungeon_id == "millhaven"
 
 
+def test_load_quests_accepts_failed_description_with_target_intimidate_entity_id_and_no_deadline(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_intimidate_entity_id: millhaven_debtor\n"
+        "  failed_description: They're dead - so much for collecting.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["bad_quest"].failed_description == "They're dead - so much for collecting."
+
+
 def test_load_quests_allows_the_full_set_of_description_overrides(tmp_path):
     path = write_quests(
         tmp_path,
@@ -777,6 +888,9 @@ def test_load_quests_real_shipped_quests_have_the_new_description_overrides():
     assert quests["clearing_the_watch_road"].completed_description
     assert quests["word_down_the_road"].target_visited_description
     assert quests["word_down_the_road"].completed_description
+    assert quests["a_debt_worth_collecting"].target_intimidated_description
+    assert quests["a_debt_worth_collecting"].completed_description
+    assert quests["a_debt_worth_collecting"].failed_description
 
 
 class _FakeInventoryItem:
@@ -793,16 +907,16 @@ def test_fetch_fungus_current_description_progresses_through_every_real_stage():
     log = create_quest_log(quests)
     quest = log.quests["fetch_fungus"]
 
-    starting = quest.current_description([], set(), set())
+    starting = quest.current_description([], set(), set(), set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")], set(), set())
+    carrying = quest.current_description([_FakeInventoryItem("pale_fungus")], set(), set(), set())
     assert carrying == quest.carrying_item_description
     assert carrying != starting
 
     quest.status = "completed"
-    completed = quest.current_description([], set(), set())
+    completed = quest.current_description([], set(), set(), set())
     assert completed == quest.completed_description
     assert completed not in (starting, carrying)
 
@@ -816,16 +930,16 @@ def test_kill_the_warden_current_description_progresses_through_every_real_stage
     log = create_quest_log(quests)
     quest = log.quests["kill_the_warden"]
 
-    starting = quest.current_description([], set(), set())
+    starting = quest.current_description([], set(), set(), set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    dead = quest.current_description([], {"warden"}, set())
+    dead = quest.current_description([], {"warden"}, set(), set())
     assert dead == quest.target_dead_description
     assert dead != starting
 
     quest.status = "completed"
-    completed = quest.current_description([], {"warden"}, set())
+    completed = quest.current_description([], {"warden"}, set(), set())
     assert completed == quest.completed_description
     assert completed not in (starting, dead)
 
@@ -839,15 +953,54 @@ def test_word_down_the_road_current_description_progresses_through_every_real_st
     log = create_quest_log(quests)
     quest = log.quests["word_down_the_road"]
 
-    starting = quest.current_description([], set(), set())
+    starting = quest.current_description([], set(), set(), set())
     assert starting == quest.description
 
     quest.status = "in_progress"
-    visited = quest.current_description([], set(), {"millhaven"})
+    visited = quest.current_description([], set(), {"millhaven"}, set())
     assert visited == quest.target_visited_description
     assert visited != starting
 
     quest.status = "completed"
-    completed = quest.current_description([], set(), {"millhaven"})
+    completed = quest.current_description([], set(), {"millhaven"}, set())
     assert completed == quest.completed_description
     assert completed not in (starting, visited)
+
+
+def test_a_debt_worth_collecting_current_description_progresses_through_every_real_stage():
+    """Same end-to-end regression net again, for the intimidate-then-report
+    shape: starting pitch -> debtor recorded intimidated -> completed, each
+    stage a genuinely different string."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    log = create_quest_log(quests)
+    quest = log.quests["a_debt_worth_collecting"]
+
+    starting = quest.current_description([], set(), set(), set())
+    assert starting == quest.description
+
+    quest.status = "in_progress"
+    intimidated = quest.current_description([], set(), set(), {"millhaven_debtor"})
+    assert intimidated == quest.target_intimidated_description
+    assert intimidated != starting
+
+    quest.status = "completed"
+    completed = quest.current_description([], set(), set(), {"millhaven_debtor"})
+    assert completed == quest.completed_description
+    assert completed not in (starting, intimidated)
+
+
+def test_a_debt_worth_collecting_fails_immediately_if_the_debtor_is_killed_instead():
+    """The intimidate shape's unique failure path: killing the target force-
+    fails the quest right away (fail_intimidate_by_death), not on the next
+    report - unlike every other trigger shape's fail conditions."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    log = create_quest_log(quests)
+    quest = log.quests["a_debt_worth_collecting"]
+    quest.status = "in_progress"
+
+    changed = log.fail_intimidate_by_death("millhaven_debtor")
+
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"

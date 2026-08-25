@@ -2787,6 +2787,48 @@ def test_on_entity_death_records_kill_before_quest_is_given():
     assert player.inventory == []  # no reward - the quest was never completed
 
 
+def test_on_entity_death_fails_an_in_progress_intimidate_quest_immediately():
+    """The intimidate shape's unique failure path: unlike a kill quest,
+    which only records the death and waits for the next report, a target's
+    death immediately force-fails an intimidate quest - it can never be
+    "intimidated" after the fact."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    debtor = make_villager(2, 1, entity_id="millhaven_debtor")
+    game_map.entities.extend([player, debtor])
+    quest = Quest(
+        id="a_debt_worth_collecting", name="A Debt Worth Collecting", description="",
+        completion_message="done", failure_message="The debtor's dead, and dead men don't pay.",
+        target_intimidate_entity_id="millhaven_debtor", status="in_progress",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.on_entity_death(debtor)
+
+    assert quest.status == "failed"
+    assert "The debtor's dead, and dead men don't pay." in engine.message_log.messages
+
+
+def test_on_entity_death_silently_fails_a_not_given_intimidate_quest():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    debtor = make_villager(2, 1, entity_id="millhaven_debtor")
+    game_map.entities.extend([player, debtor])
+    quest = Quest(
+        id="a_debt_worth_collecting", name="A Debt Worth Collecting", description="",
+        completion_message="done", failure_message="The debtor's dead, and dead men don't pay.",
+        target_intimidate_entity_id="millhaven_debtor", status="not_given",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    engine = Engine(game_map, player, "Test Level", quest_log=quest_log)
+
+    engine.on_entity_death(debtor)
+
+    assert quest.status == "failed"
+    assert "The debtor's dead, and dead men don't pay." not in engine.message_log.messages
+
+
 def test_talk_to_adjacent_grants_a_questgiver_quest():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
@@ -3089,6 +3131,40 @@ def test_talk_to_adjacent_completes_a_kill_quest_after_the_target_is_dead():
     assert player.inventory[0].name == "Healing Potion"
 
 
+def test_talk_to_adjacent_completes_an_intimidate_quest_after_the_target_is_hit():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    provisioner = make_villager(2, 1, dialogue="Coin's good here.", entity_id="wayford_provisioner", name="Provisioner")
+    game_map.entities.extend([player, provisioner])
+    quest_log = real_quest_log()
+    quest_log.quests["a_debt_worth_collecting"].status = "in_progress"  # already given
+    quest_log.record_entity_intimidated("millhaven_debtor")  # hit, not yet reported
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["a_debt_worth_collecting"]
+    assert quest.status == "completed"
+    assert quest.completion_message in engine.message_log.messages
+
+
+def test_talk_to_adjacent_does_not_complete_an_intimidate_quest_before_the_target_is_hit():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    provisioner = make_villager(2, 1, dialogue="Coin's good here.", entity_id="wayford_provisioner", name="Provisioner")
+    game_map.entities.extend([player, provisioner])
+    quest_log = real_quest_log()
+    quest_log.quests["a_debt_worth_collecting"].status = "in_progress"
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()
+
+    quest = quest_log.quests["a_debt_worth_collecting"]
+    assert quest.status == "in_progress"
+
+
 def test_talk_to_adjacent_does_not_complete_a_kill_quest_before_the_target_is_dead():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)
@@ -3347,6 +3423,31 @@ def test_a_zero_damage_attack_on_a_villager_still_sets_the_flag():
 
     assert villager.fighter.hp == villager.fighter.max_hp  # confirms no damage was dealt
     assert game_map.player_attacked_peaceful_npc is True
+
+
+def test_attacking_a_villager_records_it_for_an_intimidate_quest():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, entity_id="millhaven_debtor")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "millhaven_debtor" in engine.quest_log.intimidated_entity_ids
+
+
+def test_attacking_a_hostile_monster_does_not_record_an_intimidation():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=5, defense=0, ai=None)
+    monster.entity_id = "rat"
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.quest_log.intimidated_entity_ids == set()
 
 
 def test_talk_to_adjacent_works_on_a_peaceful_town_guard():
