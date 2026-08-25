@@ -573,6 +573,77 @@ def test_town_guard_attacks_when_provoked_and_already_adjacent():
     assert player.fighter.hp == 30 - 5
 
 
+# --- would_attack_peaceful_npc ---
+
+
+def test_would_attack_peaceful_npc_returns_none_when_destination_is_empty():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is None
+
+
+def test_would_attack_peaceful_npc_returns_none_for_a_hostile_monster():
+    """A bump-attack on a genuinely hostile monster needs no confirmation -
+    only a still-peaceful NPC does."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    rat = make_monster(2, 1, ai="hostile_basic")
+    game_map.entities.extend([player, rat])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is None
+
+
+def test_would_attack_peaceful_npc_returns_the_entity_for_an_undamaged_villager():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is villager
+
+
+def test_would_attack_peaceful_npc_returns_none_for_an_already_fleeing_villager():
+    """A villager already hurt is already "in it" - see
+    Engine._is_currently_peaceful - so a further bump-attack doesn't need
+    re-confirming."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.")
+    villager.fighter.hp = 5  # already damaged, fleeing
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is None
+
+
+def test_would_attack_peaceful_npc_returns_the_entity_for_an_unprovoked_town_guard():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is guard
+
+
+def test_would_attack_peaceful_npc_returns_none_for_a_town_guard_once_the_map_is_provoked():
+    """Once game_map.player_attacked_peaceful_npc has tripped, every town
+    guard is already a legitimate combatant - no more confirmations."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.player_attacked_peaceful_npc = True
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.would_attack_peaceful_npc(1, 0) is None
+
+
 def test_ranged_basic_fires_when_in_range_but_not_adjacent():
     game_map = make_open_map(10, 3)
     player = make_player(0, 1, hp=30, defense=0)

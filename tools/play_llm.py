@@ -24,10 +24,14 @@ Usage:
     python tools/play_llm.py inspect 12 5            # look-mode text for a tile
     python tools/play_llm.py entities                # list every entity + coords + hostile/peaceful/item
     python tools/play_llm.py move n                   # n/s/e/w/ne/nw/se/sw - one turn, reports outcome
+                                                         # (refuses if it would attack a still-peaceful NPC -
+                                                         # see 'attack' below)
     python tools/play_llm.py walk n n n e e             # up to 5 steps in one call, stops before any
                                                           # blocked/occupied step or after taking damage
-    python tools/play_llm.py goto 40 12                  # pathfind + walk to an exact coordinate
-    python tools/play_llm.py goto old drillmaster          # pathfind + walk adjacent to a matching entity
+    python tools/play_llm.py attack n                    # deliberate bump-attack, even on a peaceful NPC -
+                                                           # the explicit escape hatch 'move' refuses to take
+    python tools/play_llm.py goto 40 12                    # pathfind + walk to an exact coordinate
+    python tools/play_llm.py goto old drillmaster            # pathfind + walk adjacent to a matching entity
     python tools/play_llm.py wait                           # one turn
     python tools/play_llm.py pickup                          # one turn
     python tools/play_llm.py use                              # drink selected potion - one turn
@@ -119,7 +123,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="List every entity on the current map with coordinates and a hostile/peaceful/item tag. Free.",
     )
 
-    p = sub.add_parser("move", help="Move/bump-attack one step. Costs a turn. Reports whether it moved.")
+    p = sub.add_parser(
+        "move",
+        help=(
+            "Move/bump-attack one step. Costs a turn. Reports whether it moved. Refuses (no "
+            "turn spent) if the destination holds a still-peaceful NPC - see 'attack' for the "
+            "deliberate version."
+        ),
+    )
+    p.add_argument("direction", choices=sorted(DIRECTIONS))
+
+    p = sub.add_parser(
+        "attack",
+        help=(
+            "Bump-attack one step, deliberately - unlike 'move', never refuses for a peaceful "
+            "NPC. Costs a turn. The explicit escape hatch for when attacking a villager/guard "
+            "is genuinely intended, not an accidental bump."
+        ),
+    )
     p.add_argument("direction", choices=sorted(DIRECTIONS))
 
     p = sub.add_parser(
@@ -508,6 +529,16 @@ def apply_command(
     pre_pos = (engine.player.x, engine.player.y)
     if cmd == "move":
         dx, dy = DIRECTIONS[args.direction]
+        blocker = engine.would_attack_peaceful_npc(dx, dy)
+        if blocker is not None:
+            notes.append(
+                f"Refused: that would attack {blocker.name}, who isn't hostile. "
+                f"Use 'attack {args.direction}' if that's deliberate."
+            )
+            return active_key, engine, full_map, notes
+        turn_action = BumpAction(dx, dy)
+    elif cmd == "attack":
+        dx, dy = DIRECTIONS[args.direction]
         turn_action = BumpAction(dx, dy)
     elif cmd == "wait":
         turn_action = WaitAction()
@@ -529,7 +560,7 @@ def apply_command(
             clock=clock, quest_log=quest_log, sprite_codepoints=None,
             encounter_registry=encounter_registry,
         )
-        if cmd == "move":
+        if cmd in ("move", "attack"):
             post_pos = (engine.player.x, engine.player.y)
             if post_pos == pre_pos:
                 notes.append(

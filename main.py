@@ -21,6 +21,7 @@ from content.loader import (
 )
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
+    BumpAction,
     CyclePotionKindAction,
     EscapeAction,
     FireAction,
@@ -56,6 +57,7 @@ from engine.render import (
     projectile_glyph,
     projectile_path,
     render_all,
+    render_confirm_attack_prompt,
     render_continue_prompt,
     render_look_frame,
     render_projectile,
@@ -345,6 +347,32 @@ def prompt_continue_saved_game(console: tcod.console.Console, context: tcod.cont
     False to start a new game."""
     while True:
         render_continue_prompt(console)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_continue_prompt_event(event)
+
+            if result == "yes":
+                return True
+            if result == "no":
+                return False
+
+
+def run_confirm_attack_mode(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine, entity_name: str,
+) -> bool:
+    """Nested event loop for confirming a deliberate attack on a still-
+    peaceful NPC (see Engine.would_attack_peaceful_npc) - shown instead of
+    silently bump-attacking, so a moment of misjudged pathing near a
+    villager/guard never turns into an unintended fight (and, for a town
+    guard, unintended map-wide hostility). Reuses handle_continue_prompt_event
+    exactly - it's already a generic Y/N/Escape handler with no text of its
+    own. Returns True if the player confirmed, False otherwise; never
+    touches Engine.process_turn either way - only a *confirmed* BumpAction,
+    dispatched by the caller afterward, ever spends a turn."""
+    while True:
+        render_confirm_attack_prompt(console, engine, entity_name)
         context.present(console)
 
         for event in tcod.event.wait():
@@ -840,6 +868,12 @@ def main() -> int:
                                     encounter_registry=encounter_registry,
                                 )
                     continue
+
+                if isinstance(action, BumpAction) and engine.game_state == "playing":
+                    blocker = engine.would_attack_peaceful_npc(action.dx, action.dy)
+                    if blocker is not None:
+                        if not run_confirm_attack_mode(console, context, engine, blocker.name):
+                            continue
 
                 if dispatch_action(
                     engine, action,

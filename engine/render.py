@@ -584,6 +584,22 @@ def render_continue_prompt(console: "Console") -> None:
     console.print(0, y, "[y] continue saved game  [n] start a new game", fg=HUD_FG, width=width)
 
 
+def render_confirm_attack_prompt(console: "Console", engine: "Engine", entity_name: str) -> None:
+    """Overlays a deliberate-attack confirmation on top of the normal game
+    view - unlike render_continue_prompt (which runs before any game state
+    exists, so it draws a blank screen), this happens mid-run, so the
+    player should still see the map/HUD/log they were just looking at,
+    including the NPC in question. Shown whenever a BumpAction would
+    resolve to attacking a still-peaceful NPC (see
+    Engine.would_attack_peaceful_npc) instead of attacking outright - see
+    main.py's run_confirm_attack_mode."""
+    render_all(console, engine)
+    width = console.width
+    y = console.height - 2
+    console.print(0, y, f"Attack {entity_name}? They aren't hostile.", fg=HUD_FG, width=width)
+    console.print(0, console.height - 1, "[y] attack  [n/esc] cancel", fg=HUD_FG, width=width)
+
+
 def render_shop(
     console: "Console",
     catalog: "Catalog",

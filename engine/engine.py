@@ -542,22 +542,15 @@ class Engine:
             if was_in_progress and quest.failure_message:
                 self.message_log.add(quest.failure_message)
 
-    def _find_adjacent_peaceful_npc(
-        self, entity_id: str | None = None, requires_shop: bool = False,
-        requires_trainer: bool = False,
-    ) -> Entity | None:
-        """The first PEACEFUL_AI_TYPES entity (villager or town_guard) within
-        8-directional adjacency of the player - matches the project's
-        diagonal-movement model. Hostile monsters are never talkable
-        (filtered by AI type, not a new flag); bumping them still attacks,
-        unchanged. `entity_id`, if given, additionally restricts the match
-        to that specific catalog id. `requires_shop`, if True, additionally
-        restricts the match to an entity with a non-empty shop_inventory
-        (see EntityDef.shop_inventory) - i.e. any shopkeeper, not one
-        hardcoded catalog id - see adjacent_shopkeeper. `requires_trainer`
-        is the same idea for trainer_perks - see adjacent_trainer. Leaving
-        all three at their defaults reproduces the original unfiltered scan
-        exactly.
+    def _is_currently_peaceful(self, entity: Entity) -> bool:
+        """Whether `entity` is still meaningfully peaceful right now - a
+        villager already hurt (fleeing) or a town guard after the map's
+        hostility flag has tripped are no longer peaceful in any real
+        sense, even though their catalog ai type is still one of
+        PEACEFUL_AI_TYPES. Shared by _find_adjacent_peaceful_npc (is this
+        NPC currently talkable/tradeable) and would_attack_peaceful_npc
+        (does bumping this NPC need a deliberate confirmation instead of
+        attacking outright).
 
         A villager that's been hurt is excluded - per _perform_ai's own
         AI_VILLAGER branch, any damage at all makes a villager flee
@@ -567,12 +560,36 @@ class Engine:
         excluded once game_map.player_attacked_peaceful_npc trips even if
         this specific guard is undamaged - villagers are NOT affected by
         that flag (only their own hp matters to them); that asymmetry is
-        intentional, not a leak. A fleeing/hostile NPC won't stop to talk or
-        trade, so both talk_to_adjacent and adjacent_shopkeeper get this for
-        free from the one shared scan."""
+        intentional, not a leak."""
+        if entity.ai not in PEACEFUL_AI_TYPES:
+            return False
+        if entity.ai == AI_TOWN_GUARD and self.game_map.player_attacked_peaceful_npc:
+            return False
+        if entity.fighter is not None and entity.fighter.hp < entity.fighter.max_hp:
+            return False
+        return True
+
+    def _find_adjacent_peaceful_npc(
+        self, entity_id: str | None = None, requires_shop: bool = False,
+        requires_trainer: bool = False,
+    ) -> Entity | None:
+        """The first currently-peaceful entity (see _is_currently_peaceful)
+        within 8-directional adjacency of the player - matches the
+        project's diagonal-movement model. Hostile monsters are never
+        talkable (filtered by AI type, not a new flag); bumping them still
+        attacks, unchanged. `entity_id`, if given, additionally restricts
+        the match to that specific catalog id. `requires_shop`, if True,
+        additionally restricts the match to an entity with a non-empty
+        shop_inventory (see EntityDef.shop_inventory) - i.e. any
+        shopkeeper, not one hardcoded catalog id - see adjacent_shopkeeper.
+        `requires_trainer` is the same idea for trainer_perks - see
+        adjacent_trainer. Leaving all three at their defaults reproduces
+        the original unfiltered scan exactly. A fleeing/hostile NPC won't
+        stop to talk or trade, so both talk_to_adjacent and
+        adjacent_shopkeeper get this for free from the one shared scan."""
         px, py = self.player.x, self.player.y
         for entity in self.game_map.entities:
-            if entity.ai not in PEACEFUL_AI_TYPES:
+            if not self._is_currently_peaceful(entity):
                 continue
             if entity_id is not None and entity.entity_id != entity_id:
                 continue
@@ -580,14 +597,28 @@ class Engine:
                 continue
             if requires_trainer and not entity.trainer_perks:
                 continue
-            if entity.ai == AI_TOWN_GUARD and self.game_map.player_attacked_peaceful_npc:
-                continue
-            if entity.fighter is not None and entity.fighter.hp < entity.fighter.max_hp:
-                continue
             if entity.x == px and entity.y == py:
                 continue
             if abs(entity.x - px) <= 1 and abs(entity.y - py) <= 1:
                 return entity
+        return None
+
+    def would_attack_peaceful_npc(self, dx: int, dy: int) -> Entity | None:
+        """Whether bumping (dx, dy) from the player's current position
+        would resolve to a melee attack against a still-peaceful NPC (see
+        _is_currently_peaceful) rather than an ordinary move or a fight
+        with something already hostile. main.py checks this before
+        dispatching a BumpAction and shows a confirmation prompt instead
+        of attacking outright when it returns an entity - so a moment of
+        misjudged pathing near a villager/guard never turns into an
+        unintended fight (and, for a town guard, unintended map-wide
+        hostility) the way a plain bump-to-attack otherwise would. Mirrors
+        BumpAction's own "is something blocking the destination" check
+        (engine/actions.py) without performing anything - purely a peek."""
+        dest_x, dest_y = self.player.x + dx, self.player.y + dy
+        blocker = self.game_map.blocking_entity_at(dest_x, dest_y)
+        if blocker is not None and self._is_currently_peaceful(blocker):
+            return blocker
         return None
 
     def adjacent_shopkeeper(self) -> Entity | None:
