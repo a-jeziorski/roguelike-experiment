@@ -146,6 +146,10 @@ class Quest:
     # for no reward - see Engine.complete_quest. Simpler than reward_item_id:
     # no catalog lookup, just entity.gold += this.
     reward_gold_amount: int | None = None
+    # XP granted on completion, or None for no reward - see
+    # Engine.complete_quest/Engine._award_xp. Same shape as
+    # reward_gold_amount, not mutually exclusive with any other reward.
+    reward_xp_amount: int | None = None
     # A permanent fraction off everything sold by reward_shop_discount_entity_id's
     # shop, unlocked on completion (e.g. 0.2 for 20% off) - see
     # QuestLog.shop_discount_pct / Engine.shop_price. A quest can set this
@@ -625,6 +629,7 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         questgiver_done_dialogue=qdef.questgiver_done_dialogue,
         target_done_dialogue=qdef.target_done_dialogue,
         reward_item_id=qdef.reward_item_id, reward_gold_amount=qdef.reward_gold_amount,
+        reward_xp_amount=qdef.reward_xp_amount,
         reward_shop_discount_pct=qdef.reward_shop_discount_pct,
         reward_shop_discount_entity_id=qdef.reward_shop_discount_entity_id,
         status=qdef.starting_status,

@@ -8,6 +8,7 @@ from content.schema import (
     ItemDef,
     LegendEntry,
     LevelDef,
+    PerkDef,
     QuestDef,
     SpriteRef,
     SpriteSheetDef,
@@ -534,3 +535,113 @@ def test_flag_dialogue_accepts_both_fields():
     fd = FlagDialogue(flag="wayford_razed", line="It's gone.")
     assert fd.flag == "wayford_razed"
     assert fd.line == "It's gone."
+
+
+def test_entity_def_xp_reward_and_trainer_perks_default():
+    e = EntityDef(id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0)
+    assert e.xp_reward == 0
+    assert e.trainer_perks == []
+
+
+def test_entity_def_accepts_xp_reward_and_trainer_perks():
+    e = EntityDef(
+        id="wayford_trainer", name="Trainer", glyph="y", color=(1, 2, 3), hp=10, attack=0,
+        defense=0, ai="villager", trainer_perks=["toughness_1", "weapon_training_1"],
+    )
+    assert e.trainer_perks == ["toughness_1", "weapon_training_1"]
+
+    ogre = EntityDef(
+        id="ogre", name="Ogre", glyph="O", color=(1, 2, 3), hp=28, attack=8, defense=3,
+        xp_reward=14,
+    )
+    assert ogre.xp_reward == 14
+
+
+def test_entity_def_rejects_negative_xp_reward():
+    with pytest.raises(ValidationError):
+        EntityDef(id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0, xp_reward=-1)
+
+
+def test_quest_def_accepts_reward_xp_amount():
+    quest = QuestDef(
+        id="q1", name="Test Quest", description="A test.", completion_message="Done.",
+        reward_xp_amount=15,
+    )
+    assert quest.reward_xp_amount == 15
+
+
+def test_quest_def_reward_xp_amount_defaults_none():
+    quest = QuestDef(
+        id="q1", name="Test Quest", description="A test.", completion_message="Done.",
+    )
+    assert quest.reward_xp_amount is None
+
+
+def test_quest_def_rejects_nonpositive_reward_xp_amount():
+    with pytest.raises(ValidationError):
+        QuestDef(
+            id="q1", name="Test Quest", description="A test.", completion_message="Done.",
+            reward_xp_amount=0,
+        )
+
+
+def _perk_kwargs(**overrides):
+    kwargs = dict(
+        id="toughness_1", name="Toughness", description="Raises max HP.", xp_cost=40,
+        max_hp_bonus=5,
+    )
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_perk_def_accepts_exactly_one_bonus():
+    perk = PerkDef(**_perk_kwargs())
+    assert perk.max_hp_bonus == 5
+    assert perk.attack_bonus is None
+    assert perk.defense_bonus is None
+    assert perk.ranged_attack_bonus is None
+
+
+def test_perk_def_accepts_attack_bonus_alone():
+    perk = PerkDef(**_perk_kwargs(max_hp_bonus=None, attack_bonus=2))
+    assert perk.attack_bonus == 2
+
+
+def test_perk_def_accepts_defense_bonus_alone():
+    perk = PerkDef(**_perk_kwargs(max_hp_bonus=None, defense_bonus=2))
+    assert perk.defense_bonus == 2
+
+
+def test_perk_def_accepts_ranged_attack_bonus_alone():
+    perk = PerkDef(**_perk_kwargs(max_hp_bonus=None, ranged_attack_bonus=2))
+    assert perk.ranged_attack_bonus == 2
+
+
+def test_perk_def_rejects_zero_bonuses_set():
+    with pytest.raises(ValidationError, match="exactly one"):
+        PerkDef(**_perk_kwargs(max_hp_bonus=None))
+
+
+def test_perk_def_rejects_more_than_one_bonus_set():
+    with pytest.raises(ValidationError, match="exactly one"):
+        PerkDef(**_perk_kwargs(attack_bonus=2))
+
+
+def test_perk_def_rejects_nonpositive_xp_cost():
+    with pytest.raises(ValidationError):
+        PerkDef(**_perk_kwargs(xp_cost=0))
+
+
+def test_perk_def_gold_cost_defaults_none():
+    perk = PerkDef(**_perk_kwargs())
+    assert perk.gold_cost is None
+
+
+def test_perk_def_accepts_gold_cost():
+    perk = PerkDef(**_perk_kwargs(gold_cost=10))
+    assert perk.gold_cost == 10
+
+
+def test_perk_def_rejects_nonpositive_gold_cost():
+    with pytest.raises(ValidationError):
+        PerkDef(**_perk_kwargs(gold_cost=0))

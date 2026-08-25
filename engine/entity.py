@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from content.schema import FlagDialogue
+from content.schema import FlagDialogue, PerkDef
 
 Color = tuple[int, int, int]
 
@@ -22,6 +22,29 @@ class Fighter:
     hp: int
     attack: int
     defense: int
+    # A learned perk's ranged_attack_bonus, permanently folded in (see
+    # apply_perk_stat_bonus below) - unlike max_hp/attack/defense, ranged
+    # attack has no base stat of its own to bump (effective_ranged_attack
+    # derives entirely from `attack` plus the equipped weapon's bonus), so
+    # a ranged-specific perk needs this separate field.
+    perk_ranged_attack_bonus: int = 0
+
+
+def apply_perk_stat_bonus(fighter: Fighter, perk: PerkDef) -> None:
+    """Permanently folds one learned perk's bonus into fighter's base
+    stats - never hp. Engine.learn_perk bumps current hp separately, once,
+    only for a live max-hp purchase (the "instant full benefit" a newly
+    bought perk should give); engine/save.py's restore path calls this in
+    a loop over every learned perk and must NOT re-bump hp per perk, since
+    saved.hp already reflects every historical bump."""
+    if perk.max_hp_bonus:
+        fighter.max_hp += perk.max_hp_bonus
+    elif perk.attack_bonus:
+        fighter.attack += perk.attack_bonus
+    elif perk.defense_bonus:
+        fighter.defense += perk.defense_bonus
+    elif perk.ranged_attack_bonus:
+        fighter.perk_ranged_attack_bonus += perk.ranged_attack_bonus
 
 
 @dataclass
@@ -74,11 +97,15 @@ class Entity:
         dialogue: str = "",
         flag_dialogue: list[FlagDialogue] | None = None,
         shop_inventory: list[str] | None = None,
+        xp_reward: int = 0,
+        trainer_perks: list[str] | None = None,
         entity_id: str = "",
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
         equipped_ranged_weapon: "Entity | None" = None,
         gold: int = 0,
+        xp: int = 0,
+        learned_perk_ids: set[str] | None = None,
     ):
         self.x = x
         self.y = y
@@ -112,6 +139,15 @@ class Entity:
         # every spawned Entity gets its own list, never aliasing the
         # catalog's EntityDef.shop_inventory.
         self.shop_inventory: list[str] = list(shop_inventory) if shop_inventory is not None else []
+        # XP granted to the player when this entity dies (see
+        # Engine.on_entity_death) - 0 means no reward. Only ever nonzero on
+        # a hostile monster (content/loader.py's load_catalog enforces
+        # this at content-load time).
+        self.xp_reward = xp_reward
+        # Catalog perk ids this entity teaches, if any - empty means "not a
+        # trainer" (see Engine.adjacent_trainer). Defensively copied, same
+        # reasoning as shop_inventory above.
+        self.trainer_perks: list[str] = list(trainer_perks) if trainer_perks is not None else []
         self.entity_id = entity_id
         self.inventory: list[Entity] = []
         # The Entity currently equipped in each slot (so its name/bonus stay
@@ -124,6 +160,14 @@ class Entity:
         # from ItemEffect.gold_amount on purpose, matching how is_key/key_id
         # already don't mirror 1:1 between the two classes.
         self.gold = gold
+        # A spendable currency separate from gold, earned from kills/quests/
+        # landmark discoveries and spent on perks (see Engine._award_xp,
+        # Engine.learn_perk) - a player stat only, always 0 on a monster/NPC.
+        self.xp = xp
+        # Perk catalog ids already learned, permanently - never repurchased
+        # (see Engine.learn_perk). Defensively copied, same reasoning as
+        # shop_inventory/trainer_perks above.
+        self.learned_perk_ids: set[str] = set(learned_perk_ids) if learned_perk_ids is not None else set()
         # Which potion kind UseItemAction drinks (see POTION_KINDS/potion_kind) -
         # lives here rather than on Engine because the player Entity instance
         # itself is what survives every dungeon-to-dungeon hand-off unchanged
@@ -149,12 +193,13 @@ class Entity:
     @property
     def effective_ranged_attack(self) -> int:
         base = self.fighter.attack if self.fighter else 0
-        bonus = (
+        perk_bonus = self.fighter.perk_ranged_attack_bonus if self.fighter else 0
+        weapon_bonus = (
             self.equipped_ranged_weapon.item.ranged_attack_bonus
             if self.equipped_ranged_weapon
             else None
         )
-        return base + (bonus or 0)
+        return base + perk_bonus + (weapon_bonus or 0)
 
     def __repr__(self) -> str:
         return f"Entity({self.name!r} at ({self.x},{self.y}))"

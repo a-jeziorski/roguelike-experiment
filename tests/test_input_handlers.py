@@ -14,6 +14,7 @@ from engine.actions import (
     RestartAction,
     SaveGameAction,
     ShopAction,
+    TrainerAction,
     WaitAction,
 )
 from engine.input_handlers import (
@@ -23,6 +24,7 @@ from engine.input_handlers import (
     handle_quest_log_event,
     handle_shop_event,
     handle_target_event,
+    handle_trainer_event,
 )
 
 NUMPAD_DIRECTIONS = [
@@ -76,6 +78,10 @@ def test_handle_event_q_returns_quest_log_action():
 
 def test_handle_event_b_returns_shop_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.B)), ShopAction)
+
+
+def test_handle_event_p_returns_trainer_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.P)), TrainerAction)
 
 
 def test_handle_event_s_returns_save_game_action():
@@ -209,3 +215,29 @@ def test_handle_shop_event_unmapped_key_returns_none():
 def test_handle_shop_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_shop_event(tcod.event.Quit(sdl_event=None))
+
+
+def test_handle_trainer_event_up_and_down():
+    assert handle_trainer_event(key_down(tcod.event.KeySym.UP)) == "up"
+    assert handle_trainer_event(key_down(tcod.event.KeySym.KP_8)) == "up"
+    assert handle_trainer_event(key_down(tcod.event.KeySym.DOWN)) == "down"
+    assert handle_trainer_event(key_down(tcod.event.KeySym.KP_2)) == "down"
+
+
+def test_handle_trainer_event_learn():
+    assert handle_trainer_event(key_down(tcod.event.KeySym.RETURN)) == "learn"
+    assert handle_trainer_event(key_down(tcod.event.KeySym.KP_ENTER)) == "learn"
+
+
+@pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.P])
+def test_handle_trainer_event_exit_keys(sym):
+    assert handle_trainer_event(key_down(sym)) == "exit"
+
+
+def test_handle_trainer_event_unmapped_key_returns_none():
+    assert handle_trainer_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_trainer_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_trainer_event(tcod.event.Quit(sdl_event=None))

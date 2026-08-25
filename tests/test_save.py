@@ -149,7 +149,7 @@ def test_round_trip_preserves_a_not_yet_seen_announce_tile(tmp_path):
     engine2.game_map.auto_announce_tiles[coord] = "A flavorful landmark."
     engine2.game_map.update_fov(coord)
 
-    assert engine2.game_map.newly_seen_tile_announcements() == ["A flavorful landmark."]
+    assert engine2.game_map.newly_seen_tile_announcements() == [("A flavorful landmark.", False)]
 
 
 def test_round_trip_preserves_selected_potion_kind(tmp_path):
@@ -191,6 +191,62 @@ def test_restore_save_defaults_selected_potion_kind_for_an_old_format_save(tmp_p
     )
 
     assert active_engines2[active_key].player.selected_potion_kind == "healing"
+
+
+def test_round_trip_preserves_xp_and_re_derives_learned_perk_bonuses(tmp_path):
+    """learned_perk_ids is the single source of truth for perk-derived stat
+    totals - _build_player must re-derive fighter.max_hp/attack/defense/
+    perk_ranged_attack_bonus from it plus catalog.perks at restore time,
+    not double-apply anything already baked into saved.hp."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.xp = 25
+    engine.player.learned_perk_ids.add("toughness_1")
+    engine.player.fighter.max_hp += 5
+    engine.player.fighter.hp += 5
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    player2 = active_engines2[active_key].player
+    assert player2.xp == 25
+    assert player2.learned_perk_ids == {"toughness_1"}
+    assert player2.fighter.max_hp == 35  # base 30 + the learned perk's bonus
+    assert player2.fighter.hp == 35  # saved.hp already reflected the bump - not re-applied
+
+
+def test_restore_save_defaults_xp_and_learned_perk_ids_for_an_old_format_save(tmp_path):
+    """A save file written before xp/learned_perk_ids existed has neither
+    field - pydantic should default to 0/empty rather than erroring, so old
+    saves keep loading with unaffected base stats."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "old_save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["xp"]
+    del raw["player"]["learned_perk_ids"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, _clock2, _quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    player2 = active_engines2[active_key].player
+    assert player2.xp == 0
+    assert player2.learned_perk_ids == set()
+    assert player2.fighter.max_hp == 30
 
 
 def test_round_trip_preserves_a_cleared_non_current_level(tmp_path):
@@ -253,7 +309,7 @@ def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
 
     assert quest_log2.destroyed_dungeon_ids == {"wayford"}
     assert entrance_coord not in engine2.game_map.dungeon_entrances
-    assert engine2.game_map.kinds[entrance_coord] == "road"
+    assert engine2.game_map.kinds[entrance_coord] == "floor"
     assert engine2.game_map.tile_descriptions[entrance_coord] != ""
 
 

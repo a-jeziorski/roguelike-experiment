@@ -10,6 +10,7 @@ rat:
   defense: 0
   ai: skittish
   flee_hp_pct: 0.4
+  xp_reward: 3
   description: A mangy sewer rat. Weak alone, dangerous in numbers - and quick to bolt once wounded.
 
 goblin:
@@ -20,6 +21,7 @@ goblin:
   attack: 4
   defense: 1
   ai: hostile_basic
+  xp_reward: 5
   description: A snarling green raider with a rusty blade.
 
 skeleton:
@@ -31,6 +33,7 @@ skeleton:
   defense: 2
   ai: sleeping_guard
   alert_radius: 4
+  xp_reward: 7
   description: Bones held together by old, grim magic. Stands motionless until disturbed.
 
 skeleton_archer:
@@ -42,6 +45,7 @@ skeleton_archer:
   defense: 1
   ai: ranged_basic
   ranged_range: 5
+  xp_reward: 5
   description: An animated skeleton archer, notched arrow ready. Keeps its distance.
 
 ogre:
@@ -52,6 +56,7 @@ ogre:
   attack: 8
   defense: 3
   ai: hostile_basic
+  xp_reward: 14
   description: A hulking brute that guards the deepest halls.
 
 guard:
@@ -62,6 +67,7 @@ guard:
   attack: 5
   defense: 2
   ai: hostile_basic
+  xp_reward: 5
   description: A prison guard in scuffed leather armor, club in hand.
 
 feral_prisoner:
@@ -73,6 +79,7 @@ feral_prisoner:
   defense: 0
   ai: skittish
   flee_hp_pct: 0.4
+  xp_reward: 3
   description: A prisoner broken by years in the dark. Lashes out, then flees.
 
 crossbow_guard:
@@ -84,6 +91,7 @@ crossbow_guard:
   defense: 1
   ai: ranged_basic
   ranged_range: 5
+  xp_reward: 5
   description: A guard with a loaded crossbow, watching the halls from a distance.
 
 warden:
@@ -94,6 +102,7 @@ warden:
   attack: 7
   defense: 3
   ai: hostile_basic
+  xp_reward: 12
   description: The tower's warden. Not eager to let his prize escape.
 
 villager:
@@ -147,6 +156,19 @@ shopkeeper:
   description: Deals in coin, on the rare occasion anyone still has any to deal in.
   dialogue: Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from.
   shop_inventory: [healing_potion, teleportation_potion]
+
+millhaven_trainer:
+  name: Old Drillmaster
+  glyph: d
+  color: [150, 130, 100]
+  hp: 12
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Used to drill Kingdom levies before there was a Kingdom left to levy them for. Still willing to pass on what stuck.
+  dialogue: Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would.
+  trainer_perks: [toughness_1, weapon_training_1, shield_training_1, marksman_training_1]
 
 town_guard:
   name: Town Guard
@@ -208,6 +230,19 @@ wayford_provisioner:
   dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
   shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor]
 
+wayford_trainer:
+  name: Retired Sellsword
+  glyph: y
+  color: [160, 120, 100]
+  hp: 12
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Hung up the blade years back, but not the habit of watching how everyone else holds theirs.
+  dialogue: You've been out there, killed things, done what people asked of you - that's worth more than coin, if you know where to spend it. I know where.
+  trainer_perks: [toughness_1, weapon_training_1, shield_training_1, marksman_training_1]
+
 saltmarsh_witch:
   name: Witch
   glyph: W
@@ -251,6 +286,7 @@ bandit:
   attack: 5
   defense: 1
   ai: hostile_basic
+  xp_reward: 5
   description: A ragged raider squatting in what used to be Kingdom infrastructure. Fights for what's in your pockets, not for a cause.
 
 bandit_captain:
@@ -261,6 +297,7 @@ bandit_captain:
   attack: 7
   defense: 2
   ai: hostile_basic
+  xp_reward: 9
   description: Whoever's left standing at the top of the watchtower's rickety hierarchy. Wears looted Kingdom mail like it was always his.
 
 drowned_wretch:
@@ -271,6 +308,7 @@ drowned_wretch:
   attack: 4
   defense: 0
   ai: hostile_basic
+  xp_reward: 5
   description: Once someone was posted here, before the sea came in. What's left doesn't remember that, or much else.
 
 stone_sentinel:
@@ -281,6 +319,7 @@ stone_sentinel:
   attack: 5
   defense: 3
   ai: hostile_basic
+  xp_reward: 15
   description: A construct of seamless, grown stone, posted at the Cairn since before anyone kept records. Slow. Patient. Still on duty.
 
 # Bestiary expansion - not yet placed in any level, kept here for future
@@ -296,6 +335,7 @@ cave_spider:
   defense: 0
   ai: skittish
   flee_hp_pct: 0.4
+  xp_reward: 3
   description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
 
 giant_rat:
@@ -306,6 +346,7 @@ giant_rat:
   attack: 3
   defense: 0
   ai: hostile_basic
+  xp_reward: 5
   description: Bigger and bolder than the sewer kind, and it doesn't scatter when you swing.
 
 wolf:
@@ -316,6 +357,7 @@ wolf:
   attack: 5
   defense: 1
   ai: hostile_basic
+  xp_reward: 5
   description: Lean and half-feral, running with whatever's left of a pack. Circles before it commits.
 
 kobold:
@@ -326,6 +368,7 @@ kobold:
   attack: 3
   defense: 0
   ai: hostile_basic
+  xp_reward: 3
   description: Small, wiry, and quick to pile in three-deep rather than fight fair alone.
 
 kobold_shaman:
@@ -337,6 +380,7 @@ kobold_shaman:
   defense: 0
   ai: ranged_basic
   ranged_range: 4
+  xp_reward: 4
   description: Chants something old and half-remembered, and the air around its hand does something anyway.
 
 orc:
@@ -347,6 +391,7 @@ orc:
   attack: 5
   defense: 1
   ai: hostile_basic
+  xp_reward: 6
   description: Broad-shouldered and unhurried about closing the distance - it's confident it doesn't need to be fast.
 
 hobgoblin:
@@ -357,6 +402,7 @@ hobgoblin:
   attack: 6
   defense: 2
   ai: hostile_basic
+  xp_reward: 7
   description: Disciplined where its smaller kin are chaos - drills the ones under it, and fights like it too.
 
 wraith:
@@ -368,6 +414,7 @@ wraith:
   defense: 2
   ai: sleeping_guard
   alert_radius: 4
+  xp_reward: 9
   description: A shape the light won't quite settle on, guarding something that predates whatever built the walls around it.
 
 gray_ooze:
@@ -378,6 +425,7 @@ gray_ooze:
   attack: 4
   defense: 1
   ai: hostile_basic
+  xp_reward: 6
   description: Formless, patient, and indifferent to the difference between stone and flesh. Both wear down eventually.
 
 giant_spider:
@@ -388,4 +436,5 @@ giant_spider:
   attack: 7
   defense: 1
   ai: hostile_basic
+  xp_reward: 9
   description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.

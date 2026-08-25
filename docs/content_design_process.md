@@ -838,6 +838,23 @@ enough that one hit can drop the monster straight through the threshold to
 `skittish` monster enough `max_hp` to survive at least one expected player
 hit with room below that to spare before `flee_hp_pct` kicks in.
 
+**XP economy** (`EntityDef.xp_reward`, `QuestDef.reward_xp_amount`,
+`data/perks.yaml`, see `Engine._award_xp`/`Engine.learn_perk`): XP is a
+pure spendable currency for Trainer-taught Perks, not a level-up bar - no
+formula ties it to combat balance above, so these numbers were established
+fresh rather than derived. Convention this pass set: a monster's
+`xp_reward` scales with its `hp` tier (roughly 3 XP for a weak
+skirmisher around hp 6-9, up to 14-15 XP for a boss-tier monster like the
+ogre or stone sentinel at hp 28-30 - see `data/entities.yaml` for the full
+tiering); a quest's `reward_xp_amount` runs somewhat higher per completion
+(15-25 XP), since a quest represents more total investment than one kill.
+A perk's `xp_cost` should be reachable after a modest handful of early
+kills plus roughly one quest - not a single kill, not a full dungeon clear
+- `data/perks.yaml`'s starting tier (40-45 XP) was picked against these
+numbers with that target in mind. Only a hostile (non-`PEACEFUL_AI_TYPES`)
+entity may ever set `xp_reward` - `content/loader.py`'s `load_catalog`
+rejects it otherwise, so a villager/town_guard can never be XP-farmed.
+
 ## 3. Structural design
 
 - **Linear vs. branching**: a branch should represent a real choice (see

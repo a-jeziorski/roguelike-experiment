@@ -94,6 +94,17 @@ class ShopAction(Action):
         pass
 
 
+class TrainerAction(Action):
+    """Enters the trainer screen: a free, non-turn screen for learning perks
+    from a nearby Trainer NPC. main.py recognizes this before it would ever
+    reach Engine.process_turn and runs its own nested input loop instead -
+    perform() is never actually called in practice, kept only so
+    TrainerAction satisfies the Action interface."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class TalkAction(Action):
     """Talks to an adjacent villager-type NPC - free, costs no turn, same
     shape as LookAction. main.py recognizes this before it would ever reach

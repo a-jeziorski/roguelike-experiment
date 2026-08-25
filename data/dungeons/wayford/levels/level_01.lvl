@@ -37,7 +37,7 @@ map: |
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,7,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,8,,,,#
+  #,,,,,,,7,,,,,,,,,,,,,,,,,,,,.,y,,,,,,,,,,,,,,,,,,,,8,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,i,,,,.,,,,,,,,,,,,,,n,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -67,6 +67,7 @@ legend:
   "c": { entity: wayford_clerk }
   "M": { entity: wayford_caravan_master }
   "P": { entity: wayford_provisioner }
+  "y": { entity: wayford_trainer, tile: plains, dialogue: "You've been out there, killed things, done what people asked of you - that's worth more than coin, if you know where to spend it. I know where." }
   "T": { entity: town_guard, tile: road }
   "d": { entity: villager, tile: plains, dialogue: "Can't stop, cart's half-loaded and losing light." }
   "n": { entity: villager, tile: plains, dialogue: "Road Warden's been asking around for someone reckless enough to deal with Broken Watch. Might be worth a word, if you're that sort." }

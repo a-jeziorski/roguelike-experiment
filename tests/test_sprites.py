@@ -39,6 +39,7 @@ def make_catalog() -> Catalog:
                 id="healing_potion", name="Healing Potion", glyph="!", color=(220, 40, 100),
             ),
         },
+        perks={},
     )
 
 

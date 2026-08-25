@@ -51,6 +51,7 @@ goblin_warning:
   deadline_day: 57
   target_entity_id: village_chief
   starting_status: in_progress
+  reward_xp_amount: 15
 
 kill_the_warden:
   name: An Old Debt
@@ -74,6 +75,7 @@ kill_the_warden:
   questgiver_entity_id: escaped_prisoner
   target_kill_entity_id: warden
   reward_item_id: healing_potion
+  reward_xp_amount: 25
 
 fetch_fungus:
   name: A Standing Request
@@ -98,6 +100,7 @@ fetch_fungus:
   target_item_id: pale_fungus
   reward_shop_discount_pct: 0.2
   reward_shop_discount_entity_id: shopkeeper
+  reward_xp_amount: 20
 
 clearing_the_watch_road:
   name: Clearing the Watch Road
@@ -126,6 +129,7 @@ clearing_the_watch_road:
   questgiver_entity_id: wayford_road_warden
   target_kill_entity_id: bandit_captain
   reward_item_id: bone_plate
+  reward_xp_amount: 25
   voided_by_dungeon_id: wayford
 
 a_record_worth_keeping:
@@ -154,6 +158,7 @@ a_record_worth_keeping:
   questgiver_entity_id: wayford_clerk
   target_item_id: road_ledger
   reward_gold_amount: 30
+  reward_xp_amount: 20
   voided_by_dungeon_id: wayford
 
 word_down_the_road:
@@ -182,6 +187,7 @@ word_down_the_road:
   questgiver_done_dialogue: You made it there and back in one piece - that's all I needed to hear. I'll get a cart moving before the season's out.
   questgiver_entity_id: wayford_caravan_master
   target_dungeon_id: millhaven
+  reward_xp_amount: 15
   voided_by_dungeon_id: wayford
 
 spreading_the_warning:
@@ -210,6 +216,7 @@ spreading_the_warning:
   target_entity_id: wayford_road_warden
   deadline_year: 87
   deadline_day: 64
+  reward_xp_amount: 15
   on_fail:
     - destroy_dungeon_id: wayford
     - set_flag: wayford_razed
@@ -243,6 +250,7 @@ a_wall_worth_holding:
   deadline_year: 87
   deadline_day: 70
   reward_gold_amount: 25
+  reward_xp_amount: 25
   on_fail:
     - set_flag: stonebridge_raided
 
@@ -268,3 +276,4 @@ what_the_tide_kept:
   questgiver_entity_id: saltmarsh_elder
   target_item_id: waystation_manifest
   reward_gold_amount: 15
+  reward_xp_amount: 20

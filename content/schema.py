@@ -101,6 +101,17 @@ class EntityDef(BaseModel):
     # load_catalog rejects it otherwise, since such an entity can never
     # actually be traded with.
     shop_inventory: list[str] = Field(default_factory=list)
+    # XP granted to the player when this entity dies (see
+    # Engine.on_entity_death) - 0 means no reward. Only meaningful for a
+    # hostile entity: content/loader.py's load_catalog rejects a nonzero
+    # value on a PEACEFUL_AI_TYPES entity, since a player could otherwise
+    # farm XP by killing villagers.
+    xp_reward: int = Field(default=0, ge=0)
+    # Catalog perk ids this entity teaches, if any - empty means "not a
+    # trainer," same shape/reasoning as shop_inventory above (reachable via
+    # Engine.adjacent_trainer regardless of catalog id; only meaningful on
+    # a PEACEFUL_AI_TYPES entity, enforced the same way as shop_inventory).
+    trainer_perks: list[str] = Field(default_factory=list)
 
     @field_validator("glyph")
     @classmethod
@@ -163,6 +174,49 @@ class ItemDef(BaseModel):
             raise ValueError(
                 "an item can only set one of attack_bonus/defense_bonus/"
                 "ranged_attack_bonus (ambiguous which equipment slot it belongs in)"
+            )
+        return self
+
+
+class PerkDef(BaseModel):
+    """A permanent player upgrade, as defined once in data/perks.yaml and
+    taught by Trainer NPCs (EntityDef.trainer_perks) in exchange for XP -
+    see Engine.learn_perk. Unlike an ItemDef's equipment bonus (conditional
+    on what's currently equipped, and re-derivable at any time), a perk's
+    bonus is folded permanently into the player's own Fighter the moment
+    it's learned (see engine/entity.py's apply_perk_stat_bonus) and never
+    removed - a perk is bought once, ever, never repurchased or unequipped.
+
+    Exactly one of the four bonus fields must be set (enforced below),
+    mirroring ItemDef's own single-equipment-slot discipline
+    (not_multiple_equipment_slots) - unambiguous which stat a perk
+    improves. A perk needing a mechanic beyond a flat stat bonus (the
+    "more complex ones" the project's XP/Perks feature anticipates) isn't
+    representable yet - this model covers only the first, simplest wave."""
+
+    id: str
+    name: str
+    description: str
+    # The XP price, always required - a perk is never free (see
+    # Engine.learn_perk's affordability check).
+    xp_cost: int = Field(gt=0)
+    # An optional additional gold price, on top of xp_cost - None means
+    # XP-only. Lets a Trainer NPC charge gold as well as XP for a
+    # particularly valuable perk, same "some shopkeepers ask more" spirit
+    # as EntityDef.shop_inventory letting different NPCs stock differently.
+    gold_cost: int | None = Field(default=None, gt=0)
+    max_hp_bonus: int | None = None
+    attack_bonus: int | None = None
+    defense_bonus: int | None = None
+    ranged_attack_bonus: int | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_bonus(self) -> "PerkDef":
+        bonuses = [self.max_hp_bonus, self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus]
+        if sum(b is not None for b in bonuses) != 1:
+            raise ValueError(
+                "a perk must set exactly one of max_hp_bonus/attack_bonus/"
+                "defense_bonus/ranged_attack_bonus (ambiguous which stat it improves)"
             )
         return self
 
@@ -265,6 +319,10 @@ class QuestDef(BaseModel):
     target_done_dialogue: str = ""
     reward_item_id: str | None = None
     reward_gold_amount: int | None = Field(default=None, gt=0)
+    # XP granted on completion (see Engine.complete_quest), a sibling to
+    # reward_gold_amount above - not mutually exclusive with any other
+    # reward shape, though no shipped quest combines more than one today.
+    reward_xp_amount: int | None = Field(default=None, gt=0)
     reward_shop_discount_pct: float | None = Field(default=None, gt=0, le=1)
     # Which shopkeeper's shop this discount applies to - a catalog entity id
     # with a non-empty shop_inventory (see EntityDef.shop_inventory), e.g.

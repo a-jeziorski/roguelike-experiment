@@ -288,7 +288,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         0, y,
         f"Potions: {healing_marker}Healing {healing_potions} "
         f"{teleport_marker}Teleport {teleport_potions}  "
-        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}",
+        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}",
         fg=HUD_FG, width=width,
     )
     if engine.game_state == "dead":
@@ -628,4 +628,58 @@ def render_shop(
     y = console.height - 1
     console.print(
         0, y, "[up/down] select  [enter] buy  [b/esc] exit", fg=HUD_FG, width=width
+    )
+
+
+def render_trainer(
+    console: "Console",
+    catalog: "Catalog",
+    perk_ids: "list[str]",
+    selected: int,
+    player_xp: int,
+    player_gold: int,
+    learned_perk_ids: "set[str]",
+    status: str,
+) -> None:
+    """The trainer screen: mirrors render_shop's shape exactly - no map
+    drawn, just a list of what's teachable (perk_ids, resolved against the
+    catalog for name/description/cost), the selected perk's description, a
+    status line for the last learn attempt (this screen never renders the
+    message log, so this is the only way to show immediate feedback), and
+    a footer control hint. Every perk in perk_ids is shown regardless of
+    whether it's already learned or affordable - same "show everything,
+    let the attempt fail gracefully" style as render_shop, rather than
+    filtering the list."""
+    console.clear()
+    width = console.width
+    y = 0
+    y += console.print(0, y, "Trainer", fg=HUD_FG, width=width)
+    y += console.print(0, y, f"Your XP: {player_xp}  Your gold: {player_gold}", fg=HUD_FG, width=width)
+    y += 1
+
+    for i, perk_id in enumerate(perk_ids):
+        pdef = catalog.perks[perk_id]
+        marker = ">" if i == selected else " "
+        cost = f"{pdef.xp_cost} XP"
+        if pdef.gold_cost:
+            cost += f" + {pdef.gold_cost} gold"
+        if perk_id in learned_perk_ids:
+            tag = " (learned)"
+        elif player_xp < pdef.xp_cost or player_gold < (pdef.gold_cost or 0):
+            tag = " (can't afford)"
+        else:
+            tag = ""
+        y += console.print(0, y, f"{marker} {pdef.name} - {cost}{tag}", fg=HUD_FG, width=width)
+
+    y += 1
+    if perk_ids:
+        y += console.print(0, y, catalog.perks[perk_ids[selected]].description, fg=HUD_FG, width=width)
+
+    if status:
+        y += 1
+        y += console.print(0, y, status, fg=HUD_FG, width=width)
+
+    y = console.height - 1
+    console.print(
+        0, y, "[up/down] select  [enter] learn  [p/esc] exit", fg=HUD_FG, width=width
     )

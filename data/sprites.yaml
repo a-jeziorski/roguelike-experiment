@@ -76,6 +76,8 @@ entities:
   wayford_provisioner:     {sheet: rltiles, name: human, recolor: true}
   saltmarsh_elder:         {sheet: rltiles, name: human, recolor: true}
   stonebridge_lookout:     {sheet: rltiles, name: human, recolor: true}
+  wayford_trainer:         {sheet: rltiles, name: human, recolor: true}
+  millhaven_trainer:       {sheet: rltiles, name: human, recolor: true}
   bandit:                  {sheet: rltiles, name: rogue, recolor: true}
   bandit_captain:          {sheet: rltiles, name: captain}
   drowned_wretch:          {sheet: rltiles, name: human_zombie, recolor: true}

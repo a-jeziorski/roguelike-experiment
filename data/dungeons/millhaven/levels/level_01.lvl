@@ -32,7 +32,7 @@ map: |
   #,,,,,,,,,,,,,,,,,,,,.,,,,,,,,#FFFF#,,,,,,,#
   #,,,,,,,,,4,,,,,,,,,,.,,,,,,,,######,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,.,y,,,,,,,,,,,,,,,,,,,#
   #,,,,,####,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,####,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,####,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,#
@@ -69,3 +69,4 @@ legend:
   "6": { entity: escaped_prisoner, tile: plains, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }
   "7": { entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }
   "8": { entity: town_guard, tile: road, dialogue: "Keep the peace and we've got no trouble between us." }
+  "y": { entity: millhaven_trainer, tile: plains, dialogue: "Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would." }

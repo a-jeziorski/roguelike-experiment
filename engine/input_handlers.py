@@ -17,6 +17,7 @@ from engine.actions import (
     SaveGameAction,
     ShopAction,
     TalkAction,
+    TrainerAction,
     UseItemAction,
     WaitAction,
 )
@@ -79,6 +80,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.B:
             return ShopAction()
+
+        if sym == tcod.event.KeySym.P:
+            return TrainerAction()
 
         if sym == tcod.event.KeySym.S:
             return SaveGameAction()
@@ -196,6 +200,32 @@ def handle_shop_event(event: tcod.event.Event) -> str | None:
             return "buy"
 
         if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.B):
+            return "exit"
+
+    return None
+
+
+def handle_trainer_event(event: tcod.event.Event) -> str | None:
+    """Input while inside the trainer screen: up/down (arrows or numpad)
+    move the selection, Enter/KP_Enter learns the selected perk, Escape/P
+    exit back to normal play. Returns "up", "down", "learn", "exit", or
+    None - same shape as handle_shop_event."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in (tcod.event.KeySym.UP, tcod.event.KeySym.KP_8):
+            return "up"
+
+        if sym in (tcod.event.KeySym.DOWN, tcod.event.KeySym.KP_2):
+            return "down"
+
+        if sym in (tcod.event.KeySym.RETURN, tcod.event.KeySym.KP_ENTER):
+            return "learn"
+
+        if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.P):
             return "exit"
 
     return None

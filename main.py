@@ -31,6 +31,7 @@ from engine.actions import (
     SaveGameAction,
     ShopAction,
     TalkAction,
+    TrainerAction,
 )
 from engine.clock import GameClock
 from engine.engine import Engine
@@ -45,6 +46,7 @@ from engine.input_handlers import (
     handle_quest_log_event,
     handle_shop_event,
     handle_target_event,
+    handle_trainer_event,
 )
 from engine.render import (
     VIEWPORT_HEIGHT,
@@ -60,6 +62,7 @@ from engine.render import (
     render_quest_log,
     render_shop,
     render_target_frame,
+    render_trainer,
 )
 from engine.targeting import find_nearest_target
 
@@ -149,6 +152,14 @@ def shop_gate(engine: Engine) -> str | None:
     fire_mode_gate."""
     if engine.adjacent_shopkeeper() is None:
         return "There's no one here to buy from."
+    return None
+
+
+def trainer_gate(engine: Engine) -> str | None:
+    """Whether trainer mode can currently be entered - same shape as
+    shop_gate."""
+    if engine.adjacent_trainer() is None:
+        return "There's no one here to learn from."
     return None
 
 
@@ -289,6 +300,41 @@ def run_shop_mode(console: tcod.console.Console, context: tcod.context.Context, 
                 selected = (selected + 1) % len(item_ids)
             if result == "buy" and item_ids:
                 status = engine.buy_from_shop(item_ids[selected])
+
+
+def run_trainer_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+    """Nested event loop for the trainer screen: moves a selection and
+    learns the selected perk on confirm, re-rendering until the player
+    exits. Never touches Engine.process_turn, so it costs no game turn -
+    same shape as run_shop_mode. Reads its perk list from whichever
+    Trainer is actually adjacent (see EntityDef.trainer_perks) - trainer_gate
+    already guarantees a Trainer is adjacent before this is ever called,
+    and this loop never moves the player, so that stays true for its whole
+    lifetime."""
+    trainer = engine.adjacent_trainer()
+    perk_ids = trainer.trainer_perks if trainer is not None else []
+    selected = 0
+    status = ""
+
+    while True:
+        render_trainer(
+            console, engine.catalog, perk_ids, selected,
+            engine.player.xp, engine.player.gold, engine.player.learned_perk_ids, status,
+        )
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_trainer_event(event)
+
+            if result == "exit":
+                return
+            if result == "up" and perk_ids:
+                selected = (selected - 1) % len(perk_ids)
+            if result == "down" and perk_ids:
+                selected = (selected + 1) % len(perk_ids)
+            if result == "learn" and perk_ids:
+                status = engine.learn_perk(perk_ids[selected])
 
 
 def prompt_continue_saved_game(console: tcod.console.Console, context: tcod.context.Context) -> bool:
@@ -762,6 +808,15 @@ def main() -> int:
                             engine.message_log.add(error)
                         else:
                             run_shop_mode(console, context, engine)
+                    continue
+
+                if isinstance(action, TrainerAction):
+                    if engine.game_state == "playing":
+                        error = trainer_gate(engine)
+                        if error:
+                            engine.message_log.add(error)
+                        else:
+                            run_trainer_mode(console, context, engine)
                     continue
 
                 if isinstance(action, FireModeAction):

@@ -1,0 +1,30 @@
+# Perk catalog. Taught by Trainer NPCs (EntityDef.trainer_perks) in
+# exchange for XP - see content/schema.py's PerkDef and Engine.learn_perk.
+# Each perk sets exactly one bonus field; costs are picked so the first
+# perk is reachable after a modest handful of early kills plus one quest,
+# not a single kill (see docs/content_design_process.md's balance
+# methodology for the XP-economy convention these numbers follow).
+
+toughness_1:
+  name: Toughness
+  description: Years of taking hits and staying upright, formalized. Permanently raises your max HP by 5.
+  xp_cost: 40
+  max_hp_bonus: 5
+
+weapon_training_1:
+  name: Weapon Training
+  description: Drilled footwork and follow-through, the kind that only comes from repetition. Permanently raises your melee attack by 2.
+  xp_cost: 45
+  attack_bonus: 2
+
+shield_training_1:
+  name: Shield Training
+  description: Learning exactly where to catch a blow instead of just where it lands. Permanently raises your defense by 2.
+  xp_cost: 45
+  defense_bonus: 2
+
+marksman_training_1:
+  name: Marksman Training
+  description: A steadier draw, a longer breath before the loose. Permanently raises your ranged attack by 2.
+  xp_cost: 40
+  ranged_attack_bonus: 2

@@ -49,6 +49,13 @@ class GameMap:
         # auto-announcing (LegendEntry.announce) - a filtered view of
         # tile_descriptions above, populated in lockstep by build_game_map.
         self.auto_announce_tiles: dict[tuple[int, int], str] = {}
+        # Subset of auto_announce_tiles' coordinates whose legend entry's
+        # tile kind is specifically "landmark" - lets
+        # newly_seen_tile_announcements report which newly-announced tiles
+        # should also award discovery XP (see Engine._award_xp), without
+        # rewarding every announce:true tile (a flavorful gate/stairs/item
+        # keeps its message but grants no XP).
+        self.landmark_announce_tiles: set[tuple[int, int]] = set()
         # Coordinates whose auto_announce_tiles text has already been logged
         # this map's lifetime - persisted across save/reload (see
         # engine/save.py's SavedLevelState.announced_tiles) so a reload never
@@ -109,27 +116,28 @@ class GameMap:
         )
         self.explored |= self.visible
 
-    def newly_seen_tile_announcements(self) -> list[str]:
-        """Text for every auto_announce_tiles entry that just became visible
-        and hasn't been announced before - call once, right after
-        update_fov, from every site that calls it (see
-        Engine._log_newly_seen_tile_announcements). Mutates announced_tiles
-        as a side effect, so calling this twice in a row without an
-        intervening update_fov yields an empty list the second time.
-        explored |= visible above means a coordinate only ever becomes
-        newly explored in the same update_fov call where it's also
+    def newly_seen_tile_announcements(self) -> list[tuple[str, bool]]:
+        """(text, is_landmark) for every auto_announce_tiles entry that just
+        became visible and hasn't been announced before - call once, right
+        after update_fov, from every site that calls it (see
+        Engine._log_newly_seen_tile_announcements, which logs text always
+        and awards discovery XP only when is_landmark is True). Mutates
+        announced_tiles as a side effect, so calling this twice in a row
+        without an intervening update_fov yields an empty list the second
+        time. explored |= visible above means a coordinate only ever
+        becomes newly explored in the same update_fov call where it's also
         currently visible, so "newly explored" and "currently visible" are
         simultaneous by construction - checking visible here is exactly
         "did this tile just enter FOV for the first time," not merely
         "is it visible right now" in some more general sense."""
-        texts = []
+        results = []
         for coord, text in self.auto_announce_tiles.items():
             if coord in self.announced_tiles:
                 continue
             if self.visible[coord]:
                 self.announced_tiles.add(coord)
-                texts.append(text)
-        return texts
+                results.append((text, coord in self.landmark_announce_tiles))
+        return results
 
 
 def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
@@ -201,6 +209,8 @@ def build_game_map(
         game_map.tile_descriptions[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
         if desc_spawn.announce:
             game_map.auto_announce_tiles[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
+            if desc_spawn.is_landmark:
+                game_map.landmark_announce_tiles.add((desc_spawn.x, desc_spawn.y))
 
     for index, spawn in enumerate(level.entity_spawns):
         edef = spawn.entity
@@ -228,6 +238,8 @@ def build_game_map(
             # NPC type (EntityDef has no flag_dialogue field at all).
             flag_dialogue=spawn.flag_dialogue,
             shop_inventory=edef.shop_inventory,
+            xp_reward=edef.xp_reward,
+            trainer_perks=edef.trainer_perks,
             entity_id=edef.id,
         )
         game_map.entities.append(entity)

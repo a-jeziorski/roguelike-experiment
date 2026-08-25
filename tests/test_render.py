@@ -40,6 +40,7 @@ from engine.render import (
     render_quest_log,
     render_shop,
     render_target_frame,
+    render_trainer,
 )
 from engine.sprites import SpriteCodepoints
 
@@ -197,6 +198,20 @@ def test_render_hud_shows_gold():
 
     text = console_text(console)
     assert "Gold: 42" in text
+
+
+def test_render_hud_shows_xp():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.xp = 17
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "XP: 17" in text
 
 
 def test_render_hud_never_shows_a_not_given_quest():
@@ -357,6 +372,76 @@ def test_render_shop_shows_the_status_message():
 
     text = console_text(console)
     assert "You buy a Healing Potion for 25 gold." in text
+
+
+def test_render_trainer_lists_perks_with_cost_and_shows_xp_and_gold():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_1"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids=set(), status="",
+    )
+
+    text = console_text(console)
+    assert "Toughness" in text
+    assert "40 XP" in text
+    assert "Your XP: 100" in text
+    assert "your max HP by 5" in text  # part of the selected perk's (word-wrapped) description
+
+
+def test_render_trainer_marks_a_learned_perk():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_1"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids={"toughness_1"}, status="",
+    )
+
+    text = console_text(console)
+    assert "learned" in text
+
+
+def test_render_trainer_marks_unaffordable_perks():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_1"], selected=0,
+        player_xp=5, player_gold=0, learned_perk_ids=set(), status="",
+    )
+
+    text = console_text(console)
+    assert "can't afford" in text
+
+
+def test_render_trainer_does_not_mark_affordable_unlearned_perks():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_1"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids=set(), status="",
+    )
+
+    text = console_text(console)
+    assert "can't afford" not in text
+    assert "learned" not in text
+
+
+def test_render_trainer_shows_the_status_message():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_1"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids=set(),
+        status="You learn Toughness.",
+    )
+
+    text = console_text(console)
+    assert "You learn Toughness." in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():

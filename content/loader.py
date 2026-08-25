@@ -24,6 +24,7 @@ from content.schema import (
     FlagDialogue,
     ItemDef,
     LevelDef,
+    PerkDef,
     QuestDef,
     SpriteManifestDef,
     SpriteRef,
@@ -66,6 +67,7 @@ class ContentValidationError(Exception):
 class Catalog:
     entities: dict[str, EntityDef]
     items: dict[str, ItemDef]
+    perks: dict[str, PerkDef]
 
 
 @dataclass
@@ -116,6 +118,11 @@ class TileDescriptionSpawn:
     y: int
     text: str  # overrides the tile kind's generic look-mode description
     announce: bool = False  # auto-log text to the message log on first FOV entry
+    # Whether the underlying legend entry's tile kind is "landmark" - lets
+    # Engine._log_newly_seen_tile_announcements award discovery XP only for
+    # a genuine point of interest, not every announce:true tile (a
+    # flavorful gate/stairs/item keeps its message but grants no XP).
+    is_landmark: bool = False
 
 
 @dataclass
@@ -151,6 +158,7 @@ def _load_yaml(path: Path) -> dict:
 def load_catalog(
     entities_path: Path = DATA_DIR / "entities.yaml",
     items_path: Path = DATA_DIR / "items.yaml",
+    perks_path: Path = DATA_DIR / "perks.yaml",
 ) -> Catalog:
     entities: dict[str, EntityDef] = {}
     errors: list[str] = []
@@ -169,6 +177,14 @@ def load_catalog(
             items[item_id] = ItemDef(id=item_id, **raw)
         except ValidationError as e:
             errors.append(f"item '{item_id}': {e}")
+
+    perks: dict[str, PerkDef] = {}
+    raw_perks = _load_yaml(perks_path) or {}
+    for perk_id, raw in raw_perks.items():
+        try:
+            perks[perk_id] = PerkDef(id=perk_id, **raw)
+        except ValidationError as e:
+            errors.append(f"perk '{perk_id}': {e}")
 
     for entity_id, edef in entities.items():
         if not edef.shop_inventory:
@@ -190,12 +206,33 @@ def load_catalog(
                     "0, so it would sell for free"
                 )
 
+    for entity_id, edef in entities.items():
+        if edef.xp_reward and edef.ai in PEACEFUL_AI_TYPES:
+            errors.append(
+                f"entity '{entity_id}': xp_reward is set but ai is "
+                f"'{edef.ai}' - a peaceful NPC is never a legitimate kill "
+                "target, so this would let the player farm XP by killing "
+                "villagers/town guards"
+            )
+        if not edef.trainer_perks:
+            continue
+        if edef.ai not in PEACEFUL_AI_TYPES:
+            errors.append(
+                f"entity '{entity_id}': trainer_perks is set but ai is "
+                f"'{edef.ai}' - only a peaceful NPC (villager/town_guard) is "
+                "ever reachable as a trainer (see PEACEFUL_AI_TYPES), so "
+                "this entity could never teach anything"
+            )
+        for perk_id in edef.trainer_perks:
+            if perk_id not in perks:
+                errors.append(f"entity '{entity_id}': trainer_perks references unknown perk '{perk_id}'")
+
     if errors:
         raise ContentValidationError(
-            f"{entities_path.name} / {items_path.name}", errors
+            f"{entities_path.name} / {items_path.name} / {perks_path.name}", errors
         )
 
-    return Catalog(entities=entities, items=items)
+    return Catalog(entities=entities, items=items, perks=perks)
 
 
 def load_quests(
@@ -669,7 +706,10 @@ def load_level(
 
             if entry.description:
                 tile_descriptions.append(
-                    TileDescriptionSpawn(x=x, y=y, text=entry.description, announce=entry.announce)
+                    TileDescriptionSpawn(
+                        x=x, y=y, text=entry.description, announce=entry.announce,
+                        is_landmark=(entry.tile == "landmark"),
+                    )
                 )
 
             if entry.tile == "player_start":
@@ -847,7 +887,10 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
 
             if entry.description:
                 tile_descriptions.append(
-                    TileDescriptionSpawn(x=x, y=y, text=entry.description, announce=entry.announce)
+                    TileDescriptionSpawn(
+                        x=x, y=y, text=entry.description, announce=entry.announce,
+                        is_landmark=(entry.tile == "landmark"),
+                    )
                 )
 
             if entry.tile == "player_start":

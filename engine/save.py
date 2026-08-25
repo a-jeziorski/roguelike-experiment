@@ -37,7 +37,7 @@ from content.loader import PLAYER_ENTITY_ID, Catalog, ParsedLevel
 from content.schema import QuestStatus
 from engine.clock import GameClock
 from engine.engine import Engine
-from engine.entity import RENDER_PRIORITY_PLAYER, Entity, Fighter
+from engine.entity import RENDER_PRIORITY_PLAYER, Entity, Fighter, apply_perk_stat_bonus
 from engine.game_map import (
     PLAYER_ATTACK,
     PLAYER_DEFENSE,
@@ -132,6 +132,13 @@ class SavedPlayer(BaseModel):
     y: int
     hp: int
     gold: int = 0
+    xp: int = 0
+    # Perk catalog ids permanently learned (see Engine.learn_perk) - the
+    # single source of truth for the player's perk-derived stat bonuses;
+    # _build_player re-derives fighter.max_hp/attack/defense/
+    # perk_ranged_attack_bonus from this plus catalog.perks at restore
+    # time, rather than saving those totals redundantly.
+    learned_perk_ids: set[str] = Field(default_factory=set)
     inventory: list[SavedItemSlot] = Field(default_factory=list)
     equipped_weapon: SavedItemSlot | None = None
     equipped_armor: SavedItemSlot | None = None
@@ -236,6 +243,7 @@ def capture_save(
     player = active_engines[active_key].player
     saved_player = SavedPlayer(
         x=player.x, y=player.y, hp=player.fighter.hp, gold=player.gold,
+        xp=player.xp, learned_perk_ids=set(player.learned_perk_ids),
         inventory=[
             SavedItemSlot(entity_id=item.entity_id, quantity=item.item.quantity)
             for item in player.inventory
@@ -283,11 +291,21 @@ def _build_item_entity(slot: SavedItemSlot, catalog: Catalog) -> Entity:
 
 
 def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
+    fighter = Fighter(max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE)
+    # Perk-derived stat totals are *derived* from learned_perk_ids at
+    # restore time, never stored redundantly (see SavedPlayer.learned_perk_ids) -
+    # deliberately never touches fighter.hp here (see apply_perk_stat_bonus's
+    # docstring): saved.hp already reflects every historical max-hp bump.
+    for perk_id in saved.learned_perk_ids:
+        perk = catalog.perks.get(perk_id)
+        if perk is not None:
+            apply_perk_stat_bonus(fighter, perk)
     player = Entity(
         saved.x, saved.y, "@", (255, 255, 255), "Player",
         blocks_movement=True, render_priority=RENDER_PRIORITY_PLAYER,
-        fighter=Fighter(max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE),
+        fighter=fighter,
         entity_id=PLAYER_ENTITY_ID, gold=saved.gold,
+        xp=saved.xp, learned_perk_ids=set(saved.learned_perk_ids),
     )
     player.inventory = [_build_item_entity(slot, catalog) for slot in saved.inventory]
     player.selected_potion_kind = saved.selected_potion_kind

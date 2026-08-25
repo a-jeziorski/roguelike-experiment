@@ -46,6 +46,7 @@ from main import (
     handle_save_game_action,
     resolve_transition,
     shop_gate,
+    trainer_gate,
 )
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -247,6 +248,59 @@ def test_shop_gate_blocks_when_the_shopkeeper_is_fleeing():
     engine = Engine(game_map, player, "Test Level")
 
     assert shop_gate(engine) == "There's no one here to buy from."
+
+
+def test_trainer_gate_blocks_without_a_trainer_nearby():
+    engine = make_engine()  # forgotten_ruins level_01: no villagers at all
+    assert trainer_gate(engine) == "There's no one here to learn from."
+
+
+def test_trainer_gate_allows_when_a_trainer_is_adjacent():
+    game_map = GameMap(3, 3)
+    for x in range(3):
+        for y in range(3):
+            game_map.kinds[x, y] = "floor"
+            game_map.walkable[x, y] = True
+            game_map.transparent[x, y] = True
+    player = Entity(
+        1, 1, "@", (255, 255, 255), "Player",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=30, hp=30, attack=5, defense=1),
+    )
+    trainer = Entity(
+        2, 1, "y", (150, 130, 100), "Trainer",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=10, hp=10, attack=0, defense=0),
+        ai="villager", trainer_perks=["toughness_1"],
+    )
+    game_map.entities.extend([player, trainer])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert trainer_gate(engine) is None
+
+
+def test_trainer_gate_blocks_when_the_trainer_is_fleeing():
+    game_map = GameMap(3, 3)
+    for x in range(3):
+        for y in range(3):
+            game_map.kinds[x, y] = "floor"
+            game_map.walkable[x, y] = True
+            game_map.transparent[x, y] = True
+    player = Entity(
+        1, 1, "@", (255, 255, 255), "Player",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_PLAYER,
+        fighter=Fighter(max_hp=30, hp=30, attack=5, defense=1),
+    )
+    trainer = Entity(
+        2, 1, "y", (150, 130, 100), "Trainer",
+        blocks_movement=True, render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=10, hp=5, attack=0, defense=0),  # already hurt - fleeing
+        ai="villager", trainer_perks=["toughness_1"],
+    )
+    game_map.entities.extend([player, trainer])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert trainer_gate(engine) == "There's no one here to learn from."
 
 
 def _world():

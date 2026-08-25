@@ -77,6 +77,7 @@ def make_monster(
 def make_villager(
     x: int, y: int, dialogue="", entity_id="villager", name="Villager",
     shop_inventory: list[str] | None = None,
+    trainer_perks: list[str] | None = None,
     flag_dialogue: list[FlagDialogue] | None = None,
 ) -> Entity:
     return Entity(
@@ -88,6 +89,7 @@ def make_villager(
         dialogue=dialogue,
         entity_id=entity_id,
         shop_inventory=shop_inventory,
+        trainer_perks=trainer_perks,
         flag_dialogue=flag_dialogue,
     )
 
@@ -1626,9 +1628,19 @@ def test_newly_seen_tile_announcements_fires_once_when_visible():
 
     game_map.update_fov((14, 1))  # well within FOV_RADIUS (8) of (15, 1)
 
-    assert game_map.newly_seen_tile_announcements() == ["A distant landmark."]
+    assert game_map.newly_seen_tile_announcements() == [("A distant landmark.", False)]
     # a repeat call with no intervening update_fov yields nothing more
     assert game_map.newly_seen_tile_announcements() == []
+
+
+def test_newly_seen_tile_announcements_flags_a_landmark_coordinate():
+    game_map = make_open_map(20, 3)
+    game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
+    game_map.landmark_announce_tiles.add((15, 1))
+
+    game_map.update_fov((14, 1))
+
+    assert game_map.newly_seen_tile_announcements() == [("A distant landmark.", True)]
 
 
 def test_newly_seen_tile_announcements_does_not_repeat_on_a_later_update_fov():
@@ -3577,3 +3589,254 @@ def test_buy_from_shop_never_advances_the_clock_or_processes_enemy_turns():
 
     assert engine.clock == GameClock()  # untouched
     assert (rat.x, rat.y) == rat_start  # no enemy turn was processed
+
+
+# --- trainer / learn_perk ---
+
+
+def make_trainer(x: int, y: int, trainer_perks=("toughness_1",)) -> Entity:
+    return make_villager(
+        x, y, entity_id="trainer", name="Trainer", trainer_perks=list(trainer_perks),
+    )
+
+
+def test_adjacent_trainer_finds_an_npc_with_trainer_perks():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_trainer() is not None
+    assert engine.adjacent_trainer().trainer_perks == ["toughness_1"]
+
+
+def test_adjacent_trainer_ignores_a_plain_villager_with_no_trainer_perks():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Hello.", entity_id="villager")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_trainer() is None
+
+
+def test_adjacent_trainer_none_when_nothing_nearby():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine.adjacent_trainer() is None
+
+
+def test_learn_perk_with_enough_xp_deducts_xp_and_applies_max_hp_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.xp = 40
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.learn_perk("toughness_1")
+
+    assert player.xp == 0
+    assert player.fighter.max_hp == 35
+    assert player.fighter.hp == 35  # instant full benefit
+    assert "toughness_1" in player.learned_perk_ids
+    assert message == "You learn Toughness."
+    assert message in engine.message_log.messages
+
+
+def test_learn_perk_applies_attack_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    player.xp = 45
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["weapon_training_1"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("weapon_training_1")
+
+    assert player.fighter.attack == 7
+    assert player.effective_attack == 7
+
+
+def test_learn_perk_applies_defense_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, defense=1)
+    player.xp = 45
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["shield_training_1"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("shield_training_1")
+
+    assert player.fighter.defense == 3
+    assert player.effective_defense == 3
+
+
+def test_learn_perk_applies_ranged_attack_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    player.xp = 40
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["marksman_training_1"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("marksman_training_1")
+
+    assert player.fighter.perk_ranged_attack_bonus == 2
+    assert player.effective_ranged_attack == 7
+
+
+def test_learn_perk_without_enough_xp_does_nothing():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 10
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.learn_perk("toughness_1")
+
+    assert message == "You can't afford that."
+    assert player.xp == 10
+    assert player.learned_perk_ids == set()
+    assert player.fighter.max_hp == 30
+
+
+def test_learn_perk_a_second_time_rejects_an_already_learned_perk():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 100
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    first = engine.learn_perk("toughness_1")
+    second = engine.learn_perk("toughness_1")
+
+    assert first == "You learn Toughness."
+    assert second == "You already know that."
+    assert player.xp == 60  # only charged once
+    assert player.fighter.max_hp == 35  # not double-applied
+
+
+def test_learn_perk_rejects_a_catalog_perk_not_taught_by_this_trainer():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 100
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["toughness_1"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.learn_perk("weapon_training_1")
+
+    assert message == "The trainer is unavailable."
+    assert player.xp == 100
+    assert player.learned_perk_ids == set()
+
+
+def test_learn_perk_with_no_trainer_adjacent_is_unavailable():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 100
+    game_map.entities.append(player)  # no trainer anywhere
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.learn_perk("toughness_1")
+
+    assert message == "The trainer is unavailable."
+    assert player.xp == 100
+
+
+def test_learn_perk_with_no_catalog_does_not_crash():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 100
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level")  # catalog defaults to None
+
+    message = engine.learn_perk("toughness_1")  # must not raise
+
+    assert message == "The trainer is unavailable."
+    assert player.xp == 100
+
+
+def test_learn_perk_never_advances_the_clock_or_processes_enemy_turns():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 100
+    rat = make_monster(0, 0, ai="hostile_basic")
+    game_map.entities.extend([player, rat, make_trainer(2, 1)])
+    clock = GameClock()
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, catalog=catalog, clock=clock)
+    rat_start = (rat.x, rat.y)
+
+    engine.learn_perk("toughness_1")
+
+    assert engine.clock == GameClock()  # untouched
+    assert (rat.x, rat.y) == rat_start  # no enemy turn was processed
+
+
+# --- XP awards (kills, quests, landmark discovery) ---
+
+
+def test_on_entity_death_awards_xp_reward_on_a_monster_kill():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=1, ai="hostile_basic")
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(monster)
+
+    assert player.xp == 5
+    assert "You gain 5 XP (kill)." in engine.message_log.messages
+
+
+def test_on_entity_death_with_zero_xp_reward_awards_nothing():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=1, ai="hostile_basic")  # xp_reward defaults to 0
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(monster)
+
+    assert player.xp == 0
+    assert not any("XP" in m for m in engine.message_log.messages)
+
+
+def test_complete_quest_awards_reward_xp_amount():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    quest = Quest(
+        id="q1", name="Test Quest", description="", completion_message="Done!",
+        failure_message="", reward_xp_amount=15,
+    )
+
+    engine.complete_quest(quest)
+
+    assert player.xp == 15
+    assert "You gain 15 XP (quest)." in engine.message_log.messages
+
+
+def test_complete_quest_with_no_reward_xp_amount_leaves_xp_untouched():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    quest = Quest(
+        id="q1", name="Test Quest", description="", completion_message="Done!",
+        failure_message="",
+    )
+
+    engine.complete_quest(quest)
+
+    assert player.xp == 0

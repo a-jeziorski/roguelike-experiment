@@ -144,6 +144,88 @@ def test_load_catalog_allows_shop_inventory_on_a_town_guard(tmp_path):
     assert catalog.entities["quartermaster"].shop_inventory == ["trinket"]
 
 
+def test_load_catalog_real_trainer_has_trainer_perks():
+    catalog = load_catalog()
+    assert "toughness_1" in catalog.entities["wayford_trainer"].trainer_perks
+    assert "toughness_1" in catalog.perks
+
+
+def test_load_catalog_rejects_trainer_perks_referencing_unknown_perk(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "trainer:\n"
+        "  name: Trainer\n"
+        "  glyph: y\n"
+        "  color: [150, 130, 100]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n"
+        "  trainer_perks: [nonexistent_perk]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="trainer_perks references unknown perk"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_trainer_perks_on_a_non_peaceful_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "shady_rat:\n"
+        "  name: Shady Rat\n"
+        "  glyph: r\n"
+        "  color: [140, 90, 60]\n"
+        "  hp: 6\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: hostile_basic\n"
+        "  trainer_perks: [toughness_1]\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text(
+        "toughness_1:\n"
+        "  name: Toughness\n"
+        "  description: Raises max HP.\n"
+        "  xp_cost: 40\n"
+        "  max_hp_bonus: 5\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="could never teach anything"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_xp_reward_on_a_peaceful_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "farmable_villager:\n"
+        "  name: Farmable Villager\n"
+        "  glyph: v\n"
+        "  color: [170, 140, 90]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n"
+        "  xp_reward: 5\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="farm XP by killing"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
 @pytest.mark.parametrize(
     "entity_id,hp,attack,defense,ai",
     [
@@ -424,7 +506,7 @@ def test_load_dungeon_carries_through_ruin_content():
     catalog = load_catalog()
     dungeon = load_dungeon(DUNGEONS_DIR / "wayford", catalog)
 
-    assert dungeon.ruined_tile == "road"
+    assert dungeon.ruined_tile == "floor"
     assert dungeon.ruined_description != ""
 
 
@@ -495,7 +577,10 @@ def test_millhaven_level_01_content():
     )
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
-    assert entity_names == ["Escaped Prisoner", "Shopkeeper", "Town Guard", "Village Chief"] + ["Villager"] * 5
+    assert entity_names == (
+        ["Escaped Prisoner", "Old Drillmaster", "Shopkeeper", "Town Guard", "Village Chief"]
+        + ["Villager"] * 5
+    )
 
     # every entity spawn carries its own per-spawn dialogue - no un-authored
     # villagers left in Millhaven now that this pass gave each one a line
@@ -551,6 +636,36 @@ def test_load_level_collects_announce_flag_on_tile_descriptions(tmp_path):
     assert len(level.tile_descriptions) == 1
     assert level.tile_descriptions[0].text == "A chalk board."
     assert level.tile_descriptions[0].announce is True
+    assert level.tile_descriptions[0].is_landmark is True
+
+
+def test_load_level_stairs_up_description_is_not_a_landmark(tmp_path):
+    """A flavorful tile that isn't `tile: landmark` (a gate/stairs) should
+    never award discovery XP - see GameMap.landmark_announce_tiles."""
+    level_path = tmp_path / "gate.lvl"
+    level_path.write_text(
+        "id: gate\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ####\n"
+        "  #@.#\n"
+        "  #x.#\n"
+        "  #>.#\n"
+        "  ####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "x": { stairs_up: null, description: "The gate.", announce: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.tile_descriptions) == 1
+    assert level.tile_descriptions[0].is_landmark is False
 
 
 def test_load_level_tile_description_without_announce_defaults_false(tmp_path):

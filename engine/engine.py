@@ -18,7 +18,7 @@ from content.schema import (
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack
-from engine.entity import POTION_KINDS, Entity
+from engine.entity import POTION_KINDS, Entity, apply_perk_stat_bonus
 from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
 from engine.quest import Quest, QuestLog
 
@@ -32,6 +32,12 @@ if TYPE_CHECKING:
 DEFAULT_ALERT_RADIUS = 4
 DEFAULT_FLEE_HP_PCT = 0.3
 DEFAULT_MONSTER_RANGED_RANGE = 4
+
+# Flat XP awarded for discovering a landmark (see
+# Engine._log_newly_seen_tile_announcements) - deliberately small relative
+# to a monster kill/quest reward, since a landmark costs the player no
+# risk to find, only exploration.
+LANDMARK_XP_REWARD = 5
 
 # Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
 # "stay put" repeated 8 times, so a wandering villager holds position about
@@ -204,6 +210,15 @@ class Engine:
             # anymore, only when reported to its questgiver (see
             # talk_to_adjacent's check_kill_report loop).
             self.quest_log.record_entity_killed(entity.entity_id)
+            if entity.xp_reward:
+                self._award_xp(entity.xp_reward, "kill")
+
+    def _award_xp(self, amount: int, reason: str) -> None:
+        """The single funnel every XP source routes through (kills, quest
+        completion, landmark discovery) - same reasoning as complete_quest
+        being the one funnel for item/gold/discount rewards."""
+        self.player.xp += amount
+        self.message_log.add(f"You gain {amount} XP ({reason}).")
 
     def _log_newly_seen_tile_announcements(self) -> None:
         """Logs the flavor text for any auto-announce tile that just entered
@@ -211,9 +226,14 @@ class Engine:
         - called after every update_fov, so a landmark's description reaches
         the player automatically instead of requiring a manual Look. Placed
         after any "You enter X."-style message at each call site, so an
-        announcement never appears to precede the arrival it's describing."""
-        for text in self.game_map.newly_seen_tile_announcements():
+        announcement never appears to precede the arrival it's describing.
+        Awards LANDMARK_XP_REWARD only for a tile:landmark entry - a
+        flavorful gate/stairs/item announcement still logs its text but
+        grants no XP (see GameMap.landmark_announce_tiles)."""
+        for text, is_landmark in self.game_map.newly_seen_tile_announcements():
             self.message_log.add(text, category="flavor")
+            if is_landmark:
+                self._award_xp(LANDMARK_XP_REWARD, "discovery")
 
     def _arrival_position(self, level: "ParsedLevel", from_level_id: str | None) -> tuple[int, int]:
         """Where the player lands on `level`: the stairway leading back to
@@ -523,7 +543,8 @@ class Engine:
                 self.message_log.add(quest.failure_message)
 
     def _find_adjacent_peaceful_npc(
-        self, entity_id: str | None = None, requires_shop: bool = False
+        self, entity_id: str | None = None, requires_shop: bool = False,
+        requires_trainer: bool = False,
     ) -> Entity | None:
         """The first PEACEFUL_AI_TYPES entity (villager or town_guard) within
         8-directional adjacency of the player - matches the project's
@@ -533,8 +554,10 @@ class Engine:
         to that specific catalog id. `requires_shop`, if True, additionally
         restricts the match to an entity with a non-empty shop_inventory
         (see EntityDef.shop_inventory) - i.e. any shopkeeper, not one
-        hardcoded catalog id - see adjacent_shopkeeper. Leaving both at
-        their defaults reproduces the original unfiltered scan exactly.
+        hardcoded catalog id - see adjacent_shopkeeper. `requires_trainer`
+        is the same idea for trainer_perks - see adjacent_trainer. Leaving
+        all three at their defaults reproduces the original unfiltered scan
+        exactly.
 
         A villager that's been hurt is excluded - per _perform_ai's own
         AI_VILLAGER branch, any damage at all makes a villager flee
@@ -554,6 +577,8 @@ class Engine:
             if entity_id is not None and entity.entity_id != entity_id:
                 continue
             if requires_shop and not entity.shop_inventory:
+                continue
+            if requires_trainer and not entity.trainer_perks:
                 continue
             if entity.ai == AI_TOWN_GUARD and self.game_map.player_attacked_peaceful_npc:
                 continue
@@ -582,10 +607,10 @@ class Engine:
         quest.status - that already happened inside whichever QuestLog.check_*
         call produced this quest; this is purely "log + reward". Never
         called for a quest that failed - failing a quest never grants a
-        reward. The three reward shapes (reward_item_id, reward_gold_amount,
-        reward_shop_discount_pct) aren't mutually exclusive - a quest can
-        set any combination, though no shipped quest currently combines
-        more than one."""
+        reward. The reward shapes (reward_item_id, reward_gold_amount,
+        reward_xp_amount, reward_shop_discount_pct) aren't mutually
+        exclusive - a quest can set any combination, though no shipped
+        quest currently combines more than one of the non-XP shapes."""
         self.message_log.add(message or quest.completion_message)
         if quest.reward_item_id is not None and self.catalog is not None:
             idef = self.catalog.items[quest.reward_item_id]
@@ -595,6 +620,8 @@ class Engine:
         if quest.reward_gold_amount:
             self.player.gold += quest.reward_gold_amount
             self.message_log.add(f"You receive {quest.reward_gold_amount} gold.")
+        if quest.reward_xp_amount:
+            self._award_xp(quest.reward_xp_amount, "quest")
         if quest.reward_shop_discount_pct and quest.reward_shop_discount_entity_id:
             pct = int(quest.reward_shop_discount_pct * 100)
             shop_name = "shop"
@@ -646,6 +673,59 @@ class Engine:
         reward = item_entity_from_def(idef)
         self.player.inventory.append(reward)
         message = f"You buy a {reward.name} for {cost} gold."
+        self.message_log.add(message)
+        return message
+
+    def adjacent_trainer(self) -> Entity | None:
+        """The first adjacent peaceful NPC with a non-empty trainer_perks
+        (see EntityDef.trainer_perks) - any Trainer, not one hardcoded
+        catalog id, so a new town's own Trainer NPC works with no engine
+        change. Used by main.py's trainer_gate to decide whether trainer
+        mode can be entered, and by run_trainer_mode/learn_perk to know
+        which perks are actually teachable here."""
+        return self._find_adjacent_peaceful_npc(requires_trainer=True)
+
+    def learn_perk(self, perk_id: str) -> str:
+        """Attempts to permanently learn one perk for the player, taught by
+        whichever Trainer is currently adjacent (see adjacent_trainer/
+        EntityDef.trainer_perks) - not just any catalog perk, since two
+        Trainers can teach different things. Returns the status message
+        (also logged, so it's still visible after leaving the trainer
+        screen - see main.py's run_trainer_mode). Never touches
+        game_state/clock/enemy turns - learning costs no turn, same
+        reasoning as buy_from_shop. A perk is one-time-only: already
+        knowing it is rejected the same way as being unable to afford it,
+        never silently re-sold."""
+        trainer = self.adjacent_trainer()
+        if (
+            self.catalog is None
+            or perk_id not in self.catalog.perks
+            or trainer is None
+            or perk_id not in trainer.trainer_perks
+        ):
+            message = "The trainer is unavailable."
+            self.message_log.add(message)
+            return message
+        if perk_id in self.player.learned_perk_ids:
+            message = "You already know that."
+            self.message_log.add(message)
+            return message
+        perk = self.catalog.perks[perk_id]
+        if self.player.xp < perk.xp_cost or self.player.gold < (perk.gold_cost or 0):
+            message = "You can't afford that."
+            self.message_log.add(message)
+            return message
+        self.player.xp -= perk.xp_cost
+        self.player.gold -= perk.gold_cost or 0
+        self.player.learned_perk_ids.add(perk_id)
+        apply_perk_stat_bonus(self.player.fighter, perk)
+        # Only here, only once, only for a live purchase - the "instant
+        # full benefit" a newly bought perk should give. Never done at
+        # save-restore time (see engine/save.py's _build_player), since
+        # saved.hp already reflects every historical bump.
+        if perk.max_hp_bonus:
+            self.player.fighter.hp += perk.max_hp_bonus
+        message = f"You learn {perk.name}."
         self.message_log.add(message)
         return message
 
