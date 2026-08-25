@@ -76,6 +76,18 @@ confinement, then a forced narrow passage, then whatever's on the other
 side. No monster in the cell itself; the first real threat waits past
 the chokepoint.
 
+**New this pass**: a `healing_potion` sits just past the chokepoint,
+directly ahead of the `rusty_dagger` - the room's two threats (`guard`,
+`crossbow_guard`) are both effectively mandatory (the room is fully
+open, and neither AI type has a stealth/alert-radius gate - see
+`content_design_process.md`'s balance methodology), and until now this
+was the only level in the dungeon with zero healing anywhere on it.
+*"A guard's basic kit, kept at the post for exactly the kind of trouble a
+post like this expects."* - institutional, not treasure, matching this
+dungeon's whole procedural mood: a post like this would keep basic aid
+on hand the same reflexive way it still keeps a locked door or a loaded
+crossbow.
+
 ### 2. The Barracks Floor (`level_02`)
 
 The guards' living quarters - not a fortified checkpoint, just a place
@@ -160,7 +172,35 @@ unchanged from every other use of these monster types elsewhere in the
 game - no stats touched, this section documents existing balance rather
 than introducing new. The warden (7 atk vs 1 def = 6/hit, needs ~5 hits
 at 26 hp / 4 dmg-per-hit) is the hardest single fight in the dungeon,
-consistent with being the final encounter.
+consistent with being the final encounter - and, per the escape route
+note directly below, isn't expected to be winnable on a first pass.
+
+**Escape-route feasibility (verified this pass via an actual playthrough,
+not just arithmetic on paper)**: `guard` and `crossbow_guard` are both
+effectively mandatory on `level_01` - the room is one open space with no
+interior walls to break line of sight, and neither `hostile_basic` nor
+`ranged_basic` has any stealth/alert-radius gate (see
+`content_design_process.md`), so both monsters close in or open fire the
+moment they're anywhere in the player's own FOV. Fighting both back to
+back, bare-handed, against player baseline costs roughly 28-34 damage -
+more than the entire starting HP pool, and the `rusty_dagger` alone
+(reachable first, right at the room's entrance) only brings that down to
+~17-23. Combined with zero healing anywhere on the level before this
+pass, this made `level_01` a real, repeatable near-death or death on
+otherwise-ordinary play, not just a hard fight - the `healing_potion`
+added this pass (see set piece 1) is the fix, not a stat change to
+either monster.
+
+Reaching `level_04` and defeating the `warden` in the same trip is
+*not* the bar for "the escape route is feasible" - `engine/engine.py`'s
+`_perform_ai` never chases a monster the player has broken line of sight
+with (it's a no-op the instant `game_map.visible` no longer covers the
+monster's own tile), so retreating out of `level_04` mid-fight and
+regrouping is already a fully supported strategy, and "An Old Debt"
+(Millhaven's sidequest built around the warden's death) already assumes
+a later return trip. The bar is: a player who plays reasonably carefully
+through `level_01`-`level_03` should be able to reach `level_04` with a
+real HP margin, not already gutted before the dungeon's actual climax.
 
 ## Tone notes for anyone (agent or human) revising this later
 

@@ -950,7 +950,7 @@ def test_prison_tower_level_01_content():
     assert entity_names == ["Crossbow Guard", "Guard"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Gold Pile", "Hunting Bow", "Rusty Dagger"]
+    assert item_names == ["Gold Pile", "Healing Potion", "Hunting Bow", "Rusty Dagger"]
 
 
 def test_prison_tower_level_02_content():

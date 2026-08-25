@@ -1866,7 +1866,11 @@ def test_arrive_player_with_explicit_position_repositions():
 
     assert (player.x, player.y) == (4, 4)
     assert player in engine.game_map.entities
-    assert engine.message_log.messages[-1] == f"You enter {level_01.name}."
+    # Not necessarily the last message: a tile-announcement (e.g. the
+    # level_01 healing potion, within FOV from (4, 4)) can legitimately
+    # follow it - see Engine._log_newly_seen_tile_announcements, always
+    # called after the enter-message at every update_fov call site.
+    assert engine.message_log.messages[0] == f"You enter {level_01.name}."
 
 
 def test_arrive_player_with_no_position_resumes_last_departure_spot():
