@@ -157,6 +157,17 @@ Settlers don't have that kind of authority structure left, or want
 one. Four walls change where the chief stands, not how reachable they
 are. This is where `Talk` completes the starting quest.
 
+*Update - a physical marker*: the doorstep now also carries an actual
+`landmark` tile (the `"9"` legend entry), one tile outside the doorway -
+a notice board, the same "ordinary communal fixture" idiom as the
+Well/Mending Yard (set pieces 2/3), *not* a quest marker or waypoint
+icon. It doesn't replace the nudge villager's spoken hint (set piece 5)
+as the primary way a player learns to look for the chief - it's a
+second, redundant cue for a player who's exploring on foot rather than
+talking to everyone, closing the same navigational gap the overworld's
+new road signposts (also plain `landmark` tiles, `data/overworld.lvl`)
+close at the map scale.
+
 *Dialogue* (triggers completion): *"So you made it after all. I was
 starting to think that warning was never coming - let's hear it, all
 of it."*

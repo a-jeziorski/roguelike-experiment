@@ -595,8 +595,8 @@ def test_millhaven_level_01_content():
     assert level.stairs[0].next_level is None  # terminal - leaves to the overworld
     assert not any(s.kind == "stairs_down" for s in level.stairs)
 
-    # the gate + the well and mending-yard landmarks
-    assert len(level.tile_descriptions) == 3
+    # the gate + the well, mending-yard, and chief's-doorstep landmarks
+    assert len(level.tile_descriptions) == 4
     exit_stairs_x, exit_stairs_y = level.stairs[0].x, level.stairs[0].y
     desc = next(
         d for d in level.tile_descriptions if (d.x, d.y) == (exit_stairs_x, exit_stairs_y)
