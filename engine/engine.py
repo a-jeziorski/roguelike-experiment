@@ -94,11 +94,12 @@ class Engine:
         starting_level: "ParsedLevel | None" = None,
         is_overworld: bool = False,
         dungeon_inspect_text: dict[str, str] | None = None,
-        dungeon_ruin_data: dict[str, tuple[str, str]] | None = None,
+        dungeon_ruin_data: dict[str, tuple[str, str, str | None]] | None = None,
         clock: GameClock | None = None,
         quest_log: QuestLog | None = None,
         sprite_codepoints: "SpriteCodepoints | None" = None,
         overworld_return_position: tuple[int, int] | None = None,
+        current_level_id: str | None = None,
     ):
         self.game_map = game_map
         self.player = player
@@ -129,10 +130,10 @@ class Engine:
         # ever populated for the overworld Engine - every other Engine has no
         # dungeon_entrance tiles to describe, so an empty dict is correct.
         self.dungeon_inspect_text = dungeon_inspect_text or {}
-        # dungeon_id -> (ruined_tile, ruined_description), for Engine.destroy_dungeon
-        # to apply once a quest's on_fail fires a destroy_dungeon_id
-        # consequence (see content.schema.DungeonDef, WorldConsequence).
-        # Same "only ever populated for the
+        # dungeon_id -> (ruined_tile, ruined_description, ruined_starting_level),
+        # for Engine.destroy_dungeon to apply once a quest's on_fail fires a
+        # destroy_dungeon_id consequence (see content.schema.DungeonDef,
+        # WorldConsequence). Same "only ever populated for the
         # overworld Engine" restriction as dungeon_inspect_text above -
         # destroy_dungeon is only ever called while is_overworld is True.
         self.dungeon_ruin_data = dungeon_ruin_data or {}
@@ -152,8 +153,20 @@ class Engine:
         # Which key of self.levels self.game_map currently is, so a stairway
         # can look up "what level did the player just come from" (for
         # arrival matching) and so on_player_reach_stairs knows where to
-        # file the outgoing map in the cache below.
-        self.current_level_id = starting_level.id if starting_level is not None else None
+        # file the outgoing map in the cache below. Defaults to
+        # starting_level's own id (true for every ordinary fresh dungeon
+        # visit), but callers landing the player somewhere other than the
+        # dungeon's nominal starting level - e.g. main.py's
+        # resolve_transition entering a razed dungeon's ruins interior
+        # instead of its normal starting_level, or engine/save.py's
+        # restore_save resuming mid-dungeon - must pass the real one
+        # explicitly, since starting_level here is deliberately kept
+        # pristine (for Engine.restart() to rebuild from) and would
+        # otherwise silently mismatch what game_map actually is.
+        self.current_level_id = (
+            current_level_id if current_level_id is not None
+            else (starting_level.id if starting_level is not None else None)
+        )
         # GameMaps for every level the player has already visited, keyed by
         # level id. Reusing the *same* GameMap object on a return visit -
         # instead of rebuilding one from the static ParsedLevel - is what
@@ -552,8 +565,10 @@ class Engine:
         ruin_data = self.dungeon_ruin_data.get(dungeon_id)
         if ruin_data is None:
             return
-        ruined_tile, ruined_description = ruin_data
-        apply_dungeon_destruction(self.game_map, dungeon_id, ruined_tile, ruined_description)
+        ruined_tile, ruined_description, ruined_starting_level = ruin_data
+        apply_dungeon_destruction(
+            self.game_map, dungeon_id, ruined_tile, ruined_description, ruined_starting_level,
+        )
         self.quest_log.destroyed_dungeon_ids.add(dungeon_id)
         for quest, was_in_progress in self.quest_log.void_by_dungeon(dungeon_id):
             if was_in_progress and quest.failure_message:

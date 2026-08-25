@@ -334,15 +334,22 @@ def build_game_map(
 
 
 def apply_dungeon_destruction(
-    game_map: GameMap, dungeon_id: str, ruined_tile: str, ruined_description: str
+    game_map: GameMap, dungeon_id: str, ruined_tile: str, ruined_description: str,
+    ruined_starting_level: str | None = None,
 ) -> None:
-    """Razes dungeon_id's overworld entrance on game_map: pops it from
-    dungeon_entrances (sealing it - engine/actions.py's MovementAction only
-    ever finds pending_dungeon_entry through that dict, so a missing entry
-    is just an ordinary move onto whatever kinds[x,y] says next), swaps the
-    tile to ruined_tile (updating walkable/transparent in lockstep, same
-    pattern as GameMap.unlock_door), and sets tile_descriptions to
-    ruined_description so look mode shows the ruins text.
+    """Razes dungeon_id's overworld entrance on game_map: swaps the tile to
+    ruined_tile (updating walkable/transparent in lockstep, same pattern as
+    GameMap.unlock_door) and sets tile_descriptions to ruined_description so
+    look mode shows the ruins text. If ruined_starting_level is None (most
+    dungeons), also pops the entrance from dungeon_entrances - sealing it,
+    since engine/actions.py's MovementAction only ever finds
+    pending_dungeon_entry through that dict, so a missing entry is just an
+    ordinary move onto whatever kinds[x,y] says next. If
+    ruined_starting_level is set, the entrance is deliberately left in
+    dungeon_entrances - it stays walkable, just now leading to a real
+    "after" ruins interior instead of the dungeon's normal starting level
+    (see main.py's resolve_transition, which picks that level once
+    dungeon_id is in QuestLog.destroyed_dungeon_ids).
 
     Called from both Engine.destroy_dungeon (the moment the deadline that
     triggers it is crossed) and engine/save.py's restore_save (reapplying
@@ -350,14 +357,17 @@ def apply_dungeon_destruction(
     since build_game_map always rebuilds from the static, unmodified level
     file). Knows nothing about QuestLog - a pure GameMap mutation, which is
     what lets both callers share it. Silently no-ops if dungeon_id isn't
-    found in dungeon_entrances (already razed, or never had an entrance on
-    this map) - restore_save calls this unconditionally for every entry in
-    QuestLog.destroyed_dungeon_ids, so it must be safe to call more than
-    once."""
+    found in dungeon_entrances (already razed-and-sealed, or never had an
+    entrance on this map) - restore_save calls this unconditionally for
+    every entry in QuestLog.destroyed_dungeon_ids, so it must be safe to
+    call more than once; when ruined_starting_level is set, the entrance is
+    never popped, so a repeat call just re-applies the same tile swap
+    idempotently rather than becoming a no-op on the second call."""
     coord = next((c for c, d_id in game_map.dungeon_entrances.items() if d_id == dungeon_id), None)
     if coord is None:
         return
-    game_map.dungeon_entrances.pop(coord)
+    if ruined_starting_level is None:
+        game_map.dungeon_entrances.pop(coord)
     x, y = coord
     game_map.kinds[x, y] = ruined_tile
     walkable, transparent = TILE_PASSABILITY.get(ruined_tile, (True, True))

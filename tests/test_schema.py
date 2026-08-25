@@ -367,6 +367,28 @@ def test_dungeon_def_rejects_ruin_fields_set_alone(kwargs):
         DungeonDef(id="wayford", name="Wayford", starting_level="level_01", **kwargs)
 
 
+def test_dungeon_def_ruined_starting_level_defaults_none():
+    dungeon = DungeonDef(id="wayford", name="Wayford", starting_level="level_01")
+    assert dungeon.ruined_starting_level is None
+
+
+def test_dungeon_def_accepts_ruined_starting_level_with_ruined_tile():
+    dungeon = DungeonDef(
+        id="wayford", name="Wayford", starting_level="level_01",
+        ruined_tile="floor", ruined_description="Ash and quiet.",
+        ruined_starting_level="level_01_ruins",
+    )
+    assert dungeon.ruined_starting_level == "level_01_ruins"
+
+
+def test_dungeon_def_rejects_ruined_starting_level_without_ruined_tile():
+    with pytest.raises(ValidationError, match="ruined_starting_level requires"):
+        DungeonDef(
+            id="wayford", name="Wayford", starting_level="level_01",
+            ruined_starting_level="level_01_ruins",
+        )
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",

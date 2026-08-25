@@ -410,7 +410,7 @@ def restore_save(
     player = _build_player(save.player, catalog)
     dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
     dungeon_ruin_data = {
-        d_id: (d.ruined_tile, d.ruined_description)
+        d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
         for d_id, d in dungeon_registry.items() if d.ruined_tile
     }
 
@@ -460,6 +460,7 @@ def restore_save(
         engine = Engine(
             game_map, player, level.name,
             catalog=catalog, levels=levels_dict, starting_level=starting_level,
+            current_level_id=current_state_key if not is_overworld else None,
             is_overworld=is_overworld,
             dungeon_inspect_text=dungeon_inspect_text if is_overworld else None,
             dungeon_ruin_data=dungeon_ruin_data if is_overworld else None,

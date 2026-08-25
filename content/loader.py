@@ -1040,6 +1040,7 @@ class Dungeon:
     requires_stairs_down: bool
     ruined_tile: str | None
     ruined_description: str
+    ruined_starting_level: str | None
     levels: dict[str, ParsedLevel]
 
 
@@ -1057,14 +1058,25 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         dungeon_dir / "levels", catalog, require_stairs_down=manifest.requires_stairs_down
     )
 
+    errors: list[str] = []
     if manifest.starting_level not in levels:
-        raise ContentValidationError(
-            str(manifest_path),
-            [
-                f"starting_level '{manifest.starting_level}' is not among "
-                "this dungeon's levels"
-            ],
+        errors.append(
+            f"starting_level '{manifest.starting_level}' is not among "
+            "this dungeon's levels"
         )
+    if manifest.ruined_starting_level is not None:
+        if manifest.ruined_starting_level not in levels:
+            errors.append(
+                f"ruined_starting_level '{manifest.ruined_starting_level}' is not "
+                "among this dungeon's levels"
+            )
+        elif manifest.ruined_starting_level == manifest.starting_level:
+            errors.append(
+                "ruined_starting_level is the same as starting_level - a razed "
+                "dungeon's entrance would then have no visible effect on the interior"
+            )
+    if errors:
+        raise ContentValidationError(str(manifest_path), errors)
 
     return Dungeon(
         id=manifest.id,
@@ -1075,6 +1087,7 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         requires_stairs_down=manifest.requires_stairs_down,
         ruined_tile=manifest.ruined_tile,
         ruined_description=manifest.ruined_description,
+        ruined_starting_level=manifest.ruined_starting_level,
         levels=levels,
     )
 

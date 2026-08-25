@@ -716,6 +716,60 @@ sends the player to rough up `millhaven_debtor` in Millhaven, not kill
 them - killing the debtor instead force-fails the quest and leaves
 Millhaven's guards hostile with nothing collected.
 
+## 0m. Walkable ruins: a real before/after settlement (`ruined_starting_level`)
+
+Until now, `destroy_dungeon_id` (§0j) only sealed a razed dungeon's
+overworld entrance - the interior was never seen again. `DungeonDef.ruined_starting_level`
+(optional, independent of `ruined_tile`/`ruined_description`) names a
+level id the entrance leads into instead, once destroyed - the town stays
+walkable, with a real authored "after" interior. `docs/dungeon_bibles/wayford.md`'s
+"After: the Razing" section is the reference example: `spreading_the_warning`'s
+`on_fail` still fires `destroy_dungeon_id: wayford`, but Wayford's
+`dungeon.yaml` also sets `ruined_starting_level: level_01_ruins`, so the
+gate stays enterable and now leads to `level_01_ruins.lvl` instead of
+`level_01.lvl`.
+
+**Same footprint, changed population** is the authoring convention this
+establishes for any future before/after settlement: copy the "before"
+level's ASCII map verbatim into the "after" file (a plain file copy, then
+edit only `id`/`name`/the legend - never hand-retype the map block; a
+single mistyped row silently produces a non-rectangular map or a shifted
+layout that's easy to miss on review) so a returning player recognizes
+the same walls and rooms, and only the legend changes: which NPCs survive
+(kept as the exact same catalog id - no new "aftermath variant" entity
+needed unless their mechanics genuinely change), which don't (simply
+absent from the new legend), and which former set pieces become landmarks
+describing their ruined state instead.
+
+**The `Engine.current_level_id` gotcha.** `Engine.__init__` derives
+`current_level_id` from `starting_level.id` by default - correct for
+every ordinary fresh dungeon visit, where the level actually being shown
+*is* the dungeon's nominal starting level. A razed dungeon's fresh-entry
+Engine breaks that assumption on purpose: it needs to show the *ruins*
+level while `starting_level` itself stays the *pristine* one (so
+`Engine.restart()` - which also resets `quest_log`, un-razing the
+dungeon - rebuilds the intact town, not the ruins). Any code path that
+constructs an `Engine` landing the player somewhere other than
+`starting_level`'s own level must pass `current_level_id` explicitly -
+today that's `main.py`'s `resolve_transition` (the fresh-entry-after-razing
+case) and `engine/save.py`'s `restore_save` (resuming a save made inside
+the ruins). Getting this wrong doesn't just mis-render once - since
+`current_level_id` also drives `SavedPlace.current_level_id`
+(`engine/save.py`'s `_capture_place`), a save made in the ruins would
+silently regress back to the pristine level on reload.
+
+**Re-entry after razing needs its own staleness check**, separate from
+the ordinary "resume the cached engine" path every other dungeon re-entry
+already uses: a player who visited *before* the razing may still have a
+cached pre-razing `Engine` in `active_engines`, showing the old level -
+naively reusing it after the dungeon is razed would silently show the
+intact town again. `resolve_transition` only forces a rebuild when the
+cached engine is *still on the dungeon's own pristine `starting_level`*
+after a razing that has a `ruined_starting_level` - deliberately narrower
+than "any level mismatch," so a player resuming genuinely deeper in an
+unrelated multi-level dungeon never has their progress discarded by an
+unrelated destruction elsewhere.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

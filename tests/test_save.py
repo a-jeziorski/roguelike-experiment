@@ -46,10 +46,29 @@ def _prison_tower_engine(dungeon_registry, catalog, clock, quest_log) -> Engine:
     )
 
 
+def _wayford_ruins_engine(dungeon_registry, catalog, clock, quest_log) -> Engine:
+    """A player already inside Wayford's post-razing ruins interior - same
+    shape as _prison_tower_engine, but landed on ruined_starting_level
+    with current_level_id passed explicitly, mirroring exactly what
+    main.py's resolve_transition does once quest_log.destroyed_dungeon_ids
+    contains "wayford" (see docs/dungeon_bibles/wayford.md's "After: the
+    Razing")."""
+    dungeon = dungeon_registry["wayford"]
+    quest_log.destroyed_dungeon_ids.add("wayford")
+    ruins_level = dungeon.levels[dungeon.ruined_starting_level]
+    game_map, player = build_game_map(ruins_level, catalog)
+    return Engine(
+        game_map, player, ruins_level.name,
+        catalog=catalog, levels=dungeon.levels, starting_level=dungeon.levels[dungeon.starting_level],
+        current_level_id=dungeon.ruined_starting_level,
+        clock=clock, quest_log=quest_log,
+    )
+
+
 def _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log) -> Engine:
     game_map, player = build_game_map(overworld_level, catalog)
     dungeon_ruin_data = {
-        d_id: (d.ruined_tile, d.ruined_description)
+        d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
         for d_id, d in dungeon_registry.items() if d.ruined_tile
     }
     return Engine(
@@ -369,7 +388,13 @@ def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
     """The gap this closes: build_game_map always rebuilds the overworld
     from the static, unmodified level file - without restore_save
     re-applying every entry in destroyed_dungeon_ids, a save made after
-    Wayford's destruction would silently un-raze it on reload."""
+    Wayford's destruction would silently un-raze it on reload. Wayford
+    specifically has a ruined_starting_level (a real walkable ruins
+    interior, see docs/dungeon_bibles/wayford.md's "After: the Razing"),
+    so its entrance stays in dungeon_entrances rather than being sealed -
+    the sealed-entrance case (no ruined_starting_level) is covered
+    separately by tests/test_engine.py's synthetic
+    test_destroy_dungeon_seals_the_entrance_and_updates_the_tile."""
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
     quest_log = create_quest_log(quest_defs)
@@ -380,7 +405,7 @@ def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
     )
 
     engine.destroy_dungeon("wayford")
-    assert entrance_coord not in engine.game_map.dungeon_entrances
+    assert engine.game_map.dungeon_entrances[entrance_coord] == "wayford"
 
     save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
     active_key, active_engines2, clock2, quest_log2 = _round_trip(
@@ -389,9 +414,39 @@ def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
     engine2 = active_engines2[active_key]
 
     assert quest_log2.destroyed_dungeon_ids == {"wayford"}
-    assert entrance_coord not in engine2.game_map.dungeon_entrances
+    assert engine2.game_map.dungeon_entrances[entrance_coord] == "wayford"
     assert engine2.game_map.kinds[entrance_coord] == "floor"
     assert engine2.game_map.tile_descriptions[entrance_coord] != ""
+
+
+def test_round_trip_preserves_a_razed_and_entered_wayford(tmp_path):
+    """The gap this closes: engine/save.py's restore_save must thread
+    current_level_id through to Engine(...) (it already resolves the
+    right value via current_state_key = place.current_level_id or
+    dungeon.starting_level) - before this fix, Engine.__init__ silently
+    re-derived current_level_id from starting_level (the pristine level,
+    kept only for restart()), which would regress a reloaded Wayford ruins
+    visit back to level_01."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _wayford_ruins_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"wayford": engine}
+    # Engine.__init__ always runs update_fov around the player's own
+    # position, so this coordinate is guaranteed explored without needing
+    # a numpy import just to find one.
+    explored_coord = (engine.player.x, engine.player.y)
+
+    save = capture_save("wayford", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+    engine2 = active_engines2[active_key]
+
+    assert active_key == "wayford"
+    assert engine2.current_level_id == "level_01_ruins"
+    assert engine2.level_name == "Wayford's Ruins"
+    assert bool(engine2.game_map.explored[explored_coord])
 
 
 def test_round_trip_preserves_world_flags(tmp_path):

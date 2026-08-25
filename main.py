@@ -596,7 +596,7 @@ def resolve_transition(
             player.x, player.y = position
             dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
             dungeon_ruin_data = {
-                d_id: (d.ruined_tile, d.ruined_description)
+                d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
                 for d_id, d in dungeon_registry.items() if d.ruined_tile
             }
             target = Engine(
@@ -625,14 +625,35 @@ def resolve_transition(
     if engine.pending_dungeon_entry is not None:
         dungeon_id = engine.pending_dungeon_entry
         player = engine.depart_player()
+        dungeon = dungeon_registry[dungeon_id]
+        # A razed dungeon's entrance leads into its ruined_starting_level
+        # instead of the normal one, once QuestLog.destroyed_dungeon_ids
+        # records it (see Engine.destroy_dungeon/apply_dungeon_destruction) -
+        # most dungeons are never destroyable and always resolve to their
+        # plain starting_level.
+        razed = quest_log is not None and dungeon_id in quest_log.destroyed_dungeon_ids
+        entry_level_id = (
+            dungeon.ruined_starting_level if razed and dungeon.ruined_starting_level
+            else dungeon.starting_level
+        )
         target = active_engines.get(dungeon_id)
-        if target is None:
-            dungeon = dungeon_registry[dungeon_id]
-            starting_level = dungeon.levels[dungeon.starting_level]
-            game_map, _ = build_game_map(starting_level, catalog, player=player)
+        # Only forces a rebuild for the real "cached engine was visited
+        # before this dungeon was razed" case - a player resuming deeper in
+        # a genuinely multi-level dungeon (current_level_id != starting_level)
+        # keeps their progress, same "resume exactly where they left"
+        # guarantee the else branch below already promises.
+        needs_rebuild = target is None or (
+            razed and dungeon.ruined_starting_level
+            and target.current_level_id == dungeon.starting_level
+        )
+        if needs_rebuild:
+            starting_level = dungeon.levels[dungeon.starting_level]  # pristine - for restart()
+            entry_level = dungeon.levels[entry_level_id]
+            game_map, _ = build_game_map(entry_level, catalog, player=player)
             target = Engine(
-                game_map, player, starting_level.name,
+                game_map, player, entry_level.name,
                 catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+                current_level_id=entry_level_id,
                 clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[dungeon_id] = target

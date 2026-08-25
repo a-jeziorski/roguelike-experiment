@@ -2197,7 +2197,7 @@ def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
     game_map.dungeon_entrances[(2, 0)] = "wayford"
     engine = Engine(
         game_map, player, "The Overworld", is_overworld=True,
-        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
     )
 
     engine.destroy_dungeon("wayford")
@@ -2205,6 +2205,70 @@ def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
     assert (2, 0) not in game_map.dungeon_entrances
     assert game_map.kinds[2, 0] == "road"
     assert bool(game_map.walkable[2, 0]) is True
+    assert game_map.tile_descriptions[(2, 0)] == "Ash and quiet."
+    assert "wayford" in engine.quest_log.destroyed_dungeon_ids
+
+
+def test_engine_current_level_id_defaults_to_starting_level():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    from content.loader import ParsedLevel
+
+    level = ParsedLevel(
+        id="level_01", name="Test", width=3, height=3, tiles=[["floor"] * 3] * 3,
+        player_start=(1, 1), player_start_tile="floor",
+        entity_spawns=[], item_spawns=[], stairs=[], doors=[],
+        dungeon_entrances=[], tile_descriptions=[],
+        open_boundary=False, open_boundary_message="",
+    )
+    engine = Engine(game_map, player, "Test", starting_level=level)
+
+    assert engine.current_level_id == "level_01"
+
+
+def test_engine_current_level_id_explicit_override_wins():
+    """The case this exists for: a razed dungeon's fresh-entry Engine
+    shows a different level (the ruins) than its own pristine
+    starting_level (kept only for Engine.restart() to rebuild from) - see
+    main.py's resolve_transition and engine/save.py's restore_save."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    from content.loader import ParsedLevel
+
+    level = ParsedLevel(
+        id="level_01", name="Test", width=3, height=3, tiles=[["floor"] * 3] * 3,
+        player_start=(1, 1), player_start_tile="floor",
+        entity_spawns=[], item_spawns=[], stairs=[], doors=[],
+        dungeon_entrances=[], tile_descriptions=[],
+        open_boundary=False, open_boundary_message="",
+    )
+    engine = Engine(
+        game_map, player, "Test's Ruins", starting_level=level,
+        current_level_id="level_01_ruins",
+    )
+
+    assert engine.current_level_id == "level_01_ruins"
+
+
+def test_destroy_dungeon_with_ruined_starting_level_keeps_the_entrance_walkable():
+    """The walkable-ruins case (see docs/dungeon_bibles/wayford.md's
+    "After: the Razing") - unlike the plain seal-it-off case above, the
+    entrance must stay in dungeon_entrances so MovementAction can still
+    route the player in, just leading to a different level once there
+    (see main.py's resolve_transition)."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True,
+        dungeon_ruin_data={"wayford": ("floor", "Ash and quiet.", "level_01_ruins")},
+    )
+
+    engine.destroy_dungeon("wayford")
+
+    assert game_map.dungeon_entrances[(2, 0)] == "wayford"
+    assert game_map.kinds[2, 0] == "floor"
     assert game_map.tile_descriptions[(2, 0)] == "Ash and quiet."
     assert "wayford" in engine.quest_log.destroyed_dungeon_ids
 
@@ -2233,7 +2297,7 @@ def test_destroy_dungeon_voids_matching_quests_and_logs_only_in_progress_ones():
     })
     engine = Engine(
         game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log,
-        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
     )
 
     engine.destroy_dungeon("wayford")
@@ -2263,7 +2327,7 @@ def test_destroy_dungeon_is_idempotent_when_called_twice():
     game_map.dungeon_entrances[(2, 0)] = "wayford"
     engine = Engine(
         game_map, player, "The Overworld", is_overworld=True,
-        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
     )
 
     engine.destroy_dungeon("wayford")
@@ -2292,7 +2356,7 @@ def test_process_turn_destroys_dungeon_when_a_deadline_quest_with_on_fail_destro
     clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
     engine = Engine(
         game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
-        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
     )
 
     engine.process_turn(WaitAction())  # crosses into the next day - both deadlines cross
@@ -2350,7 +2414,7 @@ def test_process_turn_applies_both_consequences_when_on_fail_has_a_destroy_and_a
     clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
     engine = Engine(
         game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
-        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.")},
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
     )
 
     engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses

@@ -640,6 +640,81 @@ def test_resolve_transition_reentering_a_dungeon_resumes_the_exact_retreat_spot(
     assert (back_engine.player.x, back_engine.player.y) == retreat_spot
 
 
+def test_resolve_transition_enters_wayfords_ruins_after_it_is_razed():
+    """The M4 walkable-ruins case (see docs/dungeon_bibles/wayford.md's
+    "After: the Razing"): a fresh visit before razing lands on level_01;
+    once razed, a cached pre-razing engine is discarded (not resumed) and
+    a fresh visit lands on level_01_ruins instead."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", quest_log=quest_log)
+    assert wayford_engine.current_level_id == "level_01"
+    original_map = wayford_engine.game_map
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")  # leave via the town's terminal gate
+
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+    assert active_key == OVERWORLD_KEY
+
+    overworld_engine.destroy_dungeon("wayford")
+    assert "wayford" in quest_log.destroyed_dungeon_ids
+
+    overworld_engine.pending_dungeon_entry = "wayford"
+    active_key, ruins_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    assert active_key == "wayford"
+    assert ruins_engine.current_level_id == "level_01_ruins"
+    assert ruins_engine.level_name == "Wayford's Ruins"
+    assert ruins_engine.game_map is not original_map  # rebuilt, not the stale pre-razing cache
+
+
+def test_resolve_transition_reentering_wayfords_ruins_resumes_the_cached_engine():
+    """Once already rebuilt to the ruins level, a later re-entry must
+    resume that cached engine (preserving any progress made there), not
+    wastefully rebuild it again every visit."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")  # leave via the town's terminal gate
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+    overworld_engine.destroy_dungeon("wayford")
+
+    overworld_engine.pending_dungeon_entry = "wayford"
+    active_key, ruins_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+    ruins_map = ruins_engine.game_map
+
+    ruins_engine.on_player_reach_stairs(None, "stairs_up")  # leave via the ruins' terminal gate
+    active_key, overworld_engine_2 = resolve_transition(
+        "wayford", ruins_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+    overworld_engine_2.pending_dungeon_entry = "wayford"
+    active_key, ruins_engine_2 = resolve_transition(
+        OVERWORLD_KEY, overworld_engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+        quest_log=quest_log,
+    )
+
+    assert ruins_engine_2.current_level_id == "level_01_ruins"
+    assert ruins_engine_2.game_map is ruins_map  # resumed, not rebuilt again
+
+
 def test_resolve_transition_does_nothing_when_not_playing():
     catalog, dungeon_registry, overworld_level = _world()
     engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")

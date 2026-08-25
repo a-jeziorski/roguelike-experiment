@@ -258,3 +258,68 @@ shop, not just a second copy of the first one.
   coin is a deliberate contrast, not an inconsistency - it's the same
   "further along" relationship the whole town has to Millhaven, made
   audible in one line each.
+
+## After: the Razing (`level_01_ruins`)
+
+If `spreading_the_warning` fails its deadline, the goblin horde reaches
+Wayford (`WorldConsequence(destroy_dungeon_id: wayford)`,
+`docs/content_design_process.md` §0j) and `level_01_ruins` replaces
+`level_01` as what the town's still-walkable gate leads to
+(`DungeonDef.ruined_starting_level`, §0m). This is a deliberate, flagged
+departure from "Wayford should never need a reason to feel unsafe" above
+- the one rule this whole bible otherwise holds to - not a contradiction
+to quietly resolve. It's also the first place in the game a raze
+consequence gets a real interior, not just a sealed door.
+
+**Same footprint, changed population.** `level_01_ruins`'s map is
+`level_01`'s ASCII map copied verbatim - every wall, room, and road stays
+exactly where it was. Recognizability is the entire point: a player who
+knew this town should be able to walk its old paths and feel exactly
+what's now missing, not be handed a different, unrelated ruin that merely
+carries the same name. Only the legend changes: NPCs, item, and landmark
+descriptions.
+
+**Who doesn't make it.** The Road Warden, the Clerk, and the Caravan
+Master are gone - their own quests (`clearing_the_watch_road`,
+`a_record_worth_keeping`, `word_down_the_road`) already carry
+`voided_by_dungeon_id: wayford` and force-fail the instant the horde
+consequence fires, with failure messages that already assert this
+("Wayford isn't there to read anything, anymore"). Both `town_guard`
+spawns are gone too - a raid a couple of guards couldn't have turned back
+is the entire premise of Wayford falling at all; surviving guards would
+undercut that. None of the twelve anonymous villagers carry over either -
+the aftermath should read as real loss, not a roster reshuffle with new
+dialogue pasted over the same names.
+
+**Who does.** Two survivors, each for an in-character reason - not
+survival-by-narrative-convenience:
+- **The Provisioner** (`wayford_provisioner`, same catalog id - stock
+  and prices unchanged, "life goes on" is a stronger beat here than
+  disabling their shop) was in the storehouse's stone cellar when the
+  horde came. Still trading, in whatever capacity a ruin allows. Real,
+  free side effect worth knowing: `a_debt_worth_collecting` (their
+  quest, questgiver `wayford_provisioner`) has no `voided_by_dungeon_id`
+  - it was already silently unfinishable once Wayford sealed for good;
+  a walkable ruins interior makes it completable again, with no extra
+  engineering.
+- **The Trainer** (`wayford_trainer`, same catalog id -
+  `trainer_perks` unchanged, still teachable) survived by fighting,
+  unlike the guards who didn't - consistent with their established
+  "Retired Sellsword" character (the one Wayford NPC built as someone
+  who's actually held a blade), not a coincidence.
+
+**What's still here, described differently.** The Crossroads (`+`) keeps
+its symbol and placement (the town's literal center, still the first
+thing worth reading) but gets a new description - ash and silence where
+the "roads still meet" flavor used to be. The Road Warden's Post, the
+Clerk's Record House, and the Caravan Yard each get one landmark inside
+or near their old footprint describing their specific ruined state,
+consistent with (not a repeat of) their absent occupants'
+`failure_message` text - each should feel like a distinct beat, not three
+copies of "burned." The healing potion item is gone (looted or spent, not
+left lying in a town three questgivers' worth of people used to live in).
+
+**No hostile encounter.** This pass is survivors plus environmental
+storytelling, not a combat set piece - deliberately out of scope, not an
+oversight. A looter/opportunist presence picking through the wreckage is
+a reasonable idea for later, not this milestone.

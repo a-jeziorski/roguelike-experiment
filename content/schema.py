@@ -810,11 +810,26 @@ class DungeonDef(BaseModel):
     # most dungeons are never destroyable and leave both unset.
     ruined_tile: TileType | None = None
     ruined_description: str = ""
+    # Which level id this dungeon's entrance leads into once destroyed,
+    # instead of its usual starting_level - lets a razed settlement stay
+    # walkable (a real "after" ruins interior) rather than being sealed
+    # off forever (see Engine.destroy_dungeon,
+    # engine/game_map.py's apply_dungeon_destruction, main.py's
+    # resolve_transition). Independent of ruined_tile/ruined_description
+    # above - a dungeon can still be sealed-only by leaving this unset;
+    # only a dungeon that wants a real walkable aftermath sets it.
+    ruined_starting_level: str | None = None
 
     @model_validator(mode="after")
     def ruined_tile_and_description_together(self) -> "DungeonDef":
         if (self.ruined_tile is None) != (self.ruined_description == ""):
             raise ValueError("ruined_tile and ruined_description must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def ruined_starting_level_requires_ruined_tile(self) -> "DungeonDef":
+        if self.ruined_starting_level is not None and self.ruined_tile is None:
+            raise ValueError("ruined_starting_level requires ruined_tile/ruined_description to be set")
         return self
 
 
