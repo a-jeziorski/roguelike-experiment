@@ -249,6 +249,43 @@ def test_restore_save_defaults_xp_and_learned_perk_ids_for_an_old_format_save(tm
     assert player2.fighter.max_hp == 30
 
 
+def test_round_trip_of_a_dead_player_restores_dead_game_state(tmp_path):
+    """game_state isn't part of the saved schema - it's re-derived from
+    hp at restore time (see restore_save). Without this, a save captured
+    while dead would restore with game_state defaulting back to
+    "playing" despite non-positive hp, silently breaking RestartAction's
+    own gate."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.fighter.hp = 0
+    engine.game_state = "dead"
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert active_engines2[active_key].game_state == "dead"
+
+
+def test_round_trip_of_a_living_player_restores_playing_game_state(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert active_engines2[active_key].game_state == "playing"
+
+
 def test_round_trip_preserves_a_cleared_non_current_level(tmp_path):
     """The multi-level gotcha: Engine.__init__ only ever seeds visited_maps
     with the *current* level - restore_save must separately re-insert every

@@ -445,6 +445,20 @@ def restore_save(
 
         active_engines[key] = engine
 
+    # game_state isn't part of the saved schema - it's fully derivable from
+    # the player's own hp (Engine.on_entity_death sets "dead" exactly when
+    # hp drops to 0), so it's re-derived here rather than duplicated. Only
+    # the active engine matters: a cached-but-inactive place's game_state
+    # is never touched by on_entity_death in the first place (the player
+    # can only die wherever they currently are), so every other engine
+    # correctly keeps Engine.__init__'s "playing" default. Without this,
+    # a save captured while dead (main.py's own SaveGameAction blocks this,
+    # but nothing stops a script/tool from persisting one anyway) would
+    # restore with game_state defaulting back to "playing" despite
+    # negative/zero hp, silently breaking RestartAction's own
+    # `if engine.game_state != "playing"` gate.
+    active_engines[save.active_key].game_state = "dead" if player.fighter.hp <= 0 else "playing"
+
     return save.active_key, active_engines, clock, quest_log
 
 
