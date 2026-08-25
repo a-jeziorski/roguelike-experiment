@@ -65,7 +65,7 @@ legend:
   "3": { entity: villager, tile: plains, dialogue: "Trade's thinner than it used to be. A cart came through most weeks, once. Now we make do with what's already here." }
   "4": { entity: villager, tile: plains, dialogue: "Can't talk. This bread won't watch itself." }
   "5": { entity: villager, tile: plains, dialogue: "Chief's been asking after any travelers. You'd best go say hello." }
-  "V": { entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it." }
+  "V": { entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it.", flag_dialogue: [{ flag: wayford_razed, line: "Wayford's gone quiet - the kind of quiet that isn't peace. We were bracing for a horde to reach them. Looks like something else did." }] }
   "6": { entity: escaped_prisoner, tile: plains, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }
   "7": { entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }
   "8": { entity: town_guard, tile: road, dialogue: "Keep the peace and we've got no trouble between us." }

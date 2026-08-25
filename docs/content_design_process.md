@@ -498,8 +498,8 @@ crossed (`Engine._apply_world_consequences`, called from
 missed deadline can trigger more than one consequence - e.g. razing a
 dungeon and separately recording a flag - rather than being limited to a
 single effect. Each entry is a `WorldConsequence` (`content/schema.py`)
-with exactly one of two actions set (validated - a `WorldConsequence` with
-both or neither is rejected at load time):
+with exactly one of three actions set (validated - a `WorldConsequence`
+with more than one, or none, is rejected at load time):
 
 - `destroy_dungeon_id: <dungeon_id>` - razes that dungeon's overworld
   entrance (see `Engine.destroy_dungeon`, `engine/game_map.py`'s
@@ -514,13 +514,24 @@ both or neither is rejected at load time):
   has `ruined_tile` set, so a wired-up consequence with no authored ruins
   content fails at load time rather than silently doing nothing in play.
 - `set_flag: <name>` - records that name, permanently, in
-  `QuestLog.world_flags`. As of this writing nothing *reads* `world_flags`
-  yet - no dialogue, shop, or level variant branches on it. It exists
-  purely so a consequence can record "something happened" without also
-  having to be a dungeon destruction; a later milestone adds the
-  content-side machinery to react to it. Not cross-checked against any
-  registry (there isn't one yet) - a typo in a flag name is currently
-  silent, same caveat as any other free-text field with no consumer.
+  `QuestLog.world_flags`. It exists so a consequence can record "something
+  happened" without also having to be a dungeon destruction. Flag-
+  conditional dialogue (`FlagDialogue`, §0k below) is the first thing that
+  reads `world_flags` back - shop and level variants remain future work.
+- `tighten_deadline: {quest_id: <id>, new_day: <day>}` - shortens
+  *another* quest's own `deadline_day` (`Engine._tighten_deadline`), never
+  extends it (a `new_day` later than the target's current deadline is a
+  silent no-op). Works even if the target quest is still `not_given` - a
+  tightened deadline is waiting for the player the moment it's granted,
+  whether or not they've engaged with it yet. This is the one action that
+  reaches into a *different* quest's own clock - `destroy_dungeon_id`/
+  `set_flag` above only ever affect the failing quest's own target.
+  `content/loader.py` rejects a `tighten_deadline` that targets its own
+  quest, an unknown quest id, or a quest with no `deadline_year` set at
+  all (same "nothing to shorten" logic as the no-deadline check below) -
+  checked against the whole raw YAML file up front (the same trick
+  `requires_quest_id` already uses), so it doesn't matter which quest is
+  defined first in the file.
 
 `content/loader.py` also rejects `on_fail` set with no `deadline_year` -
 `QuestLog.check_deadlines` is `on_fail`'s only trigger, so a quest with
@@ -563,6 +574,70 @@ player who finishes that prerequisite right at its deadline has *less*
 than the nominal window left to also beat `spreading_the_warning`'s
 deadline. Treated as an intended difficulty curve (cutting the first
 warning close costs you on the second), not a bug to route around.
+
+`spreading_the_warning`'s `on_fail` also carries a `tighten_deadline`
+targeting `a_wall_worth_holding` (Stonebridge's independent kill quest
+against the same `bandit_captain` at Broken Watch): if Wayford's own
+deadline (day 64) lapses, Stonebridge's own deadline (day 70) is pulled
+in to day 66 - a 6-day window collapsed to roughly 2. This is the
+"a threat ignored in one region strengthens a threat elsewhere" case -
+deliberately one-directional (Stonebridge's own failure does not tighten
+Wayford's deadline in return, since there's no narrative reason for that
+direction yet and this isn't a "for symmetry" feature). `engine/save.py`'s
+`SavedQuestLogState.deadline_days` persists whichever deadline a quest is
+actually holding right now, since `tighten_deadline` is the first thing
+that ever mutates `deadline_day` at runtime - a save made after this
+fires and then reloaded must keep showing day 66, not silently revert to
+the authored day 70.
+
+## 0k. Flag-conditional dialogue (`FlagDialogue` / `LegendEntry.flag_dialogue`)
+
+A `set_flag` consequence (§0j) is inert on its own - `FlagDialogue` is
+what lets content actually react to it. An `{entity: ...}` legend spawn
+may carry `flag_dialogue: [{flag: <name>, line: <text>}, ...]` (both
+fields required - a `FlagDialogue` only ever does one thing, unlike
+`WorldConsequence`, so there's no "exactly one of" validator needed).
+Checked in author list order at Talk time (`Engine.talk_to_adjacent`),
+first matching flag wins, against whatever is currently in
+`QuestLog.world_flags` - not baked in when the map is built, since a flag
+can be set while the player is already standing on that map.
+
+The full dialogue-resolution priority, highest first:
+1. `flag_dialogue` - a matching entry in `QuestLog.world_flags`.
+2. `QuestLog.followup_dialogue` - a completed quest's
+   `questgiver_done_dialogue`/`target_done_dialogue` naming this NPC.
+3. `Entity.dialogue` - the spawn's own per-placement line (or the
+   catalog `EntityDef.dialogue` fallback if the spawn set none).
+4. `_DEFAULT_TALK_LINE`.
+
+A world-flag reaction deliberately outranks a completed quest's followup
+line: it means something happened in the world *after* that quest
+resolved, which supersedes whatever thank-you chatter would otherwise
+show. `village_chief`/Millhaven is the reference example -
+`data/dungeons/millhaven/levels/level_01.lvl`'s `"V"` legend entry reacts
+to `wayford_razed` (set by `spreading_the_warning`'s `on_fail`, §0j) even
+though the Chief's `followup_dialogue` line from the already-completed
+`goblin_warning` quest would otherwise be active - the flag line wins.
+
+Unlike `dialogue`, `flag_dialogue` has **no catalog-level fallback** on
+`EntityDef` - it's spawn-only by design, since a world-flag reaction is
+about *this specific placement*, not a generic trait of the monster/NPC
+type (`engine/game_map.py`'s `build_game_map` has a comment on this at the
+`Entity(...)` construction site).
+
+`main.py`'s `_check_flag_dialogue_references_known_flags` cross-checks
+every `flag_dialogue` entry across every dungeon's every level against the
+full set of flags any quest's `on_fail` can ever set
+(`WorldConsequence.set_flag`) - same "fail loudly at content-load time"
+posture, same paired-registry-can't-check-itself-alone reasoning, as
+`_check_destroyable_dungeons_have_ruin_content` above. The overworld is
+never checked - `load_overworld` hardcodes `entity_spawns=[]`
+unconditionally, since NPCs have no meaning there.
+
+`flag_dialogue` needs no `engine/save.py` changes - it's static per-spawn
+authored content, reconstructed fresh by `build_game_map` on every load
+exactly like `dialogue` already is, unlike `world_flags` itself (which
+*is* runtime-mutable state and is what M1 persists).
 
 ## 1. Narrative framing
 

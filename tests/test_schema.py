@@ -4,12 +4,14 @@ from pydantic import ValidationError
 from content.schema import (
     DungeonDef,
     EntityDef,
+    FlagDialogue,
     ItemDef,
     LegendEntry,
     LevelDef,
     QuestDef,
     SpriteRef,
     SpriteSheetDef,
+    TightenDeadline,
     WorldConsequence,
 )
 
@@ -89,6 +91,18 @@ def test_legend_entry_from_entity_mapping():
     entry = LegendEntry.from_raw({"entity": "rat"})
     assert entry.tile == "floor"
     assert entry.entity == "rat"
+
+
+def test_legend_entry_flag_dialogue_defaults_to_empty_list():
+    entry = LegendEntry.from_raw({"entity": "rat"})
+    assert entry.flag_dialogue == []
+
+
+def test_legend_entry_from_entity_mapping_parses_flag_dialogue():
+    entry = LegendEntry.from_raw(
+        {"entity": "village_chief", "flag_dialogue": [{"flag": "wayford_razed", "line": "It's gone."}]}
+    )
+    assert entry.flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It's gone.")]
 
 
 def test_legend_entry_from_item_mapping():
@@ -468,8 +482,55 @@ def test_world_consequence_rejects_neither_destroy_dungeon_id_nor_set_flag():
         WorldConsequence()
 
 
+def test_tighten_deadline_construction():
+    tighten = TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+    assert tighten.quest_id == "a_wall_worth_holding"
+    assert tighten.new_day == 66
+
+
+def test_world_consequence_accepts_tighten_deadline_alone():
+    consequence = WorldConsequence(
+        tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+    )
+    assert consequence.tighten_deadline.quest_id == "a_wall_worth_holding"
+    assert consequence.destroy_dungeon_id is None
+    assert consequence.set_flag is None
+
+
+def test_world_consequence_rejects_tighten_deadline_with_destroy_dungeon_id():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence(
+            destroy_dungeon_id="wayford",
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66),
+        )
+
+
+def test_world_consequence_rejects_tighten_deadline_with_set_flag():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence(
+            set_flag="wayford_razed",
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66),
+        )
+
+
 def test_quest_def_on_fail_defaults_to_empty_list():
     quest = QuestDef(
         id="q1", name="Test Quest", description="A test.", completion_message="Done.",
     )
     assert quest.on_fail == []
+
+
+def test_flag_dialogue_requires_flag():
+    with pytest.raises(ValidationError):
+        FlagDialogue(line="It's gone.")
+
+
+def test_flag_dialogue_requires_line():
+    with pytest.raises(ValidationError):
+        FlagDialogue(flag="wayford_razed")
+
+
+def test_flag_dialogue_accepts_both_fields():
+    fd = FlagDialogue(flag="wayford_razed", line="It's gone.")
+    assert fd.flag == "wayford_razed"
+    assert fd.line == "It's gone."

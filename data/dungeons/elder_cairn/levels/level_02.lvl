@@ -7,6 +7,8 @@ map: |
   #########......#########
   ###########..###########
   ###########..###########
+  #########...^..#########
+  #########...Y..#########
   #######..........#######
   #######..........#######
   #######..........#######
@@ -29,3 +31,5 @@ legend:
   "Q": { entity: stone_sentinel }
   "]": { item: bone_plate }
   "!": { item: healing_potion }
+  "Y": { entity: wraith }
+  "^": { tile: landmark, description: "A single stone set into the floor, smaller than anything else in the Cairn and matching none of it - no grown curve, no seam, nothing to place it by. It's colder than the air around it." }

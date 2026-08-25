@@ -625,6 +625,34 @@ def _check_destroyable_dungeons_have_ruin_content(quest_defs: dict, dungeon_regi
         raise ContentValidationError(str(QUESTS_PATH), errors)
 
 
+def _check_flag_dialogue_references_known_flags(quest_defs: dict, dungeon_registry: dict) -> None:
+    """A LegendEntry's flag_dialogue entries name a world flag that must
+    actually be settable by some quest's on_fail (WorldConsequence.set_flag)
+    - otherwise the line can never show, a silent typo. Neither load_level
+    nor load_quests can catch this alone, so it's checked here, same
+    pattern as _check_destroyable_dungeons_have_ruin_content above."""
+    known_flags = {
+        consequence.set_flag
+        for quest in quest_defs.values()
+        for consequence in quest.on_fail
+        if consequence.set_flag is not None
+    }
+    errors: list[str] = []
+    for dungeon_id, dungeon in dungeon_registry.items():
+        for level_id, level in dungeon.levels.items():
+            for spawn in level.entity_spawns:
+                for fd in spawn.flag_dialogue:
+                    if fd.flag not in known_flags:
+                        errors.append(
+                            f"dungeon '{dungeon_id}' level '{level_id}': flag_dialogue "
+                            f"references unknown flag '{fd.flag}' - no quest's on_fail "
+                            "ever sets it (WorldConsequence.set_flag), so this line "
+                            "could never show"
+                        )
+    if errors:
+        raise ContentValidationError(str(DUNGEONS_DIR), errors)
+
+
 def build_initial_state(
     catalog, dungeon_registry: dict, overworld_level, quest_defs: dict, encounter_registry,
     sprite_codepoints, console: tcod.console.Console, context: tcod.context.Context, save_path: Path,
@@ -661,6 +689,7 @@ def main() -> int:
         )
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
         _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)
+        _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)
         encounter_registry = load_encounters(
             ENCOUNTERS_PATH,
             known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),

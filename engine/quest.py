@@ -295,9 +295,9 @@ class QuestLog:
     destroyed_dungeon_ids: set[str] = field(default_factory=set)
     # Every flag name ever set via a WorldConsequence(set_flag=...) firing,
     # across the whole run - same shape and reasoning as
-    # destroyed_dungeon_ids. Nothing reads this yet (see
-    # content.schema.WorldConsequence) - that's a later milestone; this
-    # only exists so a consequence has somewhere to land.
+    # destroyed_dungeon_ids. Read back by Entity.flag_dialogue/
+    # Engine.talk_to_adjacent (see content.schema.FlagDialogue) - the
+    # first, and so far only, thing that reacts to it.
     world_flags: set[str] = field(default_factory=set)
 
     def active_quest(self) -> Quest | None:

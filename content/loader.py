@@ -21,6 +21,7 @@ from content.schema import (
     DungeonDef,
     EncounterDef,
     EntityDef,
+    FlagDialogue,
     ItemDef,
     LevelDef,
     QuestDef,
@@ -73,6 +74,7 @@ class EntitySpawn:
     y: int
     entity: EntityDef
     dialogue: str | None = None
+    flag_dialogue: list[FlagDialogue] = field(default_factory=list)
 
 
 @dataclass
@@ -269,6 +271,24 @@ def load_quests(
                     f"quest '{quest_id}': on_fail destroy_dungeon_id references "
                     f"unknown dungeon '{consequence.destroy_dungeon_id}'"
                 )
+
+            if consequence.tighten_deadline is not None:
+                target_id = consequence.tighten_deadline.quest_id
+                if target_id == quest_id:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline can't target itself"
+                    )
+                elif target_id not in raw:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline references "
+                        f"unknown quest '{target_id}'"
+                    )
+                elif raw[target_id].get("deadline_year") is None:
+                    errors.append(
+                        f"quest '{quest_id}': on_fail tighten_deadline targets quest "
+                        f"'{target_id}', which has no deadline_year set - there's "
+                        "nothing to shorten"
+                    )
 
         if quest.on_fail and quest.deadline_year is None:
             errors.append(
@@ -708,7 +728,7 @@ def load_level(
                     entity_spawns.append(
                         EntitySpawn(
                             x=x, y=y, entity=catalog.entities[entry.entity],
-                            dialogue=entry.dialogue,
+                            dialogue=entry.dialogue, flag_dialogue=entry.flag_dialogue,
                         )
                     )
 

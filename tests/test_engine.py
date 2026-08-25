@@ -7,7 +7,7 @@ import random
 from pathlib import Path
 
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
-from content.schema import WorldConsequence
+from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
@@ -77,6 +77,7 @@ def make_monster(
 def make_villager(
     x: int, y: int, dialogue="", entity_id="villager", name="Villager",
     shop_inventory: list[str] | None = None,
+    flag_dialogue: list[FlagDialogue] | None = None,
 ) -> Entity:
     return Entity(
         x, y, "v", (170, 140, 90), name,
@@ -87,6 +88,7 @@ def make_villager(
         dialogue=dialogue,
         entity_id=entity_id,
         shop_inventory=shop_inventory,
+        flag_dialogue=flag_dialogue,
     )
 
 
@@ -1765,6 +1767,33 @@ def test_build_game_map_entity_dialogue_prefers_spawn_override(tmp_path):
     assert villager.entity_id == "villager"
 
 
+def test_build_game_map_populates_entity_flag_dialogue_from_spawn(tmp_path):
+    level_path = tmp_path / "with_flag_dialogue.lvl"
+    level_path.write_text(
+        "id: with_flag_dialogue\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, flag_dialogue: [{ flag: wayford_razed, line: "It is gone." }] }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    villager = next(e for e in game_map.entities if e.name == "Villager")
+    assert villager.flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It is gone.")]
+
+
 def test_build_game_map_entity_dialogue_falls_back_to_catalog_default(tmp_path):
     level_path = tmp_path / "no_dialogue.lvl"
     level_path.write_text(
@@ -2244,6 +2273,125 @@ def test_process_turn_applies_both_consequences_when_on_fail_has_a_destroy_and_a
     assert quest_log.world_flags == {"wayford_razed"}
 
 
+def test_tighten_deadline_shortens_a_later_deadline():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 66
+
+
+def test_tighten_deadline_is_a_noop_when_new_day_is_later():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=75))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_a_completed_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="completed",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_a_failed_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="failed",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_an_unknown_quest():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = QuestLog(quests={})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="nonexistent_quest", new_day=66))  # must not raise
+
+
+def test_tighten_deadline_works_on_a_not_given_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 66
+
+
+def test_process_turn_tightens_a_deadline_when_on_fail_tighten_deadline_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail=[WorldConsequence(
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+        )],
+        status="in_progress",
+    )
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=STARTING_YEAR, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={quest.id: quest, target.id: target})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses
+
+    assert quest.status == "failed"
+    assert target.deadline_day == 66
+
+
 def test_restart_resets_the_shared_quest_log():
     catalog = load_catalog()
     levels = load_levels(LEVELS_DIR, catalog)
@@ -2305,6 +2453,56 @@ def test_talk_to_adjacent_falls_back_to_catalog_default_dialogue():
     engine.talk_to_adjacent()
 
     assert 'Villager: "They don\'t seem to have anything to say."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_shows_flag_dialogue_when_flag_is_set():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(
+        2, 1, dialogue="Normal line.",
+        flag_dialogue=[FlagDialogue(flag="wayford_razed", line="It is gone.")],
+    )
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+    engine.quest_log.world_flags.add("wayford_razed")
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "It is gone."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_ignores_flag_dialogue_when_flag_is_not_set():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(
+        2, 1, dialogue="Normal line.",
+        flag_dialogue=[FlagDialogue(flag="wayford_razed", line="It is gone.")],
+    )
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "Normal line."' in engine.message_log.messages
+
+
+def test_talk_to_adjacent_flag_dialogue_checks_list_in_order_first_match_wins():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(
+        2, 1, dialogue="Normal line.",
+        flag_dialogue=[
+            FlagDialogue(flag="first_flag", line="First line."),
+            FlagDialogue(flag="second_flag", line="Second line."),
+        ],
+    )
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+    engine.quest_log.world_flags.update({"first_flag", "second_flag"})
+
+    engine.talk_to_adjacent()
+
+    assert 'Villager: "First line."' in engine.message_log.messages
 
 
 def test_talk_to_adjacent_with_no_one_nearby():
@@ -2618,6 +2816,35 @@ def test_talk_to_adjacent_uses_the_followup_line_after_the_quest_completes():
     # the reward and completion message aren't repeated on a later re-talk
     assert quest.completion_message not in engine.message_log.messages
     assert len(player.inventory) == 1
+
+
+def test_talk_to_adjacent_flag_dialogue_outranks_an_active_followup_line():
+    """A world-flag reaction takes priority even over an already-active
+    QuestLog.followup_dialogue line - something happened in the world that
+    supersedes recycled per-quest thank-you chatter (see
+    docs/content_design_process.md §0k)."""
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    prisoner = make_villager(
+        2, 1, dialogue="Made it out too.", entity_id="escaped_prisoner", name="Escaped Prisoner",
+        flag_dialogue=[FlagDialogue(flag="wayford_razed", line="Heard about Wayford.")],
+    )
+    game_map.entities.extend([player, prisoner])
+    quest_log = real_quest_log()
+    quest_log.record_entity_killed("warden")  # already dead
+    engine = Engine(game_map, player, "Test Level", catalog=catalog, quest_log=quest_log)
+
+    engine.talk_to_adjacent()  # first Talk: completes the quest retroactively
+    engine.talk_to_adjacent()  # second Talk: followup_dialogue is now active
+    engine.message_log.messages.clear()
+    engine.quest_log.world_flags.add("wayford_razed")
+
+    engine.talk_to_adjacent()  # third Talk: the flag line must win
+
+    quest = quest_log.quests["kill_the_warden"]
+    assert 'Escaped Prisoner: "Heard about Wayford."' in engine.message_log.messages
+    assert f'Escaped Prisoner: "{quest.questgiver_done_dialogue}"' not in engine.message_log.messages
 
 
 def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
