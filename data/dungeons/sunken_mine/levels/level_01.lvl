@@ -23,13 +23,13 @@ legend:
   ".": floor
   "@": player_start
   "/": { item: rusty_dagger }
-  "y": { tile: landmark, description: "A stone weighing-counter, its scale pan tipped at an angle. A scatter of undersized stones still sits in it - a shortchanged cart, or a thief caught mid-count. Whichever it was, nobody ever came back to sort it out." }
-  "b": { tile: landmark, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since." }
+  "y": { tile: landmark, description: "A stone weighing-counter, its scale pan tipped at an angle. A scatter of undersized stones still sits in it - a shortchanged cart, or a thief caught mid-count. Whichever it was, nobody ever came back to sort it out.", announce: true }
+  "b": { tile: landmark, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since.", announce: true }
   "r": { entity: rat }
   "g": { entity: goblin }
   "-": { item: rusty_key }
   "D": { door: rusty_key }
   "[": { item: leather_armor }
   ">": { stairs_down: level_02 }
-  "$": { item: gold_pile, description: "A handful of coin, dropped or forgotten near the counter on the day the tally stopped." }
+  "$": { item: gold_pile, description: "A handful of coin, dropped or forgotten near the counter on the day the tally stopped.", announce: true }
   "t": { item: teleportation_potion }

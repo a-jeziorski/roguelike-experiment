@@ -20,7 +20,7 @@ legend:
   ".": floor
   "@": player_start
   "<": { stairs_up: level_02 }
-  ">": { stairs_down: null, description: "A stair up into open air - the last stretch of wall before the road outside." }
+  ">": { stairs_down: null, description: "A stair up into open air - the last stretch of wall before the road outside.", announce: true }
   "!": { item: healing_potion }
   "b": { entity: bandit }
   "B": { entity: bandit_captain }

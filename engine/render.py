@@ -79,11 +79,15 @@ HUD_FG = (220, 220, 220)
 # the log scannable now that combat/dialogue/quest features all write to it
 # in the same run: combat in red, spoken NPC lines in blue, everything else
 # (level transitions, item/door feedback, quest updates - "descriptive" text
-# in the same spirit as look mode's) in yellow.
+# in the same spirit as look mode's) in yellow, and a tile's auto-announced
+# description (Engine._log_newly_seen_tile_announcements) in violet - a
+# distinct hue from all three, since it's neither urgent (combat) nor
+# spoken (dialogue) and shouldn't blend into ordinary system feedback (info).
 LOG_COLORS = {
     "combat": (210, 70, 70),
     "dialogue": (100, 150, 230),
     "info": (210, 190, 90),
+    "flavor": (170, 130, 200),
 }
 DEAD_FG = (220, 50, 50)
 CURSOR_BG = (90, 90, 20)

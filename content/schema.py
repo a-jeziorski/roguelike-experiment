@@ -480,6 +480,20 @@ class LegendEntry(BaseModel):
     don't blend into the terrain around them: {tile: landmark, description:
     "A chalk tally board, its hatch-marks stopping mid-quota."}.
 
+    A mapping with a `description` may also set `announce: true` to have
+    that text automatically logged to the message log the first time this
+    exact tile enters the player's field of view, once ever per tile per
+    map - an alternative to requiring the player to manually Look to read
+    it (see GameMap.newly_seen_tile_announcements). Meaningless (and
+    rejected) without `description` also set. The primary use case is
+    `tile: landmark` (see above), but any description-bearing tile - a
+    flavorful stairway, an item resting somewhere notable - can opt in.
+    Never use it on a symbol painted across many map cells (a `sea`/
+    `mountain` hazard, a `wall` segment forming a whole boundary) - each
+    cell announces independently, so the same line repeats once per
+    distinct coordinate as different parts of it enter FOV. `announce` is
+    for a tile placed once, not a shared kind spanning an area.
+
     An `{entity: ...}` mapping may also carry a `dialogue` - the line the
     Talk action shows for *this specific placement*, distinct from
     `description` (which, on an entity mapping, is still a *tile*-level
@@ -498,6 +512,13 @@ class LegendEntry(BaseModel):
     dungeon_id: str | None = None
     description: str | None = None
     dialogue: str | None = None
+    announce: bool = False
+
+    @model_validator(mode="after")
+    def announce_requires_description(self) -> "LegendEntry":
+        if self.announce and not self.description:
+            raise ValueError("announce requires description to be set")
+        return self
 
     @classmethod
     def from_raw(cls, raw: str | dict) -> "LegendEntry":
@@ -505,22 +526,30 @@ class LegendEntry(BaseModel):
             return cls(tile=raw)
         if isinstance(raw, dict):
             description = raw.get("description")
+            announce = raw.get("announce", False)
             if "entity" in raw:
                 return cls(
                     tile=raw.get("tile", "floor"), entity=raw["entity"], description=description,
-                    dialogue=raw.get("dialogue"),
+                    dialogue=raw.get("dialogue"), announce=announce,
                 )
             if "item" in raw:
-                return cls(tile=raw.get("tile", "floor"), item=raw["item"], description=description)
+                return cls(
+                    tile=raw.get("tile", "floor"), item=raw["item"], description=description, announce=announce,
+                )
             if "stairs_down" in raw:
-                return cls(tile="stairs_down", next_level=raw["stairs_down"], description=description)
+                return cls(
+                    tile="stairs_down", next_level=raw["stairs_down"], description=description, announce=announce,
+                )
             if "stairs_up" in raw:
-                return cls(tile="stairs_up", next_level=raw["stairs_up"], description=description)
+                return cls(
+                    tile="stairs_up", next_level=raw["stairs_up"], description=description, announce=announce,
+                )
             if "door" in raw:
-                return cls(tile="door", requires_key=raw["door"], description=description)
+                return cls(tile="door", requires_key=raw["door"], description=description, announce=announce)
             if "dungeon_entrance" in raw:
                 return cls(
-                    tile="dungeon_entrance", dungeon_id=raw["dungeon_entrance"], description=description
+                    tile="dungeon_entrance", dungeon_id=raw["dungeon_entrance"],
+                    description=description, announce=announce,
                 )
             tile = raw.get("tile", "floor")
             return cls(
@@ -532,6 +561,7 @@ class LegendEntry(BaseModel):
                 dungeon_id=raw.get("dungeon_id"),
                 description=description,
                 dialogue=raw.get("dialogue"),
+                announce=announce,
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

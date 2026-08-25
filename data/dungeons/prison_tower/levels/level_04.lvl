@@ -22,4 +22,4 @@ legend:
   ">": stairs_down
   "W": { entity: warden }
   "C": { entity: crossbow_guard }
-  "*": { item: gold_stash, description: "The Warden's own hoard - coin taken off every prisoner and guard who never asked for it back." }
+  "*": { item: gold_stash, description: "The Warden's own hoard - coin taken off every prisoner and guard who never asked for it back.", announce: true }

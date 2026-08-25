@@ -25,7 +25,7 @@ legend:
   "#": wall
   ".": floor
   "@": player_start
-  ">": { stairs_down: null, description: "The passage climbs back toward the grey light above - you have gone as deep as this place allows." }
+  ">": { stairs_down: null, description: "The passage climbs back toward the grey light above - you have gone as deep as this place allows.", announce: true }
   "Q": { entity: stone_sentinel }
   "]": { item: bone_plate }
   "!": { item: healing_potion }

@@ -23,7 +23,7 @@ legend:
   "#": wall
   ".": floor
   "@": player_start
-  ">": { stairs_down: level_02, description: "The stone opens downward here, tighter and older with every step." }
+  ">": { stairs_down: level_02, description: "The stone opens downward here, tighter and older with every step.", announce: true }
   "Q": { entity: stone_sentinel }
   ")": { item: iron_sword }
   "!": { item: healing_potion }

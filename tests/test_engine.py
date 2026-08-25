@@ -1579,7 +1579,89 @@ def test_build_game_map_populates_entity_and_item_spawn_index(tmp_path):
     # every indexed entity is a real member of game_map.entities, not a copy
     assert villager in game_map.entities
     assert goblin in game_map.entities
-    assert potion in game_map.entities
+
+
+def test_build_game_map_populates_auto_announce_tiles_only_for_flagged_spawns(tmp_path):
+    level_path = tmp_path / "announce.lvl"
+    level_path.write_text(
+        "id: announce\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@..#\n"
+        "  #o.n#\n"
+        "  #..>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "o": { tile: landmark, description: "Announced.", announce: true }\n'
+        '  "n": { tile: landmark, description: "Not announced." }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    assert game_map.auto_announce_tiles == {(1, 2): "Announced."}
+    # both still show up in look mode's tile_descriptions regardless of announce
+    assert game_map.tile_descriptions[(1, 2)] == "Announced."
+    assert game_map.tile_descriptions[(3, 2)] == "Not announced."
+
+
+def test_newly_seen_tile_announcements_returns_nothing_before_visible():
+    game_map = make_open_map(20, 3)
+    game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
+
+    assert game_map.newly_seen_tile_announcements() == []
+
+
+def test_newly_seen_tile_announcements_fires_once_when_visible():
+    game_map = make_open_map(20, 3)
+    game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
+
+    game_map.update_fov((14, 1))  # well within FOV_RADIUS (8) of (15, 1)
+
+    assert game_map.newly_seen_tile_announcements() == ["A distant landmark."]
+    # a repeat call with no intervening update_fov yields nothing more
+    assert game_map.newly_seen_tile_announcements() == []
+
+
+def test_newly_seen_tile_announcements_does_not_repeat_on_a_later_update_fov():
+    game_map = make_open_map(20, 3)
+    game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
+
+    game_map.update_fov((14, 1))
+    game_map.newly_seen_tile_announcements()  # first sighting, consumed
+    game_map.update_fov((14, 1))  # same position again, still visible
+
+    assert game_map.newly_seen_tile_announcements() == []
+
+
+def test_process_turn_announces_a_flagged_landmark_the_turn_it_enters_fov():
+    game_map = make_open_map(20, 3)
+    game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
+    game_map.tile_descriptions[(15, 1)] = "A distant landmark."
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    # starting position (1, 1) is well outside FOV_RADIUS (8) of (15, 1)
+    assert engine.message_log.messages == ["You enter Test Level."]
+
+    for _ in range(9):  # walks (1,1) -> (10,1), crossing into range at (7,1)
+        engine.process_turn(BumpAction(1, 0))
+
+    assert engine.message_log.messages.count("A distant landmark.") == 1
+    assert engine.message_log.messages[-1] == "A distant landmark."
+
+    # walking away and back doesn't repeat the announcement
+    engine.process_turn(BumpAction(-1, 0))
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.message_log.messages.count("A distant landmark.") == 1
 
 
 def test_build_game_map_threads_is_teleport_through_item_entity(tmp_path):

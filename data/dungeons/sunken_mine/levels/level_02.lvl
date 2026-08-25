@@ -30,9 +30,9 @@ legend:
   "}": { item: hunting_bow }
   "|": { item: arrows }
   "D": { door: rusty_key }
-  "e": { tile: landmark, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word." }
+  "e": { tile: landmark, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word.", announce: true }
   ")": { item: iron_sword }
   "~": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
   "!": { item: healing_potion }
-  "*": { item: gold_stash, description: "The contents of the foreman's strongbox - a payout that was due the day everything else stopped too." }
-  "%": { item: pale_fungus, description: "A pale growth clinging to the ledge, right where the groundwater's been sitting untouched the longest." }
+  "*": { item: gold_stash, description: "The contents of the foreman's strongbox - a payout that was due the day everything else stopped too.", announce: true }
+  "%": { item: pale_fungus, description: "A pale growth clinging to the ledge, right where the groundwater's been sitting untouched the longest.", announce: true }

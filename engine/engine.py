@@ -189,6 +189,7 @@ class Engine:
 
         self.game_map.update_fov((player.x, player.y))
         self.message_log.add(f"You enter {level_name}.")
+        self._log_newly_seen_tile_announcements()
 
     def on_entity_death(self, entity: Entity) -> None:
         if entity is self.player:
@@ -202,6 +203,16 @@ class Engine:
             # anymore, only when reported to its questgiver (see
             # talk_to_adjacent's check_kill_report loop).
             self.quest_log.record_entity_killed(entity.entity_id)
+
+    def _log_newly_seen_tile_announcements(self) -> None:
+        """Logs the flavor text for any auto-announce tile that just entered
+        the player's FOV for the first time (GameMap.newly_seen_tile_announcements)
+        - called after every update_fov, so a landmark's description reaches
+        the player automatically instead of requiring a manual Look. Placed
+        after any "You enter X."-style message at each call site, so an
+        announcement never appears to precede the arrival it's describing."""
+        for text in self.game_map.newly_seen_tile_announcements():
+            self.message_log.add(text, category="flavor")
 
     def _arrival_position(self, level: "ParsedLevel", from_level_id: str | None) -> tuple[int, int]:
         """Where the player lands on `level`: the stairway leading back to
@@ -260,6 +271,7 @@ class Engine:
         self.message_log = MessageLog()
         self.message_log.add(f"You enter {self.level_name}.")
         self.game_map.update_fov((player.x, player.y))
+        self._log_newly_seen_tile_announcements()
 
     def on_player_reach_stairs(self, next_level_id: str | None, kind: str = "stairs_down") -> None:
         if next_level_id is None:
@@ -294,6 +306,7 @@ class Engine:
         self.message_log = MessageLog()
         self.message_log.add(f"You {verb} {next_level.name}.")
         self.game_map.update_fov((self.player.x, self.player.y))
+        self._log_newly_seen_tile_announcements()
 
     def on_player_reach_map_edge(self) -> None:
         """Called by MovementAction when the player steps off the edge of
@@ -334,6 +347,7 @@ class Engine:
         self.visited_maps[self.current_level_id] = self.game_map
         self.game_map.update_fov((self.player.x, self.player.y))
         self.message_log.add(f"You enter {self.level_name}.")
+        self._log_newly_seen_tile_announcements()
 
     def _perform_ai(self, entity: Entity) -> None:
         if not self.game_map.visible[entity.x, entity.y]:
@@ -696,6 +710,7 @@ class Engine:
             self._check_quest_deadlines()
 
         self.game_map.update_fov((self.player.x, self.player.y))
+        self._log_newly_seen_tile_announcements()
 
     def process_turn(self, action: Action) -> None:
         """Resolves a full turn (both phases back to back, no animation gap)

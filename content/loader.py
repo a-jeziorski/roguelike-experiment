@@ -113,6 +113,7 @@ class TileDescriptionSpawn:
     x: int
     y: int
     text: str  # overrides the tile kind's generic look-mode description
+    announce: bool = False  # auto-log text to the message log on first FOV entry
 
 
 @dataclass
@@ -647,7 +648,9 @@ def load_level(
             tile_row.append(entry.tile)
 
             if entry.description:
-                tile_descriptions.append(TileDescriptionSpawn(x=x, y=y, text=entry.description))
+                tile_descriptions.append(
+                    TileDescriptionSpawn(x=x, y=y, text=entry.description, announce=entry.announce)
+                )
 
             if entry.tile == "player_start":
                 player_starts.append((x, y))
@@ -823,7 +826,9 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
             tile_row.append(entry.tile)
 
             if entry.description:
-                tile_descriptions.append(TileDescriptionSpawn(x=x, y=y, text=entry.description))
+                tile_descriptions.append(
+                    TileDescriptionSpawn(x=x, y=y, text=entry.description, announce=entry.announce)
+                )
 
             if entry.tile == "player_start":
                 player_starts.append((x, y))

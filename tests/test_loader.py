@@ -524,6 +524,60 @@ def test_load_level_collects_custom_tile_descriptions():
     assert level.tile_descriptions == []  # no legend entry sets description there
 
 
+def test_load_level_collects_announce_flag_on_tile_descriptions(tmp_path):
+    level_path = tmp_path / "with_announce.lvl"
+    level_path.write_text(
+        "id: with_announce\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ####\n"
+        "  #@.#\n"
+        "  #o.#\n"
+        "  #>.#\n"
+        "  ####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "o": { tile: landmark, description: "A chalk board.", announce: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.tile_descriptions) == 1
+    assert level.tile_descriptions[0].text == "A chalk board."
+    assert level.tile_descriptions[0].announce is True
+
+
+def test_load_level_tile_description_without_announce_defaults_false(tmp_path):
+    level_path = tmp_path / "no_announce.lvl"
+    level_path.write_text(
+        "id: no_announce\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ####\n"
+        "  #@.#\n"
+        "  #o.#\n"
+        "  #>.#\n"
+        "  ####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "o": { tile: landmark, description: "A chalk board." }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert level.tile_descriptions[0].announce is False
+
+
 def test_load_level_collects_per_spawn_entity_dialogue(tmp_path):
     level_path = tmp_path / "with_dialogue.lvl"
     level_path.write_text(
@@ -793,6 +847,30 @@ def test_load_overworld_happy_path():
     assert level.stairs == []
     assert level.entity_spawns == []
     assert level.item_spawns == []
+
+
+def test_load_overworld_collects_announce_flag_on_tile_descriptions(tmp_path):
+    level_path = tmp_path / "overworld_announce.lvl"
+    level_path.write_text(
+        "id: overworld_announce\n"
+        "name: Test Overworld\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@.P#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": mountain\n'
+        '  ".": plains\n'
+        '  "@": player_start\n'
+        '  "P": { dungeon_entrance: prison_tower, description: "A black stone tower.", announce: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_overworld(level_path, catalog, known_dungeon_ids={"prison_tower"})
+
+    assert len(level.tile_descriptions) == 1
+    assert level.tile_descriptions[0].announce is True
 
 
 def test_load_overworld_rejects_unknown_dungeon_id():

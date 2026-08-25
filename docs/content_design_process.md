@@ -628,6 +628,35 @@ visible on the map before it's read. First added after playtesting the
 Sunken Mine's bible-driven set pieces (the weighing counter, the ledger)
 turned out invisible under `tile: floor`.
 
+**Give every `announce`-worthy `description` the flag, don't leave it as a
+manual-Look-only secret.** `LegendEntry.announce` (paired with
+`description`) auto-logs a tile's flavor text to the message log the
+first time it enters the player's field of view, once ever
+(`GameMap.newly_seen_tile_announcements`, `Engine._log_newly_seen_tile_announcements`
+- called after every `update_fov`). The `landmark`-visibility fix above
+solves "the player didn't know to look here"; `announce` solves "the
+player saw it but never actually read it." Default every landmark and
+every other description-bearing tile to `announce: true` unless there's a
+specific reason to gate it behind a deliberate Look. `content/loader.py`
+rejects `announce: true` with no `description` set - nothing to announce.
+Persisted across save/reload (`engine/save.py`'s
+`SavedLevelState.announced_tiles`), so a reload never re-announces a tile
+the player already saw announced.
+
+**The one real exception, caught the hard way**: never set `announce: true`
+on a legend symbol painted across *many* map cells sharing one description
+- a `sea`/`mountain` terrain hazard, a `wall` segment forming a whole
+boundary. Each cell is tracked (and fires) independently
+(`GameMap.auto_announce_tiles` is coordinate-keyed), so a multi-tile
+hazard logs the *same* line once per distinct coordinate as different
+parts of it enter FOV - `goblin_ambush`'s felled-tree wall (the entire
+perimeter, one symbol) and every dungeon's `sea`/`mountain` pool
+originally shipped with `announce: true` in this pass and had to be
+reverted once a test walking near one surfaced a dozen repeats of the
+same line. `announce: true` is for a tile placed *once* - a landmark, a
+gate, a single item - keep `description` (still shown in look mode) on a
+multi-tile hazard, just not `announce`.
+
 **A quest's premise has to actually grant the player character access to
 whatever they're meant to convey - independent of which action triggers
 completion.** The starting quest originally had the player carrying a
@@ -840,7 +869,10 @@ hit with room below that to spare before `flee_hp_pct` kicks in.
    a floor, not a per-town judgment call; 100% is fine but no longer
    required. For a combat dungeon, where villager-type spawns are rare or
    absent, a per-spawn `dialogue` is still worth considering for any named
-   set piece built around one, but nothing there forces it.
+   set piece built around one, but nothing there forces it. Every
+   description-bearing legend entry (landmarks especially) should also get
+   `announce: true` (see §1) unless there's a specific reason to withhold
+   it behind a manual Look instead.
 4. **Validate**: `python tools/preview.py data/dungeons` - reviews every
    shipped dungeon's rendering, stairway destinations, and door/key pairings
    at once (or point it at one `data/dungeons/<id>` while iterating on a

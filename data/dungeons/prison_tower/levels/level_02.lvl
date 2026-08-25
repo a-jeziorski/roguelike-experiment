@@ -26,4 +26,4 @@ legend:
   "p": { entity: feral_prisoner }
   "k": { item: rusty_key }
   ")": { item: iron_sword }
-  "$": { item: gold_pile, description: "A guard's wages, kept close instead of banked - there was nowhere left to bank it." }
+  "$": { item: gold_pile, description: "A guard's wages, kept close instead of banked - there was nowhere left to bank it.", announce: true }

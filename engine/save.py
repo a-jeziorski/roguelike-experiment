@@ -75,6 +75,11 @@ class SavedLevelState(BaseModel):
     level's already-loaded ParsedLevel - see module docstring."""
 
     explored: list[tuple[int, int]] = Field(default_factory=list)
+    # Coordinates whose GameMap.auto_announce_tiles text has already been
+    # logged (LegendEntry.announce) - without this, a reload would re-fire
+    # an announcement the player already saw the first time that tile came
+    # back into FOV, breaking the "once ever" promise.
+    announced_tiles: list[tuple[int, int]] = Field(default_factory=list)
     unlocked_doors: list[tuple[int, int]] = Field(default_factory=list)
     player_attacked_peaceful_npc: bool = False
     # ParsedLevel.entity_spawns index -> current (x, y, hp) for a surviving
@@ -167,6 +172,7 @@ def _capture_level_state(game_map: GameMap, level: ParsedLevel) -> SavedLevelSta
 
     return SavedLevelState(
         explored=explored_coords,
+        announced_tiles=sorted(game_map.announced_tiles),
         unlocked_doors=unlocked_doors,
         player_attacked_peaceful_npc=game_map.player_attacked_peaceful_npc,
         alive_entity_spawns=alive_entity_spawns,
@@ -279,6 +285,7 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
 def _apply_level_state(game_map: GameMap, state: SavedLevelState, catalog: Catalog) -> None:
     for x, y in state.explored:
         game_map.explored[x, y] = True
+    game_map.announced_tiles = set(state.announced_tiles)
     for x, y in state.unlocked_doors:
         game_map.unlock_door(x, y)
     game_map.player_attacked_peaceful_npc = state.player_attacked_peaceful_npc

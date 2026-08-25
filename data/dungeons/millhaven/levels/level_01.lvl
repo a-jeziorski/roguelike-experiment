@@ -57,9 +57,9 @@ legend:
   ".": road
   "@": player_start
   "F": floor
-  "x": { stairs_up: null, description: "The town gate, leading back out onto the road." }
-  "o": { tile: landmark, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it." }
-  "M": { tile: landmark, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore." }
+  "x": { stairs_up: null, description: "The town gate, leading back out onto the road.", announce: true }
+  "o": { tile: landmark, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it.", announce: true }
+  "M": { tile: landmark, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore.", announce: true }
   "1": { entity: villager, tile: road, dialogue: "Don't get many strangers through that gate. Mind you're not still on the road come dark." }
   "2": { entity: villager, tile: plains, dialogue: "Well's held up better than most things built before the Sundering. Can't say the same for my back, hauling from it every morning." }
   "3": { entity: villager, tile: plains, dialogue: "Trade's thinner than it used to be. A cart came through most weeks, once. Now we make do with what's already here." }

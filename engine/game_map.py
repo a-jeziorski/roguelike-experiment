@@ -45,6 +45,15 @@ class GameMap:
         # kind's generic default (e.g. "Stairs leading up.") - optional, only
         # present where a legend entry set `description`.
         self.tile_descriptions: dict[tuple[int, int], str] = {}
+        # Coordinate -> description text for a legend entry that opted into
+        # auto-announcing (LegendEntry.announce) - a filtered view of
+        # tile_descriptions above, populated in lockstep by build_game_map.
+        self.auto_announce_tiles: dict[tuple[int, int], str] = {}
+        # Coordinates whose auto_announce_tiles text has already been logged
+        # this map's lifetime - persisted across save/reload (see
+        # engine/save.py's SavedLevelState.announced_tiles) so a reload never
+        # re-announces a tile the player already saw announced.
+        self.announced_tiles: set[tuple[int, int]] = set()
         self.entities: list[Entity] = []
         # Set by engine/combat.py the moment the player attacks any
         # PEACEFUL_AI_TYPES entity on this map - read by Engine._perform_ai's
@@ -99,6 +108,28 @@ class GameMap:
             algorithm=tcod.constants.FOV_SYMMETRIC_SHADOWCAST,
         )
         self.explored |= self.visible
+
+    def newly_seen_tile_announcements(self) -> list[str]:
+        """Text for every auto_announce_tiles entry that just became visible
+        and hasn't been announced before - call once, right after
+        update_fov, from every site that calls it (see
+        Engine._log_newly_seen_tile_announcements). Mutates announced_tiles
+        as a side effect, so calling this twice in a row without an
+        intervening update_fov yields an empty list the second time.
+        explored |= visible above means a coordinate only ever becomes
+        newly explored in the same update_fov call where it's also
+        currently visible, so "newly explored" and "currently visible" are
+        simultaneous by construction - checking visible here is exactly
+        "did this tile just enter FOV for the first time," not merely
+        "is it visible right now" in some more general sense."""
+        texts = []
+        for coord, text in self.auto_announce_tiles.items():
+            if coord in self.announced_tiles:
+                continue
+            if self.visible[coord]:
+                self.announced_tiles.add(coord)
+                texts.append(text)
+        return texts
 
 
 def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
@@ -168,6 +199,8 @@ def build_game_map(
 
     for desc_spawn in level.tile_descriptions:
         game_map.tile_descriptions[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
+        if desc_spawn.announce:
+            game_map.auto_announce_tiles[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text
 
     for index, spawn in enumerate(level.entity_spawns):
         edef = spawn.entity

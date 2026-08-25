@@ -109,6 +109,36 @@ def test_legend_entry_from_item_mapping_with_a_tile_override():
     assert entry.item == "healing_potion"
 
 
+def test_legend_entry_announce_defaults_false():
+    entry = LegendEntry.from_raw({"tile": "landmark", "description": "A chalk board."})
+    assert entry.announce is False
+
+
+def test_legend_entry_from_entity_mapping_with_announce():
+    entry = LegendEntry.from_raw({"entity": "rat", "description": "A mangy rat.", "announce": True})
+    assert entry.announce is True
+
+
+def test_legend_entry_from_general_mapping_with_announce():
+    entry = LegendEntry.from_raw(
+        {"tile": "landmark", "description": "A chalk board.", "announce": True}
+    )
+    assert entry.announce is True
+
+
+def test_legend_entry_announce_requires_description():
+    with pytest.raises(ValidationError, match="announce requires description"):
+        LegendEntry.from_raw({"tile": "landmark", "announce": True})
+
+
+def test_legend_entry_announce_true_with_description_is_valid():
+    entry = LegendEntry.from_raw(
+        {"tile": "landmark", "description": "A chalk board.", "announce": True}
+    )
+    assert entry.description == "A chalk board."
+    assert entry.announce is True
+
+
 def test_legend_entry_from_stairs_up_mapping():
     entry = LegendEntry.from_raw({"stairs_up": "level_01"})
     assert entry.tile == "stairs_up"

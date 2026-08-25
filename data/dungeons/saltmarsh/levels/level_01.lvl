@@ -23,6 +23,6 @@ legend:
   ".": road
   "~": sea
   "@": player_start
-  "x": { stairs_up: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes." }
+  "x": { stairs_up: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes.", announce: true }
   "v": { entity: villager, tile: plains }
   "!": { item: healing_potion, tile: plains }

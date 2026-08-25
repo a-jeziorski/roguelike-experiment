@@ -105,6 +105,53 @@ def test_round_trip_preserves_death_pickup_unlock_exploration_and_quest_progress
     assert engine2.player.y == engine.player.y
 
 
+def test_round_trip_preserves_an_already_announced_tile(tmp_path):
+    """The regression test for the feature's "once ever" promise: without
+    persisting announced_tiles, a reload would re-fire an announcement the
+    player already saw the first time that tile came back into FOV."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    coord = (engine.player.x, engine.player.y)
+    engine.game_map.auto_announce_tiles[coord] = "A flavorful landmark."
+    engine.game_map.announced_tiles.add(coord)
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    engine2 = active_engines2[active_key]
+    engine2.game_map.auto_announce_tiles[coord] = "A flavorful landmark."  # static content, reapplied fresh
+    assert coord in engine2.game_map.announced_tiles
+    assert engine2.game_map.newly_seen_tile_announcements() == []
+
+
+def test_round_trip_preserves_a_not_yet_seen_announce_tile(tmp_path):
+    """A flagged tile the player hasn't reached yet must still announce
+    normally after a restore - an empty announced_tiles shouldn't suppress
+    a legitimate future announcement."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    engine2 = active_engines2[active_key]
+    coord = (engine2.player.x, engine2.player.y)
+    engine2.game_map.auto_announce_tiles[coord] = "A flavorful landmark."
+    engine2.game_map.update_fov(coord)
+
+    assert engine2.game_map.newly_seen_tile_announcements() == ["A flavorful landmark."]
+
+
 def test_round_trip_preserves_selected_potion_kind(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
