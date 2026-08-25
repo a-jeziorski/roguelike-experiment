@@ -232,6 +232,60 @@ def test_round_trip_preserves_world_flags(tmp_path):
     assert quest_log2.world_flags == {"wayford_population_thinned"}
 
 
+def test_capture_save_records_a_tightened_deadline(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    quest_log.quests["a_wall_worth_holding"].deadline_day = 66
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+
+    assert save.quest_log.deadline_days["a_wall_worth_holding"] == 66
+
+
+def test_restore_save_reapplies_a_tightened_deadline(tmp_path):
+    """The regression test for the bug this field fixes: deadline_day was a
+    write-once field until Engine._tighten_deadline - without persisting it,
+    a save made after a tighten fires would silently revert to the
+    authored QuestDef default (70) on reload."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    quest_log.quests["a_wall_worth_holding"].deadline_day = 66
+    assert quest_defs["a_wall_worth_holding"].deadline_day == 70  # the un-tightened authored default
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert quest_log2.quests["a_wall_worth_holding"].deadline_day == 66
+
+
+def test_restore_save_with_no_deadline_days_falls_back_to_authored_defaults(tmp_path):
+    """Simulates a save made before this field existed - deadline_days
+    defaults to {} (Field(default_factory=dict)), so every quest just
+    keeps its own QuestDef-authored deadline, exactly as it did before
+    tighten_deadline was ever a possibility."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    save.quest_log.deadline_days = {}
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert quest_log2.quests["a_wall_worth_holding"].deadline_day == 70
+
+
 def test_round_trip_preserves_an_item_dropped_by_equipping_over_it(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()

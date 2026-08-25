@@ -11,6 +11,7 @@ from content.schema import (
     QuestDef,
     SpriteRef,
     SpriteSheetDef,
+    TightenDeadline,
     WorldConsequence,
 )
 
@@ -449,6 +450,37 @@ def test_world_consequence_rejects_both_destroy_dungeon_id_and_set_flag():
 def test_world_consequence_rejects_neither_destroy_dungeon_id_nor_set_flag():
     with pytest.raises(ValidationError, match="exactly one"):
         WorldConsequence()
+
+
+def test_tighten_deadline_construction():
+    tighten = TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+    assert tighten.quest_id == "a_wall_worth_holding"
+    assert tighten.new_day == 66
+
+
+def test_world_consequence_accepts_tighten_deadline_alone():
+    consequence = WorldConsequence(
+        tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+    )
+    assert consequence.tighten_deadline.quest_id == "a_wall_worth_holding"
+    assert consequence.destroy_dungeon_id is None
+    assert consequence.set_flag is None
+
+
+def test_world_consequence_rejects_tighten_deadline_with_destroy_dungeon_id():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence(
+            destroy_dungeon_id="wayford",
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66),
+        )
+
+
+def test_world_consequence_rejects_tighten_deadline_with_set_flag():
+    with pytest.raises(ValidationError, match="exactly one"):
+        WorldConsequence(
+            set_flag="wayford_razed",
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66),
+        )
 
 
 def test_quest_def_on_fail_defaults_to_empty_list():

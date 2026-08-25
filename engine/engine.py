@@ -24,6 +24,7 @@ from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
+    from content.schema import TightenDeadline
     from engine.sprites import SpriteCodepoints
 
 # Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct/
@@ -450,14 +451,40 @@ class Engine:
         idempotent, so two quests naming the same dungeon in one tick is
         safe); set_flag just records a name in quest_log.world_flags, read
         back by Entity.flag_dialogue/talk_to_adjacent (see
-        content.schema.FlagDialogue). The two kinds don't interact, so
-        list order has no observable effect today - kept anyway for a
-        future consumer that might care."""
+        content.schema.FlagDialogue); tighten_deadline defers to
+        _tighten_deadline. The three kinds don't interact, so list order
+        has no observable effect today - kept anyway for a future consumer
+        that might care."""
         for consequence in quest.on_fail:
             if consequence.destroy_dungeon_id is not None:
                 self.destroy_dungeon(consequence.destroy_dungeon_id)
             elif consequence.set_flag is not None:
                 self.quest_log.world_flags.add(consequence.set_flag)
+            elif consequence.tighten_deadline is not None:
+                self._tighten_deadline(consequence.tighten_deadline)
+
+    def _tighten_deadline(self, tighten: "TightenDeadline") -> None:
+        """Shortens another quest's own deadline_day - the sole call site
+        is _apply_world_consequences, tighten_deadline's only trigger.
+        No-ops on a target that doesn't exist (shouldn't happen once
+        content is validated by content/loader.py's load_quests, but
+        defensive rather than crashing on a misconfigured quest, same
+        posture as destroy_dungeon's ruin_data guard below), one that's
+        already terminal (completed/failed - nothing left to tighten,
+        same re-fire guard QuestLog.check_deadlines/void_by_dungeon use),
+        or one with no deadline_day at all (also validated away at load
+        time, checked again here for the same defensive reason).
+        Deliberately works on a not_given quest too (not just
+        in_progress) - the world got more dangerous whether or not the
+        player has personally picked up that quest yet, so the tighter
+        deadline is already waiting the moment they do. Only ever
+        SHORTENS: a new_day later than the current deadline_day is a
+        silent no-op, never an accidental extension."""
+        quest = self.quest_log.quests.get(tighten.quest_id)
+        if quest is None or quest.status in ("completed", "failed") or quest.deadline_day is None:
+            return
+        if tighten.new_day < quest.deadline_day:
+            quest.deadline_day = tighten.new_day
 
     def destroy_dungeon(self, dungeon_id: str) -> None:
         """Razes dungeon_id's overworld entrance (see

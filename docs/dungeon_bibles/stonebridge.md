@@ -32,9 +32,13 @@ its own version of that same danger, and its own consequence if it's
 ignored: `a_wall_worth_holding`, which sets the world flag
 `stonebridge_raided` (not a dungeon destruction - Stonebridge survives
 either way, changed, not erased) if the deadline passes with the captain
-still alive. Two towns, two independent quests, the same single
-`bandit_captain` spawn at Broken Watch - killing him in time answers
-both.
+still alive. Two towns, two quests, the same single `bandit_captain`
+spawn at Broken Watch - killing him in time answers both. Not fully
+independent, though: `spreading_the_warning`'s own `on_fail` carries a
+`tighten_deadline` aimed at `a_wall_worth_holding` (`data/quests.yaml`,
+`docs/content_design_process.md` §0j) - if Wayford falls first, word of
+it presses in on Stonebridge's own window too. One more way an
+unanswered threat elsewhere shortens the time this one has left.
 
 **Placement on the world bible**: pure Long Quiet, pure Settlers, same
 footing as Millhaven and Wayford - no Old Kingdom ruin under it, no

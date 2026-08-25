@@ -7,7 +7,7 @@ import random
 from pathlib import Path
 
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
-from content.schema import FlagDialogue, WorldConsequence
+from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import Engine
@@ -2189,6 +2189,125 @@ def test_process_turn_applies_both_consequences_when_on_fail_has_a_destroy_and_a
     assert (2, 0) not in game_map.dungeon_entrances
     assert "wayford" in quest_log.destroyed_dungeon_ids
     assert quest_log.world_flags == {"wayford_razed"}
+
+
+def test_tighten_deadline_shortens_a_later_deadline():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 66
+
+
+def test_tighten_deadline_is_a_noop_when_new_day_is_later():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=75))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_a_completed_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="completed",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_a_failed_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="failed",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 70
+
+
+def test_tighten_deadline_is_a_noop_on_an_unknown_quest():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest_log = QuestLog(quests={})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="nonexistent_quest", new_day=66))  # must not raise
+
+
+def test_tighten_deadline_works_on_a_not_given_target():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=87, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={target.id: target})
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True, quest_log=quest_log)
+
+    engine._tighten_deadline(TightenDeadline(quest_id="a_wall_worth_holding", new_day=66))
+
+    assert target.deadline_day == 66
+
+
+def test_process_turn_tightens_a_deadline_when_on_fail_tighten_deadline_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail=[WorldConsequence(
+            tighten_deadline=TightenDeadline(quest_id="a_wall_worth_holding", new_day=66)
+        )],
+        status="in_progress",
+    )
+    target = Quest(
+        id="a_wall_worth_holding", name="A Wall Worth Holding", description="",
+        completion_message="done", deadline_year=STARTING_YEAR, deadline_day=70, status="not_given",
+    )
+    quest_log = QuestLog(quests={quest.id: quest, target.id: target})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses
+
+    assert quest.status == "failed"
+    assert target.deadline_day == 66
 
 
 def test_restart_resets_the_shared_quest_log():
