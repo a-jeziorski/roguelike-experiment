@@ -321,6 +321,41 @@ def test_round_trip_preserves_a_cleared_non_current_level(tmp_path):
     assert not any(e.name in ("Guard", "Crossbow Guard") for e in level_01_map.entities)
 
 
+def test_round_trip_with_two_places_of_different_sizes_does_not_crash_fov(tmp_path):
+    """Real bug found via manual play: restore_save's loop used to pass the
+    player Entity's CURRENT (active-place) x/y into every cached place's
+    Engine constructor, including inactive ones - Engine.__init__
+    unconditionally computes FOV around that position, which is nonsense
+    (and can be out of bounds) for any place other than the active one,
+    since prison_tower's Solitary Cell and the overworld are wildly
+    different sizes."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    prison_engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": prison_engine}
+
+    player = prison_engine.depart_player()
+    overworld_game_map, _ = build_game_map(overworld_level, catalog, player=player)
+    player.x, player.y = 28, 46  # a real position, far outside prison_tower's tiny map
+    overworld_engine = Engine(
+        overworld_game_map, player, overworld_level.name,
+        catalog=catalog, is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+    active_engines["overworld"] = overworld_engine
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+
+    # Must not raise - previously an out-of-bounds tcod FOV computation
+    # when reconstructing the inactive prison_tower place.
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert active_key == "overworld"
+    assert (active_engines2["overworld"].player.x, active_engines2["overworld"].player.y) == (28, 46)
+
+
 def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
     """The gap this closes: build_game_map always rebuilds the overworld
     from the static, unmodified level file - without restore_save

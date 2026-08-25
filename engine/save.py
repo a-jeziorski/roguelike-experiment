@@ -416,6 +416,19 @@ def restore_save(
         game_map = _build_map_for_load(level, catalog, place.levels[current_state_key])
         if is_current:
             game_map.entities.append(player)
+        else:
+            # Engine.__init__ unconditionally computes initial FOV around
+            # the player Entity's *current* x/y - correct for the active
+            # place (already set to save.player.x/y below), but meaningless
+            # for any other cached place, since the shared player Entity's
+            # position reflects wherever it currently is, not wherever it
+            # was last on THIS map - passing it through as-is can put the
+            # FOV computation out of this game_map's bounds entirely.
+            # place.last_position was saved for exactly this "resume where
+            # I left off" purpose (see Engine.depart_player/arrive_player),
+            # so borrow it here; every place's real position is restored
+            # once the loop below finishes.
+            player.x, player.y = place.last_position
 
         if is_overworld:
             for dungeon_id in quest_log.destroyed_dungeon_ids:
@@ -444,6 +457,11 @@ def restore_save(
                 engine.visited_maps[level_id] = _build_map_for_load(levels_dict[level_id], catalog, level_state)
 
         active_engines[key] = engine
+
+    # Undo every temporary player.x/y borrow above (the last iteration may
+    # have been a non-active place) - the player's real position is always
+    # save.player.x/y, already correct for the active place specifically.
+    player.x, player.y = save.player.x, save.player.y
 
     # game_state isn't part of the saved schema - it's fully derivable from
     # the player's own hp (Engine.on_entity_death sets "dead" exactly when
