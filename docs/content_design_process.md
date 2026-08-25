@@ -181,16 +181,30 @@ also never *initiates* violence - like `AI_VILLAGER`, it just wanders while
 peaceful. The difference is what governs the switch, and how far it
 reaches: `AI_VILLAGER`'s flee trigger is *personal* (`fighter.hp <
 max_hp`, checked per-entity); `AI_TOWN_GUARD`'s hostility trigger is
-*shared and map-wide* (`GameMap.player_attacked_peaceful_npc`, set by
-`engine/combat.py` the instant the player attacks *any* `PEACEFUL_AI_TYPES`
-entity anywhere on the current map - villager or town_guard - and checked,
-not owned, by every `AI_TOWN_GUARD` entity on that map). A town guard who
-was never personally touched still turns hostile the moment anyone
-provokes the town, and - unlike a fleeing villager - fights back
-(`Engine._chase_and_attack`, same primitive `AI_HOSTILE_BASIC` uses) once
-triggered, permanently for that map's lifetime. Use `town_guard` where a
-settlement needs a real deterrent against violence, not just NPCs who run
-away from it.
+*shared and map-wide* (`GameMap.guards_hostile`, armed by
+`GameMap.trigger_guard_hostility` - called from `engine/combat.py` the
+instant the player attacks *any* `PEACEFUL_AI_TYPES` entity anywhere on the
+current map, villager or town_guard - and checked, not owned, by every
+`AI_TOWN_GUARD` entity on that map). A town guard who was never personally
+touched still turns hostile the moment anyone provokes the town, and -
+unlike a fleeing villager - fights back (`Engine._chase_and_attack`, same
+primitive `AI_HOSTILE_BASIC` uses) once triggered.
+
+That hostility isn't permanent by default: `guards_hostile` clears itself
+`GameMap.HOSTILITY_COOLDOWN_DAYS` (7) after the *most recent* provocation
+(`GameMap.hostility_expires_at`, compared against `Engine.clock` - since
+the world clock only advances while the player is standing on the
+overworld itself (§0j), the cooldown only actually counts down while the
+player is out there, not idling inside the provoked settlement itself) -
+a second provocation while the first cooldown is still running
+overwrites it with a fresh window rather than stacking, same "most recent
+wins" convention `QuestLog.arm_encounter` already uses for a re-armed
+encounter timer. The one exception: if a `PEACEFUL_AI_TYPES` entity is
+actually *killed* on that map (`Engine.on_entity_death` ->
+`GameMap.mark_peaceful_npc_murdered`), hostility there never expires again
+- intimidation is forgivable on a clock, murder isn't. Use `town_guard`
+where a settlement needs a real deterrent against violence, not just NPCs
+who run away from it.
 
 ## 0d. Per-dungeon bibles (`docs/dungeon_bibles/`)
 
@@ -680,14 +694,16 @@ accepts `target_intimidate_entity_id` as a third valid reason to set
 
 The "consequence" for attacking the target - guards in that settlement
 turning hostile - needs **no new wiring at all**. It's the existing
-`game_map.player_attacked_peaceful_npc` flag, already flipped by the same
-`_apply_damage` condition that now also calls
-`record_entity_intimidated`, and already read by every `town_guard`'s AI
-(`_perform_ai`'s `AI_TOWN_GUARD` branch) on that same map. Authoring an
-intimidate quest doesn't require touching guard behavior at all - the
-consequence is automatic the moment the deed happens, quest or no quest.
-A cooldown on that hostility (so it doesn't stay permanent) is a known
-gap, deliberately out of scope for this pass.
+`GameMap.guards_hostile` state, already armed by the same `_apply_damage`
+condition that now also calls `record_entity_intimidated`, and already
+read by every `town_guard`'s AI (`_perform_ai`'s `AI_TOWN_GUARD` branch) on
+that same map. Authoring an intimidate quest doesn't require touching
+guard behavior at all - the consequence is automatic the moment the deed
+happens, quest or no quest, and self-resolves after
+`GameMap.HOSTILITY_COOLDOWN_DAYS` (see §0c) unless the intimidation goes
+wrong and the target dies - which, for an intimidate quest, also
+force-fails it (above), so a permanently hostile Millhaven and a failed
+quest arrive together, not as two independent surprises.
 
 `content/loader.py`'s `load_quests` additionally requires
 `target_intimidate_entity_id` to name a catalog entity whose `ai` is in

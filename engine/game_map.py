@@ -8,6 +8,7 @@ import tcod.map
 
 from content.loader import PLAYER_ENTITY_ID, Catalog, ItemDef, ParsedLevel
 from content.schema import TILE_PASSABILITY
+from engine.clock import GameClock
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -22,6 +23,11 @@ PLAYER_ATTACK = 5
 PLAYER_DEFENSE = 1
 
 FOV_RADIUS = 8
+
+# How long a town's guards stay hostile after the player attacks a peaceful
+# NPC there, absent a murder (see GameMap.mark_peaceful_npc_murdered) - see
+# GameMap.trigger_guard_hostility/guards_hostile.
+HOSTILITY_COOLDOWN_DAYS = 7
 
 
 class GameMap:
@@ -62,14 +68,33 @@ class GameMap:
         # re-announces a tile the player already saw announced.
         self.announced_tiles: set[tuple[int, int]] = set()
         self.entities: list[Entity] = []
-        # Set by engine/combat.py the moment the player attacks any
-        # PEACEFUL_AI_TYPES entity on this map - read by Engine._perform_ai's
-        # AI_TOWN_GUARD branch, which turns every town_guard on this map
-        # hostile once it's True. Lives on GameMap (not Engine) so it
-        # persists across leaving and re-entering this same map, the same
-        # way explored/locked_doors already do, and resets for free on
-        # Engine.restart() (which always builds a fresh GameMap).
+        # Set by GameMap.trigger_guard_hostility (called from
+        # engine/combat.py the moment the player attacks any
+        # PEACEFUL_AI_TYPES entity on this map) - True for the rest of this
+        # map's lifetime once tripped, even after the cooldown below
+        # expires; it's the "has this map ever been provoked at all" gate,
+        # not "are guards hostile right now" (see guards_hostile for that).
+        # Lives on GameMap (not Engine) so it persists across leaving and
+        # re-entering this same map, the same way explored/locked_doors
+        # already do, and resets for free on Engine.restart() (which always
+        # builds a fresh GameMap).
         self.player_attacked_peaceful_npc = False
+        # (year, day, hour) - see engine/clock.py's GameClock - at which the
+        # cooldown started by trigger_guard_hostility naturally lapses. None
+        # before the first provocation. Each new provocation overwrites this
+        # with a fresh HOSTILITY_COOLDOWN_DAYS-from-now value rather than
+        # extending the existing one - "most recent provocation resets the
+        # countdown," same convention as QuestLog.arm_encounter for a
+        # re-armed encounter timer. Meaningless once
+        # player_murdered_peaceful_npc is set - see guards_hostile.
+        self.hostility_expires_at: tuple[int, int, int] | None = None
+        # Set by GameMap.mark_peaceful_npc_murdered (called from
+        # Engine.on_entity_death the moment a PEACEFUL_AI_TYPES entity dies
+        # on this map) - permanently overrides hostility_expires_at once
+        # True, per the design: intimidation is forgivable after a cooldown,
+        # killing a villager or guard is not. Never reset except by
+        # Engine.restart() rebuilding this GameMap fresh.
+        self.player_murdered_peaceful_npc = False
         # True makes every edge of this map a valid way to leave (see
         # LevelDef.open_boundary, engine/actions.py's MovementAction,
         # Engine.on_player_reach_map_edge). Set by build_game_map from the
@@ -100,6 +125,39 @@ class GameMap:
         self.transparent[x, y] = True
         self.kinds[x, y] = "floor"
         self.locked_doors.pop((x, y), None)
+
+    def trigger_guard_hostility(self, clock: GameClock) -> None:
+        """Called from engine/combat.py the instant the player attacks any
+        PEACEFUL_AI_TYPES entity on this map. Arms (or re-arms) the
+        HOSTILITY_COOLDOWN_DAYS cooldown from `clock`'s current moment -
+        see hostility_expires_at's own comment for why a repeat provocation
+        overwrites rather than extends it."""
+        self.player_attacked_peaceful_npc = True
+        self.hostility_expires_at = clock.plus_hours(HOSTILITY_COOLDOWN_DAYS * 24)
+
+    def mark_peaceful_npc_murdered(self) -> None:
+        """Called from Engine.on_entity_death the instant a PEACEFUL_AI_TYPES
+        entity actually dies on this map - makes guards_hostile permanent,
+        see player_murdered_peaceful_npc's own comment."""
+        self.player_murdered_peaceful_npc = True
+
+    def guards_hostile(self, clock: GameClock) -> bool:
+        """Whether town_guard AI on this map should currently treat the
+        player as a hostile combatant - read by Engine._perform_ai's
+        AI_TOWN_GUARD branch and Engine._is_currently_peaceful. False until
+        this map's ever been provoked at all; once provoked, True forever
+        if player_murdered_peaceful_npc is set, otherwise True only until
+        hostility_expires_at passes (`clock`'s current (year, day, hour) -
+        see engine/clock.py's GameClock - compared the same "< due, not yet;
+        >= due, fired" way main.py's _due_encounter checks
+        QuestLog.armed_encounters)."""
+        if not self.player_attacked_peaceful_npc:
+            return False
+        if self.player_murdered_peaceful_npc:
+            return True
+        return self.hostility_expires_at is not None and (
+            (clock.year, clock.day, clock.hour) < self.hostility_expires_at
+        )
 
     def blocking_entity_at(self, x: int, y: int) -> Entity | None:
         for entity in self.entities:

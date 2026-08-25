@@ -82,6 +82,17 @@ class SavedLevelState(BaseModel):
     announced_tiles: list[tuple[int, int]] = Field(default_factory=list)
     unlocked_doors: list[tuple[int, int]] = Field(default_factory=list)
     player_attacked_peaceful_npc: bool = False
+    # (year, day, hour) or None - see GameMap.hostility_expires_at/
+    # trigger_guard_hostility. Without persisting this, a save made mid-
+    # cooldown would reload with guards_hostile's expiry check comparing
+    # against None (permanently un-hostile) instead of the real remaining
+    # cooldown.
+    hostility_expires_at: tuple[int, int, int] | None = None
+    # See GameMap.player_murdered_peaceful_npc/mark_peaceful_npc_murdered -
+    # without persisting this, a save made after killing a villager/guard
+    # would reload with that map's guards eventually going peaceful again
+    # once hostility_expires_at lapses, instead of staying hostile forever.
+    player_murdered_peaceful_npc: bool = False
     # ParsedLevel.entity_spawns index -> current (x, y, hp) for a surviving
     # spawn; an index missing here is dead (removed from GameMap.entities).
     alive_entity_spawns: dict[int, tuple[int, int, int]] = Field(default_factory=dict)
@@ -196,6 +207,8 @@ def _capture_level_state(game_map: GameMap, level: ParsedLevel) -> SavedLevelSta
         announced_tiles=sorted(game_map.announced_tiles),
         unlocked_doors=unlocked_doors,
         player_attacked_peaceful_npc=game_map.player_attacked_peaceful_npc,
+        hostility_expires_at=game_map.hostility_expires_at,
+        player_murdered_peaceful_npc=game_map.player_murdered_peaceful_npc,
         alive_entity_spawns=alive_entity_spawns,
         picked_up_item_spawns=picked_up_item_spawns,
         ground_items=ground_items,
@@ -326,6 +339,8 @@ def _apply_level_state(game_map: GameMap, state: SavedLevelState, catalog: Catal
     for x, y in state.unlocked_doors:
         game_map.unlock_door(x, y)
     game_map.player_attacked_peaceful_npc = state.player_attacked_peaceful_npc
+    game_map.hostility_expires_at = state.hostility_expires_at
+    game_map.player_murdered_peaceful_npc = state.player_murdered_peaceful_npc
 
     for index, entity in list(game_map.entity_spawn_index.items()):
         if index not in state.alive_entity_spawns:

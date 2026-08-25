@@ -206,6 +206,14 @@ class Engine:
             self.message_log.add(f"The {entity.name} dies.", category="combat")
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
+            # A killed villager/guard makes this map's guard hostility
+            # permanent (GameMap.guards_hostile never expires it again) -
+            # per the design, intimidation earns a cooldown, murder doesn't.
+            # Only the player ever attacks a PEACEFUL_AI_TYPES entity today
+            # (see engine/combat.py's _apply_damage), so this needs no
+            # separate "who killed it" check.
+            if entity.ai in PEACEFUL_AI_TYPES:
+                self.game_map.mark_peaceful_npc_murdered()
             # Records the death only - a kill quest doesn't complete here
             # anymore, only when reported to its questgiver (see
             # talk_to_adjacent's check_kill_report loop).
@@ -423,11 +431,13 @@ class Engine:
 
         elif entity.ai == AI_TOWN_GUARD:
             # Deliberately no per-entity hp check here, unlike AI_VILLAGER -
-            # a guard's hostility is purely the shared map-wide flag, not
+            # a guard's hostility is purely the shared map-wide state, not
             # personal injury, since an untouched guard elsewhere on the map
             # still needs to turn hostile the instant anyone provokes the
-            # town (see engine/combat.py's _apply_damage).
-            if self.game_map.player_attacked_peaceful_npc:
+            # town (see engine/combat.py's _apply_damage). guards_hostile
+            # itself is time-limited (GameMap.HOSTILITY_COOLDOWN_DAYS)
+            # unless a villager/guard was actually killed here.
+            if self.game_map.guards_hostile(self.clock):
                 self._chase_and_attack(entity, dx, dy, distance)
             else:
                 self._wander(entity)
@@ -551,8 +561,8 @@ class Engine:
 
     def _is_currently_peaceful(self, entity: Entity) -> bool:
         """Whether `entity` is still meaningfully peaceful right now - a
-        villager already hurt (fleeing) or a town guard after the map's
-        hostility flag has tripped are no longer peaceful in any real
+        villager already hurt (fleeing) or a town guard while
+        GameMap.guards_hostile is True are no longer peaceful in any real
         sense, even though their catalog ai type is still one of
         PEACEFUL_AI_TYPES. Shared by _find_adjacent_peaceful_npc (is this
         NPC currently talkable/tradeable) and would_attack_peaceful_npc
@@ -563,14 +573,17 @@ class Engine:
         AI_VILLAGER branch, any damage at all makes a villager flee
         permanently (nothing ever heals a non-player entity, so hp <
         max_hp is a stable "currently fleeing" flag, not a fleeting one).
-        A town guard's hostility is map-wide rather than personal, so it's
-        excluded once game_map.player_attacked_peaceful_npc trips even if
-        this specific guard is undamaged - villagers are NOT affected by
-        that flag (only their own hp matters to them); that asymmetry is
-        intentional, not a leak."""
+        A town guard's hostility is map-wide and time-limited rather than
+        personal, so it's excluded exactly while guards_hostile(self.clock)
+        is True even if this specific guard is undamaged - villagers are
+        NOT affected by that state (only their own hp matters to them);
+        that asymmetry is intentional, not a leak. Once
+        guards_hostile's cooldown lapses (no murder on this map), a town
+        guard reverts to peaceful/talkable here too, same as any other
+        settlement NPC."""
         if entity.ai not in PEACEFUL_AI_TYPES:
             return False
-        if entity.ai == AI_TOWN_GUARD and self.game_map.player_attacked_peaceful_npc:
+        if entity.ai == AI_TOWN_GUARD and self.game_map.guards_hostile(self.clock):
             return False
         if entity.fighter is not None and entity.fighter.hp < entity.fighter.max_hp:
             return False

@@ -551,9 +551,9 @@ def test_town_guard_chases_and_attacks_once_the_map_is_provoked():
     game_map = make_open_map(5, 3)
     player = make_player(0, 1, hp=30, defense=0)
     guard = make_monster(3, 1, hp=14, attack=5, ai="town_guard")
-    game_map.player_attacked_peaceful_npc = True
     game_map.entities.extend([player, guard])
     engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
 
     engine.process_turn(WaitAction())
 
@@ -564,9 +564,9 @@ def test_town_guard_attacks_when_provoked_and_already_adjacent():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1, hp=30, defense=0)
     guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
-    game_map.player_attacked_peaceful_npc = True
     game_map.entities.extend([player, guard])
     engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
 
     engine.process_turn(WaitAction())
 
@@ -632,14 +632,14 @@ def test_would_attack_peaceful_npc_returns_the_entity_for_an_unprovoked_town_gua
 
 
 def test_would_attack_peaceful_npc_returns_none_for_a_town_guard_once_the_map_is_provoked():
-    """Once game_map.player_attacked_peaceful_npc has tripped, every town
-    guard is already a legitimate combatant - no more confirmations."""
+    """Once GameMap.guards_hostile is True, every town guard is already a
+    legitimate combatant - no more confirmations."""
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
-    game_map.player_attacked_peaceful_npc = True
     game_map.entities.extend([player, guard])
     engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
 
     assert engine.would_attack_peaceful_npc(1, 0) is None
 
@@ -3450,6 +3450,183 @@ def test_attacking_a_hostile_monster_does_not_record_an_intimidation():
     assert engine.quest_log.intimidated_entity_ids == set()
 
 
+def test_attacking_a_villager_arms_a_seven_day_hostility_expiry():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1)
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert game_map.hostility_expires_at == engine.clock.plus_hours(7 * 24)
+    assert game_map.player_murdered_peaceful_npc is False
+
+
+# --- guard hostility cooldown/permanence (engine/game_map.py) ---
+
+
+def test_guards_hostile_is_false_before_any_provocation():
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+
+    assert game_map.guards_hostile(clock) is False
+
+
+def test_guards_hostile_is_true_immediately_after_a_provocation():
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+
+    game_map.trigger_guard_hostility(clock)
+
+    assert game_map.guards_hostile(clock) is True
+
+
+def test_guards_hostile_is_true_just_before_the_seven_day_cooldown_elapses():
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+    game_map.trigger_guard_hostility(clock)
+
+    later = GameClock(*clock.plus_hours(7 * 24 - 1))
+
+    assert game_map.guards_hostile(later) is True
+
+
+def test_guards_hostile_is_false_once_the_seven_day_cooldown_elapses():
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+    game_map.trigger_guard_hostility(clock)
+
+    later = GameClock(*clock.plus_hours(7 * 24))
+
+    assert game_map.guards_hostile(later) is False
+
+
+def test_trigger_guard_hostility_resets_the_cooldown_on_a_second_provocation():
+    """A second provocation while the first cooldown is still running
+    restarts the countdown from that later moment rather than continuing
+    the original one - same convention as QuestLog.arm_encounter."""
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+    game_map.trigger_guard_hostility(clock)  # expires at clock + 7 days
+
+    five_days_later = GameClock(*clock.plus_hours(5 * 24))
+    game_map.trigger_guard_hostility(five_days_later)  # reset to expire at clock + 12 days
+
+    eight_days_after_the_first_hit = GameClock(*clock.plus_hours(8 * 24))
+    # the original 7-day cooldown would have already lapsed by now, but the
+    # second provocation reset it to expire 5 days later than that instead
+    assert game_map.guards_hostile(eight_days_after_the_first_hit) is True
+
+    twelve_days_after_the_first_hit = GameClock(*clock.plus_hours(12 * 24))
+    assert game_map.guards_hostile(twelve_days_after_the_first_hit) is False
+
+
+def test_mark_peaceful_npc_murdered_makes_hostility_never_expire():
+    game_map = make_open_map(3, 3)
+    clock = GameClock()
+    game_map.trigger_guard_hostility(clock)
+    game_map.mark_peaceful_npc_murdered()
+
+    far_future = GameClock(*clock.plus_hours(365 * 24))
+
+    assert game_map.guards_hostile(far_future) is True
+
+
+def test_mark_peaceful_npc_murdered_is_a_no_op_before_any_provocation():
+    """guards_hostile's own player_attacked_peaceful_npc gate still applies
+    even once murdered - a map that's never actually been provoked has no
+    hostile guards to begin with, regardless of this flag."""
+    game_map = make_open_map(3, 3)
+    game_map.mark_peaceful_npc_murdered()
+
+    assert game_map.guards_hostile(GameClock()) is False
+
+
+def test_on_entity_death_of_a_villager_makes_this_maps_hostility_permanent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1)
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
+
+    engine.on_entity_death(villager)
+
+    assert game_map.player_murdered_peaceful_npc is True
+    far_future = GameClock(*engine.clock.plus_hours(365 * 24))
+    assert game_map.guards_hostile(far_future) is True
+
+
+def test_on_entity_death_of_a_town_guard_makes_this_maps_hostility_permanent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(guard)
+
+    assert game_map.player_murdered_peaceful_npc is True
+
+
+def test_on_entity_death_of_a_hostile_monster_does_not_affect_hostility_permanence():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(monster)
+
+    assert game_map.player_murdered_peaceful_npc is False
+
+
+def test_town_guard_wanders_again_once_the_hostility_cooldown_expires():
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    guard = make_monster(3, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    clock = GameClock()
+    engine = Engine(game_map, player, "Test Level", clock=clock)
+    game_map.trigger_guard_hostility(clock)
+    clock.year, clock.day, clock.hour = clock.plus_hours(7 * 24)  # cooldown just expired
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # never attacked - reverted to wandering/peaceful
+
+
+def test_town_guard_stays_hostile_past_the_cooldown_if_a_villager_was_killed():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    villager = make_villager(0, 0)
+    game_map.entities.extend([player, guard, villager])
+    clock = GameClock()
+    engine = Engine(game_map, player, "Test Level", clock=clock)
+    game_map.trigger_guard_hostility(clock)
+    engine.on_entity_death(villager)
+    clock.year, clock.day, clock.hour = clock.plus_hours(365 * 24)
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 5  # still hostile long after any cooldown would have lapsed
+
+
+def test_would_attack_peaceful_npc_returns_the_entity_for_a_town_guard_once_the_cooldown_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    guard = make_monster(2, 1, hp=14, attack=5, ai="town_guard")
+    game_map.entities.extend([player, guard])
+    clock = GameClock()
+    engine = Engine(game_map, player, "Test Level", clock=clock)
+    game_map.trigger_guard_hostility(clock)
+    clock.year, clock.day, clock.hour = clock.plus_hours(7 * 24)
+
+    assert engine.would_attack_peaceful_npc(1, 0) is guard
+
+
 def test_talk_to_adjacent_works_on_a_peaceful_town_guard():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -3470,9 +3647,9 @@ def test_talk_to_adjacent_ignores_a_town_guard_once_the_map_is_provoked_even_if_
     guard = make_villager(2, 1, dialogue="Keep the peace.", entity_id="town_guard", name="Town Guard")
     guard.ai = "town_guard"
     guard.fighter = Fighter(max_hp=14, hp=14, attack=5, defense=2)  # still at full hp
-    game_map.player_attacked_peaceful_npc = True
     game_map.entities.extend([player, guard])
     engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
 
     engine.talk_to_adjacent()
 
@@ -3481,15 +3658,15 @@ def test_talk_to_adjacent_ignores_a_town_guard_once_the_map_is_provoked_even_if_
 
 
 def test_talk_to_adjacent_villager_unaffected_by_the_town_wide_hostility_flag():
-    """Confirms the guard/villager asymmetry is intentional: the map flag
+    """Confirms the guard/villager asymmetry is intentional: guards_hostile
     only governs town_guard entities - a villager stays talkable (as long
-    as they're personally undamaged) even after the flag trips."""
+    as they're personally undamaged) even after it trips."""
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     villager = make_villager(2, 1, dialogue="Hello.")
-    game_map.player_attacked_peaceful_npc = True
     game_map.entities.extend([player, villager])
     engine = Engine(game_map, player, "Test Level")
+    game_map.trigger_guard_hostility(engine.clock)
 
     engine.talk_to_adjacent()
 

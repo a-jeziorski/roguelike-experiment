@@ -21,9 +21,11 @@ def _apply_damage(
     # intimidate-quest target (QuestLog.record_entity_intimidated) - same
     # condition, unconditional even if this hit turns out lethal (see
     # QuestLog.fail_intimidate_by_death, triggered separately below via
-    # on_entity_death).
+    # on_entity_death). trigger_guard_hostility arms/re-arms this map's
+    # cooldown (GameMap.guards_hostile) - permanent instead if the hit
+    # turns out lethal, but that's decided later, in on_entity_death.
     if attacker is engine.player and defender.ai in PEACEFUL_AI_TYPES:
-        engine.game_map.player_attacked_peaceful_npc = True
+        engine.game_map.trigger_guard_hostility(engine.clock)
         engine.quest_log.record_entity_intimidated(defender.entity_id)
 
     damage = max(0, attack_value - defender.effective_defense)

@@ -436,6 +436,51 @@ def test_round_trip_preserves_intimidated_entity_ids(tmp_path):
     assert quest_log2.intimidated_entity_ids == {"millhaven_debtor"}
 
 
+def test_round_trip_preserves_guard_hostility_cooldown(tmp_path):
+    """Without persisting GameMap.hostility_expires_at, a save made mid-
+    cooldown would reload with guards_hostile comparing against None
+    (permanently peaceful again) instead of the real remaining cooldown."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.game_map.trigger_guard_hostility(clock)
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    engine2 = active_engines2[active_key]
+    assert engine2.game_map.hostility_expires_at == clock.plus_hours(7 * 24)
+    assert engine2.game_map.guards_hostile(clock2) is True
+    assert engine2.game_map.player_murdered_peaceful_npc is False
+
+
+def test_round_trip_preserves_a_permanent_guard_hostility_murder(tmp_path):
+    """Without persisting GameMap.player_murdered_peaceful_npc, a save made
+    after killing a villager/guard would reload with that map's guards
+    eventually going peaceful again once hostility_expires_at lapses."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.game_map.trigger_guard_hostility(clock)
+    engine.game_map.mark_peaceful_npc_murdered()
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    engine2 = active_engines2[active_key]
+    assert engine2.game_map.player_murdered_peaceful_npc is True
+    far_future = GameClock(*clock.plus_hours(365 * 24))
+    assert engine2.game_map.guards_hostile(far_future) is True
+
+
 def test_capture_save_records_a_tightened_deadline(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
