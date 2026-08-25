@@ -414,20 +414,23 @@ def restore_save(
             level = levels_dict[current_state_key]
 
         game_map = _build_map_for_load(level, catalog, place.levels[current_state_key])
+        # Engine.__init__ unconditionally computes initial FOV around the
+        # player Entity's *current* x/y - explicitly set it correctly for
+        # THIS place before constructing, regardless of what any earlier
+        # loop iteration (dict order isn't guaranteed to put the active
+        # place first) may have left it at. For the active place that's
+        # save.player.x/y (set once, before this loop, by _build_player);
+        # for any other cached place, the shared player Entity's position
+        # reflects wherever it currently is, not wherever it was last on
+        # THIS map, so passing it through as-is can put the FOV
+        # computation out of this game_map's bounds entirely -
+        # place.last_position was saved for exactly this "resume where I
+        # left off" purpose (see Engine.depart_player/arrive_player), so
+        # borrow it here instead.
         if is_current:
+            player.x, player.y = save.player.x, save.player.y
             game_map.entities.append(player)
         else:
-            # Engine.__init__ unconditionally computes initial FOV around
-            # the player Entity's *current* x/y - correct for the active
-            # place (already set to save.player.x/y below), but meaningless
-            # for any other cached place, since the shared player Entity's
-            # position reflects wherever it currently is, not wherever it
-            # was last on THIS map - passing it through as-is can put the
-            # FOV computation out of this game_map's bounds entirely.
-            # place.last_position was saved for exactly this "resume where
-            # I left off" purpose (see Engine.depart_player/arrive_player),
-            # so borrow it here; every place's real position is restored
-            # once the loop below finishes.
             player.x, player.y = place.last_position
 
         if is_overworld:

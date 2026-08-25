@@ -353,7 +353,16 @@ def test_round_trip_with_two_places_of_different_sizes_does_not_crash_fov(tmp_pa
     )
 
     assert active_key == "overworld"
-    assert (active_engines2["overworld"].player.x, active_engines2["overworld"].player.y) == (28, 46)
+    restored_engine = active_engines2["overworld"]
+    assert (restored_engine.player.x, restored_engine.player.y) == (28, 46)
+    # Catches a second, related bug: restore_save's loop only fixed up the
+    # player's *final* position, not the position FOV was actually computed
+    # around during this place's own Engine construction - if the active
+    # place isn't first in save.places' iteration order (prison_tower is
+    # inserted before overworld above), the previous non-active iteration's
+    # temporary position leaked into the active place's own FOV computation,
+    # leaving the player's real, current tile wrongly marked not-visible.
+    assert bool(restored_engine.game_map.visible[28, 46]) is True
 
 
 def test_round_trip_preserves_a_destroyed_dungeon(tmp_path):
