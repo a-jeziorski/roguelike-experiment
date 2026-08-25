@@ -12,5 +12,5 @@ description: >
   Settler stock as Millhaven, just further along in proving that
   something ordinary can be rebuilt and kept, not merely held onto.
 inspect_text: A real town behind its walls - rooflines in every direction, and the low murmur of a market that never quite stops.
-ruined_tile: road
+ruined_tile: floor
 ruined_description: What's left of a real town - blackened rooflines, a market square gone quiet for good. The horde didn't leave much to salvage, and less to bury.
