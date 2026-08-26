@@ -336,6 +336,17 @@ windbreak_captain:
   stationary: true
   description: Leads whoever's proven capable of keeping a season-old camp alive out on the Scoured Reach - a working title, not an inherited one.
 
+farrows_scout:
+  name: Scout
+  glyph: s
+  color: [140, 160, 110]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Walked the surveyed route from end to end and found the one thing blocking it - a den nobody's cleared yet.
+
 bandit:
   name: Bandit
   glyph: b

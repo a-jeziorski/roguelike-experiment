@@ -342,6 +342,27 @@ reclaiming_the_windrest:
   reward_gold_amount: 25
   reward_xp_amount: 25
 
+clearing_the_sunless_hollow:
+  name: Clearing the Sunless Hollow
+  description: >
+    The surveyed spur south from Farrow's Stake runs straight past a
+    wolf den, and nothing carrying trade goods gets past it uncleared.
+    The Scout wants the pack dealt with - not one leader, the whole den.
+  target_cleared_description: >
+    The den's empty - every wolf in it, as far as you could tell. Get
+    back to Farrow's Stake and let the Scout know the route's clear.
+  completed_description: >
+    The den's cleared, and you went back and told the Scout yourself.
+    They don't waste words on it - just mark something off on the
+    survey table and start talking about the next stretch of road.
+  completion_message: The Sunless Hollow is empty. Whatever ran through there before, the route's clear now.
+  given_message: "New quest: Clearing the Sunless Hollow - the Scout wants the wolf den blocking the surveyed spur cleared out, den and all."
+  questgiver_done_dialogue: Route's clear all the way through now, thanks to you. First real spur we've managed since anyone can remember trying.
+  questgiver_entity_id: farrows_scout
+  target_cull_entity_id: wolf
+  reward_gold_amount: 20
+  reward_xp_amount: 20
+
 a_debt_worth_collecting:
   name: A Debt Worth Collecting
   description: >

@@ -849,6 +849,15 @@ class LevelDef(BaseModel):
     # fallback used when this is left unset). Only meaningful alongside
     # open_boundary: true.
     open_boundary_message: str = ""
+    # True shrinks this level's FOV radius to DARK_FOV_RADIUS (see
+    # engine/game_map.py) instead of the normal FOV_RADIUS - a level where
+    # sunlight genuinely doesn't reach (a hollow, a sealed cellar), not a
+    # difficulty slider to sprinkle on ordinary rooms. Purely a rendering/
+    # awareness effect - doesn't touch walkability, monster AI, or
+    # anything else; a hostile_basic monster still only ever acts once its
+    # own tile is inside that shrunken visible area, so a dark level's real
+    # effect is less reaction time before something's already close.
+    dark: bool = False
 
     @field_validator("legend", mode="before")
     @classmethod

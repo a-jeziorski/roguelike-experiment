@@ -19,7 +19,7 @@ from engine.entity import (
     Fighter,
     ItemEffect,
 )
-from engine.game_map import PLAYER_ATTACK, GameMap, build_game_map
+from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map
 from engine.quest import Quest, QuestLog, create_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -1686,6 +1686,60 @@ def test_build_game_map_populates_auto_announce_tiles_only_for_flagged_spawns(tm
     assert game_map.tile_descriptions[(3, 2)] == "Not announced."
 
 
+def test_build_game_map_uses_normal_fov_radius_by_default(tmp_path):
+    level_path = tmp_path / "lit.lvl"
+    level_path.write_text(
+        "id: lit\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@.>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    assert game_map.fov_radius == FOV_RADIUS
+
+
+def test_dark_level_shrinks_fov_radius_and_actual_visibility(tmp_path):
+    # A long, straight corridor - a tile between DARK_FOV_RADIUS (3) and
+    # FOV_RADIUS (8) away from player_start is the whole point of the test.
+    level_path = tmp_path / "dark.lvl"
+    level_path.write_text(
+        "id: dark\n"
+        "name: Test Level\n"
+        "dark: true\n"
+        "map: |\n"
+        "  ############\n"
+        "  #@........>#\n"
+        "  ############\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    level = load_level(level_path, catalog)
+    game_map, player = build_game_map(level, catalog)
+
+    assert game_map.fov_radius == DARK_FOV_RADIUS
+
+    game_map.update_fov((player.x, player.y))
+
+    assert game_map.visible[player.x + 2, player.y]  # within DARK_FOV_RADIUS
+    assert not game_map.visible[player.x + 6, player.y]  # beyond it, within the normal FOV_RADIUS
+
+
 def test_newly_seen_tile_announcements_returns_nothing_before_visible():
     game_map = make_open_map(20, 3)
     game_map.auto_announce_tiles[(15, 1)] = "A distant landmark."
@@ -2269,7 +2323,7 @@ def test_engine_current_level_id_defaults_to_starting_level():
         player_start=(1, 1), player_start_tile="floor",
         entity_spawns=[], item_spawns=[], stairs=[], doors=[],
         dungeon_entrances=[], tile_descriptions=[],
-        open_boundary=False, open_boundary_message="",
+        open_boundary=False, open_boundary_message="", dark=False,
     )
     engine = Engine(game_map, player, "Test", starting_level=level)
 
@@ -2290,7 +2344,7 @@ def test_engine_current_level_id_explicit_override_wins():
         player_start=(1, 1), player_start_tile="floor",
         entity_spawns=[], item_spawns=[], stairs=[], doors=[],
         dungeon_entrances=[], tile_descriptions=[],
-        open_boundary=False, open_boundary_message="",
+        open_boundary=False, open_boundary_message="", dark=False,
     )
     engine = Engine(
         game_map, player, "Test's Ruins", starting_level=level,

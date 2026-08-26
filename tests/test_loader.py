@@ -949,10 +949,12 @@ SHIPPED_DUNGEON_IDS = {
     "silver_mountain_caves",
     "windbreak_hold",
     "the_windrest",
+    "farrows_stake",
+    "sunless_hollow",
 }
 
-COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest"]
-SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "windbreak_hold"]
+COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow"]
+SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "windbreak_hold", "farrows_stake"]
 
 
 def test_load_dungeon_registry_finds_all_shipped_dungeons():

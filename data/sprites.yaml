@@ -98,6 +98,7 @@ entities:
   grey_valley_elder:       {sheet: rltiles, name: human, recolor: true}
   grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
   windbreak_captain:       {sheet: rltiles, name: human, recolor: true}
+  farrows_scout:           {sheet: rltiles, name: human, recolor: true}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}

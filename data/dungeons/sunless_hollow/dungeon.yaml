@@ -1,0 +1,11 @@
+id: sunless_hollow
+name: The Sunless Hollow
+starting_level: level_01
+description: >
+  A natural depression south of the mountains, steep-walled enough that
+  direct sunlight never really reaches its floor - no ruin beneath it,
+  nothing the Old Kingdom built here, nothing the Sundering touched. A
+  wolf pack has denned in it for longer than anyone at Farrow's Stake
+  has been alive, and would go on denning in it indefinitely if the
+  surveyed trade spur didn't happen to run straight past the entrance.
+inspect_text: The ground drops away into shadow here, steep-walled and dark long before the actual depths begin.

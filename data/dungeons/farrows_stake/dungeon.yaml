@@ -1,0 +1,12 @@
+id: farrows_stake
+name: Farrow's Stake
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A small band of Settlers staking a claim on open, unclaimed plains
+  south of the mountains - good farmland by any measure, and empty for
+  no reason anyone here can point to except that nobody had tried it
+  yet. A new spur off the road already proven safe to Millhaven is
+  surveyed and staked from here to the coast; the one thing blocking it
+  is a wolf den nobody's cleared.
+inspect_text: A handful of new-built shelters and a surveyor's table weighted down with stones, stakes already driven in a line running south.

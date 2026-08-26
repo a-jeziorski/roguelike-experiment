@@ -23,6 +23,11 @@ PLAYER_ATTACK = 5
 PLAYER_DEFENSE = 1
 
 FOV_RADIUS = 8
+# Shrunk FOV for a level with LevelDef.dark: true (see build_game_map,
+# GameMap.fov_radius) - low enough that something can be well within
+# hostile_basic's always-chase-once-seen range before the player ever
+# sees it coming, without being so low the map reads as unplayable.
+DARK_FOV_RADIUS = 3
 
 # How long a town's guards stay hostile after the player attacks a peaceful
 # NPC there, absent a murder (see GameMap.mark_peaceful_npc_murdered) - see
@@ -102,6 +107,11 @@ class GameMap:
         # constructor param.
         self.open_boundary = False
         self.open_boundary_message = ""
+        # FOV radius used by update_fov below - shrunk to DARK_FOV_RADIUS by
+        # build_game_map for a level with LevelDef.dark: true, otherwise
+        # left at the normal FOV_RADIUS. Same "set by build_game_map from
+        # the level, not a constructor param" shape as open_boundary above.
+        self.fov_radius = FOV_RADIUS
         # spawn-list-index -> the Entity build_game_map produced for it, for
         # ParsedLevel.entity_spawns/item_spawns respectively - populated by
         # build_game_map as it spawns each one. Purely additive bookkeeping
@@ -169,7 +179,7 @@ class GameMap:
         self.visible = tcod.map.compute_fov(
             self.transparent,
             pov,
-            radius=FOV_RADIUS,
+            radius=self.fov_radius,
             algorithm=tcod.constants.FOV_SYMMETRIC_SHADOWCAST,
         )
         self.explored |= self.visible
@@ -245,6 +255,7 @@ def build_game_map(
     game_map = GameMap(level.width, level.height)
     game_map.open_boundary = level.open_boundary
     game_map.open_boundary_message = level.open_boundary_message
+    game_map.fov_radius = DARK_FOV_RADIUS if level.dark else FOV_RADIUS
 
     for y, row in enumerate(level.tiles):
         for x, tile in enumerate(row):

@@ -917,6 +917,44 @@ this hazard, but isn't needed for a first pass where the hazardous
 stretch is narrow enough to cross in one push - same "flag it, don't
 build it" discipline as Silversilk Caves' lower levels.
 
+## 0q. Dark levels (`LevelDef.dark`, `GameMap.fov_radius`)
+
+A second, much smaller environmental mechanic, first used for the Sunless
+Hollow (a natural wolf den where sunlight genuinely doesn't reach). One
+new `LevelDef` field, `dark: bool = False`, threaded through
+`ParsedLevel.dark` (`content/loader.py`, same shape as `open_boundary`'s
+own threading) to `GameMap.fov_radius` (`build_game_map` sets it to
+`DARK_FOV_RADIUS` instead of the normal `FOV_RADIUS`, both constants in
+`engine/game_map.py`) - `GameMap.update_fov` reads `self.fov_radius`
+instead of the module constant directly, so every existing call site
+needed no changes at all.
+
+**Deliberately the smallest possible mechanic, not a new system.** No new
+item, no new action, no "light source" inventory slot - just a level-wide
+constant swapped at load time. `storm_plain` (§0p) is the template for
+what a *bigger* environmental mechanic looks like (a per-turn Engine
+check, numeric tuning against the passive heal); this one is the
+template for the other end of that spectrum - genuinely useful, genuinely
+new-feeling to the player, and roughly a five-line change once the
+existing `open_boundary` field showed exactly where every wire needed to
+run.
+
+**Why it's dangerous without touching monster AI at all**: `hostile_basic`
+already only acts on a turn where `self.game_map.visible[entity.x,
+entity.y]` is true (see `Engine._perform_ai`) - a monster "wakes up" the
+instant it's inside the *player's* visible area, not on some separate
+detection radius of its own. Shrinking that visible area doesn't change
+when a monster notices the player; it changes when the player notices
+the monster. The whole effect is reduced reaction time, achieved without
+writing a single new line of AI logic - `dark` only ever needed to touch
+FOV plumbing.
+
+**Not a difficulty slider for ordinary rooms.** Reach for this only when
+a level's own premise genuinely explains the dark (underground, sealed,
+no light source ever reached it) - see the Sunless Hollow's own name,
+chosen specifically to make the mechanic self-explanatory before a
+player reads a single line of flavor text about it.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

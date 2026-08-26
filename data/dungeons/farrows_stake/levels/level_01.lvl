@@ -1,0 +1,27 @@
+id: level_01
+name: Farrow's Stake
+
+player_start_tile: plains
+
+map: |
+  ####################
+  #,x@,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,##,,,#
+  #,,,,,,,,,,,,,#,2,,#
+  #,,,,,,,,S,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,1,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  ####################
+
+legend:
+  "#": wall
+  ",": plains
+  "@": player_start
+  "x": { stairs_up: null, description: "Back out onto open plains - the surveyed route runs south from here.", announce: true }
+  "S": { entity: farrows_scout, tile: plains, dialogue: "Good land doesn't clear itself. Route's surveyed clean all the way through, except for one den that isn't going anywhere on its own." }
+  "1": { entity: villager, tile: plains, dialogue: "Never seen ground this good sit unclaimed so long. Makes you wonder what kept everyone else off it." }
+  "2": { entity: villager, tile: plains, dialogue: "Stakes are in the ground from here clear to the hollow. First real spur anyone's tried laying since I don't know when." }

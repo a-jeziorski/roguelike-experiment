@@ -141,8 +141,8 @@ environmental hazard tile (`storm_plain`, see
 ## Current roster
 
 As of the "Populating the Sundered Realm" pass, the Goblin Horde arc,
-and the Scoured Reach pass, fourteen locations are shipped. Each is
-placed here for quick cross-reference - see
+the Scoured Reach pass, and the Farrow's Stake pass, sixteen locations
+are shipped. Each is placed here for quick cross-reference - see
 `data/dungeons/<id>/dungeon.yaml` for its actual
 `description`/`inspect_text`.
 
@@ -163,13 +163,19 @@ placed here for quick cross-reference - see
   the ruins of an Old Kingdom monastery, isolated in the forested Grey
   Valley, reliant on hunting the neighboring caves), `windbreak_hold` (a
   season-old camp on the Scoured Reach, sheltering behind a salvaged
-  windbreak wall since the real shelter, `the_windrest`, is occupied).
+  windbreak wall since the real shelter, `the_windrest`, is occupied),
+  `farrows_stake` (a fledgling camp staking open plains south of the
+  mountains, surveying a new trade spur off the road already proven safe
+  to Millhaven).
 - **Natural, no era or faction**: `silver_mountain_caves` (a cave system
   that predates the Kingdom entirely - never built, just always there.
   Home to its own wildlife, cave spiders that Grey Valley Monastery hunts
   for food and silk; presently also host to a goblin tribe that migrated
   in after the Goblin Horde broke apart near Wayford, cutting the
-  settlers off from their hunting grounds).
+  settlers off from their hunting grounds), `sunless_hollow` (a natural,
+  sunlight-starved depression south of the mountains, denned by wolves
+  since long before Farrow's Stake existed to care - the map's first use
+  of the `dark` level flag, see `docs/content_design_process.md` §0q).
 
 New monster types introduced this pass, all in `data/entities.yaml`:
 `bandit`/`bandit_captain` (Opportunists), `drowned_wretch` (Drowned

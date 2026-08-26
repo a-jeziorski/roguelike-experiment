@@ -148,6 +148,7 @@ class ParsedLevel:
     tile_descriptions: list[TileDescriptionSpawn]
     open_boundary: bool
     open_boundary_message: str
+    dark: bool
 
 
 def _load_yaml(path: Path) -> dict:
@@ -879,6 +880,7 @@ def load_level(
         tile_descriptions=tile_descriptions,
         open_boundary=level.open_boundary,
         open_boundary_message=level.open_boundary_message,
+        dark=level.dark,
     )
 
 
@@ -990,6 +992,7 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
         tile_descriptions=tile_descriptions,
         open_boundary=False,
         open_boundary_message="",
+        dark=False,
     )
 
 
