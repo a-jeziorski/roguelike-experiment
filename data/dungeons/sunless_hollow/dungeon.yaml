@@ -9,3 +9,8 @@ description: >
   has been alive, and would go on denning in it indefinitely if the
   surveyed trade spur didn't happen to run straight past the entrance.
 inspect_text: The ground drops away into shadow here, steep-walled and dark long before the actual depths begin.
+# Deliberately 0, not just unset: the dungeon bible's own hits-to-kill math
+# (docs/dungeon_bibles/sunless_hollow.md) confirms the wolf pack is tuned
+# against player baseline (30hp/5atk/1def), "no rebalancing needed" - a
+# testbuild run with an empty build is *expected* to be fair here.
+balance_reference_xp: 0

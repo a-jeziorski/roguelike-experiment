@@ -1057,6 +1057,7 @@ class Dungeon:
     pre_arrival_starting_level: str | None
     pre_arrival_until_year: int | None
     pre_arrival_until_day: int | None
+    balance_reference_xp: int | None
     levels: dict[str, ParsedLevel]
 
 
@@ -1118,6 +1119,7 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         pre_arrival_starting_level=manifest.pre_arrival_starting_level,
         pre_arrival_until_year=manifest.pre_arrival_until_year,
         pre_arrival_until_day=manifest.pre_arrival_until_day,
+        balance_reference_xp=manifest.balance_reference_xp,
         levels=levels,
     )
 

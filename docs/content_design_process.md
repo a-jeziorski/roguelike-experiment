@@ -1064,6 +1064,68 @@ actually names the state a *freshly reset world clock* would produce -
 don't assume "the dungeon's declared starting_level" and "pristine" are
 the same thing once a mechanic can make them diverge.
 
+## 0s. Balance-testing without a full playthrough (`DungeonDef.balance_reference_xp`, `tools/balance.py`, `testbuild`)
+
+The Windrest bug (§2's "hits-to-kill" discipline applied correctly at
+placement time, but the *fix* - adding `rusty_dagger`/`leather_armor`
+pickups - was only found by actually dying to the Bandit Captain with an
+unequipped character, see memory `feedback_full_cli_playthroughs_find_real_bugs`)
+is exactly the kind of thing that shouldn't require a real death to catch.
+The fix: let a tester spawn directly adjacent to any dungeon's entrance
+with a hand-picked build - specific perks pre-learned, specific gear
+pre-equipped - via `python tools/play_llm.py testbuild <dungeon_id> [--perk
+...] [--weapon ...] [--armor ...] [--ranged ...] [--ammo N] [--gold N]
+[--xp N] [--potions N]`, and see immediately how that build's XP-equivalent
+compares to what the dungeon expects.
+
+**Gear's XP-equivalent value is derived from existing perk pricing, not a
+new per-item field.** `data/perks.yaml` already prices a flat stat bonus
+in XP (`weapon_training_1`: 45 XP for +2 attack, and so on for defense/
+ranged) - `tools/balance.py`'s `stat_point_rate(catalog, stat)` averages
+`perk.xp_cost / bonus` across every perk pricing that one stat (today:
+exactly one perk per stat, so the average is exact - a future tiered perk
+with a different per-point rate would need this reconsidered, not just
+averaged in blindly), `gear_xp_equivalent(catalog, item)` multiplies an
+item's own equipment bonus by that rate, and `build_xp_total(catalog,
+perk_ids, weapon_id, armor_id, ranged_id)` sums real perk `xp_cost` plus
+each equipped item's derived value. A weapon's `attack_bonus` is "worth"
+exactly what a perk granting the same attack would have cost - no second
+pricing scheme for a content author to keep in sync by hand.
+
+**`DungeonDef.balance_reference_xp`** (optional, `None` by default) is a
+pure reference number - never enforced or auto-consumed, just what
+`testbuild` prints its build's total against when set. It answers "roughly
+how much XP-equivalent investment is a player expected to have by the time
+they reasonably reach this dungeon" - and `0` is a legitimate, meaningful
+answer, not just "not yet set": Silversilk Caves and Sunless Hollow both
+set it explicitly to `0` because their own bibles already confirm
+(hits-to-kill math, "no rebalancing needed") that they're tuned fair
+against bare player baseline. The Windrest sets it to `68` - the derived
+value of the exact `rusty_dagger` + `leather_armor` pair that turned its
+real unwinnable fight fair - documenting the concrete finding this whole
+feature exists to make instantly reproducible: `testbuild the_windrest`
+with an empty build should come up short against `68`; carrying that pair
+should clear it.
+
+**Scope, deliberately narrow**: only populated for dungeons that actually
+have hostile encounters to balance-test. Windbreak Hold, Farrow's Stake,
+and Grey Valley Monastery (this pass's other three touched locations) are
+pure settlements - every spawn in each is a peaceful, dialogue-only NPC
+(checked directly against each `.lvl`'s entity legend) - so the field was
+left unset there; a reference number with nothing to fight against would
+be noise, not documentation. Don't populate this field reflexively for
+every dungeon touched in a pass - check for a hostile roster first.
+
+`testbuild` spawns the player *adjacent to*, never *on*, the dungeon's
+entrance tile - the same "one step off, then walk in" shape `goto` already
+needs against a coordinate identical to the player's own position (see the
+module docstring's testing-friction notes) - so the tester's first ordinary
+move naturally triggers entry, no dead-on-arrival special-case needed.
+Perks are applied by calling the same `apply_perk_stat_bonus`/HP-bump logic
+`Engine.learn_perk` uses for a live purchase, just without requiring an
+adjacent Trainer first - deliberate: this exists to test a dungeon in
+isolation, not to simulate legitimately reaching it.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
@@ -1241,7 +1303,10 @@ point in the dungeon where the player likely has a bow equipped.
 against current `data/entities.yaml` stats. This is what caught the ogre
 being a ~14-hit slog at base stats (`8` attack, `3` defense, `28` hp) - not
 a bug, but it means the ogre should never be the *first* though fight a
-player can reach without a weapon upgrade already in hand.
+player can reach without a weapon upgrade already in hand. For a quicker
+check than a full playthrough, `testbuild` (§0s) spawns a hand-picked
+build directly at a dungeon's entrance and reports its XP-equivalent
+against `DungeonDef.balance_reference_xp`, when set.
 
 **Check gear fairness across branching paths specifically.** Two branches
 that never reconverge can each be internally balanced and still create a

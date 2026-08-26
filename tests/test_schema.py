@@ -431,6 +431,19 @@ def test_dungeon_def_rejects_pre_arrival_date_pair_without_starting_level():
         )
 
 
+def test_dungeon_def_balance_reference_xp_defaults_none():
+    dungeon = DungeonDef(id="the_windrest", name="The Windrest", starting_level="level_01")
+    assert dungeon.balance_reference_xp is None
+
+
+def test_dungeon_def_accepts_balance_reference_xp():
+    dungeon = DungeonDef(
+        id="the_windrest", name="The Windrest", starting_level="level_01",
+        balance_reference_xp=68,
+    )
+    assert dungeon.balance_reference_xp == 68
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",

@@ -935,6 +935,15 @@ class DungeonDef(BaseModel):
     pre_arrival_starting_level: str | None = None
     pre_arrival_until_year: int | None = None
     pre_arrival_until_day: int | None = None
+    # A reference number, never enforced or auto-consumed: roughly how
+    # much XP-equivalent investment (perks actually bought, plus gear's
+    # own XP-equivalent - see tools/balance.py, §0s) a player is expected
+    # to have by the time they reasonably reach this dungeon. Purely for
+    # tools/play_llm.py's `testbuild` mode to report a hand-picked test
+    # build's total against, so a dungeon can be balance-checked without
+    # a full playthrough. None (the default, and every dungeon predating
+    # this field) just means no reference value has been set yet.
+    balance_reference_xp: int | None = None
 
     @model_validator(mode="after")
     def ruined_tile_and_description_together(self) -> "DungeonDef":

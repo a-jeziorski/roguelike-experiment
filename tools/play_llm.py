@@ -45,6 +45,12 @@ Usage:
     python tools/play_llm.py quests                                    # free, lists known quests
 
     python tools/play_llm.py --save saves/other_run.json move n
+
+    # Debug-only: spawn adjacent to a dungeon's entrance with a hand-picked build,
+    # to balance-test it without a full playthrough. Discards any existing session
+    # at --save. See tools/balance.py and docs/content_design_process.md §0s.
+    python tools/play_llm.py --save saves/test.json testbuild the_windrest \\
+        --weapon rusty_dagger --armor leather_armor --perk toughness_1 --potions 2
 """
 
 from __future__ import annotations
@@ -66,7 +72,11 @@ from content.loader import (
 )
 from content.schema import PEACEFUL_AI_TYPES
 from engine.actions import BumpAction, FireAction, PickupAction, RestartAction, UseItemAction, WaitAction
-from engine.entity import potion_kind
+from engine.clock import GameClock
+from engine.engine import Engine
+from engine.entity import apply_perk_stat_bonus, potion_kind
+from engine.game_map import build_game_map, item_entity_from_def
+from engine.quest import create_quest_log
 from engine.render import TILE_VISUALS, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, compute_camera, describe_tile
 from engine.save import capture_save, load_from_path, restore_save, save_to_path
 from main import (
@@ -81,6 +91,7 @@ from main import (
     fresh_start,
     resolve_transition,
 )
+from tools.balance import build_xp_total
 
 DEFAULT_SAVE_PATH = Path(__file__).resolve().parent.parent / "saves" / "llm_session.json"
 
@@ -188,6 +199,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("quest_id")
 
     sub.add_parser("quests", help="List every known quest and its current status.")
+
+    p = sub.add_parser(
+        "testbuild",
+        help=(
+            "Debug-only: spawn directly next to a dungeon's entrance with a hand-picked "
+            "build (perks pre-learned, gear pre-equipped), to balance-test that dungeon "
+            "without a full playthrough. See tools/balance.py."
+        ),
+    )
+    p.add_argument("dungeon", help="Dungeon registry id (e.g. the_windrest).")
+    p.add_argument(
+        "--perk", action="append", dest="perks", default=[], metavar="PERK_ID",
+        help="A perk to pre-learn. Repeatable.",
+    )
+    p.add_argument("--weapon", default=None, metavar="ITEM_ID", help="Item id to equip as weapon.")
+    p.add_argument("--armor", default=None, metavar="ITEM_ID", help="Item id to equip as armor.")
+    p.add_argument("--ranged", default=None, metavar="ITEM_ID", help="Item id to equip as ranged weapon.")
+    p.add_argument("--ammo", type=int, default=0, help="Ammo count to carry.")
+    p.add_argument("--gold", type=int, default=0, help="Starting gold.")
+    p.add_argument("--xp", type=int, default=0, help="Leftover XP after the build's perks.")
+    p.add_argument("--potions", type=int, default=0, help="Healing potions to carry.")
 
     return parser.parse_args(argv)
 
@@ -636,6 +668,92 @@ def load_content():
     return catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry
 
 
+def test_build_start(
+    args: argparse.Namespace, catalog, dungeon_registry: dict, overworld_level, quest_defs: dict,
+) -> tuple[str, dict, GameClock, object]:
+    """Debug-only alternative to load_state/fresh_start for the `testbuild`
+    command: a brand-new overworld state with the player spawned adjacent
+    to args.dungeon's entrance (not on it - the same "one step off, then
+    walk in" shape 'goto' already needs, see the module docstring) and a
+    hand-picked build already applied. Bypasses the normal adjacent-Trainer/
+    adjacent-shopkeeper requirements entirely and deliberately - this exists
+    to test a dungeon's balance in isolation, not to simulate reaching it
+    legitimately. Returns the same 4-tuple shape as load_state, so main()'s
+    call site is a one-line branch."""
+    dungeon = dungeon_registry.get(args.dungeon)
+    if dungeon is None:
+        raise SystemExit(f"testbuild: unknown dungeon '{args.dungeon}'")
+    entrance = next(
+        (e for e in overworld_level.dungeon_entrances if e.dungeon_id == args.dungeon), None,
+    )
+    if entrance is None:
+        raise SystemExit(f"testbuild: '{args.dungeon}' has no entrance on the overworld map")
+
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    game_map, player = build_game_map(overworld_level, catalog)
+
+    spawn = next(
+        (
+            (entrance.x + dx, entrance.y + dy) for dx, dy in DIRECTIONS.values()
+            if game_map.in_bounds(entrance.x + dx, entrance.y + dy)
+            and game_map.is_walkable(entrance.x + dx, entrance.y + dy)
+        ),
+        None,
+    )
+    if spawn is None:
+        raise SystemExit(f"testbuild: no walkable tile adjacent to '{args.dungeon}'s entrance")
+    player.x, player.y = spawn
+
+    for perk_id in args.perks:
+        perk = catalog.perks.get(perk_id)
+        if perk is None:
+            raise SystemExit(f"testbuild: unknown perk '{perk_id}'")
+        apply_perk_stat_bonus(player.fighter, perk)
+        player.learned_perk_ids.add(perk_id)
+        if perk.max_hp_bonus:
+            player.fighter.hp += perk.max_hp_bonus
+
+    for item_id, slot in (
+        (args.weapon, "equipped_weapon"), (args.armor, "equipped_armor"), (args.ranged, "equipped_ranged_weapon"),
+    ):
+        if item_id is None:
+            continue
+        item = catalog.items.get(item_id)
+        if item is None:
+            raise SystemExit(f"testbuild: unknown item '{item_id}'")
+        setattr(player, slot, item_entity_from_def(item))
+
+    if args.ammo:
+        ammo = item_entity_from_def(catalog.items["arrows"])
+        ammo.item.quantity = args.ammo
+        player.inventory.append(ammo)
+    for _ in range(args.potions):
+        player.inventory.append(item_entity_from_def(catalog.items["healing_potion"]))
+    player.gold = args.gold
+    player.xp = args.xp
+
+    dungeon_inspect_text = {d_id: d.inspect_text for d_id, d in dungeon_registry.items()}
+    dungeon_ruin_data = {
+        d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
+        for d_id, d in dungeon_registry.items() if d.ruined_tile
+    }
+    engine = Engine(
+        game_map, player, overworld_level.name,
+        catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
+        dungeon_ruin_data=dungeon_ruin_data, clock=clock, quest_log=quest_log, sprite_codepoints=None,
+    )
+    active_engines = {OVERWORLD_KEY: engine}
+
+    total = build_xp_total(catalog, args.perks, args.weapon, args.armor, args.ranged)
+    summary = f"Build total: {total:g} XP-equivalent"
+    if dungeon.balance_reference_xp is not None:
+        summary += f" - dungeon reference: {dungeon.balance_reference_xp} XP ({total - dungeon.balance_reference_xp:+g})"
+    print(summary)
+
+    return OVERWORLD_KEY, active_engines, clock, quest_log
+
+
 def load_state(save_path: Path, force_new: bool, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry):
     if not force_new and save_path.exists():
         save = load_from_path(save_path)
@@ -660,10 +778,15 @@ def main(argv: list[str] | None = None) -> int:
         print(str(e), file=sys.stderr)
         return 1
 
-    active_key, active_engines, clock, quest_log = load_state(
-        save_path, args.command == "new", catalog, dungeon_registry, overworld_level,
-        quest_defs, encounter_registry,
-    )
+    if args.command == "testbuild":
+        active_key, active_engines, clock, quest_log = test_build_start(
+            args, catalog, dungeon_registry, overworld_level, quest_defs,
+        )
+    else:
+        active_key, active_engines, clock, quest_log = load_state(
+            save_path, args.command == "new", catalog, dungeon_registry, overworld_level,
+            quest_defs, encounter_registry,
+        )
     engine = active_engines[active_key]
 
     if args.command in QUERY_COMMANDS:

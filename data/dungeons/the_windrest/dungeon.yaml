@@ -9,3 +9,13 @@ description: >
   Opportunists holds it, not for loot or territory, but for the simple,
   practical reason it's dry.
 inspect_text: A squat Old Kingdom waystation, iron-braced door shut fast against the wind, smoke bleeding sideways from a vent that was never meant to smoke this much.
+# 68, not 0: unlike Silversilk Caves/Sunless Hollow, this dungeon was NOT
+# fair at player baseline - the Bandit Captain was genuinely unwinnable
+# with zero gear (36 damage taken to land 30 damage dealt), found via a
+# real playthrough and fixed by adding rusty_dagger+leather_armor pickups
+# on level_01 (see docs/content_design_process.md's playthrough notes).
+# 68 = tools/balance.py's derived XP-equivalent of exactly that pair
+# (rusty_dagger's +2 attack, leather_armor's +1 defense), rounded up from
+# 67.5 - the concrete number `testbuild the_windrest` (empty build) should
+# come up short against, and a build carrying that pair should clear.
+balance_reference_xp: 68

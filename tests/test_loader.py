@@ -587,6 +587,13 @@ def test_load_dungeon_carries_through_pre_arrival_content():
     assert all(spawn.entity.id != "goblin" for spawn in undisturbed.entity_spawns)
 
 
+def test_load_dungeon_carries_through_balance_reference_xp():
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "the_windrest", catalog)
+
+    assert dungeon.balance_reference_xp == 68
+
+
 def test_load_dungeon_rejects_unknown_pre_arrival_starting_level(tmp_path):
     dungeon_dir = tmp_path / "broken_dungeon"
     levels_dir = dungeon_dir / "levels"
