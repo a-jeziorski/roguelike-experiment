@@ -370,7 +370,7 @@ bandit_captain:
   description: Whoever's left standing at the top of the watchtower's rickety hierarchy. Wears looted Kingdom mail like it was always his.
 
 windrest_captain:
-  name: Windrest Captain
+  name: Bandit Captain
   glyph: B
   color: [175, 45, 30]
   hp: 20

@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 TileType = Literal[
     "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
-    "landmark", "storm_plain",
+    "landmark", "dunes",
 ]
 
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
@@ -32,10 +32,10 @@ TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
     "mountain": (False, False),
     "sea": (False, True),  # can't cross it, but can see across it
     "forest": (True, False),  # can walk through, can't see far through/across it
-    # storm_plain deliberately has no entry here - it's a chip-damage hazard
-    # (see Engine._apply_environmental_hazard), not a movement/sight
-    # obstruction, so it falls through to the default (True, True), same as
-    # plains. The danger is standing on it, not crossing it.
+    # dunes deliberately has no entry here - it's a chip-damage hazard (see
+    # Engine._apply_environmental_hazard), not a movement/sight obstruction,
+    # so it falls through to the default (True, True), same as plains. The
+    # danger is standing on it, not crossing it.
 }
 
 Color = tuple[int, int, int]

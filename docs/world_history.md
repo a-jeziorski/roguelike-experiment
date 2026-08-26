@@ -131,12 +131,14 @@ Elder Cairn's isolation to read as real distance from anything else.
 
 A third terrain feature, added alongside Windbreak Hold/The Windrest:
 the Scoured Reach, a wide stretch of open plains in the map's
-east-central expanse, farmed by the Old Kingdom and left to a wind that
-never fully settles since. Distinct from the drier western
-hill/badlands - this is flat, once-farmed ground made dangerous by
-climate rather than terrain, the map's first location built around an
-environmental hazard tile (`storm_plain`, see
+east-central expanse, farmed by the Old Kingdom and scoured down to
+loose dune sand by a wind that's never fully settled since. Distinct
+from the drier western hill/badlands (that's dry, stable ground; this is
+actively shifting sand) - the map's first location built around an
+environmental hazard tile (`dunes`, see
 `docs/content_design_process.md` §0p) rather than a monster or a ruin.
+The hazard is the ground itself, not a passing storm - a permanent
+terrain condition, not weather.
 
 ## Current roster
 

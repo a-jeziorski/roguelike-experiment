@@ -871,29 +871,39 @@ any future multi-level mechanic that reads `visited_maps`: the *current*
 level is only guaranteed to be in there because of this fix, not because
 it's obviously implied by "currently active."
 
-## 0p. Environmental hazard tiles (`storm_plain`, `Engine._apply_environmental_hazard`)
+## 0p. Environmental hazard tiles (`dunes`, `Engine._apply_environmental_hazard`)
 
 A tile-kind-driven mechanic, not a quest trigger: some ground is simply
 dangerous to stand on, independent of any monster or quest. First (and
 so far only) use is the Scoured Reach, the open, unforested, unsettled
-plains stretch in the map's east-central expanse - `storm_plain`
-explains *why* that space reads as empty on the overworld rather than
-leaving it unexplained, the same "environmental storytelling" job
-`world_history.md` asks every location to do.
+plains stretch in the map's east-central expanse - `dunes` explains
+*why* that space reads as empty on the overworld rather than leaving it
+unexplained, the same "environmental storytelling" job `world_history.md`
+asks every location to do.
+
+**Shipped once as `storm_plain`, renamed to `dunes` after user
+playtesting** - worth keeping as a cautionary note. "Storm" framed the
+hazard as *weather*, an event that happens *to* a place; a player
+correctly read that as abstract, since a permanent damage-over-time tile
+doesn't behave like an intermittent storm, it behaves like a *terrain
+condition*. `dunes` - loose, wind-scoured sand you're physically slogging
+through - is the same mechanic wearing a name that matches what it
+actually does. See "Grounding an abstract mechanic" in §4 below for the
+general version of this lesson.
 
 **Mechanically**: `TILE_PASSABILITY` deliberately has no entry for
-`storm_plain`, falling through to its `(True, True)` default (walkable,
+`dunes`, falling through to its `(True, True)` default (walkable,
 transparent) - identical to `plains`. The danger isn't crossing it, it's
 lingering on it: `Engine._apply_environmental_hazard`, called every turn
 from `process_enemy_phase` (right after enemy AI, before the player-death
-check, so a lethal storm turn is caught the same way a lethal hit
+check, so a lethal turn on the dunes is caught the same way a lethal hit
 already is), checks the player's current tile kind directly and deals
-flat `STORM_DAMAGE` with no defense mitigation - this isn't an attack, it
+flat `DUNE_DAMAGE` with no defense mitigation - this isn't an attack, it
 has no attacker. Checked by tile kind, not by `is_overworld`, so it isn't
-special-cased to the overworld specifically; `storm_plain` just doesn't
-appear anywhere else today.
+special-cased to the overworld specifically; `dunes` just doesn't appear
+anywhere else today.
 
-**Why `STORM_DAMAGE` is 2, not 1**: the overworld already heals the
+**Why `DUNE_DAMAGE` is 2, not 1**: the overworld already heals the
 player +1/hour unconditionally (`_advance_world_clock`, same turn,
 right after this check runs). A hazard that merely matched the passive
 heal would be invisible - net zero, no felt cost, no reason to hurry.
@@ -911,11 +921,24 @@ monster to take hazard damage, and the check would need to iterate every
 entity on the map each turn if one ever did.
 
 **A deliberately unbuilt hook, noted rather than built**: some kind of
-protective item/equipment slot that suppresses this damage (a "storm
-cloak," say) would be a natural next step for a location built around
-this hazard, but isn't needed for a first pass where the hazardous
-stretch is narrow enough to cross in one push - same "flag it, don't
-build it" discipline as Silversilk Caves' lower levels.
+protective item/equipment slot that suppresses this damage (goggles or a
+wrap against the grit, say) would be a natural next step for a location
+built around this hazard, but isn't needed for a first pass where the
+hazardous stretch is narrow enough to cross in one push - same "flag it,
+don't build it" discipline as Silversilk Caves' lower levels.
+
+**The overworld region's own shape was a second, separate problem**: it
+shipped as a hand-edited rectangle - a hard, straight-edged box of
+`dunes` tiles dropped onto the map, immediately readable as authored
+rather than natural. Fixed by generating the region's boundary with the
+same cellular-automata blob technique already used for organic dungeon
+geometry (Silversilk Caves, the Sunless Hollow - see the caves' own
+bibles), just applied to a *terrain patch* on the overworld instead of a
+*cavern* underground. Any future large-area overworld terrain edit
+(a badlands stretch, a bog, a burned tract) should default to this same
+technique - a rectangle or a hand-drawn blob-by-eye both read as
+obviously artificial at the zoomed-out overworld scale in a way they
+might not inside a cramped dungeon room.
 
 ## 0q. Dark levels (`LevelDef.dark`, `GameMap.fov_radius`)
 
@@ -931,7 +954,7 @@ needed no changes at all.
 
 **Deliberately the smallest possible mechanic, not a new system.** No new
 item, no new action, no "light source" inventory slot - just a level-wide
-constant swapped at load time. `storm_plain` (§0p) is the template for
+constant swapped at load time. `dunes` (§0p) is the template for
 what a *bigger* environmental mechanic looks like (a per-turn Engine
 check, numeric tuning against the passive heal); this one is the
 template for the other end of that spectrum - genuinely useful, genuinely
@@ -1352,3 +1375,44 @@ rejects it otherwise, so a villager/town_guard can never be XP-farmed.
    substitute for playing it. `main.py` always starts
    `STARTING_DUNGEON_ID`; edit that constant (or use `load_dungeon_registry`
    directly) to playtest a dungeon that isn't the current default.
+
+## 5. Worldbuilding quality checks (added after the Scoured Reach pass)
+
+The Windbreak Hold/The Windrest pass shipped, passed every automated
+check, and still had the most worldbuilding problems of any location so
+far - caught only by a human reading and playing the actual content, not
+by anything mechanical. None of these are covered by `tools/preview.py`
+or `pytest`; they need a deliberate read-through pass of their own
+before calling a location finished.
+
+- **Grounding an abstract mechanic.** A new hazard/mechanic needs a name
+  and flavor text that describe a *concrete, physically recognizable*
+  thing, not an abstract effect or an event. "Storm" named a
+  damage-over-time tile after *weather* - something that happens *to* a
+  place, intermittently - when the tile itself is a permanent *terrain
+  condition* (dune sand, always there, always costly to cross). The
+  mismatch read as abstract even though the mechanic itself (flat chip
+  damage per turn) was sound. Ask, before naming anything: if a player
+  had to picture standing on this tile, what would they actually see?
+  If the honest answer is "an effect" rather than "a place," the naming
+  hasn't found its concrete anchor yet. See §0p's own retrospective note
+  for the specific fix (`storm_plain` → `dunes`).
+- **Organic shape for any large-area overworld edit.** A rectangle (or a
+  hand-drawn blob-by-eye) reads as obviously authored at the overworld's
+  zoomed-out scale, the same way a perfectly rectangular room would
+  inside a natural cave. Any terrain patch bigger than a few tiles -
+  a hazard region, a biome boundary, anything that isn't a single
+  building's footprint - should get the same cellular-automata blob
+  treatment already used for organic dungeon geometry (see
+  `docs/dungeon_bibles/silver_mountain_caves.md`/`sunless_hollow.md`),
+  just run once over the overworld map instead of a cavern.
+- **Cross-check names/titles across everything shipped in the same
+  pass**, not just within one dungeon. `windbreak_captain` ("Captain")
+  and `windrest_captain` (originally "Windrest Captain") sat one quest
+  apart - a friendly questgiver sending the player to kill someone with
+  a near-identical title, at a near-identically-named neighboring
+  location. Neither dungeon's own bible caught it, because each was
+  reviewed in isolation; the collision only exists across the pair.
+  Before finishing a multi-location pass, list every NPC's *display*
+  `name` (not just catalog id) side by side and check that a player
+  moving between the locations wouldn't confuse any two of them.

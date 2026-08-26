@@ -39,14 +39,14 @@ DEFAULT_MONSTER_RANGED_RANGE = 4
 # risk to find, only exploration.
 LANDMARK_XP_REWARD = 5
 
-# Flat damage per turn spent standing on a storm_plain tile (see
+# Flat damage per turn spent standing on a dunes tile (see
 # Engine._apply_environmental_hazard) - set one above _advance_world_clock's
 # +1/hour passive heal on purpose, so lingering in the open is a small but
 # real net loss (-1 HP/turn) rather than a wash. Deliberately not set any
 # higher: at player baseline (30 HP), a net -1/turn means even a fairly
 # long, straight-line crossing costs real HP without being an automatic
 # death sentence for a fresh, unprepared player.
-STORM_DAMAGE = 2
+DUNE_DAMAGE = 2
 
 # Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
 # "stay put" repeated 8 times, so a wandering villager holds position about
@@ -549,23 +549,23 @@ class Engine:
             self._perform_ai(entity)
 
     def _apply_environmental_hazard(self) -> None:
-        """Chip damage for ending a turn standing on a `storm_plain` tile
-        (see content/schema.py's TileType, docs/content_design_process.md
-        §0p) - the Scoured Reach's whole reason nobody's settled it.
-        Player only: whatever wildlife lives out there is already adapted
-        to it, the same reasoning skittish/hostile monsters never flee a
-        terrain hazard the player would. STORM_DAMAGE deliberately outpaces
+        """Chip damage for ending a turn standing on a `dunes` tile (see
+        content/schema.py's TileType, docs/content_design_process.md §0p)
+        - the Scoured Reach's whole reason nobody's settled it. Player
+        only: whatever wildlife lives out there is already adapted to it,
+        the same reasoning skittish/hostile monsters never flee a terrain
+        hazard the player would. DUNE_DAMAGE deliberately outpaces
         _advance_world_clock's +1/hour passive heal (this runs first, same
         turn) - standing still in the open is meant to be a losing trade,
         not a wash. Runs regardless of is_overworld's dungeon/settlement
-        gate on the clock/heal below: storm_plain only ever appears on the
+        gate on the clock/heal below: dunes only ever appears on the
         overworld map today, but the check is by tile kind, not location,
         so it needs no special-casing if that ever changes."""
-        if self.game_map.kinds[self.player.x, self.player.y] != "storm_plain":
+        if self.game_map.kinds[self.player.x, self.player.y] != "dunes":
             return
-        self.player.fighter.hp -= STORM_DAMAGE
+        self.player.fighter.hp -= DUNE_DAMAGE
         self.message_log.add(
-            "The wind-driven grit tears at exposed skin and eyes.", category="combat"
+            "Wind-driven sand tears at exposed skin and eyes.", category="combat"
         )
 
     def _advance_world_clock(self) -> None:

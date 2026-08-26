@@ -4,8 +4,8 @@
 site for a tabletop session: what's actually here, why, and what the
 player is meant to feel room to room. See `docs/world_history.md` for
 the realm-level facts this dungeon has to agree with,
-`docs/content_design_process.md` (particularly §0p, the `storm_plain`
-hazard this dungeon's whole premise depends on), and
+`docs/content_design_process.md` (particularly §0p, the `dunes` hazard
+this dungeon's whole premise depends on), and
 `docs/dungeon_bibles/windbreak_hold.md` for the settlement whose quest
 targets this dungeon's `windrest_captain`. This document is the specific
 story of *this* place, decided before any ASCII is drawn.*
@@ -16,14 +16,16 @@ The Windrest was never a home, a garrison, or a mystery - it was a rest
 stop. The Old Kingdom farmed the Scoured Reach when it was just open
 farmland, not yet scoured, and built a proper waystation here for
 whoever worked that land or crossed it: real windbreak walls, a
-stone-floored common room, enough shelter that a storm didn't mean a
-lost workday. Whatever kept its walls sound and its drainage clear
-stopped the same week everything else did. The wind found the gaps
-first; a band of Opportunists found the place shortly after, and unlike
-Broken Watch's bandits (who took a watchtower for its sightline) these
-people took the Windrest for the one thing that actually matters out
-here: it's the only real shelter for miles, and shelter is worth more
-than loot in a place where the weather itself is the real threat.
+stone-floored common room, enough shelter that a day's crossing didn't
+mean a day lost to grit and exhaustion. Whatever kept its walls sound
+and its drainage clear stopped the same week everything else did. The
+wind found the gaps first, scouring the land around it down to dune
+sand over the years since; a band of Opportunists found the place
+shortly after, and unlike Broken Watch's bandits (who took a watchtower
+for its sightline) these people took the Windrest for the one thing
+that actually matters out here: it's the only real shelter for miles,
+and shelter is worth more than loot in a place where the ground itself
+is the real threat.
 
 **Placement on the world bible**: Old Kingdom in origin - a waystation,
 one of `world_history.md`'s own listed examples of ordinary Kingdom
@@ -40,16 +42,16 @@ anything the building itself represents. Where Broken Watch's occupants
 settled in and made themselves at home, the Windrest's occupants should
 read as more recently arrived and more purely functional about it:
 supplies stacked rather than displayed, sleeping spots claimed near the
-better-sealed walls, nothing decorative. The storm outside should be
-audible in the flavor text even indoors - a building that mostly works,
-not one that's forgotten what it's for.
+better-sealed walls, nothing decorative. The wind should be audible in
+the flavor text even indoors - a building that mostly works, not one
+that's forgotten what it's for.
 
 ## Structure overview
 
 One level - the Windrest is a single waystation building, not a sprawling
 complex; matching a modest, standard combat dungeon's scope rather than
 Broken Watch's three-level structure. The location's real novelty lives
-in the storm-plain approach outside it, not in this building's own size.
+in the dune approach outside it, not in this building's own size.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
@@ -59,12 +61,14 @@ in the storm-plain approach outside it, not in this building's own size.
 
 ### 1. The Storm Door
 
-The building's actual entrance - a heavy, iron-braced door, the one
-piece of the original structure clearly still maintained (by whoever's
-inside now, out of self-interest, not reverence). The literal threshold
-between `storm_plain` outside and safety inside; crossing it should be
-the same kind of mechanical relief as reaching Windbreak Hold's own
-wall, just earned through a fight instead of a walk.
+The building's actual entrance - a heavy, iron-braced door (a real term
+for exactly this: an outer door built specifically against weather,
+older than the Sundering), the one piece of the original structure
+clearly still maintained (by whoever's inside now, out of self-interest,
+not reverence). The literal threshold between the dunes outside and
+safety inside; crossing it should be the same kind of mechanical relief
+as reaching Windbreak Hold's own wall, just earned through a fight
+instead of a walk.
 
 *Why it's first*: the dungeon's whole thesis in one object - a door
 worth keeping sealed, on both sides, for exactly the same reason.
@@ -91,8 +95,14 @@ same "won an argument, most recently" logic `broken_watch.md` already
 establishes for its own captain. `windrest_captain` is centered here, and
 here only - **this must remain the dungeon's single spawn of that
 entity**, since `windbreak_hold.md`'s `reclaiming_the_windrest` quest
-targets it specifically. The terminal exit (a `stairs_down` tile at the
-Storm Door itself, `stairs_down: null` per `elder_cairn.md`'s own
+targets it specifically. Its own display `name` is plain "Bandit
+Captain" (matching `bandit_captain`'s at Broken Watch), deliberately not
+"Windrest Captain" - both this dungeon and its neighboring settlement
+already carry "wind"/"Windrest"/"Windbreak" in their own names, and
+`windbreak_captain`'s own display name is simply "Captain"; a second
+"Windrest Captain" title would read as confusingly similar to a player
+being sent by one to kill the other. The terminal exit (a `stairs_down`
+tile at the Storm Door itself, `stairs_down: null` per `elder_cairn.md`'s own
 precedent for a terminal exit regardless of literal up/down flavor) sits
 near the entrance, not past this corner - leaving after the fight means
 walking back out into the open, same as arriving did.
@@ -115,8 +125,8 @@ stats: `bandit` deals 4/hit, dies in 4 hits; `windrest_captain` deals
 same two entities, no rebalancing needed. A `healing_potion` sits near
 the Storm Door - a "brace yourself" placement before the Common Room's
 fight, and a practical one too: whatever the player took crossing the
-`storm_plain` outside, this is the first chance to recover from it
-before the real fight starts.
+dunes outside, this is the first chance to recover from it before the
+real fight starts.
 
 ## Tone notes for anyone (agent or human) revising this later
 
@@ -125,9 +135,11 @@ before the real fight starts.
   strategic position, that's drifted into Broken Watch's register, not
   this dungeon's. The correct framing is closer to "squatting in the one
   dry room for a hundred miles."
-- No proper names - `windrest_captain` stays a title, same discipline as
+- No proper names - `windrest_captain` stays a title ("Bandit Captain,"
+  see set piece 3), same discipline as
   everywhere else.
-- Keep the storm audible even indoors - a line or two of ambient flavor
-  text (wind against the walls, a loose shutter) helps this dungeon feel
-  continuous with the hazard outside it rather than a wholly separate
+- Keep the wind audible even indoors - a line or two of ambient flavor
+  text (wind against the walls, a loose shutter, sand hissing under a
+  door) helps this dungeon feel continuous with the hazard outside it
+  rather than a wholly separate
   space the player steps into and forgets about.

@@ -10,7 +10,7 @@ from content.loader import load_catalog, load_level, load_levels, load_overworld
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
-from engine.engine import STORM_DAMAGE, Engine
+from engine.engine import DUNE_DAMAGE, Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -2123,21 +2123,21 @@ def test_process_turn_heal_is_capped_at_max_hp():
     assert player.fighter.hp == 30
 
 
-def test_process_turn_applies_storm_damage_on_a_storm_plain_tile():
+def test_process_turn_applies_dune_damage_on_a_dunes_tile():
     game_map = make_open_map(3, 3)
-    game_map.kinds[1, 1] = "storm_plain"
+    game_map.kinds[1, 1] = "dunes"
     player = make_player(1, 1, hp=30)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "The Overworld", is_overworld=True)
 
     engine.process_turn(WaitAction())
 
-    # -STORM_DAMAGE from the hazard, +1 from the overworld's passive heal
+    # -DUNE_DAMAGE from the hazard, +1 from the overworld's passive heal
     # (see _advance_world_clock) - net loss, the whole point of the hazard.
-    assert player.fighter.hp == 30 - STORM_DAMAGE + 1
+    assert player.fighter.hp == 30 - DUNE_DAMAGE + 1
 
 
-def test_process_turn_no_storm_damage_off_a_storm_plain_tile():
+def test_process_turn_no_dune_damage_off_a_dunes_tile():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1, hp=30)
     player.fighter.hp = 20
@@ -2149,22 +2149,22 @@ def test_process_turn_no_storm_damage_off_a_storm_plain_tile():
     assert player.fighter.hp == 21  # only the passive heal applied
 
 
-def test_storm_damage_applies_off_the_overworld_too_since_it_is_tile_based():
+def test_dune_damage_applies_off_the_overworld_too_since_it_is_tile_based():
     game_map = make_open_map(3, 3)
-    game_map.kinds[1, 1] = "storm_plain"
+    game_map.kinds[1, 1] = "dunes"
     player = make_player(1, 1, hp=30)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
 
     engine.process_turn(WaitAction())
 
-    assert player.fighter.hp == 30 - STORM_DAMAGE  # no passive heal outside the overworld
+    assert player.fighter.hp == 30 - DUNE_DAMAGE  # no passive heal outside the overworld
 
 
-def test_storm_damage_can_kill_the_player():
+def test_dune_damage_can_kill_the_player():
     game_map = make_open_map(3, 3)
-    game_map.kinds[1, 1] = "storm_plain"
-    player = make_player(1, 1, hp=STORM_DAMAGE)
+    game_map.kinds[1, 1] = "dunes"
+    player = make_player(1, 1, hp=DUNE_DAMAGE)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")
 
