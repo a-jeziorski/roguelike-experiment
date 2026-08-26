@@ -28,6 +28,13 @@ class Fighter:
     # derives entirely from `attack` plus the equipped weapon's bonus), so
     # a ranged-specific perk needs this separate field.
     perk_ranged_attack_bonus: int = 0
+    # This fighter's own live "poisoned" affliction, ticking down turn by
+    # turn (see engine/engine.py's _apply_poison_damage) - distinct from
+    # Entity.poison_potency/poison_duration below, which is an attacker's
+    # static bite capability, never mutated. poison_turns_remaining <= 0
+    # means not currently poisoned.
+    poison_damage_per_turn: int = 0
+    poison_turns_remaining: int = 0
 
 
 def apply_perk_stat_bonus(fighter: Fighter, perk: PerkDef) -> None:
@@ -92,6 +99,8 @@ class Entity:
         alert_radius: int | None = None,
         flee_hp_pct: float | None = None,
         ranged_range: int | None = None,
+        poison_potency: int | None = None,
+        poison_duration: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -120,6 +129,13 @@ class Entity:
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
+        # This entity's innate bite/attack poison capability, if any - set
+        # once at spawn from EntityDef.poison_potency/poison_duration,
+        # never mutated. See Fighter.poison_damage_per_turn/
+        # poison_turns_remaining above for the victim-side live state this
+        # inflicts on a landed hit (engine/combat.py's _apply_damage).
+        self.poison_potency = poison_potency
+        self.poison_duration = poison_duration
         self.stationary = stationary
         self.description = description
         # The line the Talk action shows for this specific entity (see

@@ -273,6 +273,13 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     if active_quest is not None:
         y += console.print(0, y, active_quest.format_for_hud(), fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    if fighter.poison_turns_remaining > 0:
+        y += console.print(
+            0, y,
+            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
+            f"({fighter.poison_turns_remaining} turn(s) left)",
+            fg=HUD_FG, width=width,
+        )
     y += console.print(
         0,
         y,
@@ -401,6 +408,13 @@ def render_look_hud(
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    if fighter.poison_turns_remaining > 0:
+        y += console.print(
+            0, y,
+            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
+            f"({fighter.poison_turns_remaining} turn(s) left)",
+            fg=HUD_FG, width=width,
+        )
     y += console.print(
         0,
         y,
@@ -501,6 +515,13 @@ def render_target_hud(
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    if fighter.poison_turns_remaining > 0:
+        y += console.print(
+            0, y,
+            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
+            f"({fighter.poison_turns_remaining} turn(s) left)",
+            fg=HUD_FG, width=width,
+        )
 
     if is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range):
         target = engine.game_map.blocking_entity_at(cursor_x, cursor_y)

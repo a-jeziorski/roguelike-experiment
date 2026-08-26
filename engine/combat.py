@@ -35,6 +35,12 @@ def _apply_damage(
         engine.message_log.add(
             f"{attacker.name} {verb} {defender.name} for {damage} damage.", category="combat"
         )
+        # Refreshes, never stacks: a repeat poisonous hit overwrites both
+        # fields rather than adding to them (see Fighter.poison_turns_remaining).
+        if attacker.poison_potency and attacker.poison_duration:
+            defender.fighter.poison_damage_per_turn = attacker.poison_potency
+            defender.fighter.poison_turns_remaining = attacker.poison_duration
+            engine.message_log.add(f"{defender.name} is poisoned!", category="combat")
     else:
         engine.message_log.add(
             f"{attacker.name} {verb} {defender.name} but does no damage.", category="combat"

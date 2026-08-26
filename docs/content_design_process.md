@@ -1126,6 +1126,81 @@ Perks are applied by calling the same `apply_perk_stat_bonus`/HP-bump logic
 adjacent Trainer first - deliberate: this exists to test a dungeon in
 isolation, not to simulate legitimately reaching it.
 
+## 0t. Status effects (`poison`, the first one)
+
+The first status effect: a landed hit (damage > 0 after defense) from an
+entity with `EntityDef.poison_potency`/`poison_duration` set afflicts the
+defender with "poisoned" - `poison_potency` damage per turn for
+`poison_duration` turns. `cave_spider` is the only entity that sets these
+today (a conservative first pass, `poison_potency: 1`/`poison_duration: 3`
+- exact tuning deferred to the upcoming Silversilk Caves rebalance pass,
+§0s/§2). Both fields must be set together or not at all (mirrors the
+established "both or neither" validator shape, e.g. `QuestDef.deadline_year`/
+`deadline_day`).
+
+**Two clearly separate pieces of state**, matching the existing split
+between an entity's static innate capabilities and its live combat state:
+
+- **Attacker capability** (`Entity.poison_potency`/`poison_duration`,
+  `int | None`, named identically to `EntityDef`'s fields, same shape as
+  `flee_hp_pct`/`alert_radius`/`ranged_range`): "my bite poisons for X
+  potency, Y duration." Set once at spawn (`engine/game_map.py`'s
+  `build_game_map` entity-spawn loop), never mutated.
+- **Victim's live affliction** (`Fighter.poison_damage_per_turn`/
+  `poison_turns_remaining`, `int = 0`): "I am currently poisoned, ticking
+  down." Lives on whichever `Fighter` (player's or a monster's) currently
+  carries it - poison is symmetric in principle (either side could carry
+  the live-affliction fields), even though only the player is ever
+  actually poisoned today, since nothing currently gives the player a
+  poison attack of its own.
+
+**Refresh, not stack**: a new poisoning hit always overwrites both live
+fields (`engine/combat.py`'s `_apply_damage`, inside the existing
+`damage > 0` block - a fully-absorbed hit correctly never poisons, no
+extra guard needed). No window/multi-source bookkeeping - the simplest
+correct choice for a first status effect, matching how nothing else in
+this codebase stacks a duration or magnitude.
+
+**Same-turn tick - the one subtle thing worth getting right on purpose.**
+Damage ticks in a new `Engine._apply_poison_damage`, called from
+`process_enemy_phase` right after `_apply_environmental_hazard` (both are
+damage-over-time sources, grouped together, checked before the generic
+player-death gate), NOT gated on `is_overworld` since poison should tick
+in dungeons too. Because that call happens strictly after *both* places
+poison could be freshly applied this same turn - `process_player_action`
+(the player's own attack, earlier) and `_handle_enemy_turns` (monster
+attacks, just above it) - **every freshly-poisoned entity takes its first
+tick immediately, the same turn as the bite**: `poison_duration=3` means 3
+total ticks, the first landing on the turn of the hit itself, not the turn
+after. Get this backwards and a monster's whole roster's damage-over-time
+math (§2) will be off by one tick per poisonous hit.
+
+**Killing via poison calls `on_entity_death` directly**, unlike
+`_apply_environmental_hazard`'s pattern (which only ever hits the player
+and safely defers to `process_enemy_phase`'s own generic
+`if not self.player.is_alive: on_entity_death(...)` check right after it).
+Poison must call it directly because it also has to correctly kill a
+*monster* - nothing else in `process_enemy_phase` ever calls
+`on_entity_death` on a non-player entity after `_handle_enemy_turns`
+returns. This is safe from a double-call (re-logged death message,
+re-awarded XP) only because `_apply_poison_damage` snapshots
+`game_map.entities` **fresh, at the top of its own call**, after
+`_handle_enemy_turns` has already run: anything that died earlier the same
+turn via `engine/combat.py`'s own direct `on_entity_death` call is already
+gone (a dead monster: already removed from `game_map.entities`; a dead
+player: the whole call is skipped, gated on `game_state == "playing"`).
+Don't hoist that snapshot earlier in a future refactor without
+re-verifying this invariant holds.
+
+Expected total damage from one poisonous attacker's landed hit for hits-
+to-kill math (§2) is `direct + potency * duration`, not just `direct` -
+factor this in when placing or rebalancing any poisonous monster. Monster
+poison state is never persisted across a save/load (`engine/save.py`'s
+`SavedPlayer` only carries the *player's* `poison_damage_per_turn`/
+`poison_turns_remaining`) - consistent with monster `Fighter` state beyond
+`(x, y, hp)` never being saved today; acceptable since nothing poisons a
+monster in this pass.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
@@ -1306,7 +1381,9 @@ a bug, but it means the ogre should never be the *first* though fight a
 player can reach without a weapon upgrade already in hand. For a quicker
 check than a full playthrough, `testbuild` (§0s) spawns a hand-picked
 build directly at a dungeon's entrance and reports its XP-equivalent
-against `DungeonDef.balance_reference_xp`, when set.
+against `DungeonDef.balance_reference_xp`, when set. For a poisonous
+monster (§0t), the defender's expected total damage per landed hit is
+`direct + potency * duration`, not just `direct` - include it in this math.
 
 **Check gear fairness across branching paths specifically.** Two branches
 that never reconverge can each be internally balanced and still create a

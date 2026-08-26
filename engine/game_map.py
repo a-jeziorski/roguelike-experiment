@@ -298,6 +298,8 @@ def build_game_map(
             alert_radius=edef.alert_radius,
             flee_hp_pct=edef.flee_hp_pct,
             ranged_range=edef.ranged_range,
+            poison_potency=edef.poison_potency,
+            poison_duration=edef.poison_duration,
             stationary=edef.stationary,
             description=edef.description,
             dialogue=spawn.dialogue or edef.dialogue,

@@ -568,6 +568,36 @@ class Engine:
             "Wind-driven sand tears at exposed skin and eyes.", category="combat"
         )
 
+    def _apply_poison_damage(self) -> None:
+        """Ticks every currently-poisoned entity (player or monster) once,
+        for whatever damage/duration engine/combat.py's _apply_damage last
+        set on its Fighter - refresh semantics, no stacking (see
+        _apply_damage). Runs once per process_enemy_phase call, strictly
+        after both process_player_action (earlier this turn) and
+        _handle_enemy_turns (just above) have resolved - so an entity
+        poisoned for the first time this turn, by either side, still takes
+        its first tick immediately: poison_duration=N means N total ticks,
+        the first landing the same turn as the bite, not the turn after.
+        Snapshots game_map.entities fresh each call - anything that died
+        earlier this same turn via combat.py's own direct on_entity_death
+        call is already gone (monster: already removed from
+        game_map.entities; player: already caught by process_enemy_phase's
+        own "if game_state == playing" guard around this call), so
+        on_entity_death can never double-fire for the same death in one
+        turn - don't hoist this snapshot earlier without re-checking that
+        invariant."""
+        for entity in list(self.game_map.entities):
+            if entity.fighter is None or entity.fighter.poison_turns_remaining <= 0:
+                continue
+            dmg = entity.fighter.poison_damage_per_turn
+            entity.fighter.hp -= dmg
+            entity.fighter.poison_turns_remaining -= 1
+            self.message_log.add(
+                f"{entity.name} writhes from poison, taking {dmg} damage.", category="combat"
+            )
+            if entity.fighter.hp <= 0:
+                self.on_entity_death(entity)
+
     def _advance_world_clock(self) -> None:
         """The only source of in-game time passing: one hour per turn taken
         on the overworld (dungeons/settlements never call this - is_overworld
@@ -982,6 +1012,9 @@ class Engine:
 
         if self.game_state == "playing":
             self._apply_environmental_hazard()
+
+        if self.game_state == "playing":
+            self._apply_poison_damage()
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)

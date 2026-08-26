@@ -41,6 +41,37 @@ def test_entity_def_rejects_unknown_ai():
         )
 
 
+def test_entity_def_poison_fields_default_none():
+    e = EntityDef(id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0)
+    assert e.poison_potency is None
+    assert e.poison_duration is None
+
+
+def test_entity_def_accepts_poison_potency_and_duration_together():
+    e = EntityDef(
+        id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
+        poison_potency=1, poison_duration=3,
+    )
+    assert e.poison_potency == 1
+    assert e.poison_duration == 3
+
+
+def test_entity_def_rejects_poison_potency_without_poison_duration():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
+            poison_potency=1,
+        )
+
+
+def test_entity_def_rejects_poison_duration_without_poison_potency():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
+            poison_duration=3,
+        )
+
+
 def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     guard = EntityDef(
         id="skeleton", name="Skeleton", glyph="s", color=(1, 2, 3), hp=16, attack=5, defense=2,

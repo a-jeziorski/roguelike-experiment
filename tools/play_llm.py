@@ -295,6 +295,11 @@ def render_hud_text(engine) -> str:
     if active_quest is not None:
         lines.append(active_quest.format_for_hud())
     lines.append(f"HP: {fighter.hp}/{fighter.max_hp}")
+    if fighter.poison_turns_remaining > 0:
+        lines.append(
+            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
+            f"({fighter.poison_turns_remaining} turn(s) left)"
+        )
     lines.append(
         f"ATK: {player.effective_attack}  DEF: {player.effective_defense}  "
         f"RANGED ATK: {player.effective_ranged_attack}"

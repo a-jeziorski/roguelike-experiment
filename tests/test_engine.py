@@ -60,6 +60,7 @@ def make_player(x: int, y: int, hp: int = 30, attack: int = 5, defense: int = 1)
 def make_monster(
     x: int, y: int, hp=5, attack=2, defense=0, ai=None,
     alert_radius=None, flee_hp_pct=None, ranged_range=None, stationary=False,
+    poison_potency=None, poison_duration=None,
 ) -> Entity:
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
@@ -70,6 +71,8 @@ def make_monster(
         alert_radius=alert_radius,
         flee_hp_pct=flee_hp_pct,
         ranged_range=ranged_range,
+        poison_potency=poison_potency,
+        poison_duration=poison_duration,
         stationary=stationary,
     )
 
@@ -949,6 +952,124 @@ def test_combat_damage_reflects_equipped_weapon_and_armor():
 
     # player attack 5+4=9 vs monster defense 0+3=3 -> 6 damage
     assert monster.fighter.hp == 20 - 6
+
+
+def test_poisonous_attacker_afflicts_poison_on_a_landed_hit():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic", poison_potency=2, poison_duration=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4 - 2  # direct hit, then poison's own first tick
+    assert player.fighter.poison_damage_per_turn == 2
+    assert player.fighter.poison_turns_remaining == 2  # duration 3, minus this turn's own tick
+
+
+def test_poison_does_not_apply_when_the_hit_is_fully_absorbed_by_defense():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=2)
+    monster = make_monster(2, 1, hp=5, attack=2, ai="hostile_basic", poison_potency=2, poison_duration=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # attack 2 - defense 2 = 0 damage
+    assert player.fighter.poison_turns_remaining == 0
+
+
+def test_poison_ticks_the_same_turn_it_is_inflicted():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic", poison_potency=2, poison_duration=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    # -4 direct damage, then poison's own first tick (-2) lands the SAME
+    # turn as the bite - duration=3 means 3 total ticks starting now, not
+    # starting next turn (see Engine._apply_poison_damage's docstring).
+    assert player.fighter.hp == 30 - 4 - 2
+    assert player.fighter.poison_turns_remaining == 2
+
+
+def test_poison_expires_after_its_full_duration():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=4, ai="hostile_basic", poison_potency=2, poison_duration=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())  # bite + poison's first tick
+    game_map.entities.remove(monster)  # isolate poison's own remaining decay from a second bite
+
+    engine.process_turn(WaitAction())  # second tick
+    engine.process_turn(WaitAction())  # third and final tick
+    assert player.fighter.poison_turns_remaining == 0
+
+    hp_after_poison_expires = player.fighter.hp
+    engine.process_turn(WaitAction())
+    assert player.fighter.hp == hp_after_poison_expires  # no more ticks
+
+
+def test_a_new_poisoning_hit_refreshes_rather_than_stacks():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=20, attack=1, ai="hostile_basic", poison_potency=3, poison_duration=5)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.poison_damage_per_turn == 3
+    assert player.fighter.poison_turns_remaining == 4  # duration 5, minus this turn's own tick
+
+    monster.poison_potency = 1
+    monster.poison_duration = 2
+    engine.process_turn(WaitAction())
+
+    # Overwritten, not stacked: damage_per_turn is the NEW bite's potency
+    # (1, not 3+1=4 or max(3,1)=3), and turns_remaining is the NEW bite's
+    # own duration minus this turn's own tick (2-1=1, not summed with what
+    # was left of the old affliction).
+    assert player.fighter.poison_damage_per_turn == 1
+    assert player.fighter.poison_turns_remaining == 1
+
+
+def test_poison_kills_a_poisoned_monster_via_on_entity_death():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 2, hp=3, attack=0, ai=None)
+    monster.xp_reward = 5
+    # Nothing in-game poisons a monster today (only cave_spider inflicts
+    # poison, and only the player is ever its defender) - set the live
+    # affliction directly to exercise _apply_poison_damage's monster path.
+    monster.fighter.poison_damage_per_turn = 3
+    monster.fighter.poison_turns_remaining = 1
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster not in game_map.entities
+    assert player.xp == 5  # awarded exactly once - guards on_entity_death against a double-fire
+
+
+def test_poison_kills_the_player_and_sets_dead_game_state():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.poison_damage_per_turn = 30
+    player.fighter.poison_turns_remaining = 1
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert engine.game_state == "dead"
+    assert player.fighter.hp <= 0
 
 
 def test_first_ranged_weapon_pickup_equips_directly():

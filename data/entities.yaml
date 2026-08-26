@@ -34,6 +34,11 @@ cave_spider:
   ai: skittish
   flee_hp_pct: 0.4
   xp_reward: 3
+  # A conservative first pass, roughly doubling one bite's total effective
+  # damage (3 direct + 3 poison over 3 turns) - exact tuning deferred to
+  # the upcoming Silversilk Caves rebalance pass (docs/content_design_process.md §0t/§2).
+  poison_potency: 1
+  poison_duration: 3
   description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
 
 skeleton:

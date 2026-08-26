@@ -116,6 +116,14 @@ class EntityDef(BaseModel):
     # Engine.adjacent_trainer regardless of catalog id; only meaningful on
     # a PEACEFUL_AI_TYPES entity, enforced the same way as shop_inventory).
     trainer_perks: list[str] = Field(default_factory=list)
+    # A landed hit (damage > 0 after defense) from this entity afflicts the
+    # defender with "poisoned": poison_potency damage per turn for
+    # poison_duration turns, refreshing rather than stacking on a repeat
+    # hit (see engine/combat.py's _apply_damage, engine/engine.py's
+    # _apply_poison_damage). None (the default) means this entity's
+    # attacks never poison anyone.
+    poison_potency: int | None = Field(default=None, gt=0)
+    poison_duration: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod
@@ -123,6 +131,12 @@ class EntityDef(BaseModel):
         if len(v) != 1:
             raise ValueError(f"glyph must be a single character, got {v!r}")
         return v
+
+    @model_validator(mode="after")
+    def poison_potency_and_duration_both_or_neither(self) -> "EntityDef":
+        if (self.poison_potency is None) != (self.poison_duration is None):
+            raise ValueError("poison_potency and poison_duration must be set together or not at all")
+        return self
 
 
 class ItemDef(BaseModel):

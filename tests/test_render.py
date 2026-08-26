@@ -214,6 +214,34 @@ def test_render_hud_shows_xp():
     assert "XP: 17" in text
 
 
+def test_render_hud_shows_poison_status_when_afflicted():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.fighter.poison_damage_per_turn = 2
+    player.fighter.poison_turns_remaining = 3
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "POISONED: 2 dmg/turn (3 turn(s) left)" in text
+
+
+def test_render_hud_omits_poison_status_when_not_afflicted():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "POISONED" not in text
+
+
 def test_render_hud_never_shows_a_not_given_quest():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)

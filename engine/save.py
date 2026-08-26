@@ -158,6 +158,13 @@ class SavedPlayer(BaseModel):
     equipped_armor: SavedItemSlot | None = None
     equipped_ranged_weapon: SavedItemSlot | None = None
     selected_potion_kind: str = "healing"
+    # The player's live poisoned-status affliction, if any (see
+    # Fighter.poison_damage_per_turn/poison_turns_remaining) - monster
+    # poison state is never saved, consistent with monster Fighter state
+    # beyond (x, y, hp) never being saved today (SavedLevelState's own
+    # alive_entity_spawns).
+    poison_damage_per_turn: int = 0
+    poison_turns_remaining: int = 0
 
 
 class SaveGame(BaseModel):
@@ -268,6 +275,8 @@ def capture_save(
         equipped_armor=_save_item_slot(player.equipped_armor),
         equipped_ranged_weapon=_save_item_slot(player.equipped_ranged_weapon),
         selected_potion_kind=player.selected_potion_kind,
+        poison_damage_per_turn=player.fighter.poison_damage_per_turn,
+        poison_turns_remaining=player.fighter.poison_turns_remaining,
     )
 
     places = {
@@ -311,6 +320,8 @@ def _build_item_entity(slot: SavedItemSlot, catalog: Catalog) -> Entity:
 
 def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     fighter = Fighter(max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE)
+    fighter.poison_damage_per_turn = saved.poison_damage_per_turn
+    fighter.poison_turns_remaining = saved.poison_turns_remaining
     # Perk-derived stat totals are *derived* from learned_perk_ids at
     # restore time, never stored redundantly (see SavedPlayer.learned_perk_ids) -
     # deliberately never touches fighter.hp here (see apply_perk_stat_bonus's
