@@ -119,6 +119,8 @@ class SavedQuestLogState(BaseModel):
     active_quest_id: str | None
     killed_entity_ids: list[str] = Field(default_factory=list)
     intimidated_entity_ids: list[str] = Field(default_factory=list)
+    cleared_species_ids: list[str] = Field(default_factory=list)
+    entity_kill_counts: dict[str, int] = Field(default_factory=dict)
     visited_dungeon_ids: list[str] = Field(default_factory=list)
     triggered_encounter_ids: list[str] = Field(default_factory=list)
     armed_encounters: dict[str, tuple[int, int, int]] = Field(default_factory=dict)
@@ -278,6 +280,8 @@ def capture_save(
         active_quest_id=quest_log.active_quest_id,
         killed_entity_ids=sorted(quest_log.killed_entity_ids),
         intimidated_entity_ids=sorted(quest_log.intimidated_entity_ids),
+        cleared_species_ids=sorted(quest_log.cleared_species_ids),
+        entity_kill_counts=dict(quest_log.entity_kill_counts),
         visited_dungeon_ids=sorted(quest_log.visited_dungeon_ids),
         triggered_encounter_ids=sorted(quest_log.triggered_encounter_ids),
         armed_encounters=dict(quest_log.armed_encounters),
@@ -398,6 +402,8 @@ def restore_save(
     quest_log.active_quest_id = save.quest_log.active_quest_id
     quest_log.killed_entity_ids = set(save.quest_log.killed_entity_ids)
     quest_log.intimidated_entity_ids = set(save.quest_log.intimidated_entity_ids)
+    quest_log.cleared_species_ids = set(save.quest_log.cleared_species_ids)
+    quest_log.entity_kill_counts = dict(save.quest_log.entity_kill_counts)
     quest_log.visited_dungeon_ids = set(save.quest_log.visited_dungeon_ids)
     quest_log.triggered_encounter_ids = set(save.quest_log.triggered_encounter_ids)
     quest_log.armed_encounters = dict(save.quest_log.armed_encounters)

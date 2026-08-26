@@ -491,6 +491,29 @@ def test_round_trip_preserves_intimidated_entity_ids(tmp_path):
     assert quest_log2.intimidated_entity_ids == {"millhaven_debtor"}
 
 
+def test_round_trip_preserves_cleared_species_ids_and_entity_kill_counts(tmp_path):
+    """Same shape and reasoning as killed_entity_ids/intimidated_entity_ids -
+    without persisting these, a save made after clearing a cull quest's
+    target species (or partway through spending a preserve-target's
+    tolerance) would silently lose that progress on reload."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    quest_log.cleared_species_ids.add("goblin")
+    quest_log.record_entity_killed("cave_spider")
+    quest_log.record_entity_killed("cave_spider")
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    assert quest_log2.cleared_species_ids == {"goblin"}
+    assert quest_log2.entity_kill_counts == {"cave_spider": 2}
+
+
 def test_round_trip_preserves_guard_hostility_cooldown(tmp_path):
     """Without persisting GameMap.hostility_expires_at, a save made mid-
     cooldown would reload with guards_hostile comparing against None

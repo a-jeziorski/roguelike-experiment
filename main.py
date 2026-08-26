@@ -252,6 +252,7 @@ def run_quest_log_mode(console: tcod.console.Console, context: tcod.context.Cont
                 engine.quest_log.killed_entity_ids,
                 engine.quest_log.visited_dungeon_ids,
                 engine.quest_log.intimidated_entity_ids,
+                engine.quest_log.cleared_species_ids,
             )
             if quests else ""
         )

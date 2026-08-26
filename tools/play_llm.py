@@ -616,6 +616,7 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
                 engine.player.inventory, engine.quest_log.killed_entity_ids,
                 engine.quest_log.visited_dungeon_ids,
                 engine.quest_log.intimidated_entity_ids,
+                engine.quest_log.cleared_species_ids,
             )
             print(f"    {description}")
 

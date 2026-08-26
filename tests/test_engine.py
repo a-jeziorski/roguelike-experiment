@@ -2250,6 +2250,156 @@ def test_engine_current_level_id_explicit_override_wins():
     assert engine.current_level_id == "level_01_ruins"
 
 
+def _make_two_level_goblin_dungeon(tmp_path):
+    """A synthetic 2-level dungeon (level_01: 2 goblins, level_02: 1
+    goblin), require_stairs_down: false so neither level needs a real
+    stairs chain - just enough content to test
+    Engine._entity_type_cleared_from_dungeon's whole-dungeon,
+    visited-and-unvisited-level population check."""
+    levels_dir = tmp_path / "levels"
+    levels_dir.mkdir(parents=True)
+    (levels_dir / "level_01.lvl").write_text(
+        "id: level_01\n"
+        "name: Test Level One\n"
+        "map: |\n"
+        "  #######\n"
+        "  #@gg.x#\n"
+        "  #######\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  "g": { entity: goblin }\n'
+        '  "x": stairs_up\n',
+        encoding="utf-8",
+    )
+    (levels_dir / "level_02.lvl").write_text(
+        "id: level_02\n"
+        "name: Test Level Two\n"
+        "map: |\n"
+        "  #######\n"
+        "  #@.g.x#\n"
+        "  #######\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  "g": { entity: goblin }\n'
+        '  "x": stairs_up\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    levels = load_levels(levels_dir, catalog, require_stairs_down=False)
+    game_map, player = build_game_map(levels["level_01"], catalog)
+    engine = Engine(
+        game_map, player, "Test Level One",
+        catalog=catalog, levels=levels, starting_level=levels["level_01"],
+        current_level_id="level_01",
+    )
+    return engine, levels
+
+
+def test_entity_type_cleared_from_dungeon_false_while_current_level_has_survivors(tmp_path):
+    engine, _ = _make_two_level_goblin_dungeon(tmp_path)
+    assert engine._entity_type_cleared_from_dungeon("goblin") is False
+
+
+def test_entity_type_cleared_from_dungeon_false_while_an_unvisited_level_has_spawns(tmp_path):
+    engine, _ = _make_two_level_goblin_dungeon(tmp_path)
+    # Kill both goblins on the current (visited) level, directly - level_02
+    # is never visited, so its own goblin is still authored-alive.
+    for goblin in [e for e in engine.game_map.entities if e.entity_id == "goblin"]:
+        engine.game_map.entities.remove(goblin)
+
+    assert engine._entity_type_cleared_from_dungeon("goblin") is False
+
+
+def test_entity_type_cleared_from_dungeon_true_once_every_level_is_accounted_for(tmp_path):
+    engine, levels = _make_two_level_goblin_dungeon(tmp_path)
+    for goblin in [e for e in engine.game_map.entities if e.entity_id == "goblin"]:
+        engine.game_map.entities.remove(goblin)
+    # Now "visit" level_02 too, with its own goblin already dead.
+    catalog = load_catalog()
+    level_02_map, _ = build_game_map(levels["level_02"], catalog)
+    for goblin in [e for e in level_02_map.entities if e.entity_id == "goblin"]:
+        level_02_map.entities.remove(goblin)
+    engine.visited_maps["level_02"] = level_02_map
+
+    assert engine._entity_type_cleared_from_dungeon("goblin") is True
+
+
+def test_entity_type_cleared_from_dungeon_false_for_a_non_dungeon_engine():
+    """self.levels is None for an Engine with no dungeon (e.g. the
+    overworld, or a bare test Engine) - the check is meaningless there and
+    must not crash."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    engine = Engine(game_map, player, "Test Level")
+
+    assert engine._entity_type_cleared_from_dungeon("goblin") is False
+
+
+def test_on_entity_death_marks_cleared_species_ids_once_the_whole_dungeon_is_clear(tmp_path):
+    engine, levels = _make_two_level_goblin_dungeon(tmp_path)
+    catalog = load_catalog()
+    level_02_map, _ = build_game_map(levels["level_02"], catalog)
+    engine.visited_maps["level_02"] = level_02_map
+    for goblin in [e for e in level_02_map.entities if e.entity_id == "goblin"]:
+        level_02_map.entities.remove(goblin)
+    quest = Quest(
+        id="clear_the_goblins", name="Clear the Goblins", description="",
+        completion_message="Done!", failure_message="",
+        target_cull_entity_id="goblin", questgiver_entity_id="grey_valley_elder",
+        status="in_progress",
+    )
+    engine.quest_log = QuestLog(quests={quest.id: quest})
+
+    goblins = [e for e in engine.game_map.entities if e.entity_id == "goblin"]
+    engine.on_entity_death(goblins[0])
+    assert "goblin" not in engine.quest_log.cleared_species_ids  # one goblin still alive
+
+    engine.on_entity_death(goblins[1])
+    assert "goblin" in engine.quest_log.cleared_species_ids
+
+
+def test_on_entity_death_does_not_scan_when_no_quest_cares(tmp_path):
+    """The whole-dungeon scan is gated on a live quest actually targeting
+    this species - confirmed indirectly: killing every goblin with no cull
+    quest in the log at all must not raise or otherwise misbehave."""
+    engine, levels = _make_two_level_goblin_dungeon(tmp_path)
+    goblins = list(engine.game_map.entities)
+    for goblin in [e for e in goblins if e.entity_id == "goblin"]:
+        engine.on_entity_death(goblin)
+
+    assert engine.quest_log.cleared_species_ids == set()
+
+
+def test_on_entity_death_fails_a_cull_quest_once_preservation_tolerance_is_exceeded():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    engine = Engine(game_map, player, "Test Level")
+    quest = Quest(
+        id="clear_the_goblins", name="Clear the Goblins", description="",
+        completion_message="Done!", failure_message="Too many spiders died.",
+        target_cull_entity_id="goblin", target_preserve_entity_id="cave_spider",
+        target_preserve_tolerance=1, questgiver_entity_id="grey_valley_elder",
+        status="in_progress",
+    )
+    engine.quest_log = QuestLog(quests={quest.id: quest})
+    spider_1 = make_monster(2, 1, hp=1, ai="skittish")
+    spider_1.entity_id = "cave_spider"
+    spider_2 = make_monster(2, 2, hp=1, ai="skittish")
+    spider_2.entity_id = "cave_spider"
+    game_map.entities.extend([spider_1, spider_2])
+
+    engine.on_entity_death(spider_1)
+    assert quest.status == "in_progress"  # first loss - within tolerance
+
+    engine.on_entity_death(spider_2)
+    assert quest.status == "failed"
+    assert "Too many spiders died." in engine.message_log.messages
+
+
 def test_destroy_dungeon_with_ruined_starting_level_keeps_the_entrance_walkable():
     """The walkable-ruins case (see docs/dungeon_bibles/wayford.md's
     "After: the Razing") - unlike the plain seal-it-off case above, the

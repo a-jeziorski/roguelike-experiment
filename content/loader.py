@@ -259,6 +259,8 @@ def load_quests(
             ("target_kill_entity_id", quest.target_kill_entity_id),
             ("reward_shop_discount_entity_id", quest.reward_shop_discount_entity_id),
             ("target_intimidate_entity_id", quest.target_intimidate_entity_id),
+            ("target_cull_entity_id", quest.target_cull_entity_id),
+            ("target_preserve_entity_id", quest.target_preserve_entity_id),
         ):
             if entity_id is not None and entity_id not in catalog.entities:
                 errors.append(f"quest '{quest_id}': {label} references unknown entity '{entity_id}'")
@@ -380,6 +382,14 @@ def load_quests(
                 "QuestLog.check_intimidate_report only ever completes an "
                 "intimidate quest by talking to its questgiver, so one "
                 "without a questgiver can never complete"
+            )
+
+        if quest.target_cull_entity_id is not None and quest.questgiver_entity_id is None:
+            errors.append(
+                f"quest '{quest_id}': target_cull_entity_id (a cull quest) "
+                "requires questgiver_entity_id too - QuestLog.check_cull_report "
+                "only ever completes a cull quest by talking to its "
+                "questgiver, so one without a questgiver can never complete"
             )
 
         if quest.requires_quest_id is not None and quest.requires_quest_id not in raw:

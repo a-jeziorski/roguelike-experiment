@@ -842,6 +842,214 @@ def test_load_quests_accepts_failed_description_with_target_intimidate_entity_id
     assert quests["bad_quest"].failed_description == "They're dead - so much for collecting."
 
 
+# --- cull-while-preserving (target_cull_entity_id/target_preserve_entity_id) ---
+
+
+def test_load_quests_accepts_a_valid_cull_and_preserve_quest(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "clear_the_goblins:\n"
+        "  name: Clear the Goblins\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: goblin\n"
+        "  target_preserve_entity_id: cave_spider\n"
+        "  target_preserve_tolerance: 5\n"
+        "  target_cleared_description: The goblins are gone.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["clear_the_goblins"].target_cull_entity_id == "goblin"
+    assert quests["clear_the_goblins"].target_preserve_entity_id == "cave_spider"
+    assert quests["clear_the_goblins"].target_preserve_tolerance == 5
+
+
+def test_load_quests_rejects_unknown_target_cull_entity(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: nonexistent_monster\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_cull_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_unknown_target_preserve_entity(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: goblin\n"
+        "  target_preserve_entity_id: nonexistent_critter\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_preserve_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_cull_and_another_trigger_set_at_once(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: goblin\n"
+        "  target_kill_entity_id: warden\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="at most one"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_a_cull_quest_with_no_questgiver(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_cull_entity_id: goblin\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="requires questgiver_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_preserve_target_without_a_cull_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_preserve_entity_id: cave_spider\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_preserve_entity_id is set but target_cull_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_preserve_target_equal_to_cull_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: goblin\n"
+        "  target_preserve_entity_id: goblin\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="same as target_cull_entity_id"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_rejects_target_cleared_description_without_a_cull_target(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  target_cleared_description: They're gone.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="target_cleared_description"):
+        load_quests(path, catalog)
+
+
+def test_load_quests_accepts_failed_description_with_target_cull_entity_id_and_no_deadline(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_cull_entity_id: goblin\n"
+        "  target_preserve_entity_id: cave_spider\n"
+        "  failed_description: Too many spiders died.\n"
+        "  starting_status: in_progress\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["bad_quest"].failed_description == "Too many spiders died."
+
+
+# --- time-gated availability (available_after_year/day) ---
+
+
+def test_load_quests_accepts_available_after_year_and_day_together(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "delayed_quest:\n"
+        "  name: Delayed Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  questgiver_entity_id: shopkeeper\n"
+        "  target_entity_id: village_chief\n"
+        "  available_after_year: 87\n"
+        "  available_after_day: 67\n"
+        "  starting_status: not_given\n",
+    )
+    catalog = load_catalog()
+
+    quests = load_quests(path, catalog)
+
+    assert quests["delayed_quest"].available_after_year == 87
+    assert quests["delayed_quest"].available_after_day == 67
+
+
+def test_load_quests_rejects_available_after_year_without_day(tmp_path):
+    path = write_quests(
+        tmp_path,
+        "bad_quest:\n"
+        "  name: Bad Quest\n"
+        "  description: x\n"
+        "  completion_message: x\n"
+        "  target_entity_id: village_chief\n"
+        "  available_after_year: 87\n"
+        "  starting_status: not_given\n",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="available_after_year and available_after_day"):
+        load_quests(path, catalog)
+
+
 def test_load_quests_allows_the_full_set_of_description_overrides(tmp_path):
     path = write_quests(
         tmp_path,

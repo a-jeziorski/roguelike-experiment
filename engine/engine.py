@@ -238,8 +238,50 @@ class Engine:
             for quest, was_in_progress in self.quest_log.fail_intimidate_by_death(entity.entity_id):
                 if was_in_progress and quest.failure_message:
                     self.message_log.add(quest.failure_message)
+            # A cull quest's target species is "cleared" the moment none
+            # remain anywhere in this dungeon - checked here (not at
+            # report time) since the questgiver is typically reported to
+            # from a *different* Engine than the one the kill happened on,
+            # which has no visibility into this dungeon's levels. Gated on
+            # a live quest actually caring, since the whole-dungeon scan
+            # isn't free and every other kill in the game would otherwise
+            # trigger it for nothing.
+            if any(
+                q.target_cull_entity_id == entity.entity_id and q.status in ("not_given", "in_progress")
+                for q in self.quest_log.quests.values()
+            ):
+                if self._entity_type_cleared_from_dungeon(entity.entity_id):
+                    self.quest_log.cleared_species_ids.add(entity.entity_id)
+            # Same action-triggered-failure timing as the intimidate case
+            # above, just with a threshold instead of zero tolerance - see
+            # QuestLog.fail_cull_by_preservation_loss.
+            for quest, was_in_progress in self.quest_log.fail_cull_by_preservation_loss(entity.entity_id):
+                if was_in_progress and quest.failure_message:
+                    self.message_log.add(quest.failure_message)
             if entity.xp_reward:
                 self._award_xp(entity.xp_reward, "kill")
+
+    def _entity_type_cleared_from_dungeon(self, entity_id: str) -> bool:
+        """True if no living entity with this catalog id remains anywhere
+        in this Engine's dungeon - every level, visited or not. An
+        unvisited level's spawns are assumed still alive (they can't have
+        been killed without being visited), read from the static
+        ParsedLevel content (self.levels), which is always fully known
+        regardless of visitation - unlike a live GameMap scan, this never
+        needs a hand-authored total that could drift out of sync with the
+        level files. False (never cleared) if self.levels is None - this
+        Engine isn't a real multi-level dungeon (e.g. the overworld), so
+        the check is meaningless there."""
+        if self.levels is None:
+            return False
+        for level_id, level in self.levels.items():
+            game_map = self.visited_maps.get(level_id)
+            if game_map is not None:
+                if any(e.entity_id == entity_id for e in game_map.entities):
+                    return False
+            elif any(spawn.entity.id == entity_id for spawn in level.entity_spawns):
+                return False
+        return True
 
     def _award_xp(self, amount: int, reason: str) -> None:
         """The single funnel every XP source routes through (kills, quest
@@ -816,9 +858,12 @@ class Engine:
         because its target dungeon's already been recorded visited (see
         QuestLog.check_dungeon_report), or completes an intimidate quest
         they're the questgiver for because its target's already been
-        recorded intimidated (see QuestLog.check_intimidate_report). Never
-        touches self.clock or calls _handle_enemy_turns - talking costs
-        nothing."""
+        recorded intimidated (see QuestLog.check_intimidate_report), or
+        completes a cull quest they're the questgiver for because its
+        target species has already been recorded cleared (see
+        QuestLog.check_cull_report). Reads self.clock (only to gate a
+        not-yet-available quest in check_questgiver) but never advances
+        it, and never calls _handle_enemy_turns - talking costs nothing."""
         target = self._find_adjacent_peaceful_npc()
         if target is None:
             self.message_log.add("There's no one here to talk to.", category="dialogue")
@@ -839,7 +884,7 @@ class Engine:
         )
         self.message_log.add(f'{target.name}: "{line}"', category="dialogue")
 
-        for quest in self.quest_log.check_questgiver(target.entity_id):
+        for quest in self.quest_log.check_questgiver(target.entity_id, self.clock):
             if quest.status == "completed":
                 self.complete_quest(quest, message=quest.already_done_message or quest.completion_message)
             else:
@@ -862,6 +907,9 @@ class Engine:
             self.complete_quest(quest)
 
         for quest in self.quest_log.check_intimidate_report(target.entity_id):
+            self.complete_quest(quest)
+
+        for quest in self.quest_log.check_cull_report(target.entity_id):
             self.complete_quest(quest)
 
     def process_player_action(self, action: Action) -> bool:

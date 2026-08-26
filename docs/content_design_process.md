@@ -770,6 +770,87 @@ than "any level mismatch," so a player resuming genuinely deeper in an
 unrelated multi-level dungeon never has their progress discarded by an
 unrelated destruction elsewhere.
 
+## 0n. Time-gated availability (`available_after_year`/`available_after_day`)
+
+The simplest of the reactive-world mechanisms: `QuestDef.available_after_year`/
+`available_after_day` (both set together or not at all, same shape as
+`deadline_year`/`deadline_day`) is a pure calendar floor -
+`QuestLog.check_questgiver` silently withholds the quest (same "NPC just
+says their normal line" treatment `requires_quest_id` already gets) until
+the clock reaches that date, checked with the same `(clock.year,
+clock.day)` tuple-comparison idiom `QuestLog.check_deadlines` already
+uses for the opposite direction (a floor instead of a ceiling).
+
+**Independent of every other gate.** `requires_quest_id` (gated on another
+quest's completion) and `available_after_year`/`day` (gated on the clock)
+can both be set on the same quest - both must be satisfied, checked as
+two separate early-`continue`s in the same loop. Neither is gated on
+`on_fail`/a deadline lapsing: this is a *floor*, not a *consequence* -
+content whose availability follows the world clock itself, independent of
+whether any particular quest succeeded or failed. The reference use case
+is the goblin horde's aftermath: the tribe disperses 3 days after
+`spreading_the_warning`'s own deadline (day 64 -> day 67), regardless of
+whether that warning made it to Wayford in time - a warning delivered on
+schedule doesn't turn the horde back, it only lets the town prepare, so
+tying the aftermath quest to `spreading_the_warning`'s *outcome* would
+have been wrong; tying it to the clock alone is correct.
+
+**Needs `Engine.talk_to_adjacent` to thread `self.clock` through** -
+`check_questgiver` reads it but never advances it (only the overworld
+Engine's own turn processing ever calls `GameClock.advance_hour`), so this
+is a read-only dependency, not a new place the clock can move from.
+
+## 0o. Cull-while-preserving (`target_cull_entity_id`/`target_preserve_entity_id`)
+
+The sixth quest trigger shape: clear every member of one species from a
+dungeon while another species survives. Same two-step "record the deed,
+complete only on report" pattern as every other trigger, but "the deed"
+here (whether a species is fully cleared) can't be recorded the way a
+kill/intimidate/fetch quest's single-target deed can, and needs its own
+explanation.
+
+**Why "cleared" is a population check, not a kill count.** `killed_entity_ids`
+(the kill-quest mechanism) is a boolean set, correct only for a catalog id
+that spawns exactly once in the whole game (see its own docstring caveat)
+- a cull target is typically a whole tribe, many spawns of the same
+catalog id. Rather than authoring a hand-typed total on the quest (which
+can silently drift out of sync the moment a level file's roster changes),
+`Engine._entity_type_cleared_from_dungeon(entity_id)` checks the *live*
+population instead: for every level in the dungeon (`self.levels`, always
+fully known regardless of visitation), a visited level's `GameMap` is
+scanned for survivors, and an *unvisited* level's spawns are read straight
+from its static `ParsedLevel.entity_spawns` and assumed still alive (they
+can't have been killed without being visited) - so the check is correct
+whether or not the player has actually reached every level yet, with no
+number to keep in sync anywhere.
+
+**Recorded at kill-time, not computed at report-time** - the same class of
+subtlety as `0m`'s `current_level_id` gotcha. The questgiver is typically
+reported to from a *different* Engine (the settlement) than the one the
+kill happened on (the dungeon), which has no visibility into that
+dungeon's levels by the time the player gets back to report. So
+`Engine.on_entity_death` checks `_entity_type_cleared_from_dungeon` and
+writes the result into `QuestLog.cleared_species_ids` immediately, while
+still on the dungeon's own Engine - `QuestLog.check_cull_report` (called
+later, possibly from anywhere) just reads that boolean back, mirroring
+`check_kill_report`'s shape exactly. Gated on a live quest actually
+targeting that species first (`any(q.target_cull_entity_id == entity_id
+...)`), since the whole-dungeon scan isn't free and every other kill in
+the game would otherwise trigger it for nothing.
+
+**Preservation failure is a threshold, not zero-tolerance** - `QuestLog.entity_kill_counts`
+(a plain counter, incremented unconditionally by `record_entity_killed`
+for every death, the same "record regardless of whether any quest cares"
+philosophy as `killed_entity_ids`) is compared against
+`target_preserve_tolerance` in `QuestLog.fail_cull_by_preservation_loss`,
+called from `Engine.on_entity_death` immediately - same
+action-triggered-failure timing as `target_intimidate_entity_id`'s
+`fail_intimidate_by_death` (§0l), just with a threshold instead of always
+zero. `target_preserve_tolerance: 0` (the default) reproduces the
+intimidate quest's exact zero-tolerance bar if a future quest wants it;
+the reference example (Silversilk Caves' goblins vs. cave spiders) uses a
+tolerance of 5.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

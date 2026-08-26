@@ -324,8 +324,45 @@ class QuestDef(BaseModel):
     # action-triggered failure; every other failure is deadline- or
     # dungeon-destruction-based (see failed_description's validator below).
     target_intimidate_entity_id: str | None = None
+    # A sixth trigger shape: cull a whole species from a dungeon while
+    # another species survives. Unlike every other trigger, "cleared" is a
+    # population check (no living entity with this catalog id remains
+    # anywhere in the questgiver's dungeon - see
+    # Engine._entity_type_cleared_from_dungeon), not a hand-authored kill
+    # count that could drift out of sync with the level files. Recorded
+    # into QuestLog.cleared_species_ids the instant the last one dies
+    # (Engine.on_entity_death), completed only on report to
+    # questgiver_entity_id (QuestLog.check_cull_report) - same two-step
+    # shape as every other trigger.
+    target_cull_entity_id: str | None = None
+    # The species this cull quest must not wipe out - only meaningful
+    # alongside target_cull_entity_id (validated below). Tracked via
+    # QuestLog.entity_kill_counts (every kill of any entity id, counted
+    # unconditionally); exceeding target_preserve_tolerance force-fails
+    # the quest immediately (QuestLog.fail_cull_by_preservation_loss),
+    # same action-triggered-failure timing as target_intimidate_entity_id's
+    # fail_intimidate_by_death, just with a threshold instead of zero
+    # tolerance.
+    target_preserve_entity_id: str | None = None
+    # How many target_preserve_entity_id deaths are still forgivable - the
+    # (tolerance + 1)th one fails the quest. 0 (the default) is
+    # zero-tolerance, same bar as an intimidate quest's target dying.
+    target_preserve_tolerance: int = Field(default=0, ge=0)
     deadline_year: int | None = None
     deadline_day: int | None = None
+    # Both set together or not at all (validated below): the earliest the
+    # clock can be for this quest to be grantable at all -
+    # QuestLog.check_questgiver skips a not-yet-available quest silently,
+    # the same "NPC just says their normal line" treatment
+    # requires_quest_id already gets. Independent of any other quest's
+    # outcome - unlike requires_quest_id (gated on completion status) or
+    # on_fail (gated on a quest's own failure), this is a pure calendar
+    # floor, for content whose availability follows the world clock
+    # itself rather than another quest's fate (e.g. "3 days after the
+    # goblin horde was due to reach Wayford, whether or not the warning
+    # got there in time").
+    available_after_year: int | None = None
+    available_after_day: int | None = None
     questgiver_entity_id: str | None = None
     given_message: str = ""
     already_done_message: str = ""
@@ -379,6 +416,13 @@ class QuestDef(BaseModel):
     # intimidate-then-report trigger. Only meaningful alongside
     # target_intimidate_entity_id.
     target_intimidated_description: str = ""
+    # Quest log pane override for a cull quest (target_cull_entity_id)
+    # while in_progress and the target species has actually been recorded
+    # cleared (not yet reported to the questgiver) - see
+    # Quest.current_description. Same shape again, for the
+    # clear-then-report trigger. Only meaningful alongside
+    # target_cull_entity_id.
+    target_cleared_description: str = ""
     # Quest log pane override once this quest is "completed" - a summary of
     # what happened and what was earned, not just the original pitch. ""
     # falls back to `description`.
@@ -410,14 +454,14 @@ class QuestDef(BaseModel):
         triggers = [
             self.target_dungeon_id, self.target_entity_id,
             self.target_kill_entity_id, self.target_item_id,
-            self.target_intimidate_entity_id,
+            self.target_intimidate_entity_id, self.target_cull_entity_id,
         ]
         if sum(t is not None for t in triggers) > 1:
             raise ValueError(
                 "a quest can set at most one of target_dungeon_id/"
                 "target_entity_id/target_kill_entity_id/target_item_id/"
-                "target_intimidate_entity_id (ambiguous which completion "
-                "trigger applies)"
+                "target_intimidate_entity_id/target_cull_entity_id "
+                "(ambiguous which completion trigger applies)"
             )
         return self
 
@@ -428,14 +472,16 @@ class QuestDef(BaseModel):
             and self.deadline_year is None
             and self.voided_by_dungeon_id is None
             and self.target_intimidate_entity_id is None
+            and self.target_cull_entity_id is None
         ):
             raise ValueError(
                 "failed_description is set but there's no deadline, no "
-                "voided_by_dungeon_id, and no target_intimidate_entity_id - "
-                "QuestLog.check_deadlines, QuestLog.void_by_dungeon, and "
-                "QuestLog.fail_intimidate_by_death are the only ways a "
-                "quest ever fails, so a quest with none of these can never "
-                "show it"
+                "voided_by_dungeon_id, no target_intimidate_entity_id, and "
+                "no target_cull_entity_id - QuestLog.check_deadlines, "
+                "QuestLog.void_by_dungeon, QuestLog.fail_intimidate_by_death, "
+                "and QuestLog.fail_cull_by_preservation_loss are the only "
+                "ways a quest ever fails, so a quest with none of these can "
+                "never show it"
             )
         return self
 
@@ -443,6 +489,36 @@ class QuestDef(BaseModel):
     def deadline_both_or_neither(self) -> "QuestDef":
         if (self.deadline_year is None) != (self.deadline_day is None):
             raise ValueError("deadline_year and deadline_day must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def available_after_both_or_neither(self) -> "QuestDef":
+        if (self.available_after_year is None) != (self.available_after_day is None):
+            raise ValueError(
+                "available_after_year and available_after_day must be set together or not at all"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_preserve_entity_id_requires_a_cull_target(self) -> "QuestDef":
+        if self.target_preserve_entity_id is not None and self.target_cull_entity_id is None:
+            raise ValueError(
+                "target_preserve_entity_id is set but target_cull_entity_id "
+                "isn't - a preserve clause makes no sense without a cull "
+                "quest to attach to"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_preserve_entity_id_differs_from_cull_target(self) -> "QuestDef":
+        if (
+            self.target_preserve_entity_id is not None
+            and self.target_preserve_entity_id == self.target_cull_entity_id
+        ):
+            raise ValueError(
+                "target_preserve_entity_id is the same as target_cull_entity_id - "
+                "killing and preserving the same species is incoherent"
+            )
         return self
 
     @model_validator(mode="after")
@@ -504,6 +580,16 @@ class QuestDef(BaseModel):
                 "target_intimidate_entity_id isn't - this override only "
                 "ever applies to an intimidate quest, checked against "
                 "whether the target's been recorded intimidated"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def target_cleared_description_requires_a_cull_target(self) -> "QuestDef":
+        if self.target_cleared_description and self.target_cull_entity_id is None:
+            raise ValueError(
+                "target_cleared_description is set but target_cull_entity_id "
+                "isn't - this override only ever applies to a cull quest, "
+                "checked against whether the species has been recorded cleared"
             )
         return self
 

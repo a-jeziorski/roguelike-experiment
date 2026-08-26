@@ -401,7 +401,7 @@ def test_check_questgiver_grants_a_not_given_quest():
     quest = make_quest(status="not_given", questgiver_entity_id="escaped_prisoner")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.check_questgiver("escaped_prisoner")
+    changed = log.check_questgiver("escaped_prisoner", GameClock())
 
     assert changed == [quest]
     assert quest.status == "in_progress"
@@ -411,7 +411,7 @@ def test_check_questgiver_non_matching_entity_is_a_no_op():
     quest = make_quest(status="not_given", questgiver_entity_id="escaped_prisoner")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.check_questgiver("villager")
+    changed = log.check_questgiver("villager", GameClock())
 
     assert changed == []
     assert quest.status == "not_given"
@@ -421,7 +421,7 @@ def test_check_questgiver_does_not_refire_once_granted():
     quest = make_quest(status="in_progress", questgiver_entity_id="escaped_prisoner")
     log = QuestLog(quests={quest.id: quest})
 
-    changed = log.check_questgiver("escaped_prisoner")
+    changed = log.check_questgiver("escaped_prisoner", GameClock())
 
     assert changed == []
 
@@ -434,7 +434,7 @@ def test_check_questgiver_jumps_straight_to_completed_if_kill_target_already_dea
     )
     log = QuestLog(quests={quest.id: quest}, killed_entity_ids={"warden"})
 
-    changed = log.check_questgiver("escaped_prisoner")
+    changed = log.check_questgiver("escaped_prisoner", GameClock())
 
     assert changed == [quest]
     assert quest.status == "completed"
@@ -448,7 +448,7 @@ def test_check_questgiver_jumps_straight_to_completed_if_dungeon_already_visited
     )
     log = QuestLog(quests={quest.id: quest}, visited_dungeon_ids={"millhaven"})
 
-    changed = log.check_questgiver("wayford_caravan_master")
+    changed = log.check_questgiver("wayford_caravan_master", GameClock())
 
     assert changed == [quest]
     assert quest.status == "completed"
@@ -463,7 +463,7 @@ def test_check_questgiver_jumps_straight_to_completed_if_intimidate_target_alrea
     )
     log = QuestLog(quests={quest.id: quest}, intimidated_entity_ids={"millhaven_debtor"})
 
-    changed = log.check_questgiver("wayford_provisioner")
+    changed = log.check_questgiver("wayford_provisioner", GameClock())
 
     assert changed == [quest]
     assert quest.status == "completed"
@@ -477,7 +477,7 @@ def test_check_questgiver_withholds_a_quest_whose_prerequisite_is_not_yet_comple
     )
     log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
 
-    changed = log.check_questgiver("village_chief")
+    changed = log.check_questgiver("village_chief", GameClock())
 
     assert changed == []
     assert chained.status == "not_given"
@@ -491,7 +491,7 @@ def test_check_questgiver_grants_a_quest_once_its_prerequisite_is_completed():
     )
     log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
 
-    changed = log.check_questgiver("village_chief")
+    changed = log.check_questgiver("village_chief", GameClock())
 
     assert changed == [chained]
     assert chained.status == "in_progress"
@@ -505,7 +505,7 @@ def test_check_questgiver_withholds_a_quest_whose_prerequisite_failed():
     )
     log = QuestLog(quests={prereq.id: prereq, chained.id: chained})
 
-    changed = log.check_questgiver("village_chief")
+    changed = log.check_questgiver("village_chief", GameClock())
 
     assert changed == []
     assert chained.status == "not_given"  # permanently ungrantable - correct, not a bug
@@ -1493,3 +1493,313 @@ def test_current_description_completed_takes_priority_over_target_intimidated_de
         completed_description="All done.",
     )
     assert quest.current_description([], set(), set(), {"millhaven_debtor"}) == "All done."
+
+
+# --- check_questgiver: available_after_year/day ---
+
+
+def test_check_questgiver_withholds_a_quest_not_yet_available():
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None, target_entity_id="village_chief",
+        questgiver_entity_id="village_chief",
+        available_after_year=87, available_after_day=67,
+    )
+    log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=87, day=66)  # one day short
+
+    changed = log.check_questgiver("village_chief", clock)
+
+    assert changed == []
+    assert quest.status == "not_given"
+
+
+def test_check_questgiver_grants_a_quest_exactly_on_its_available_after_day():
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None, target_entity_id="village_chief",
+        questgiver_entity_id="village_chief",
+        available_after_year=87, available_after_day=67,
+    )
+    log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=87, day=67)
+
+    changed = log.check_questgiver("village_chief", clock)
+
+    assert changed == [quest]
+    assert quest.status == "in_progress"
+
+
+def test_check_questgiver_grants_a_quest_well_past_its_available_after_day():
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None, target_entity_id="village_chief",
+        questgiver_entity_id="village_chief",
+        available_after_year=87, available_after_day=67,
+    )
+    log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=87, day=200)
+
+    changed = log.check_questgiver("village_chief", clock)
+
+    assert changed == [quest]
+    assert quest.status == "in_progress"
+
+
+def test_check_questgiver_ignores_available_after_when_unset():
+    """No available_after_year set at all - grantable immediately, same as
+    every quest before this feature existed."""
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None, target_entity_id="village_chief",
+        questgiver_entity_id="village_chief",
+    )
+    log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=1, day=1)  # long before the game even starts
+
+    changed = log.check_questgiver("village_chief", clock)
+
+    assert changed == [quest]
+
+
+def test_check_questgiver_jumps_straight_to_completed_if_cull_target_already_cleared():
+    quest = make_quest(
+        status="not_given", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest}, cleared_species_ids={"goblin"})
+
+    changed = log.check_questgiver("grey_valley_elder", GameClock())
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+# --- fail_cull_by_preservation_loss ---
+
+
+def test_fail_cull_by_preservation_loss_does_not_fail_under_tolerance():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", target_preserve_tolerance=5,
+        status="in_progress",
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"cave_spider": 5})
+
+    changed = log.fail_cull_by_preservation_loss("cave_spider")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_fail_cull_by_preservation_loss_fails_the_instant_tolerance_is_exceeded():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", target_preserve_tolerance=5,
+        status="in_progress",
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"cave_spider": 6})
+
+    changed = log.fail_cull_by_preservation_loss("cave_spider")
+
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"
+
+
+def test_fail_cull_by_preservation_loss_zero_tolerance_fails_on_the_first_death():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", status="in_progress",  # tolerance defaults 0
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"cave_spider": 1})
+
+    changed = log.fail_cull_by_preservation_loss("cave_spider")
+
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"
+
+
+def test_fail_cull_by_preservation_loss_ignores_a_different_entitys_death():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", target_preserve_tolerance=0,
+        status="in_progress",
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"rat": 10})
+
+    changed = log.fail_cull_by_preservation_loss("rat")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_fail_cull_by_preservation_loss_reports_not_given_quests_as_not_in_progress():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", target_preserve_tolerance=0,
+        status="not_given",
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"cave_spider": 1})
+
+    changed = log.fail_cull_by_preservation_loss("cave_spider")
+
+    assert changed == [(quest, False)]
+    assert quest.status == "failed"
+
+
+def test_fail_cull_by_preservation_loss_leaves_a_completed_quest_untouched():
+    quest = make_quest(
+        target_dungeon_id=None, target_cull_entity_id="goblin",
+        target_preserve_entity_id="cave_spider", target_preserve_tolerance=0,
+        status="completed",
+    )
+    log = QuestLog(quests={quest.id: quest}, entity_kill_counts={"cave_spider": 1})
+
+    changed = log.fail_cull_by_preservation_loss("cave_spider")
+
+    assert changed == []
+    assert quest.status == "completed"
+
+
+# --- check_cull_report ---
+
+
+def test_check_cull_report_completes_when_talking_to_questgiver_after_cleared():
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest}, cleared_species_ids={"goblin"})
+
+    changed = log.check_cull_report("grey_valley_elder")
+
+    assert changed == [quest]
+    assert quest.status == "completed"
+
+
+def test_check_cull_report_is_a_no_op_before_cleared():
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest})
+
+    changed = log.check_cull_report("grey_valley_elder")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_cull_report_is_a_no_op_when_talking_to_a_different_npc():
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest}, cleared_species_ids={"goblin"})
+
+    changed = log.check_cull_report("village_chief")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+def test_check_cull_report_does_not_refire_on_an_already_terminal_quest():
+    quest = make_quest(
+        status="completed", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest}, cleared_species_ids={"goblin"})
+
+    changed = log.check_cull_report("grey_valley_elder")
+
+    assert changed == []
+
+
+def test_check_cull_report_ignores_a_different_cleared_species():
+    quest = make_quest(
+        status="in_progress", target_dungeon_id=None,
+        questgiver_entity_id="grey_valley_elder", target_cull_entity_id="goblin",
+    )
+    log = QuestLog(quests={quest.id: quest}, cleared_species_ids={"rat"})
+
+    changed = log.check_cull_report("grey_valley_elder")
+
+    assert changed == []
+    assert quest.status == "in_progress"
+
+
+# --- record_entity_killed: entity_kill_counts ---
+
+
+def test_record_entity_killed_increments_entity_kill_counts():
+    log = QuestLog()
+
+    log.record_entity_killed("goblin")
+    log.record_entity_killed("goblin")
+    log.record_entity_killed("rat")
+
+    assert log.entity_kill_counts == {"goblin": 2, "rat": 1}
+    assert log.killed_entity_ids == {"goblin", "rat"}
+
+
+# --- reset: cleared_species_ids/entity_kill_counts ---
+
+
+def test_reset_clears_cleared_species_ids_and_entity_kill_counts():
+    quest = make_quest(status="in_progress", target_dungeon_id=None)
+    log = QuestLog(
+        quests={quest.id: quest},
+        cleared_species_ids={"goblin"},
+        entity_kill_counts={"goblin": 12, "cave_spider": 2},
+    )
+
+    log.reset()
+
+    assert log.cleared_species_ids == set()
+    assert log.entity_kill_counts == {}
+
+
+# --- current_description: target_cleared_description ---
+
+
+def test_current_description_uses_target_cleared_description_when_recorded_cleared():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_cull_entity_id="goblin", questgiver_entity_id="grey_valley_elder",
+        target_cleared_description="The goblins are gone - go tell them.",
+    )
+    assert (
+        quest.current_description([], set(), set(), set(), {"goblin"})
+        == "The goblins are gone - go tell them."
+    )
+
+
+def test_current_description_ignores_target_cleared_description_before_cleared():
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_cull_entity_id="goblin", questgiver_entity_id="grey_valley_elder",
+        target_cleared_description="The goblins are gone - go tell them.",
+    )
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
+
+
+def test_current_description_ignores_target_cleared_description_with_no_cleared_species_arg():
+    """cleared_species_ids defaults to None (treated as empty) when the
+    caller doesn't pass it - confirms that default doesn't crash and
+    correctly falls back to the starting pitch."""
+    quest = make_quest(
+        status="in_progress", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_cull_entity_id="goblin", questgiver_entity_id="grey_valley_elder",
+        target_cleared_description="The goblins are gone - go tell them.",
+    )
+    assert quest.current_description([], set(), set(), set()) == "The starting pitch."
+
+
+def test_current_description_completed_takes_priority_over_target_cleared_description():
+    quest = make_quest(
+        status="completed", description="The starting pitch.",
+        target_dungeon_id=None,
+        target_cull_entity_id="goblin", questgiver_entity_id="grey_valley_elder",
+        target_cleared_description="The goblins are gone - go tell them.",
+        completed_description="All done.",
+    )
+    assert quest.current_description([], set(), set(), set(), {"goblin"}) == "All done."

@@ -135,10 +135,30 @@ class Quest:
     # QuestLog.fail_intimidate_by_death force-fails the quest the instant
     # that happens, not on the next report.
     target_intimidate_entity_id: str | None = None
+    # A sixth trigger shape: cull a whole species from a dungeon while
+    # another species survives - see content.schema.QuestDef's matching
+    # field for the full design. "Cleared" is a population check
+    # (Engine._entity_type_cleared_from_dungeon), recorded into
+    # QuestLog.cleared_species_ids the instant the last one dies
+    # (Engine.on_entity_death), completed only on report to
+    # questgiver_entity_id (QuestLog.check_cull_report).
+    target_cull_entity_id: str | None = None
+    # The species this cull quest must not wipe out - only meaningful
+    # alongside target_cull_entity_id. Exceeding target_preserve_tolerance
+    # force-fails the quest immediately (QuestLog.fail_cull_by_preservation_loss),
+    # same timing as target_intimidate_entity_id's fail_intimidate_by_death.
+    target_preserve_entity_id: str | None = None
+    target_preserve_tolerance: int = 0
     # None means no deadline - check_deadlines/format_for_hud both skip a
     # quest with no deadline_day rather than crash on it.
     deadline_year: int | None = None
     deadline_day: int | None = None
+    # Both None means always available (from the moment it's otherwise
+    # grantable) - the earliest the clock can be for QuestLog.check_questgiver
+    # to grant this quest at all. Independent of any other quest's outcome,
+    # a pure calendar floor - see content.schema.QuestDef's matching field.
+    available_after_year: int | None = None
+    available_after_day: int | None = None
     # If set, this quest starts "not_given" and is granted by talking to the
     # matching catalog entity id (see QuestLog.check_questgiver) instead of
     # being given at game start.
@@ -195,6 +215,7 @@ class Quest:
     target_dead_description: str = ""
     target_visited_description: str = ""
     target_intimidated_description: str = ""
+    target_cleared_description: str = ""
     completed_description: str = ""
     failed_description: str = ""
     # Every consequence applied the moment this quest's deadline passes -
@@ -224,7 +245,7 @@ class Quest:
 
     def current_description(
         self, inventory: list["Entity"], killed_entity_ids: set[str], visited_dungeon_ids: set[str],
-        intimidated_entity_ids: set[str],
+        intimidated_entity_ids: set[str], cleared_species_ids: set[str] | None = None,
     ) -> str:
         """What the quest log screen shows for this quest right now -
         richer than the static pitch `description` alone, so a quest that
@@ -249,8 +270,15 @@ class Quest:
         more for an intimidate quest (target_intimidate_entity_id) whose
         target is actually in `intimidated_entity_ids` (same predicate
         QuestLog.check_intimidate_report uses) - intimidated, but not yet
-        reported. All four are still "in_progress" at this point, but
-        worth saying differently than the original pitch."""
+        reported; target_cleared_description is the same idea once more
+        again for a cull quest (target_cull_entity_id) whose target
+        species is actually in `cleared_species_ids` (same predicate
+        QuestLog.check_cull_report uses) - cleared, but not yet reported.
+        All five are still "in_progress" at this point, but worth saying
+        differently than the original pitch. `cleared_species_ids`
+        defaults to None (treated as empty) rather than being required
+        like the other three sets, since it's the newest and most callers
+        never touch a cull quest at all."""
         if self.status == "completed":
             return self.completed_description or self.description
         if self.status == "failed":
@@ -283,6 +311,13 @@ class Quest:
             and self.target_intimidate_entity_id in intimidated_entity_ids
         ):
             return self.target_intimidated_description
+        if (
+            self.status == "in_progress"
+            and self.target_cull_entity_id is not None
+            and self.target_cleared_description
+            and self.target_cull_entity_id in (cleared_species_ids or set())
+        ):
+            return self.target_cleared_description
         return self.description
 
 
@@ -314,6 +349,21 @@ class QuestLog:
     # the quest in that case, and every completion check here guards on
     # status == "in_progress").
     intimidated_entity_ids: set[str] = field(default_factory=set)
+    # Every catalog entity id whose entire population has been recorded
+    # cleared from its dungeon (see Engine._entity_type_cleared_from_dungeon,
+    # called from Engine.on_entity_death) - the target_cull_entity_id
+    # trigger's equivalent of killed_entity_ids, but a real population
+    # check rather than a "has at least one ever died" boolean, since a
+    # cull target (e.g. a whole goblin tribe) isn't a single-spawn entity
+    # the way killed_entity_ids' existing "only correct for one spawn"
+    # caveat assumes.
+    cleared_species_ids: set[str] = field(default_factory=set)
+    # Every catalog entity id's kill count, across the whole run -
+    # incremented unconditionally by record_entity_killed for every death,
+    # regardless of whether any quest currently cares (same philosophy as
+    # killed_entity_ids). Used by fail_cull_by_preservation_loss to check
+    # a preserve-target's death count against its tolerance.
+    entity_kill_counts: dict[str, int] = field(default_factory=dict)
     # Every dungeon id the player has ever arrived in, across the whole run -
     # same shape and same reasoning as killed_entity_ids, just for
     # target_dungeon_id quests instead of target_kill_entity_id ones. No
@@ -434,13 +484,14 @@ class QuestLog:
                 changed.append(quest)
         return changed
 
-    def check_questgiver(self, entity_id: str) -> list[Quest]:
+    def check_questgiver(self, entity_id: str, clock: GameClock) -> list[Quest]:
         """Called whenever the player talks to an NPC (Engine.talk_to_adjacent),
         alongside check_talked_to. Grants matching not-given quests - if the
         quest's kill-target has already been recorded dead
         (killed_entity_ids), its target dungeon already recorded visited
-        (visited_dungeon_ids), or its intimidate-target already recorded
-        intimidated (intimidated_entity_ids), it jumps straight to
+        (visited_dungeon_ids), its intimidate-target already recorded
+        intimidated (intimidated_entity_ids), or its cull-target already
+        recorded cleared (cleared_species_ids), it jumps straight to
         'completed' instead of 'in_progress', so the caller can tell the
         two outcomes apart by checking the returned quest's status and log
         the right message (given_message vs already_done_message). A fetch
@@ -463,7 +514,12 @@ class QuestLog:
         talk_to_adjacent call, a quest can't grant its own chained follow-up
         in the same Talk that completes it - the player needs to talk to the
         questgiver again afterward, same one-Talk lag as followup_dialogue's
-        done-dialogue switch."""
+        done-dialogue switch.
+
+        A quest with available_after_year/day set is silently skipped the
+        same way, until the clock reaches that date - a pure calendar
+        floor, independent of requires_quest_id (both can be set together;
+        both must be satisfied)."""
         changed = []
         for quest in self.quests.values():
             if quest.status != "not_given":
@@ -474,10 +530,14 @@ class QuestLog:
                 prereq = self.quests.get(quest.requires_quest_id)
                 if prereq is None or prereq.status != "completed":
                     continue
+            if quest.available_after_year is not None:
+                if (clock.year, clock.day) < (quest.available_after_year, quest.available_after_day):
+                    continue
             already_done = (
                 quest.target_kill_entity_id in self.killed_entity_ids
                 or quest.target_dungeon_id in self.visited_dungeon_ids
                 or quest.target_intimidate_entity_id in self.intimidated_entity_ids
+                or quest.target_cull_entity_id in self.cleared_species_ids
             )
             quest.status = "completed" if already_done else "in_progress"
             changed.append(quest)
@@ -616,6 +676,49 @@ class QuestLog:
             changed.append((quest, was_in_progress))
         return changed
 
+    def check_cull_report(self, entity_id: str) -> list[Quest]:
+        """Called whenever the player talks to an NPC (Engine.talk_to_adjacent),
+        alongside every other check_*_report. Completes an in-progress cull
+        quest only if BOTH entity_id matches its questgiver_entity_id AND
+        its target species has actually been recorded cleared
+        (cleared_species_ids) - killing individual members alone never
+        completes anything (see Engine._entity_type_cleared_from_dungeon,
+        which only adds to cleared_species_ids once none remain). Mirrors
+        check_kill_report exactly, just checking cleared_species_ids
+        instead of killed_entity_ids."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.status != "in_progress" or quest.target_cull_entity_id is None:
+                continue
+            if quest.questgiver_entity_id != entity_id:
+                continue
+            if quest.target_cull_entity_id not in self.cleared_species_ids:
+                continue
+            quest.status = "completed"
+            changed.append(quest)
+        return changed
+
+    def fail_cull_by_preservation_loss(self, entity_id: str) -> list[tuple[Quest, bool]]:
+        """Called from Engine.on_entity_death for every death, regardless
+        of whether any quest currently cares (cheap: entity_kill_counts is
+        already being maintained unconditionally by record_entity_killed;
+        this just checks it against whatever quests exist). Force-fails
+        every not_given/in_progress quest whose target_preserve_entity_id
+        matches entity_id once its tolerance is exceeded - the
+        (target_preserve_tolerance + 1)th death of that species fails it,
+        not the first. Mirrors fail_intimidate_by_death's shape exactly,
+        just with a threshold instead of zero tolerance."""
+        changed = []
+        for quest in self.quests.values():
+            if quest.target_preserve_entity_id != entity_id or quest.status not in ("not_given", "in_progress"):
+                continue
+            if self.entity_kill_counts.get(entity_id, 0) <= quest.target_preserve_tolerance:
+                continue
+            was_in_progress = quest.status == "in_progress"
+            quest.status = "failed"
+            changed.append((quest, was_in_progress))
+        return changed
+
     def check_dungeon_report(self, entity_id: str) -> list[Quest]:
         """Called whenever the player talks to an NPC (Engine.talk_to_adjacent),
         alongside check_questgiver/check_talked_to/check_delivery/
@@ -668,8 +771,12 @@ class QuestLog:
         target actually died yet" check when the player reports back to a
         kill quest's questgiver. Never completes a quest directly - killing
         the target alone doesn't finish a kill quest, same two-step shape as
-        a fetch quest's pickup vs. delivery."""
+        a fetch quest's pickup vs. delivery. Also bumps entity_kill_counts
+        (see that field's docstring) - same unconditional-recording
+        philosophy, just a counter instead of a boolean set, needed by
+        fail_cull_by_preservation_loss's tolerance check."""
         self.killed_entity_ids.add(entity_id)
+        self.entity_kill_counts[entity_id] = self.entity_kill_counts.get(entity_id, 0) + 1
 
     def record_entity_intimidated(self, entity_id: str) -> None:
         """Called from engine/combat.py's _apply_damage for every hit
@@ -690,8 +797,9 @@ class QuestLog:
         """Every quest back to its own starting status (not-given quests
         stay not-given, already-given quests go back to in-progress), the
         active pin recomputed, and killed_entity_ids/intimidated_entity_ids/
-        visited_dungeon_ids/triggered_encounter_ids/armed_encounters/
-        destroyed_dungeon_ids/world_flags cleared. Engine.restart()
+        cleared_species_ids/entity_kill_counts/visited_dungeon_ids/
+        triggered_encounter_ids/armed_encounters/destroyed_dungeon_ids/
+        world_flags cleared. Engine.restart()
         calls this, since a restart is meant to be a clean slate for
         shared/global state, not just the current dungeon's local state
         (see GameClock.reset()) - a restart should re-arm any in-flight
@@ -717,6 +825,8 @@ class QuestLog:
             quest.status = quest.initial_status
         self.killed_entity_ids = set()
         self.intimidated_entity_ids = set()
+        self.cleared_species_ids = set()
+        self.entity_kill_counts = {}
         self.visited_dungeon_ids = set()
         self.triggered_encounter_ids = set()
         self.armed_encounters = {}
@@ -737,7 +847,11 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_dungeon_id=qdef.target_dungeon_id, target_entity_id=qdef.target_entity_id,
         target_kill_entity_id=qdef.target_kill_entity_id, target_item_id=qdef.target_item_id,
         target_intimidate_entity_id=qdef.target_intimidate_entity_id,
+        target_cull_entity_id=qdef.target_cull_entity_id,
+        target_preserve_entity_id=qdef.target_preserve_entity_id,
+        target_preserve_tolerance=qdef.target_preserve_tolerance,
         deadline_year=qdef.deadline_year, deadline_day=qdef.deadline_day,
+        available_after_year=qdef.available_after_year, available_after_day=qdef.available_after_day,
         questgiver_entity_id=qdef.questgiver_entity_id, requires_quest_id=qdef.requires_quest_id,
         given_message=qdef.given_message,
         already_done_message=qdef.already_done_message,
@@ -752,6 +866,7 @@ def quest_from_def(qdef: "QuestDef") -> Quest:
         target_dead_description=qdef.target_dead_description,
         target_visited_description=qdef.target_visited_description,
         target_intimidated_description=qdef.target_intimidated_description,
+        target_cleared_description=qdef.target_cleared_description,
         completed_description=qdef.completed_description,
         failed_description=qdef.failed_description,
         on_fail=list(qdef.on_fail),
