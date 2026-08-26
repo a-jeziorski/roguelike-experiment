@@ -1,0 +1,11 @@
+id: the_windrest
+name: The Windrest
+starting_level: level_01
+description: >
+  An Old Kingdom waystation, built to shelter travelers and farmhands
+  crossing the plain before it was scoured bare - real windbreak walls,
+  a stone-floored common room, the one true shelter for miles now that
+  the storms have had the run of everything else. A band of
+  Opportunists holds it, not for loot or territory, but for the simple,
+  practical reason it's dry.
+inspect_text: A squat Old Kingdom waystation, iron-braced door shut fast against the wind, smoke bleeding sideways from a vent that was never meant to smoke this much.

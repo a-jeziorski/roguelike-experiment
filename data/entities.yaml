@@ -325,6 +325,17 @@ grey_valley_weaver:
   description: Turns hunted cave-spider silk into the one thing this isolated settlement has ever had worth trading.
   shop_inventory: [healing_potion, teleportation_potion]
 
+windbreak_captain:
+  name: Captain
+  glyph: c
+  color: [170, 140, 90]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Leads whoever's proven capable of keeping a season-old camp alive out on the Scoured Reach - a working title, not an inherited one.
+
 bandit:
   name: Bandit
   glyph: b
@@ -346,6 +357,25 @@ bandit_captain:
   ai: hostile_basic
   xp_reward: 9
   description: Whoever's left standing at the top of the watchtower's rickety hierarchy. Wears looted Kingdom mail like it was always his.
+
+windrest_captain:
+  name: Windrest Captain
+  glyph: B
+  color: [175, 45, 30]
+  hp: 20
+  attack: 7
+  defense: 2
+  ai: hostile_basic
+  xp_reward: 9
+  # Own catalog id, not a reused `bandit_captain` spawn, deliberately - a
+  # kill quest's completion check (QuestLog.killed_entity_ids) is a global
+  # boolean, correct only for a catalog id that spawns in exactly one
+  # place in the whole game (see docs/content_design_process.md §0o).
+  # Broken Watch already owns `bandit_captain` for two of its own quests;
+  # a second dungeon spawning that same id would let killing either one
+  # complete both dungeons' kill quests. Identical stats otherwise - same
+  # role, same balance, just its own id.
+  description: Whoever's currently strong enough to hold the Windrest's one dry, sealed corner. Took the shelter for its walls, same as everyone else here.
 
 drowned_wretch:
   name: Drowned Wretch

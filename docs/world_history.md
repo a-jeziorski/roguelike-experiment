@@ -129,18 +129,30 @@ watchtower and its border town somewhere visually distinct to sit, and
 more open plains/forest to the north for the crossroads town and the
 Elder Cairn's isolation to read as real distance from anything else.
 
+A third terrain feature, added alongside Windbreak Hold/The Windrest:
+the Scoured Reach, a wide stretch of open plains in the map's
+east-central expanse, farmed by the Old Kingdom and left to a wind that
+never fully settles since. Distinct from the drier western
+hill/badlands - this is flat, once-farmed ground made dangerous by
+climate rather than terrain, the map's first location built around an
+environmental hazard tile (`storm_plain`, see
+`docs/content_design_process.md` §0p) rather than a monster or a ruin.
+
 ## Current roster
 
-As of the "Populating the Sundered Realm" pass plus the Goblin Horde arc,
-twelve locations are shipped. Each is placed here for quick
-cross-reference - see `data/dungeons/<id>/dungeon.yaml` for its actual
+As of the "Populating the Sundered Realm" pass, the Goblin Horde arc,
+and the Scoured Reach pass, fourteen locations are shipped. Each is
+placed here for quick cross-reference - see
+`data/dungeons/<id>/dungeon.yaml` for its actual
 `description`/`inspect_text`.
 
 - **The Old Kingdom's remnants**: `prison_tower`.
 - **The Elder Age**: `forgotten_ruins` (buried beneath an Old Kingdom
   manor), `elder_cairn` (a standalone site, unrelated to Forgotten Ruins -
   same era, no shared location).
-- **Opportunists**: `broken_watch` (a fallen Old Kingdom garrison).
+- **Opportunists**: `broken_watch` (a fallen Old Kingdom garrison),
+  `the_windrest` (a fallen Old Kingdom waystation, held for its shelter
+  rather than any strategic value).
 - **Fallen Old Kingdom infrastructure, present-day squatters**:
   `drowned_waystation` (flooded by the Sundering), `sunken_mine`
   (collapsed, reuses the existing monster roster rather than adding new
@@ -149,7 +161,9 @@ cross-reference - see `data/dungeons/<id>/dungeon.yaml` for its actual
   `stonebridge` (fortified, near `broken_watch`), `saltmarsh` (coastal,
   near `drowned_waystation`), `grey_valley_monastery` (settlers occupying
   the ruins of an Old Kingdom monastery, isolated in the forested Grey
-  Valley, reliant on hunting the neighboring caves).
+  Valley, reliant on hunting the neighboring caves), `windbreak_hold` (a
+  season-old camp on the Scoured Reach, sheltering behind a salvaged
+  windbreak wall since the real shelter, `the_windrest`, is occupied).
 - **Natural, no era or faction**: `silver_mountain_caves` (a cave system
   that predates the Kingdom entirely - never built, just always there.
   Home to its own wildlife, cave spiders that Grey Valley Monastery hunts

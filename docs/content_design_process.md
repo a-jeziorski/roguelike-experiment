@@ -851,6 +851,72 @@ intimidate quest's exact zero-tolerance bar if a future quest wants it;
 the reference example (Silversilk Caves' goblins vs. cave spiders) uses a
 tolerance of 5.
 
+**A real bug this mechanism shipped with, found only once real content
+exercised it**: `_entity_type_cleared_from_dungeon` trusts
+`Engine.visited_maps` to hold the live `GameMap` for every level the
+player has actually been on, falling back to a level's static,
+never-updated `entity_spawns` otherwise. `Engine.__init__` caches the
+dungeon's *entry* level into `visited_maps` immediately, but
+`on_player_reach_stairs` (moving between levels within the same dungeon)
+only cached the level being *left*, not the one just *arrived on* - so a
+species cleared entirely by killing its last member on a non-entry level,
+without ever backing out of that level first, silently failed to
+register as cleared. Round 1's own test coverage happened not to exercise
+that exact order (finishing on the entry level, or always visiting-then-
+leaving before the last kill), so it shipped unnoticed until Silversilk
+Caves' real two-level layout was played through end-to-end. Fixed by
+caching the arrived-on level immediately in `on_player_reach_stairs`, the
+same way `__init__` already does for the first one. Worth remembering for
+any future multi-level mechanic that reads `visited_maps`: the *current*
+level is only guaranteed to be in there because of this fix, not because
+it's obviously implied by "currently active."
+
+## 0p. Environmental hazard tiles (`storm_plain`, `Engine._apply_environmental_hazard`)
+
+A tile-kind-driven mechanic, not a quest trigger: some ground is simply
+dangerous to stand on, independent of any monster or quest. First (and
+so far only) use is the Scoured Reach, the open, unforested, unsettled
+plains stretch in the map's east-central expanse - `storm_plain`
+explains *why* that space reads as empty on the overworld rather than
+leaving it unexplained, the same "environmental storytelling" job
+`world_history.md` asks every location to do.
+
+**Mechanically**: `TILE_PASSABILITY` deliberately has no entry for
+`storm_plain`, falling through to its `(True, True)` default (walkable,
+transparent) - identical to `plains`. The danger isn't crossing it, it's
+lingering on it: `Engine._apply_environmental_hazard`, called every turn
+from `process_enemy_phase` (right after enemy AI, before the player-death
+check, so a lethal storm turn is caught the same way a lethal hit
+already is), checks the player's current tile kind directly and deals
+flat `STORM_DAMAGE` with no defense mitigation - this isn't an attack, it
+has no attacker. Checked by tile kind, not by `is_overworld`, so it isn't
+special-cased to the overworld specifically; `storm_plain` just doesn't
+appear anywhere else today.
+
+**Why `STORM_DAMAGE` is 2, not 1**: the overworld already heals the
+player +1/hour unconditionally (`_advance_world_clock`, same turn,
+right after this check runs). A hazard that merely matched the passive
+heal would be invisible - net zero, no felt cost, no reason to hurry.
+Set one above it on purpose so standing in the open is a small but real
+net loss (-1 HP/turn) rather than a wash - felt over a real crossing,
+but not so steep that a fresh, unprepared player dies outright
+attempting a straight-line dash across a sheltered-pocket-to-sheltered-
+pocket route.
+
+**Monsters are unaffected** - `_apply_environmental_hazard` only ever
+checks `self.player`. Whatever lives in a hazardous area is written as
+already adapted to it (same reasoning a skittish monster never flees a
+terrain hazard the way it flees low HP); nothing currently needs a
+monster to take hazard damage, and the check would need to iterate every
+entity on the map each turn if one ever did.
+
+**A deliberately unbuilt hook, noted rather than built**: some kind of
+protective item/equipment slot that suppresses this damage (a "storm
+cloak," say) would be a natural next step for a location built around
+this hazard, but isn't needed for a first pass where the hazardous
+stretch is narrow enough to cross in one push - same "flag it, don't
+build it" discipline as Silversilk Caves' lower levels.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

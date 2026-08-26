@@ -39,6 +39,15 @@ DEFAULT_MONSTER_RANGED_RANGE = 4
 # risk to find, only exploration.
 LANDMARK_XP_REWARD = 5
 
+# Flat damage per turn spent standing on a storm_plain tile (see
+# Engine._apply_environmental_hazard) - set one above _advance_world_clock's
+# +1/hour passive heal on purpose, so lingering in the open is a small but
+# real net loss (-1 HP/turn) rather than a wash. Deliberately not set any
+# higher: at player baseline (30 HP), a net -1/turn means even a fairly
+# long, straight-line crossing costs real HP without being an automatic
+# death sentence for a fresh, unprepared player.
+STORM_DAMAGE = 2
+
 # Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
 # "stay put" repeated 8 times, so a wandering villager holds position about
 # as often as it moves - reads as puttering around rather than skittering.
@@ -539,6 +548,26 @@ class Engine:
                 continue
             self._perform_ai(entity)
 
+    def _apply_environmental_hazard(self) -> None:
+        """Chip damage for ending a turn standing on a `storm_plain` tile
+        (see content/schema.py's TileType, docs/content_design_process.md
+        §0p) - the Scoured Reach's whole reason nobody's settled it.
+        Player only: whatever wildlife lives out there is already adapted
+        to it, the same reasoning skittish/hostile monsters never flee a
+        terrain hazard the player would. STORM_DAMAGE deliberately outpaces
+        _advance_world_clock's +1/hour passive heal (this runs first, same
+        turn) - standing still in the open is meant to be a losing trade,
+        not a wash. Runs regardless of is_overworld's dungeon/settlement
+        gate on the clock/heal below: storm_plain only ever appears on the
+        overworld map today, but the check is by tile kind, not location,
+        so it needs no special-casing if that ever changes."""
+        if self.game_map.kinds[self.player.x, self.player.y] != "storm_plain":
+            return
+        self.player.fighter.hp -= STORM_DAMAGE
+        self.message_log.add(
+            "The wind-driven grit tears at exposed skin and eyes.", category="combat"
+        )
+
     def _advance_world_clock(self) -> None:
         """The only source of in-game time passing: one hour per turn taken
         on the overworld (dungeons/settlements never call this - is_overworld
@@ -943,13 +972,16 @@ class Engine:
         return True
 
     def process_enemy_phase(self) -> None:
-        """The second half of a turn: enemy AI turns, player-death
-        bookkeeping, world clock/quest deadlines, and the FOV update - see
-        process_player_action's docstring for why this is split out.
-        Guarded the same way process_turn's tail always was: each step only
-        runs if the game is still "playing" going into it."""
+        """The second half of a turn: enemy AI turns, environmental hazard
+        damage, player-death bookkeeping, world clock/quest deadlines, and
+        the FOV update - see process_player_action's docstring for why this
+        is split out. Guarded the same way process_turn's tail always was:
+        each step only runs if the game is still "playing" going into it."""
         if self.game_state == "playing":
             self._handle_enemy_turns()
+
+        if self.game_state == "playing":
+            self._apply_environmental_hazard()
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)

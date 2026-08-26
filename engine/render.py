@@ -57,6 +57,10 @@ TILE_VISUALS = {
     "plains": {"glyph": ",", "dark": (35, 45, 20), "light": (120, 150, 70)},
     "town": {"glyph": "n", "dark": (80, 60, 25), "light": (210, 170, 90)},
     "dungeon_entrance": {"glyph": "O", "dark": (90, 60, 10), "light": (255, 200, 60)},
+    # Storm-scoured open ground (see Engine._apply_environmental_hazard) -
+    # a duller, grittier plains, distinct enough at a glance to warn a
+    # player before they've taken the first hit of damage.
+    "storm_plain": {"glyph": "\"", "dark": (55, 45, 30), "light": (160, 140, 95)},
 }
 
 TILE_DESCRIPTIONS = {
@@ -72,6 +76,7 @@ TILE_DESCRIPTIONS = {
     "town": "A small settlement.",
     "dungeon_entrance": "An entrance leading underground.",
     "landmark": "Something here catches your eye.",
+    "storm_plain": "Open ground scoured bare by a wind that never fully dies down. Standing here for long is a mistake.",
 }
 
 HUD_FG = (220, 220, 220)

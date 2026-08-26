@@ -19,7 +19,7 @@ ALL_SHIPPED_QUEST_IDS = {
     "goblin_warning", "kill_the_warden", "fetch_fungus",
     "clearing_the_watch_road", "a_record_worth_keeping", "word_down_the_road",
     "spreading_the_warning", "a_wall_worth_holding", "what_the_tide_kept",
-    "a_debt_worth_collecting", "the_uninvited_tribe",
+    "a_debt_worth_collecting", "the_uninvited_tribe", "reclaiming_the_windrest",
 }
 
 

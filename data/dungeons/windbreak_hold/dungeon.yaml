@@ -1,0 +1,12 @@
+id: windbreak_hold
+name: Windbreak Hold
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A season-old Settler camp huddled behind a curved wall of salvaged
+  timber and packed earth, angled to break the worst of the wind
+  sweeping the plain around it. Not built for defense - built to let
+  people stand upright without being worn down turn by turn. The real
+  shelter for miles, the Old Kingdom's own waystation, sits just past
+  sight - held by squatters the settlers can't shift on their own.
+inspect_text: A curved earthwork wall breaking the wind, timber and packed dirt, with a handful of shelters huddled in its lee.

@@ -81,6 +81,7 @@ entities:
   millhaven_debtor:        {sheet: rltiles, name: human, recolor: true}
   bandit:                  {sheet: rltiles, name: rogue, recolor: true}
   bandit_captain:          {sheet: rltiles, name: captain}
+  windrest_captain:        {sheet: rltiles, name: captain}
   drowned_wretch:          {sheet: rltiles, name: human_zombie, recolor: true}
   stone_sentinel:          {sheet: rltiles, name: stone_golem}
   cave_spider:             {sheet: rltiles, name: cave_spider}
@@ -96,6 +97,7 @@ entities:
   saltmarsh_witch:         {sheet: rltiles, name: priestess}
   grey_valley_elder:       {sheet: rltiles, name: human, recolor: true}
   grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
+  windbreak_captain:       {sheet: rltiles, name: human, recolor: true}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
