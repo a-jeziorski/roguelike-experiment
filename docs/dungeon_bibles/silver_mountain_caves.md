@@ -211,6 +211,21 @@ deals roughly 3 damage per hit landed; cave spider drops below its own
 flee threshold in a single hit (2/7 hp remaining) and needs a deliberate
 follow-up to actually kill.
 
+**Correction**: this section originally treated "fair at player baseline"
+as the design target and left `balance_reference_xp` at `0` on that
+basis. That's wrong - the only in-fiction route into Silversilk Caves is
+well after the game's start (`pre_arrival_until_day: 67`, gated behind
+the goblin horde dispersing near Wayford), so a player reasonably has
+real investment (perks/gear) by the time they'd actually walk in here,
+not a bare-baseline build. `balance_reference_xp` is now `120`, not `0`.
+**The roster/potion numbers above have not yet been re-tested or
+re-tuned against that figure** - `21` goblins across two levels, sized
+for a 0-XP baseline, is very likely trivial at 120 XP investment. Run
+`testbuild silver_mountain_caves` with a representative ~120 XP build
+before trusting this section's placement counts; see
+`docs/dungeon_bibles/sunless_hollow.md`'s own balance correction for the
+shape this kind of pass takes.
+
 Two `healing_potion`s per level (four total), placed along the main
 route rather than inside any den - per the standing lesson that a real
 combat level should never ship with zero recovery options, and

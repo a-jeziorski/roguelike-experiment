@@ -85,15 +85,42 @@ new monster type, no stat changes.
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `wolf` | Throughout The Den | The pack itself - straightforward `hostile_basic` fights, no gimmick. The `dark: true` flag (not a monster stat) is what makes this level distinct from an ordinary wolf encounter elsewhere. |
+| `wolf` | Throughout The Den (6, after a balance pass - see below) | The pack itself - straightforward `hostile_basic` fights, no gimmick. The `dark: true` flag (not a monster stat) is what makes this level distinct from an ordinary wolf encounter elsewhere. |
 
 Hits-to-kill against player baseline (30 hp/5 atk/1 def): wolf dies in 4
-hits and deals 4 damage per hit landed - an established early/mid
-tier, no rebalancing needed. A `healing_potion` sits near the Hollow's
-Rim, before the darkness starts - a "brace yourself" placement matching
-every other dungeon's own convention, positioned specifically before
-visibility shrinks rather than somewhere the player might miss it in
-the dark.
+hits and deals 4 damage per hit landed. **This dungeon's earlier framing
+- "no rebalancing needed" at player baseline - was wrong**: the only
+in-fiction route to `clearing_the_sunless_hollow` runs through
+Farrow's Stake well after the game's start, by which point
+`balance_reference_xp: 40` is the actual expected investment, not 0.
+A `testbuild sunless_hollow --perk toughness_1` run (see
+`tools/balance.py`, `docs/content_design_process.md` §0s) against the
+original 7-wolf/1-potion layout burned 74% of the player's HP pool on
+just the *first two* wolves - killing "the whole den" (all of them,
+per the cull quest) in one uninterrupted push was never realistic.
+
+**The fix keeps the pack dangerous rather than shrinking the fight to
+fit a single push.** Passive healing only happens on the overworld
+(`Engine._advance_world_clock`, gated on `is_overworld` - a dungeon
+never ticks the clock or heals the player on its own), so retreating to
+the entrance and waiting out real game-hours to top up HP is already a
+real, working strategy, and it costs something concrete: hours spent
+healing are hours off whatever deadline is running on another quest
+sharing the same clock (`goblin_warning`'s own `by Day 57` was still
+live throughout balance-testing). That's the intended lever here, not
+raw survivability - a genuine time-vs-safety trade the pack should be
+just hard enough to force. Two changes, both modest: the wolf originally
+guarding the entrance's one `healing_potion` (an ambush on the player's
+only guaranteed recovery item, not a meaningful choice) was removed,
+dropping the den to 6 wolves; a second `healing_potion` was added partway
+through (near the second named cluster, not at the entrance), so the
+player has one assisted top-up before the retreat-and-heal loop becomes
+necessary. A full `toughness_1`-build clearance (6 wolves, both potions
+used) still took two separate retreat-to-heal trips (~50 game-hours
+total) and ended the last fight at 3/35 HP - genuinely tense, always
+survivable with reasonable play. Don't re-inflate the wolf count or strip
+the two potions without re-running `testbuild` against the current
+`balance_reference_xp` first.
 
 ## Tone notes for anyone (agent or human) revising this later
 

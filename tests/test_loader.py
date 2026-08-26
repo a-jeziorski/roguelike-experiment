@@ -591,7 +591,7 @@ def test_load_dungeon_carries_through_balance_reference_xp():
     catalog = load_catalog()
     dungeon = load_dungeon(DUNGEONS_DIR / "the_windrest", catalog)
 
-    assert dungeon.balance_reference_xp == 68
+    assert dungeon.balance_reference_xp == 120
 
 
 def test_load_dungeon_rejects_unknown_pre_arrival_starting_level(tmp_path):

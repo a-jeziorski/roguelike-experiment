@@ -1345,6 +1345,28 @@ numbers with that target in mind. Only a hostile (non-`PEACEFUL_AI_TYPES`)
 entity may ever set `xp_reward` - `content/loader.py`'s `load_catalog`
 rejects it otherwise, so a villager/town_guard can never be XP-farmed.
 
+**Retreat-to-heal as a deliberate balance lever, not just a fallback.**
+`Engine._advance_world_clock`'s passive heal (+1 hp/hour) only runs while
+`is_overworld` is true - a dungeon or settlement never ticks the clock or
+heals the player on its own (see the method's own docstring). That means
+"walk back to the entrance and wait on the overworld a while" is always a
+real, working recovery option, and it's never free: those hours come off
+whatever quest deadline is running on the *same* clock elsewhere (`by Day
+N` deadlines, §0j) - a genuine time-vs-safety trade, not busywork. This
+justifies sizing a dungeon's total hostile roster *above* what a single
+clean push can absorb, deliberately, as long as (a) the level's geometry
+lets a hurt player actually disengage and retreat rather than getting
+cornered, and (b) at least one recovery item exists before the point a
+retreat becomes necessary, so the choice is "fight on a little longer or
+pay the time cost," not "there was never a choice." Sunless Hollow's
+6-wolf den (down from an original, too-punishing 7 - see its bible's
+"Correction" note) was tuned around exactly this: a `testbuild`-verified
+~40 XP build clears it, but only by using both its potions and taking two
+separate retreat-and-heal trips (~50 game-hours total). Don't reach for
+"add more potions until a single push clears cleanly" as the default fix
+for an overtuned dungeon - check whether retreat-to-heal is the intended
+lever first.
+
 ## 3. Structural design
 
 - **Linear vs. branching**: a branch should represent a real choice (see
