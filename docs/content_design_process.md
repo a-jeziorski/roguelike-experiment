@@ -1039,6 +1039,31 @@ dungeon's does, verified by mirroring that mechanism's own test pair
 (`test_resolve_transition_enters_wayfords_ruins_after_it_is_razed` /
 `..._rebuilds_to_the_normal_level_once_the_date_arrives...`).
 
+**A second bug, found by actually playing it rather than reading it**:
+`Engine.restart()` rebuilds from `self.starting_level`, always set (at
+Engine-construction time in `resolve_transition`) to
+`dungeon.levels[dungeon.starting_level]` - the dungeon's own declared
+default, unconditionally. For the razed mechanism that's correct by
+construction: `starting_level` is always the pristine, undestroyed
+level, exactly what a fresh run (which also resets `quest_log`, clearing
+`destroyed_dungeon_ids`) should show. But `restart()` *also* resets the
+clock to its own starting date - always before any `pre_arrival_until`
+threshold - so for a pre-arrival dungeon the "what a fresh run sees"
+level is the *pre-arrival* one, not `dungeon.starting_level` itself
+(which, for Silversilk Caves, names the post-arrival, infested level).
+Dying inside Silversilk Caves after day 67 and hitting restart
+reproduced exactly this: goblins present, clock freshly reset to before
+they'd arrived - the same class of inconsistency the razed mechanism
+was careful to avoid, just introduced fresh by inverting which field
+means "default." Fixed in `resolve_transition` by computing the
+restart baseline as `dungeon.pre_arrival_starting_level` when one's
+configured, falling back to `dungeon.starting_level` otherwise (every
+other dungeon, unaffected). General lesson: whenever a "what does a
+brand-new run see" baseline is hardcoded to one field, check that field
+actually names the state a *freshly reset world clock* would produce -
+don't assume "the dungeon's declared starting_level" and "pristine" are
+the same thing once a mechanic can make them diverge.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

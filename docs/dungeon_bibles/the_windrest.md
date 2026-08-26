@@ -119,14 +119,24 @@ entrance the way a larger dungeon's final level would be.
 | `bandit` (hp 13/atk 5/def 1, hostile_basic) | Common Room | The Windrest's actual occupants - same stats, same straightforward-fight intent as Broken Watch's own use of this entity; no gimmick, people who took this place for its walls. |
 | `windrest_captain` (hp 20/atk 7/def 2, hostile_basic) | The Captain's Corner only | The dungeon's climax and `reclaiming_the_windrest`'s kill target - see set piece 3. Never placed anywhere else. |
 
-Hits-to-kill against player baseline (30 hp/5 atk/1 def), unchanged
-stats: `bandit` deals 4/hit, dies in 4 hits; `windrest_captain` deals
-6/hit, dies in 7 hits - consistent with Broken Watch's own use of the
-same two entities, no rebalancing needed. A `healing_potion` sits near
-the Storm Door - a "brace yourself" placement before the Common Room's
-fight, and a practical one too: whatever the player took crossing the
-dunes outside, this is the first chance to recover from it before the
-real fight starts.
+Hits-to-kill against player baseline (30 hp/5 atk/1 def, no gear),
+unchanged stats: `bandit` deals 4/hit, dies in 4 hits;
+`windrest_captain` deals 6/hit, dies in 7 hits - consistent with Broken
+Watch's own use of the same two entities, no rebalancing needed. At
+that same bare baseline, though, `windrest_captain`'s own math is
+brutal: 6 counter-hits land before the 7th, killing blow, and 6×6=36
+exceeds the player's entire 30 hp pool - survivable only with careful
+retreat-and-heal play, not a straight slugfest. Broken Watch gives its
+own version of this same fight a fighting chance by spreading
+`leather_armor` (`level_01`) and `iron_sword` (`level_02`) across the
+three-level journey to it; this dungeon, condensing that whole arc into
+one level, needs its own equivalent rather than skipping the step - a
+`rusty_dagger` and a `leather_armor` both sit unguarded near the
+entrance, alongside a `healing_potion`, all three a "brace yourself"
+placement before the Common Room's fight. With the dagger alone
+(`attack_bonus: 2`), `windrest_captain` drops to 4 hits to kill instead
+of 7 - only 3 counter-hits (18 damage) instead of 6 (36), turning an
+unwinnable straight fight into a real, survivable one.
 
 ## Tone notes for anyone (agent or human) revising this later
 

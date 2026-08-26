@@ -662,7 +662,22 @@ def resolve_transition(
             and target.current_level_id != entry_level_id
         )
         if needs_rebuild:
-            starting_level = dungeon.levels[dungeon.starting_level]  # pristine - for restart()
+            # The baseline Engine.restart() rebuilds from - always what a
+            # brand-new run would see, since restart() also resets the
+            # clock to its own starting date. For a dungeon with
+            # pre_arrival configured, that's the pre-arrival level, not
+            # dungeon.starting_level itself: a freshly reset clock is
+            # always before pre_arrival_until_year/day, so "pristine" here
+            # means "nothing has arrived yet," the same way the razed
+            # case's own "pristine" means "nothing has been destroyed yet."
+            # Without this, restarting while dead inside a dungeon whose
+            # pre-arrival threshold has already passed would rebuild the
+            # post-arrival level regardless of the now-reset clock.
+            starting_level_id = (
+                dungeon.pre_arrival_starting_level if dungeon.pre_arrival_starting_level
+                else dungeon.starting_level
+            )
+            starting_level = dungeon.levels[starting_level_id]
             entry_level = dungeon.levels[entry_level_id]
             game_map, _ = build_game_map(entry_level, catalog, player=player)
             target = Engine(

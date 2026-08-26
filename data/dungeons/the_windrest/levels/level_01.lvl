@@ -5,10 +5,10 @@ map: |
   ################################
   #,x@,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,!,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,!,,,/,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,b,,,,,,,,,,,,,b,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,[,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,b,,,,,,,,,,,,,b,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -29,3 +29,5 @@ legend:
   "b": { entity: bandit }
   "C": { entity: windrest_captain }
   "!": { item: healing_potion }
+  "/": { item: rusty_dagger, description: "A dagger, dropped or discarded near the door - whoever it belonged to didn't think it was worth the weight." }
+  "[": { item: leather_armor, description: "A stiff leather jerkin, patched more than once. Somebody's spare, left where it fell." }

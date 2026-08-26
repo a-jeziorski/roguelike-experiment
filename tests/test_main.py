@@ -772,6 +772,43 @@ def test_resolve_transition_enters_the_normal_level_on_or_after_the_pre_arrival_
     assert "goblin" in entity_ids
 
 
+def test_restart_baseline_is_the_pre_arrival_level_even_after_the_date_has_passed():
+    """Engine.restart() always rebuilds from self.starting_level - and
+    also resets the clock to its own starting date (before day 67), so
+    the level it rebuilds into must be the pre-arrival one even if the
+    player died in the dungeon *after* day 67. Without this, restarting
+    inside a post-arrival Silversilk Caves would show goblins alongside
+    a freshly-reset, pre-arrival clock - the same inconsistency the
+    razed-dungeon mechanism avoids by always keeping its own
+    self.starting_level pristine."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    clock = GameClock(year=87, day=67)  # on/after the threshold
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", clock=clock, quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+    assert engine.current_level_id == "level_01"  # infested, correct for this visit
+
+    engine.restart()  # simulates dying here and choosing to restart
+
+    assert engine.current_level_id == "level_01_undisturbed"
+    assert engine.clock.day < 67
+    entity_ids = {e.entity_id for e in engine.game_map.entities if e is not engine.player}
+    assert "goblin" not in entity_ids
+
+
 def test_resolve_transition_rebuilds_to_the_normal_level_once_the_date_arrives_for_a_cached_visit():
     """A player who explored the caves early (cached, undisturbed) and
     comes back after day 67 must see the goblins - not a stale,
