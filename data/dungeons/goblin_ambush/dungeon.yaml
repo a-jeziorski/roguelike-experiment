@@ -9,3 +9,4 @@ description: >
   overworld dungeon_entrance tile targets this dungeon, so inspect_text
   (below) is never shown - left blank rather than written for an audience
   that will never see it.
+balance_reference_xp: 40

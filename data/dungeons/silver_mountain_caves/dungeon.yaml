@@ -15,8 +15,4 @@ inspect_text: A dark fissure in the mountainside, wide enough to walk into, cave
 pre_arrival_starting_level: level_01_undisturbed
 pre_arrival_until_year: 87
 pre_arrival_until_day: 67
-# Deliberately 0, not just unset: the dungeon bible's own hits-to-kill math
-# (docs/dungeon_bibles/silver_mountain_caves.md) confirms goblin/cave_spider
-# are tuned against player baseline (30hp/5atk/1def) with no gear required -
-# a testbuild run with an empty build is *expected* to be fair here.
-balance_reference_xp: 0
+balance_reference_xp: 120
