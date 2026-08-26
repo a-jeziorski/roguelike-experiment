@@ -633,19 +633,33 @@ def resolve_transition(
         # most dungeons are never destroyable and always resolve to their
         # plain starting_level.
         razed = quest_log is not None and dungeon_id in quest_log.destroyed_dungeon_ids
+        # The mirror image, calendar-driven rather than quest-driven: before
+        # pre_arrival_until_year/day, the entrance leads into
+        # pre_arrival_starting_level instead of the normal starting_level
+        # (see DungeonDef.pre_arrival_starting_level, §0r). clock is None
+        # for a handful of tests that don't care about it - a dungeon with
+        # no pre_arrival configured is unaffected either way.
+        arrived = (
+            clock is None or dungeon.pre_arrival_starting_level is None
+            or (clock.year, clock.day) >= (dungeon.pre_arrival_until_year, dungeon.pre_arrival_until_day)
+        )
         entry_level_id = (
             dungeon.ruined_starting_level if razed and dungeon.ruined_starting_level
-            else dungeon.starting_level
+            else dungeon.starting_level if arrived
+            else dungeon.pre_arrival_starting_level
         )
         target = active_engines.get(dungeon_id)
-        # Only forces a rebuild for the real "cached engine was visited
-        # before this dungeon was razed" case - a player resuming deeper in
-        # a genuinely multi-level dungeon (current_level_id != starting_level)
-        # keeps their progress, same "resume exactly where they left"
+        # Forces a rebuild whenever a cached engine is sitting at whichever
+        # of the two starting-level candidates (razed/pre-arrival) is no
+        # longer the correct one to show - checked both directions, since
+        # clock.reset() (Engine.restart) can move the world clock backward
+        # as easily as forward. Never forces a rebuild for a player resuming
+        # deeper in a genuinely multi-level dungeon (current_level_id is
+        # neither candidate) - same "resume exactly where they left"
         # guarantee the else branch below already promises.
         needs_rebuild = target is None or (
-            razed and dungeon.ruined_starting_level
-            and target.current_level_id == dungeon.starting_level
+            target.current_level_id in (dungeon.starting_level, dungeon.pre_arrival_starting_level)
+            and target.current_level_id != entry_level_id
         )
         if needs_rebuild:
             starting_level = dungeon.levels[dungeon.starting_level]  # pristine - for restart()

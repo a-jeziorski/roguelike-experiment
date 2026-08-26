@@ -918,6 +918,23 @@ class DungeonDef(BaseModel):
     # above - a dungeon can still be sealed-only by leaving this unset;
     # only a dungeon that wants a real walkable aftermath sets it.
     ruined_starting_level: str | None = None
+    # The level this dungeon's entrance leads into *before* the world clock
+    # reaches (pre_arrival_until_year, pre_arrival_until_day) - the mirror
+    # image of ruined_starting_level: instead of "normal, then a quest
+    # ruins it," this is "reduced, then a scheduled date populates it,"
+    # independent of any quest's pass/fail (same "pure calendar floor"
+    # shape as QuestDef.available_after_year/day, see
+    # docs/content_design_process.md §0n). starting_level itself never
+    # changes meaning - it's always the dungeon's normal, eventual state;
+    # pre_arrival_starting_level is the temporary substitute shown only
+    # until that date (see main.py's resolve_transition). Reference use
+    # case: Silversilk Caves' goblin tribe doesn't yet occupy the cave
+    # before the same day (87/67) the_uninvited_tribe becomes available -
+    # entering earlier shows level_01_undisturbed (cave spiders only, no
+    # way down to the warren) instead of the goblin-infested level_01.
+    pre_arrival_starting_level: str | None = None
+    pre_arrival_until_year: int | None = None
+    pre_arrival_until_day: int | None = None
 
     @model_validator(mode="after")
     def ruined_tile_and_description_together(self) -> "DungeonDef":
@@ -929,6 +946,27 @@ class DungeonDef(BaseModel):
     def ruined_starting_level_requires_ruined_tile(self) -> "DungeonDef":
         if self.ruined_starting_level is not None and self.ruined_tile is None:
             raise ValueError("ruined_starting_level requires ruined_tile/ruined_description to be set")
+        return self
+
+    @model_validator(mode="after")
+    def pre_arrival_until_year_and_day_together(self) -> "DungeonDef":
+        if (self.pre_arrival_until_year is None) != (self.pre_arrival_until_day is None):
+            raise ValueError(
+                "pre_arrival_until_year and pre_arrival_until_day must be set together or not at all"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def pre_arrival_starting_level_requires_the_date_pair(self) -> "DungeonDef":
+        if self.pre_arrival_starting_level is not None and self.pre_arrival_until_year is None:
+            raise ValueError(
+                "pre_arrival_starting_level requires pre_arrival_until_year/day to be set too"
+            )
+        if self.pre_arrival_until_year is not None and self.pre_arrival_starting_level is None:
+            raise ValueError(
+                "pre_arrival_until_year/day is set but pre_arrival_starting_level isn't - "
+                "there would be nothing to show before that date"
+            )
         return self
 
 

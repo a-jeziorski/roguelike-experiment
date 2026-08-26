@@ -715,6 +715,148 @@ def test_resolve_transition_reentering_wayfords_ruins_resumes_the_cached_engine(
     assert ruins_engine_2.game_map is ruins_map  # resumed, not rebuilt again
 
 
+def test_resolve_transition_enters_the_undisturbed_hollow_before_the_pre_arrival_date():
+    """Silversilk Caves' real content: before day 67 the entrance leads
+    into level_01_undisturbed (cave spiders only, no goblins) rather than
+    the normal, goblin-infested level_01 - see
+    DungeonDef.pre_arrival_starting_level."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    clock = GameClock()  # defaults to (87, 50) - before (87, 67)
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", clock=clock, quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")  # leave via the town's terminal gate
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    assert active_key == "silver_mountain_caves"
+    assert engine.current_level_id == "level_01_undisturbed"
+    entity_ids = {e.entity_id for e in engine.game_map.entities if e is not engine.player}
+    assert "goblin" not in entity_ids
+    assert "cave_spider" in entity_ids
+
+
+def test_resolve_transition_enters_the_normal_level_on_or_after_the_pre_arrival_date():
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    clock = GameClock(year=87, day=67)
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", clock=clock, quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    assert active_key == "silver_mountain_caves"
+    assert engine.current_level_id == "level_01"
+    entity_ids = {e.entity_id for e in engine.game_map.entities if e is not engine.player}
+    assert "goblin" in entity_ids
+
+
+def test_resolve_transition_rebuilds_to_the_normal_level_once_the_date_arrives_for_a_cached_visit():
+    """A player who explored the caves early (cached, undisturbed) and
+    comes back after day 67 must see the goblins - not a stale,
+    permanently-undisturbed cache. Mirrors
+    test_resolve_transition_enters_wayfords_ruins_after_it_is_razed's
+    shape exactly, just clock-driven instead of quest-driven."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    clock = GameClock()  # before the date
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", clock=clock, quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, caves_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+    assert caves_engine.current_level_id == "level_01_undisturbed"
+    undisturbed_map = caves_engine.game_map
+
+    caves_engine.on_player_reach_stairs(None, "stairs_up")  # leave via the terminal fissure exit
+    active_key, overworld_engine_2 = resolve_transition(
+        "silver_mountain_caves", caves_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    clock.year, clock.day = 87, 67  # the world clock advances past the threshold
+    overworld_engine_2.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, caves_engine_2 = resolve_transition(
+        OVERWORLD_KEY, overworld_engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    assert active_key == "silver_mountain_caves"
+    assert caves_engine_2.current_level_id == "level_01"
+    assert caves_engine_2.game_map is not undisturbed_map  # rebuilt, not the stale pre-arrival cache
+    entity_ids = {e.entity_id for e in caves_engine_2.game_map.entities if e is not caves_engine_2.player}
+    assert "goblin" in entity_ids
+
+
+def test_resolve_transition_reentering_the_undisturbed_hollow_resumes_the_cached_engine():
+    """Same 'don't wastefully rebuild every visit' guarantee the ruins
+    mechanism already has, for the pre-arrival direction."""
+    catalog, dungeon_registry, overworld_level = _world()
+    quest_log = QuestLog()
+    clock = GameClock()
+    active_engines: dict = {}
+
+    wayford_engine = _dungeon_engine(dungeon_registry, catalog, "wayford", clock=clock, quest_log=quest_log)
+    active_engines["wayford"] = wayford_engine
+    wayford_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine = resolve_transition(
+        "wayford", wayford_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    overworld_engine.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, caves_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+    undisturbed_map = caves_engine.game_map
+
+    caves_engine.on_player_reach_stairs(None, "stairs_up")
+    active_key, overworld_engine_2 = resolve_transition(
+        "silver_mountain_caves", caves_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+    overworld_engine_2.pending_dungeon_entry = "silver_mountain_caves"
+    active_key, caves_engine_2 = resolve_transition(
+        OVERWORLD_KEY, overworld_engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+
+    assert caves_engine_2.current_level_id == "level_01_undisturbed"
+    assert caves_engine_2.game_map is undisturbed_map  # resumed, not rebuilt again
+
+
 def test_resolve_transition_does_nothing_when_not_playing():
     catalog, dungeon_registry, overworld_level = _world()
     engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")

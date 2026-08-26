@@ -1054,6 +1054,9 @@ class Dungeon:
     ruined_tile: str | None
     ruined_description: str
     ruined_starting_level: str | None
+    pre_arrival_starting_level: str | None
+    pre_arrival_until_year: int | None
+    pre_arrival_until_day: int | None
     levels: dict[str, ParsedLevel]
 
 
@@ -1088,6 +1091,17 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
                 "ruined_starting_level is the same as starting_level - a razed "
                 "dungeon's entrance would then have no visible effect on the interior"
             )
+    if manifest.pre_arrival_starting_level is not None:
+        if manifest.pre_arrival_starting_level not in levels:
+            errors.append(
+                f"pre_arrival_starting_level '{manifest.pre_arrival_starting_level}' is not "
+                "among this dungeon's levels"
+            )
+        elif manifest.pre_arrival_starting_level == manifest.starting_level:
+            errors.append(
+                "pre_arrival_starting_level is the same as starting_level - entering "
+                "before the scheduled date would then have no visible effect on the interior"
+            )
     if errors:
         raise ContentValidationError(str(manifest_path), errors)
 
@@ -1101,6 +1115,9 @@ def load_dungeon(dungeon_dir: Path, catalog: Catalog) -> Dungeon:
         ruined_tile=manifest.ruined_tile,
         ruined_description=manifest.ruined_description,
         ruined_starting_level=manifest.ruined_starting_level,
+        pre_arrival_starting_level=manifest.pre_arrival_starting_level,
+        pre_arrival_until_year=manifest.pre_arrival_until_year,
+        pre_arrival_until_day=manifest.pre_arrival_until_day,
         levels=levels,
     )
 

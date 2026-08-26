@@ -955,6 +955,67 @@ no light source ever reached it) - see the Sunless Hollow's own name,
 chosen specifically to make the mechanic self-explanatory before a
 player reads a single line of flavor text about it.
 
+## 0r. Scheduled dungeon population (`DungeonDef.pre_arrival_starting_level`)
+
+A bug, not a planned mechanic - caught by the user directly reviewing
+shipped content, not by any test: Silversilk Caves' goblins were placed
+in `level_01`/`level_02` unconditionally, even though the dungeon's own
+bible and `the_uninvited_tribe`'s `available_after_year: 87`/
+`available_after_day: 67` both say the tribe only migrates in *after*
+the Goblin Horde disperses near Wayford. A player who walked in on day
+50 (the game's own start date) found a fully goblin-infested cave before
+the horde had even reached Wayford yet - the dungeon's content didn't
+agree with the story built around it.
+
+**The fix is the mirror image of `ruined_starting_level` (§0m)**: instead
+of "normal, then a quest ruins it," this is "reduced, then a scheduled
+date populates it" - calendar-driven, independent of any quest's pass/
+fail, same "pure calendar floor" shape as `available_after_year`/`day`
+(§0n). `starting_level` never changes meaning - it's always the
+dungeon's normal, eventual state. `pre_arrival_starting_level` (+
+`pre_arrival_until_year`/`day`, set together or not at all) is the
+temporary substitute shown only before that date. For Silversilk Caves:
+`level_01_undisturbed` is the *same cave geometry* as `level_01` with
+every goblin (and the territory-marker totem, which wouldn't make sense
+yet) removed, cave spiders left exactly as they were - the settlers were
+already hunting here before any of this started - and its `>` tile
+changed from `{stairs_down: level_02}` to a terminal
+`{stairs_down: null}` (nothing to reach yet, so nothing down that path).
+Reusing the parent level's own geometry rather than drawing a new map
+keeps the "before" state honest: it's the same place, just not yet
+contested.
+
+**`main.py`'s `resolve_transition` picks `entry_level_id` the same way
+it already picks between `starting_level`/`ruined_starting_level`** -
+`arrived = (clock.year, clock.day) >= (pre_arrival_until_year, until_day)`
+(or always `True` if `pre_arrival_starting_level` isn't configured),
+`entry_level_id = starting_level if arrived else pre_arrival_starting_level`
+(razed still wins over both, for a dungeon that somehow sets all three -
+none does today). `needs_rebuild`'s condition was generalized to a
+single, direction-agnostic check covering *both* mechanisms: force a
+rebuild whenever a cached engine's `current_level_id` is one of the two
+starting-level candidates (razed or pre-arrival) but not the currently-
+correct one - checked both ways, since `Engine.restart()` resets the
+clock backward as easily as normal play moves it forward, and a stale
+cache needs to resolve in either direction. A player resuming genuine
+mid-dungeon progress (`current_level_id` is neither candidate, e.g.
+`level_02`) is never force-rebuilt - same "resume exactly where they
+left" guarantee `ruined_starting_level` already promised.
+
+**Why this needs no dynamic entity injection.** The tempting-looking
+alternative - keep one level file, gate individual goblin spawns behind
+a per-spawn calendar check evaluated at `build_game_map` time - breaks
+the moment `Engine.visited_maps` caches the built `GameMap` (see §0o's
+own caching bug write-up): a level built before the date would cache
+permanently goblin-free, with no mechanism to ever repopulate it short
+of re-deriving `_entity_type_cleared_from_dungeon`-style logic for
+*arrival* instead of *clearing*. Swapping which whole level id is
+entered, the same lever `ruined_starting_level` already pulls, sidesteps
+that entirely - the cache invalidates itself the same way a razed
+dungeon's does, verified by mirroring that mechanism's own test pair
+(`test_resolve_transition_enters_wayfords_ruins_after_it_is_razed` /
+`..._rebuilds_to_the_normal_level_once_the_date_arrives...`).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

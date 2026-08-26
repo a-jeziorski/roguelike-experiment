@@ -389,6 +389,48 @@ def test_dungeon_def_rejects_ruined_starting_level_without_ruined_tile():
         )
 
 
+def test_dungeon_def_pre_arrival_fields_default_none():
+    dungeon = DungeonDef(id="silver_mountain_caves", name="Silversilk Caves", starting_level="level_01")
+    assert dungeon.pre_arrival_starting_level is None
+    assert dungeon.pre_arrival_until_year is None
+    assert dungeon.pre_arrival_until_day is None
+
+
+def test_dungeon_def_accepts_pre_arrival_fields_together():
+    dungeon = DungeonDef(
+        id="silver_mountain_caves", name="Silversilk Caves", starting_level="level_01",
+        pre_arrival_starting_level="level_01_undisturbed",
+        pre_arrival_until_year=87, pre_arrival_until_day=67,
+    )
+    assert dungeon.pre_arrival_starting_level == "level_01_undisturbed"
+    assert dungeon.pre_arrival_until_year == 87
+    assert dungeon.pre_arrival_until_day == 67
+
+
+def test_dungeon_def_rejects_pre_arrival_until_year_without_day():
+    with pytest.raises(ValidationError, match="must be set together"):
+        DungeonDef(
+            id="silver_mountain_caves", name="Silversilk Caves", starting_level="level_01",
+            pre_arrival_until_year=87,
+        )
+
+
+def test_dungeon_def_rejects_pre_arrival_starting_level_without_the_date_pair():
+    with pytest.raises(ValidationError, match="pre_arrival_starting_level requires"):
+        DungeonDef(
+            id="silver_mountain_caves", name="Silversilk Caves", starting_level="level_01",
+            pre_arrival_starting_level="level_01_undisturbed",
+        )
+
+
+def test_dungeon_def_rejects_pre_arrival_date_pair_without_starting_level():
+    with pytest.raises(ValidationError, match="nothing to show before that date"):
+        DungeonDef(
+            id="silver_mountain_caves", name="Silversilk Caves", starting_level="level_01",
+            pre_arrival_until_year=87, pre_arrival_until_day=67,
+        )
+
+
 def test_level_def_normalizes_legend():
     level = LevelDef(
         id="l1",

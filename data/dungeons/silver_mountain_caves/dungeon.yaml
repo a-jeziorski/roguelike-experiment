@@ -4,9 +4,14 @@ starting_level: level_01
 description: >
   A natural cave system threading beneath the mountains, older than the
   Old Kingdom and unclaimed by anyone's history - home to cave spiders
-  the settlers of Grey Valley Monastery have hunted for generations, and
-  now, since the Goblin Horde broke apart passing Wayford, to a splinter
-  of that horde too. The upper reaches, once a hunting ground, are
-  contested territory. Whatever lives deeper down, past the rockfall
-  nobody's cleared, isn't part of this yet.
+  the settlers of Grey Valley Monastery have hunted for generations.
+  Once the Goblin Horde breaks apart passing Wayford, a splinter of that
+  horde migrates in, contesting the upper reaches and cutting the
+  settlers off from their hunting grounds - see pre_arrival_starting_level
+  below for the undisturbed state shown before that happens. Whatever
+  lives deeper down, past the rockfall nobody's cleared, isn't part of
+  this yet either way.
 inspect_text: A dark fissure in the mountainside, wide enough to walk into, cave-spider silk still clinging to the rock at its edge.
+pre_arrival_starting_level: level_01_undisturbed
+pre_arrival_until_year: 87
+pre_arrival_until_day: 67

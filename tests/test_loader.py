@@ -574,6 +574,81 @@ def test_load_dungeon_rejects_ruined_starting_level_equal_to_starting_level(tmp_
         load_dungeon(dungeon_dir, catalog)
 
 
+def test_load_dungeon_carries_through_pre_arrival_content():
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "silver_mountain_caves", catalog)
+
+    assert dungeon.pre_arrival_starting_level == "level_01_undisturbed"
+    assert dungeon.pre_arrival_until_year == 87
+    assert dungeon.pre_arrival_until_day == 67
+    assert "level_01_undisturbed" in dungeon.levels  # a real, walkable pre-arrival interior
+
+    undisturbed = dungeon.levels["level_01_undisturbed"]
+    assert all(spawn.entity.id != "goblin" for spawn in undisturbed.entity_spawns)
+
+
+def test_load_dungeon_rejects_unknown_pre_arrival_starting_level(tmp_path):
+    dungeon_dir = tmp_path / "broken_dungeon"
+    levels_dir = dungeon_dir / "levels"
+    levels_dir.mkdir(parents=True)
+    (dungeon_dir / "dungeon.yaml").write_text(
+        "id: broken_dungeon\nname: Broken\nstarting_level: level_01\n"
+        "pre_arrival_starting_level: nope\n"
+        "pre_arrival_until_year: 87\npre_arrival_until_day: 67\n",
+        encoding="utf-8",
+    )
+    (levels_dir / "level_01.lvl").write_text(
+        "id: level_01\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="pre_arrival_starting_level"):
+        load_dungeon(dungeon_dir, catalog)
+
+
+def test_load_dungeon_rejects_pre_arrival_starting_level_equal_to_starting_level(tmp_path):
+    dungeon_dir = tmp_path / "broken_dungeon"
+    levels_dir = dungeon_dir / "levels"
+    levels_dir.mkdir(parents=True)
+    (dungeon_dir / "dungeon.yaml").write_text(
+        "id: broken_dungeon\nname: Broken\nstarting_level: level_01\n"
+        "pre_arrival_starting_level: level_01\n"
+        "pre_arrival_until_year: 87\npre_arrival_until_day: 67\n",
+        encoding="utf-8",
+    )
+    (levels_dir / "level_01.lvl").write_text(
+        "id: level_01\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="same as starting_level"):
+        load_dungeon(dungeon_dir, catalog)
+
+
 def test_load_dungeon_rejects_unknown_starting_level(tmp_path):
     dungeon_dir = tmp_path / "broken_dungeon"
     levels_dir = dungeon_dir / "levels"

@@ -70,10 +70,21 @@ call from Round 1's planning holds: whatever lives deeper down (the
 "genuinely dangerous creatures" the settlers always avoided) is
 deliberately unbuilt, gestured at once and left there.
 
+**A third, temporary level**: `level_01_undisturbed` - the same
+`level_01` geometry with every goblin (and the Territory Marker, which
+wouldn't exist yet) removed, cave spiders left exactly where they
+already were. This is what the dungeon's entrance actually leads into
+before the same day (87/67) `the_uninvited_tribe` becomes available -
+see `content_design_process.md` §0r. Fixes a real bug: the tribe wasn't
+supposed to be here yet on day 1, and for a while it was anyway. Not a
+set piece of its own, no separate write-up below - it's `level_01` minus
+the conflict, not a new story.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | The Upper Reaches | The Territory Marker, The Outer Pickets, The Spider Dens |
 | `level_02` | The Warren | The Heart of the Tribe, The Sealed Passage |
+| `level_01_undisturbed` | The Upper Reaches (before) | Cave spider dens only - no goblins, no way down |
 
 ## The named set pieces
 
