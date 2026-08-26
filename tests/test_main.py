@@ -1092,7 +1092,7 @@ def test_resolve_transition_ambush_resumes_the_same_cached_engine_after_a_restar
 ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush"}
 
 
-def test_overworld_has_all_ten_shipped_entrances_mutually_reachable():
+def test_overworld_has_all_twelve_shipped_entrances_mutually_reachable():
     """Every dungeon_entrance on the real overworld map must be reachable from
     player_start via ordinary 8-directional movement, and vice versa - a
     location an entrance leads to that nothing can walk to would be shippable
@@ -1102,7 +1102,7 @@ def test_overworld_has_all_ten_shipped_entrances_mutually_reachable():
     catalog, dungeon_registry, overworld_level = _world()
 
     assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry) - ENCOUNTER_ONLY_DUNGEON_IDS
-    assert len(overworld_level.dungeon_entrances) == 10
+    assert len(overworld_level.dungeon_entrances) == 12
 
     game_map, _ = build_game_map(overworld_level, catalog)
 

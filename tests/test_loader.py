@@ -945,10 +945,12 @@ SHIPPED_DUNGEON_IDS = {
     "stonebridge",
     "saltmarsh",
     "goblin_ambush",
+    "grey_valley_monastery",
+    "silver_mountain_caves",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine"]
-SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh"]
+SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery"]
 
 
 def test_load_dungeon_registry_finds_all_shipped_dungeons():

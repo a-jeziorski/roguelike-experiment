@@ -1,0 +1,14 @@
+id: grey_valley_monastery
+name: Grey Valley Monastery
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A small, isolated community occupying the standing ruins of an Old
+  Kingdom monastery, hidden deep in the forested Grey Valley - far
+  enough from the road network that almost nobody passes through by
+  accident. Unlike its sister towns, this settlement doesn't farm or
+  trade for its living: it hunts. Silversilk Caves sits right beside it,
+  and for as long as anyone here remembers, cave spiders hunted from its
+  upper reaches have meant both food and silk, the one thing this
+  isolated place has ever had to offer.
+inspect_text: Weathered monastery stone repurposed into a lived-in courtyard, silk goods drying in the open air between the old cloister walls.

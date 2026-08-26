@@ -1,0 +1,30 @@
+id: level_01
+name: Grey Valley Monastery
+
+player_start_tile: plains
+
+map: |
+  ######################
+  #,x@,,,,,,,,,,,,,,,,,#
+  #,,,,,##,,,,,,##,,,,,#
+  #,,,,,##,,,,,,##,,,,,#
+  #,,,,,,,,,E,,,,,,,,,,#
+  #,,,1,,,,,..,,,,,,,,,#
+  #,,,,,,,,,..,,,W,,,,,#
+  #,,,,............,,,,#
+  #,,,,,,,,,..,,,,,2,,,#
+  #,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,#
+  ######################
+
+legend:
+  "#": wall
+  ",": plains
+  ".": road
+  "@": player_start
+  "x": { stairs_up: null, description: "The path back out of the valley, forest closing in on either side within a few steps.", announce: true }
+  "E": { entity: grey_valley_elder, tile: plains, dialogue: "The caves have fed this place longer than I've been alive. Lately I find myself watching that treeline more than I used to, waiting on word from the hunters." }
+  "W": { entity: grey_valley_weaver, tile: road, dialogue: "Spider silk's the only thing we make that anyone out there would actually want. Every thread of it comes out of those caves, one hunt at a time." }
+  "1": { entity: villager, tile: plains, dialogue: "Half this courtyard was a cloister once, or so the Elder tells it. Doesn't much matter what it used to be, so long as the roof holds." }
+  "2": { entity: villager, tile: plains, dialogue: "Nobody finds this place by accident. Suits us fine - fewer people, more caves to ourselves. Used to, anyway." }

@@ -131,9 +131,10 @@ Elder Cairn's isolation to read as real distance from anything else.
 
 ## Current roster
 
-As of the "Populating the Sundered Realm" pass, ten locations are shipped.
-Each is placed here for quick cross-reference - see `data/dungeons/<id>/dungeon.yaml`
-for its actual `description`/`inspect_text`.
+As of the "Populating the Sundered Realm" pass plus the Goblin Horde arc,
+twelve locations are shipped. Each is placed here for quick
+cross-reference - see `data/dungeons/<id>/dungeon.yaml` for its actual
+`description`/`inspect_text`.
 
 - **The Old Kingdom's remnants**: `prison_tower`.
 - **The Elder Age**: `forgotten_ruins` (buried beneath an Old Kingdom
@@ -146,7 +147,15 @@ for its actual `description`/`inspect_text`.
   ones).
 - **Settlers**: `millhaven`, `wayford` (the largest, a crossroads hub),
   `stonebridge` (fortified, near `broken_watch`), `saltmarsh` (coastal,
-  near `drowned_waystation`).
+  near `drowned_waystation`), `grey_valley_monastery` (settlers occupying
+  the ruins of an Old Kingdom monastery, isolated in the forested Grey
+  Valley, reliant on hunting the neighboring caves).
+- **Natural, no era or faction**: `silver_mountain_caves` (a cave system
+  that predates the Kingdom entirely - never built, just always there.
+  Home to its own wildlife, cave spiders that Grey Valley Monastery hunts
+  for food and silk; presently also host to a goblin tribe that migrated
+  in after the Goblin Horde broke apart near Wayford, cutting the
+  settlers off from their hunting grounds).
 
 New monster types introduced this pass, all in `data/entities.yaml`:
 `bandit`/`bandit_captain` (Opportunists), `drowned_wretch` (Drowned

@@ -389,6 +389,18 @@ class Engine:
 
         self.current_level_id = next_level_id
         self.level_name = next_level.name
+        # Cache the level we just arrived on immediately, not only once we
+        # later leave it (line 376's pre-departure caching) - without this,
+        # a cull quest's _entity_type_cleared_from_dungeon would see no
+        # cached GameMap for the level the player is *currently standing
+        # on* (unless it happens to be the dungeon's original entry level,
+        # cached in __init__) and would fall back to this level's static,
+        # never-updated entity_spawns - meaning a kill that clears a
+        # species entirely on the current level, without ever backing out
+        # of it first, wouldn't register as cleared. Harmless to repeat
+        # every subsequent visit: it's the same GameMap reference already
+        # sitting under this key once cached_map was used above.
+        self.visited_maps[self.current_level_id] = self.game_map
         verb = "ascend to" if kind == "stairs_up" else "descend into"
         # Reset here too, same reasoning as arrive_player - this Engine
         # persists across the whole run, so without a reset a level revisited

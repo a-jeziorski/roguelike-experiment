@@ -282,6 +282,41 @@ what_the_tide_kept:
   reward_gold_amount: 15
   reward_xp_amount: 20
 
+the_uninvited_tribe:
+  name: The Uninvited Tribe
+  description: >
+    Part of the Goblin Horde that broke apart near Wayford has moved into
+    the upper reaches of Silversilk Caves - the Monastery's own hunting
+    grounds. The Elder wants the goblins cleared out entirely. The catch:
+    the caves' cave spiders are the whole reason this place survives at
+    all, and killing too many of them while you're at it undoes whatever
+    good the clearing was supposed to do.
+  target_cleared_description: >
+    The goblins are gone - every last one of them, as far as you could
+    tell. Get back to Grey Valley Monastery and let the Elder know the
+    upper caves are theirs again.
+  completed_description: >
+    The goblins are cleared, and the cave spiders are still there to be
+    hunted - shaken, thinner in some corners than others, but a real
+    population, not a memory of one. The Elder doesn't say much, just
+    looks toward the caves like something's finally settled.
+  failed_description: >
+    Too many spiders died getting the goblins out. The caves are quiet
+    now, but quiet isn't the same as fed - whatever's left hunting there
+    won't be enough to keep this place the way it was.
+  completion_message: The upper caves are goblin-free, and the spiders are still there to be hunted. Whatever this cost, it kept the one thing this place actually needed.
+  failure_message: The goblins are gone, but so are too many of the spiders. The Monastery's hunting grounds survived the clearing in name only.
+  given_message: "New quest: The Uninvited Tribe - the Elder wants the goblins cleared out of Silversilk Caves' upper reaches, without wiping out the cave spiders the Monastery depends on."
+  questgiver_done_dialogue: The caves are quiet again, and the spiders are still there to be hunted - both things I wasn't sure I'd get to say in the same breath. Whatever this cost you, it was worth it to us.
+  questgiver_entity_id: grey_valley_elder
+  target_cull_entity_id: goblin
+  target_preserve_entity_id: cave_spider
+  target_preserve_tolerance: 5
+  available_after_year: 87
+  available_after_day: 67
+  reward_gold_amount: 40
+  reward_xp_amount: 30
+
 a_debt_worth_collecting:
   name: A Debt Worth Collecting
   description: >

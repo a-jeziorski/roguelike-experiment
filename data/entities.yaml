@@ -24,6 +24,18 @@ goblin:
   xp_reward: 5
   description: A snarling green raider with a rusty blade.
 
+cave_spider:
+  name: Cave Spider
+  glyph: x
+  color: [120, 90, 130]
+  hp: 7
+  attack: 3
+  defense: 0
+  ai: skittish
+  flee_hp_pct: 0.4
+  xp_reward: 3
+  description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
+
 skeleton:
   name: Skeleton
   glyph: s
@@ -290,6 +302,29 @@ stonebridge_lookout:
   stationary: true
   description: Keeps watch from the gatehouse nook toward the hills and Broken Watch beyond them - the one post in Stonebridge that's never left empty.
 
+grey_valley_elder:
+  name: Elder
+  glyph: E
+  color: [200, 190, 160]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Leads the community that took over Grey Valley Monastery's ruins - the one whose word carries furthest in a place this small and this far from anywhere else.
+
+grey_valley_weaver:
+  name: Weaver
+  glyph: w
+  color: [150, 110, 160]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Turns hunted cave-spider silk into the one thing this isolated settlement has ever had worth trading.
+  shop_inventory: [healing_potion, teleportation_potion]
+
 bandit:
   name: Bandit
   glyph: b
@@ -337,18 +372,6 @@ stone_sentinel:
 # Bestiary expansion - not yet placed in any level, kept here for future
 # dungeons to draw on (see docs/content_design_process.md's balance
 # methodology for the hits-to-kill math these stats were checked against).
-
-cave_spider:
-  name: Cave Spider
-  glyph: x
-  color: [120, 90, 130]
-  hp: 7
-  attack: 3
-  defense: 0
-  ai: skittish
-  flee_hp_pct: 0.4
-  xp_reward: 3
-  description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
 
 giant_rat:
   name: Giant Rat

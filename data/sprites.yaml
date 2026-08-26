@@ -94,6 +94,8 @@ entities:
   gray_ooze:               {sheet: rltiles, name: gray_ooze}
   giant_spider:            {sheet: rltiles, name: giant_spider}
   saltmarsh_witch:         {sheet: rltiles, name: priestess}
+  grey_valley_elder:       {sheet: rltiles, name: human, recolor: true}
+  grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
