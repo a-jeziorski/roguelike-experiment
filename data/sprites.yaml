@@ -132,6 +132,7 @@ tile_kinds:
   door:             {sheet: rltiles, name: closed_door_h}
   sea:              {sheet: kenney_roguelike, col: 0,  row: 2}
   plains:           {sheet: kenney_roguelike, col: 5,  row: 0}
+  storm_plain:      {sheet: rltiles, name: explode_darkblue4}
   road:             {sheet: kenney_roguelike, col: 6,  row: 0}
   forest:           {sheet: kenney_roguelike, col: 23, row: 9, backdrop: plains}
   landmark:         {sheet: kenney_roguelike, col: 51, row: 11, backdrop: plains}
