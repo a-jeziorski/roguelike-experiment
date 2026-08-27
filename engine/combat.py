@@ -48,6 +48,21 @@ CRIT_CHANCE = 0.10
 CRIT_MULTIPLIER = 1.5
 
 
+def _trinket_bonus(entity: "Entity", kind: str) -> float:
+    """The live rate bonus from entity's equipped trinket, if it matches
+    kind ("crit_chance"/"dodge_chance") - 0.0 if no trinket is equipped,
+    or the equipped one boosts something else. A trinket never touches
+    effective_attack/defense (see engine/entity.py's Entity.equipped_trinket),
+    so this - not effective_attack - is the whole read path for the
+    combat-facing half of a trinket's effect (the other half, xp_gain, is
+    read directly by Engine._award_xp instead, since it has nothing to do
+    with a single attack)."""
+    trinket = entity.equipped_trinket
+    if trinket is None or trinket.item.trinket_effect != kind:
+        return 0.0
+    return trinket.item.trinket_bonus or 0.0
+
+
 def _apply_damage(
     engine: "Engine", attacker: "Entity", defender: "Entity", attack_value: int, verb: str
 ) -> None:
@@ -68,7 +83,8 @@ def _apply_damage(
         engine.game_map.trigger_guard_hostility(engine.clock)
         engine.quest_log.record_entity_intimidated(defender.entity_id)
 
-    if COMBAT_VARIANCE_ENABLED and random.random() < DODGE_CHANCE:
+    dodge_chance = DODGE_CHANCE + _trinket_bonus(defender, "dodge_chance")
+    if COMBAT_VARIANCE_ENABLED and random.random() < dodge_chance:
         engine.message_log.add(
             f"{defender.name} dodges {attacker.name}'s attack.", category="combat"
         )
@@ -76,7 +92,8 @@ def _apply_damage(
 
     damage = max(0, attack_value - defender.effective_defense)
     is_critical = False
-    if COMBAT_VARIANCE_ENABLED and damage > 0 and random.random() < CRIT_CHANCE:
+    crit_chance = CRIT_CHANCE + _trinket_bonus(attacker, "crit_chance")
+    if COMBAT_VARIANCE_ENABLED and damage > 0 and random.random() < crit_chance:
         # ceil, not round: a crit must always deal strictly more than the
         # base hit would have, even at low single-digit damage where
         # round()'s banker's-rounding could otherwise land back on the

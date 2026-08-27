@@ -428,6 +428,61 @@ def test_item_def_rejects_ranged_attack_bonus_combined_with_defense_bonus():
         )
 
 
+def test_item_def_trinket_fields_default_none():
+    item = ItemDef(id="rusty_key", name="Rusty Key", glyph="-", color=(1, 2, 3))
+    assert item.trinket_effect is None
+    assert item.trinket_bonus is None
+
+
+def test_item_def_accepts_trinket_effect_and_bonus():
+    charm = ItemDef(
+        id="lucky_charm", name="Lucky Charm", glyph="'", color=(1, 2, 3),
+        trinket_effect="crit_chance", trinket_bonus=0.1,
+    )
+    assert charm.trinket_effect == "crit_chance"
+    assert charm.trinket_bonus == 0.1
+
+
+def test_item_def_rejects_trinket_effect_without_bonus():
+    with pytest.raises(ValidationError, match="must be set together"):
+        ItemDef(
+            id="lucky_charm", name="Lucky Charm", glyph="'", color=(1, 2, 3),
+            trinket_effect="crit_chance",
+        )
+
+
+def test_item_def_rejects_trinket_bonus_without_effect():
+    with pytest.raises(ValidationError, match="must be set together"):
+        ItemDef(
+            id="lucky_charm", name="Lucky Charm", glyph="'", color=(1, 2, 3),
+            trinket_bonus=0.1,
+        )
+
+
+def test_item_def_rejects_out_of_range_trinket_bonus():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="lucky_charm", name="Lucky Charm", glyph="'", color=(1, 2, 3),
+            trinket_effect="crit_chance", trinket_bonus=1.5,
+        )
+
+
+def test_item_def_rejects_unknown_trinket_effect():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="lucky_charm", name="Lucky Charm", glyph="'", color=(1, 2, 3),
+            trinket_effect="luck", trinket_bonus=0.1,
+        )
+
+
+def test_item_def_rejects_trinket_effect_combined_with_attack_bonus():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            attack_bonus=2, trinket_effect="crit_chance", trinket_bonus=0.1,
+        )
+
+
 def test_item_def_ammo_defaults():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.is_ammo is False

@@ -216,6 +216,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--weapon", default=None, metavar="ITEM_ID", help="Item id to equip as weapon.")
     p.add_argument("--armor", default=None, metavar="ITEM_ID", help="Item id to equip as armor.")
     p.add_argument("--ranged", default=None, metavar="ITEM_ID", help="Item id to equip as ranged weapon.")
+    p.add_argument("--trinket", default=None, metavar="ITEM_ID", help="Item id to equip as trinket.")
     p.add_argument("--ammo", type=int, default=0, help="Ammo count to carry.")
     p.add_argument("--gold", type=int, default=0, help="Starting gold.")
     p.add_argument("--xp", type=int, default=0, help="Leftover XP after the build's perks.")
@@ -296,6 +297,7 @@ def render_hud_text(engine) -> str:
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
     armor_name = player.equipped_armor.name if player.equipped_armor else "none"
     ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
+    trinket_name = player.equipped_trinket.name if player.equipped_trinket else "none"
 
     lines = [
         engine.level_name, engine.clock.format_for_hud(),
@@ -311,7 +313,7 @@ def render_hud_text(engine) -> str:
         f"ATK: {player.effective_attack}  DEF: {player.effective_defense}  "
         f"RANGED ATK: {player.effective_ranged_attack}"
     )
-    lines.append(f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}")
+    lines.append(f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}")
     healing_marker = ">" if selected_potion == "healing" else " "
     teleport_marker = ">" if selected_potion == "teleport" else " "
     lines.append(
@@ -728,6 +730,7 @@ def test_build_start(
 
     for item_id, slot in (
         (args.weapon, "equipped_weapon"), (args.armor, "equipped_armor"), (args.ranged, "equipped_ranged_weapon"),
+        (args.trinket, "equipped_trinket"),
     ):
         if item_id is None:
             continue

@@ -272,7 +272,7 @@ wayford_provisioner:
   stationary: true
   description: Runs the biggest stall in Wayford's market, and has for years. Coin spends here without a second thought.
   dialogue: Been trading out of this stall longer than most folks in this town have been alive. Coin's good here - always has been.
-  shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor]
+  shop_inventory: [healing_potion, teleportation_potion, rusty_dagger, leather_armor, lucky_charm]
 
 wayford_trainer:
   name: Retired Sellsword
@@ -298,7 +298,7 @@ saltmarsh_witch:
   stationary: true
   description: Brews potions for the townsfolk. They tolerate her eccentricity in exchange.
   dialogue: Step right up deary. Have I got brews for you!
-  shop_inventory: [healing_potion, teleportation_potion]
+  shop_inventory: [healing_potion, teleportation_potion, shadow_cloak_pin]
 
 saltmarsh_elder:
   name: Elder
@@ -343,7 +343,7 @@ grey_valley_weaver:
   ai: villager
   stationary: true
   description: Turns hunted cave-spider silk into the one thing this isolated settlement has ever had worth trading.
-  shop_inventory: [healing_potion, teleportation_potion]
+  shop_inventory: [healing_potion, teleportation_potion, scholars_pendant]
 
 windbreak_captain:
   name: Captain

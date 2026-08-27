@@ -244,6 +244,8 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             defense_bonus=idef.defense_bonus,
             ranged_attack_bonus=idef.ranged_attack_bonus,
             range=idef.range,
+            trinket_effect=idef.trinket_effect,
+            trinket_bonus=idef.trinket_bonus,
             key_id=idef.id if idef.is_key else None,
             is_ammo=idef.is_ammo,
             is_teleport=idef.is_teleport,

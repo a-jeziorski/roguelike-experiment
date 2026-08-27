@@ -167,6 +167,7 @@ class SavedPlayer(BaseModel):
     equipped_weapon: SavedItemSlot | None = None
     equipped_armor: SavedItemSlot | None = None
     equipped_ranged_weapon: SavedItemSlot | None = None
+    equipped_trinket: SavedItemSlot | None = None
     selected_potion_kind: str = "healing"
     # The player's live status-effect afflictions, if any (see
     # Fighter.active_effects) - monster effect state is never saved,
@@ -282,6 +283,7 @@ def capture_save(
         equipped_weapon=_save_item_slot(player.equipped_weapon),
         equipped_armor=_save_item_slot(player.equipped_armor),
         equipped_ranged_weapon=_save_item_slot(player.equipped_ranged_weapon),
+        equipped_trinket=_save_item_slot(player.equipped_trinket),
         selected_potion_kind=player.selected_potion_kind,
         active_effects={
             kind: SavedActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
@@ -355,6 +357,9 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     player.equipped_armor = _build_item_entity(saved.equipped_armor, catalog) if saved.equipped_armor else None
     player.equipped_ranged_weapon = (
         _build_item_entity(saved.equipped_ranged_weapon, catalog) if saved.equipped_ranged_weapon else None
+    )
+    player.equipped_trinket = (
+        _build_item_entity(saved.equipped_trinket, catalog) if saved.equipped_trinket else None
     )
     return player
 

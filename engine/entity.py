@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from content.schema import AI_ENRAGE, EffectKind, FlagDialogue, PerkDef
+from content.schema import AI_ENRAGE, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
 
 Color = tuple[int, int, int]
 
@@ -96,6 +96,10 @@ class ItemEffect:
     is_ammo: bool = False
     is_teleport: bool = False
     quantity: int = 1
+    # A trinket's passive rate bonus - see Entity.equipped_trinket below,
+    # engine/combat.py's _trinket_bonus, Engine._award_xp.
+    trinket_effect: "TrinketEffectKind | None" = None
+    trinket_bonus: float | None = None
 
 
 # Cycle order for UseItemAction's potion-kind selection (see
@@ -150,6 +154,7 @@ class Entity:
         equipped_weapon: "Entity | None" = None,
         equipped_armor: "Entity | None" = None,
         equipped_ranged_weapon: "Entity | None" = None,
+        equipped_trinket: "Entity | None" = None,
         gold: int = 0,
         xp: int = 0,
         learned_perk_ids: set[str] | None = None,
@@ -233,6 +238,12 @@ class Entity:
         self.equipped_weapon = equipped_weapon
         self.equipped_armor = equipped_armor
         self.equipped_ranged_weapon = equipped_ranged_weapon
+        # The fourth equipment slot - a passive, non-flat-stat rate bonus
+        # (see ItemEffect.trinket_effect/trinket_bonus, engine/combat.py's
+        # _trinket_bonus, Engine._award_xp). Never touches
+        # effective_attack/defense/ranged_attack - that's the whole point
+        # of a trinket versus a weapon/armor/ranged item.
+        self.equipped_trinket = equipped_trinket
         # A scalar player stat, not a held item - collected gold never enters
         # inventory (see PickupAction._collect_gold). Named asymmetrically
         # from ItemEffect.gold_amount on purpose, matching how is_key/key_id

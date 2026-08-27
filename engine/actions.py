@@ -264,6 +264,11 @@ _SLOT_BONUS_WORD = {
     "armor": "defense",
     "ranged": "ranged attack",
 }
+_TRINKET_EFFECT_WORD = {
+    "crit_chance": "crit chance",
+    "dodge_chance": "dodge chance",
+    "xp_gain": "XP gain",
+}
 
 
 class PickupAction(Action):
@@ -278,6 +283,8 @@ class PickupAction(Action):
                 self._equip(engine, entity, candidate, slot="armor")
             elif candidate.item.ranged_attack_bonus:
                 self._equip(engine, entity, candidate, slot="ranged")
+            elif candidate.item.trinket_effect is not None:
+                self._equip_trinket(engine, entity, candidate)
             elif candidate.item.is_ammo:
                 self._stack_ammo(engine, entity, candidate)
             elif candidate.item.gold_amount:
@@ -316,6 +323,36 @@ class PickupAction(Action):
             current.x, current.y = entity.x, entity.y
             engine.game_map.entities.append(current)
             engine.message_log.add(f"You drop your old {slot}, the {current.name}.")
+
+    def _equip_trinket(self, engine: "Engine", entity: "Entity", candidate: "Entity") -> None:
+        """Trinkets aren't comparable by one flat bonus number the way
+        weapon/armor/ranged are (see _equip) - a crit-chance trinket and
+        an XP-gain trinket aren't fungible. Auto-equips when nothing's
+        equipped yet, or the candidate shares the current trinket's exact
+        trinket_effect kind and beats it; any other case (a different
+        kind, or the same kind but not better) is left on the ground,
+        same "not obviously better, don't swap" outcome _equip already
+        gives weapon/armor/ranged."""
+        current = entity.equipped_trinket
+        is_better = current is None or (
+            candidate.item.trinket_effect == current.item.trinket_effect
+            and candidate.item.trinket_bonus > current.item.trinket_bonus
+        )
+        if not is_better:
+            engine.message_log.add("Your current trinket is already at least as good.")
+            return
+
+        engine.game_map.entities.remove(candidate)
+        entity.equipped_trinket = candidate
+
+        effect_word = _TRINKET_EFFECT_WORD[candidate.item.trinket_effect]
+        bonus_pct = round(candidate.item.trinket_bonus * 100)
+        engine.message_log.add(f"You equip the {candidate.name} (+{bonus_pct}% {effect_word}).")
+
+        if current is not None:
+            current.x, current.y = entity.x, entity.y
+            engine.game_map.entities.append(current)
+            engine.message_log.add(f"You drop your old trinket, the {current.name}.")
 
     def _stack_ammo(self, engine: "Engine", entity: "Entity", candidate: "Entity") -> None:
         """Merges a new ammo pickup into an existing stack in inventory

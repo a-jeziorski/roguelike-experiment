@@ -311,6 +311,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
     armor_name = player.equipped_armor.name if player.equipped_armor else "none"
     ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
+    trinket_name = player.equipped_trinket.name if player.equipped_trinket else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, engine.clock.format_for_hud(), fg=HUD_FG, width=width)
@@ -329,7 +330,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     y += console.print(
         0,
         y,
-        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}",
+        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}",
         fg=HUD_FG,
         width=width,
     )
@@ -485,6 +486,7 @@ def render_look_hud(
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
     armor_name = player.equipped_armor.name if player.equipped_armor else "none"
     ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
+    trinket_name = player.equipped_trinket.name if player.equipped_trinket else "none"
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
@@ -499,7 +501,7 @@ def render_look_hud(
     y += console.print(
         0,
         y,
-        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}",
+        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}",
         fg=HUD_FG,
         width=width,
     )

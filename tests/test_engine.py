@@ -172,6 +172,16 @@ def make_ranged_weapon(
     )
 
 
+def make_trinket(
+    x: int, y: int, trinket_effect: str = "crit_chance", trinket_bonus: float = 0.5, name: str = "Lucky Charm",
+) -> Entity:
+    return Entity(
+        x, y, "'", (230, 200, 90), name,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(trinket_effect=trinket_effect, trinket_bonus=trinket_bonus),
+    )
+
+
 def make_ammo(x: int, y: int, quantity: int = 5, name: str = "Arrows") -> Entity:
     return Entity(
         x, y, "|", (190, 170, 140), name,
@@ -1226,6 +1236,166 @@ def test_armor_pickup_swaps_the_same_way_as_weapons():
     dropped = [e for e in game_map.entities if e.name == "Leather Armor"]
     assert len(dropped) == 1
     assert (dropped[0].x, dropped[0].y) == (1, 1)
+
+
+def test_trinket_pickup_equips_when_nothing_equipped_yet():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    trinket = make_trinket(1, 1, trinket_effect="crit_chance", trinket_bonus=0.1, name="Lucky Charm")
+    game_map.entities.extend([player, trinket])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_trinket is trinket
+    assert trinket not in game_map.entities
+
+
+def test_trinket_pickup_swaps_when_same_kind_and_better():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.1, name="Lucky Charm")
+    better = make_trinket(1, 1, trinket_effect="crit_chance", trinket_bonus=0.2, name="Rabbit's Foot")
+    game_map.entities.extend([player, better])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_trinket is better
+    dropped = [e for e in game_map.entities if e.name == "Lucky Charm"]
+    assert len(dropped) == 1
+    assert (dropped[0].x, dropped[0].y) == (1, 1)  # dropped at the player's feet
+
+
+def test_trinket_pickup_is_left_on_the_ground_when_same_kind_but_not_better():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    current = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.2, name="Rabbit's Foot")
+    player.equipped_trinket = current
+    worse = make_trinket(1, 1, trinket_effect="crit_chance", trinket_bonus=0.1, name="Lucky Charm")
+    game_map.entities.extend([player, worse])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_trinket is current  # unchanged
+    assert worse in game_map.entities  # left untouched on the ground
+
+
+def test_trinket_pickup_of_a_different_kind_is_left_on_the_ground():
+    """A crit-chance trinket and a dodge-chance trinket aren't comparable
+    by a single number - a different kind is never auto-swapped in, even
+    if its own bonus value is numerically larger."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    current = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.1, name="Lucky Charm")
+    player.equipped_trinket = current
+    different_kind = make_trinket(1, 1, trinket_effect="dodge_chance", trinket_bonus=0.5, name="Shadow Cloak Pin")
+    game_map.entities.extend([player, different_kind])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert player.equipped_trinket is current  # unchanged
+    assert different_kind in game_map.entities  # left untouched on the ground
+
+
+def test_trinket_does_not_affect_effective_attack_or_defense():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.5)
+
+    assert player.effective_attack == 5
+    assert player.effective_defense == 1
+
+
+def test_trinket_crit_chance_bonus_triggers_a_crit_the_base_rate_would_have_missed(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    import math
+
+    # Dodge roll first (must not beat DODGE_CHANCE=0.10), then crit roll:
+    # 0.3 is above the base CRIT_CHANCE=0.10 but below the trinket-boosted
+    # 0.60 - a crit here can only be the trinket's doing.
+    monkeypatch.setattr(random, "random", iter([0.99, 0.3]).__next__)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.5)
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    base_damage = player.effective_attack - monster.effective_defense
+    expected_crit_damage = math.ceil(base_damage * engine.combat.CRIT_MULTIPLIER)
+    assert 20 - monster.fighter.hp == expected_crit_damage
+
+
+def test_trinket_dodge_chance_bonus_triggers_a_dodge_the_base_rate_would_have_missed(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    # 0.3 is above the base DODGE_CHANCE=0.10 but below the trinket-boosted
+    # 0.60 - a dodge here can only be the trinket's doing.
+    monkeypatch.setattr(random, "random", lambda: 0.3)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="dodge_chance", trinket_bonus=0.5)
+    monster = make_monster(2, 1, hp=5, attack=10, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine_, attacker=monster, defender=player)
+
+    assert player.fighter.hp == 30  # fully dodged
+    assert "dodges" in engine_.message_log.messages[-1]
+
+
+def test_trinket_dodge_chance_bonus_is_ignored_for_a_wrong_kind_trinket(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    # 0.3 would dodge if the (mismatched) crit_chance trinket somehow
+    # boosted dodge too - it must not, so this hit lands normally.
+    monkeypatch.setattr(random, "random", iter([0.3, 0.99]).__next__)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="crit_chance", trinket_bonus=0.5)
+    monster = make_monster(2, 1, hp=5, attack=10, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine_, attacker=monster, defender=player)
+
+    assert player.fighter.hp == 30 - 10  # not dodged - wrong trinket kind
+
+
+def test_xp_gain_trinket_boosts_a_kill_reward(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    monkeypatch.setattr(random, "random", lambda: 0.99)  # no dodge, no crit
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=99, defense=0)
+    player.equipped_trinket = make_trinket(0, 0, trinket_effect="xp_gain", trinket_bonus=0.5)
+    monster = make_monster(2, 1, hp=1, attack=0, defense=0, ai=None)
+    monster.xp_reward = 10
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    assert player.xp == 15  # ceil(10 * 1.5)
+    assert any("You gain 15 XP" in m for m in engine_.message_log.messages)
+
+
+def test_xp_gain_trinket_has_no_effect_without_one_equipped():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=99, defense=0)
+    monster = make_monster(2, 1, hp=1, attack=0, defense=0, ai=None)
+    monster.xp_reward = 10
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    assert player.xp == 10
 
 
 def test_combat_damage_reflects_equipped_weapon_and_armor():

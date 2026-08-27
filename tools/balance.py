@@ -54,9 +54,16 @@ def stat_point_rate(catalog: Catalog, stat: str) -> float:
 def gear_xp_equivalent(catalog: Catalog, item: ItemDef) -> float:
     """The XP-equivalent value of one item's equipment bonus. 0.0 for an
     item with no attack_bonus/defense_bonus/ranged_attack_bonus (a potion, a
-    key, a quest item) - ItemDef's own not_multiple_equipment_slots
-    validator already guarantees at most one of the three is set, so at
-    most one term here is ever nonzero."""
+    key, a quest item, or a trinket - see ItemDef.trinket_effect/
+    trinket_bonus) - ItemDef's own not_multiple_equipment_slots validator
+    already guarantees at most one of the three flat-stat bonuses is set,
+    so at most one term here is ever nonzero. A trinket's percentage-point
+    rate bonus deliberately has no XP-equivalent formula yet - there's no
+    real playtesting data to calibrate "how much is +1% crit chance worth"
+    against a flat attack/defense point the way stat_point_rate already
+    is; build_xp_total below doesn't take a trinket_id argument for the
+    same reason. Revisit once trinkets have shipped enough to have real
+    balance data behind them."""
     total = 0.0
     for stat in _ITEM_STATS:
         bonus = getattr(item, f"{stat}_bonus")

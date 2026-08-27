@@ -3,6 +3,7 @@ so Engine itself stays testable without an SDL window."""
 
 from __future__ import annotations
 
+import math
 import random
 from typing import TYPE_CHECKING
 
@@ -336,7 +337,15 @@ class Engine:
     def _award_xp(self, amount: int, reason: str) -> None:
         """The single funnel every XP source routes through (kills, quest
         completion, landmark discovery) - same reasoning as complete_quest
-        being the one funnel for item/gold/discount rewards."""
+        being the one funnel for item/gold/discount rewards. An equipped
+        xp_gain trinket (see engine/entity.py's Entity.equipped_trinket)
+        boosts every source that passes through here alike, not just
+        kills - math.ceil so a trinket always grants strictly more, never
+        accidentally the same amount at a low xp value (same reasoning as
+        combat.py's crit multiplier)."""
+        trinket = self.player.equipped_trinket
+        if trinket is not None and trinket.item.trinket_effect == "xp_gain":
+            amount = math.ceil(amount * (1 + trinket.item.trinket_bonus))
         self.player.xp += amount
         self.message_log.add(f"You gain {amount} XP ({reason}).")
 

@@ -331,7 +331,7 @@ def test_level_01_content():
 
     item_names = sorted(s.item.name for s in level.item_spawns)
     assert item_names == [
-        "Arrows", "Healing Potion", "Healing Potion", "Hunting Bow", "Rusty Dagger", "Rusty Key",
+        "Arrows", "Healing Potion", "Healing Potion", "Hunting Bow", "Lucky Charm", "Rusty Dagger", "Rusty Key",
     ]
 
     door_keys = sorted(d.requires_key for d in level.doors)

@@ -1399,6 +1399,75 @@ already establish - checked at the legend/spawn level in `load_level`
 (not `load_catalog`, since `elite` is a per-placement fact about a
 specific level file, not a fact about the catalog entry itself).
 
+## 0x. The trinket slot (`ItemDef.trinket_effect`/`trinket_bonus`)
+
+A fourth equipment slot (`Entity.equipped_trinket`, alongside
+`equipped_weapon`/`equipped_armor`/`equipped_ranged_weapon`) for a
+passive, **non-flat-stat** item effect - a percentage-point rate bonus
+instead of a flat attack/defense/ranged-attack number, which is what
+distinguishes a trinket from ordinary gear. `TrinketEffectKind`
+(`content/schema.py`) is `"crit_chance" | "dodge_chance" | "xp_gain"`,
+the same "string constants + Literal" shape as `AIType`/`EffectKind`.
+`ItemDef.trinket_effect`/`trinket_bonus` are "both or neither" (same
+validator shape as `inflicts_effect`/`inflicts_duration`), and
+`not_multiple_equipment_slots` now also rejects a trinket that also sets
+`attack_bonus`/`defense_bonus`/`ranged_attack_bonus` - ambiguous which
+slot it belongs in, same reasoning that validator already existed for.
+
+**Where each effect kind is actually read** - deliberately not a single
+shared code path, because a trinket's bonus is fundamentally about a
+specific *moment*, not a standing stat:
+- `crit_chance`/`dodge_chance`: read by `engine/combat.py`'s
+  `_trinket_bonus(entity, kind)` at the exact point `_apply_damage` rolls
+  `DODGE_CHANCE`/`CRIT_CHANCE` - `dodge_chance = DODGE_CHANCE +
+  _trinket_bonus(defender, "dodge_chance")`,
+  `crit_chance = CRIT_CHANCE + _trinket_bonus(attacker, "crit_chance")`.
+  Correctly *inert* whenever `COMBAT_VARIANCE_ENABLED` is `False` (§2) -
+  same "one flag turns off the whole mechanic" contract item 1 already
+  established; a trinket boosting a disabled mechanic has nothing to
+  boost.
+- `xp_gain`: read directly by `Engine._award_xp` - the single funnel
+  every XP source already routes through (kills, quest completion,
+  landmark discovery), so an XP trinket boosts *all* of them alike, not
+  just kills. `math.ceil`, not `round` - same "must always grant strictly
+  more, never accidentally the same amount at a low XP value" reasoning
+  as `combat.py`'s crit multiplier.
+
+Neither path touches `effective_attack`/`effective_defense`/
+`effective_ranged_attack` at all - that's the entire point of the
+distinction from weapon/armor/ranged gear.
+
+**Auto-equip-on-pickup, same UX contract as every other slot, but a
+different comparison.** `PickupAction._equip` (weapon/armor/ranged)
+compares one flat bonus number directly. A trinket can't be compared that
+way across kinds - a crit-chance trinket and an XP-gain trinket aren't
+fungible - so `_equip_trinket` only ever auto-swaps when the candidate
+shares the *exact same* `trinket_effect` as whatever's currently equipped
+and beats its `trinket_bonus`; a different kind (or the same kind but not
+better) is left on the ground untouched, exactly the "not obviously
+better, don't swap" outcome `_equip` already gives every other slot in
+that situation.
+
+**A known, deliberate gap: buying a trinket from a shop doesn't equip
+it.** `Engine.buy_from_shop` has never routed through the
+auto-equip-if-better logic at all, for *any* slot - it always drops a
+purchase straight into `player.inventory`, same as it always has for
+`rusty_dagger`/`leather_armor` before this pass. There is no manual
+"equip from inventory" screen anywhere in the game, so a shop-bought
+weapon/armor/ranged/trinket item is currently unusable once bought - a
+real, pre-existing bug this pass surfaced but didn't fix (flagged
+separately; out of scope for "add a slot"). Every trinket this pass ships
+is therefore also placed as a real ground `item_spawn` (`lucky_charm` in
+`forgotten_ruins/level_01.lvl`) so the mechanic is genuinely reachable in
+play today, not just sellable-but-inert in a shop window.
+
+`tools/balance.py`'s `gear_xp_equivalent`/`build_xp_total` (§0s)
+deliberately don't account for a trinket's value - there's no real
+playtesting data yet to calibrate "how much is +1% crit chance worth"
+against a flat attack/defense point the way `stat_point_rate` already is
+for the other three slots. Revisit once trinkets have shipped enough to
+have real balance data behind them.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

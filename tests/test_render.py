@@ -404,6 +404,37 @@ def test_render_hud_shows_xp():
     assert "XP: 17" in text
 
 
+def test_render_hud_shows_none_for_an_unequipped_trinket():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "Trinket: none" in text
+
+
+def test_render_hud_shows_the_equipped_trinket_name():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.equipped_trinket = Entity(
+        0, 0, "'", (230, 200, 90), "Lucky Charm",
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(trinket_effect="crit_chance", trinket_bonus=0.1),
+    )
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "Trinket: Lucky Charm" in text
+
+
 def test_render_hud_shows_the_help_reminder():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)

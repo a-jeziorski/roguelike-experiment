@@ -135,6 +135,33 @@ arrows:
   quantity: 5
   description: A bundle of fletched arrows.
 
+lucky_charm:
+  name: Lucky Charm
+  glyph: "'"
+  color: [230, 200, 90]
+  trinket_effect: crit_chance
+  trinket_bonus: 0.1
+  cost: 60
+  description: A rabbit's-foot sort of thing, worn smooth by whoever carried it before. Doubles your odds of a lucky, telling blow.
+
+shadow_cloak_pin:
+  name: Shadow Cloak Pin
+  glyph: "^"
+  color: [90, 90, 120]
+  trinket_effect: dodge_chance
+  trinket_bonus: 0.1
+  cost: 60
+  description: A dull iron pin that seems to drink the light around it. Makes a body just a little harder to hit.
+
+scholars_pendant:
+  name: Scholar's Pendant
+  glyph: "~"
+  color: [150, 180, 210]
+  trinket_effect: xp_gain
+  trinket_bonus: 0.2
+  cost: 75
+  description: A pendant etched with notes too small to read without squinting. Sharpens the habit of learning from everything that happens to you.
+
 gold_pile:
   name: Gold Pile
   glyph: "$"

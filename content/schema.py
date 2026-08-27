@@ -88,6 +88,17 @@ EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN]
 # EntityDef.inflicts_potency_matches_effect_kind below.
 _EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
 
+# What a trinket (ItemDef.trinket_effect/trinket_bonus below, EquipSlot's
+# fourth slot) passively boosts - a percentage-point bonus applied on top
+# of the base rate, not a flat stat like attack_bonus/defense_bonus, which
+# is the whole point of a trinket versus a weapon/armor/ranged item.
+# Same "string constants + Literal" shape as AIType/EffectKind, for the
+# same reason - engine/combat.py and engine/engine.py dispatch on these.
+TRINKET_EFFECT_CRIT_CHANCE = "crit_chance"
+TRINKET_EFFECT_DODGE_CHANCE = "dodge_chance"
+TRINKET_EFFECT_XP_GAIN = "xp_gain"
+TrinketEffectKind = Literal[TRINKET_EFFECT_CRIT_CHANCE, TRINKET_EFFECT_DODGE_CHANCE, TRINKET_EFFECT_XP_GAIN]
+
 
 class EntityDef(BaseModel):
     """A monster type, as defined once in data/entities.yaml and referenced by id
@@ -238,6 +249,14 @@ class ItemDef(BaseModel):
     defense_bonus: int | None = None
     ranged_attack_bonus: int | None = None
     range: int | None = Field(default=None, gt=0)
+    # A trinket's passive, non-flat-stat bonus - the fourth equipment slot
+    # (see engine/entity.py's Entity.equipped_trinket), distinct from
+    # attack_bonus/defense_bonus/ranged_attack_bonus above: a percentage-
+    # point rate bonus (crit chance, dodge chance, XP gain) rather than a
+    # flat stat number. Both or neither, same shape as inflicts_effect/
+    # inflicts_duration.
+    trinket_effect: TrinketEffectKind | None = None
+    trinket_bonus: float | None = Field(default=None, gt=0, le=1)
     is_key: bool = False
     # An ammo item stacks: one pickup can be worth several shots.
     is_ammo: bool = False
@@ -262,13 +281,22 @@ class ItemDef(BaseModel):
     def not_multiple_equipment_slots(self) -> "ItemDef":
         slots_set = sum(
             bonus is not None
-            for bonus in (self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus)
+            for bonus in (
+                self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus, self.trinket_effect,
+            )
         )
         if slots_set > 1:
             raise ValueError(
                 "an item can only set one of attack_bonus/defense_bonus/"
-                "ranged_attack_bonus (ambiguous which equipment slot it belongs in)"
+                "ranged_attack_bonus/trinket_effect (ambiguous which "
+                "equipment slot it belongs in)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def trinket_effect_and_bonus_both_or_neither(self) -> "ItemDef":
+        if (self.trinket_effect is None) != (self.trinket_bonus is None):
+            raise ValueError("trinket_effect and trinket_bonus must be set together or not at all")
         return self
 
 

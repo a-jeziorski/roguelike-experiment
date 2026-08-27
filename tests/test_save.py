@@ -717,6 +717,50 @@ def test_round_trip_preserves_an_item_dropped_by_equipping_over_it(tmp_path):
     assert (dropped[0].x, dropped[0].y) == (engine.player.x, engine.player.y)
 
 
+def test_round_trip_preserves_equipped_trinket(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    engine.player.equipped_trinket = item_entity_from_def(catalog.items["lucky_charm"])
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+    engine2 = active_engines2[active_key]
+
+    assert engine2.player.equipped_trinket is not None
+    assert engine2.player.equipped_trinket.entity_id == "lucky_charm"
+
+
+def test_restore_save_defaults_equipped_trinket_for_an_old_format_save(tmp_path):
+    """A save captured before this pass has no equipped_trinket key at
+    all - SavedPlayer.equipped_trinket's None default must let it restore
+    cleanly instead of failing validation."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["equipped_trinket"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, clock2, quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    assert active_engines2[active_key].player.equipped_trinket is None
+
+
 def test_round_trip_preserves_a_ground_item_carried_to_and_dropped_on_a_different_level(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
