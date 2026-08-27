@@ -188,6 +188,30 @@ def load_catalog(
         except ValidationError as e:
             errors.append(f"perk '{perk_id}': {e}")
 
+    for perk_id, pdef in perks.items():
+        if pdef.requires_perk_id is None:
+            continue
+        if pdef.requires_perk_id not in perks:
+            errors.append(f"perk '{perk_id}': requires_perk_id references unknown perk '{pdef.requires_perk_id}'")
+        elif pdef.requires_perk_id == perk_id:
+            errors.append(f"perk '{perk_id}': requires_perk_id can't reference itself")
+
+    # A cycle in the requires_perk_id chain (A requires B requires A) would
+    # make every perk in it permanently unlearnable - each one waiting on
+    # the next, forever. Walk each perk's own chain of prerequisites;
+    # revisiting a perk already seen on this walk means a cycle. Skipped
+    # once a chain runs into an unknown id - already reported above, and
+    # `current in perks` naturally stops the walk there instead of raising.
+    for perk_id, pdef in perks.items():
+        seen = {perk_id}
+        current = pdef.requires_perk_id
+        while current is not None and current in perks:
+            if current in seen:
+                errors.append(f"perk '{perk_id}': requires_perk_id chain forms a cycle through '{current}'")
+                break
+            seen.add(current)
+            current = perks[current].requires_perk_id
+
     for entity_id, edef in entities.items():
         if not edef.shop_inventory:
             continue

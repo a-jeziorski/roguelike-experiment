@@ -889,6 +889,8 @@ def render_trainer(
             cost += f" + {pdef.gold_cost} gold"
         if perk_id in learned_perk_ids:
             tag = " (learned)"
+        elif pdef.requires_perk_id is not None and pdef.requires_perk_id not in learned_perk_ids:
+            tag = f" (requires {catalog.perks[pdef.requires_perk_id].name})"
         elif player_xp < pdef.xp_cost or player_gold < (pdef.gold_cost or 0):
             tag = " (can't afford)"
         else:

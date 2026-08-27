@@ -708,6 +708,33 @@ def test_render_trainer_marks_unaffordable_perks():
     assert "can't afford" in text
 
 
+def test_render_trainer_marks_a_tiered_perk_missing_its_prerequisite():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_2"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids=set(), status="",
+    )
+
+    text = console_text(console)
+    assert "requires Toughness" in text
+    assert "can't afford" not in text  # the prerequisite gate takes priority
+
+
+def test_render_trainer_does_not_mark_a_tiered_perk_once_the_prerequisite_is_learned():
+    catalog = load_catalog()
+    console = tcod.console.Console(70, 20, order="F")
+
+    render_trainer(
+        console, catalog, ["toughness_2"], selected=0,
+        player_xp=100, player_gold=0, learned_perk_ids={"toughness_1"}, status="",
+    )
+
+    text = console_text(console)
+    assert "requires Toughness" not in text
+
+
 def test_render_trainer_does_not_mark_affordable_unlearned_perks():
     catalog = load_catalog()
     console = tcod.console.Console(70, 20, order="F")

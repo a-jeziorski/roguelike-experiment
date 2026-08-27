@@ -422,6 +422,18 @@ class PerkDef(BaseModel):
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
     skill_heal_pct: float | None = Field(default=None, gt=0, le=1)
     skill_aoe_damage: int | None = Field(default=None, gt=0)
+    # A perk tier gate - this perk can't be learned until requires_perk_id
+    # is already in Entity.learned_perk_ids (see Engine.learn_perk).
+    # Orthogonal to which of the three bonus shapes above this perk uses -
+    # a tiered perk is still exactly one flat/rate bonus or active skill,
+    # just also gated behind an earlier perk (e.g. toughness_2 requires
+    # toughness_1). Both tiers stay learned forever once bought (perks are
+    # never unlearned), so their bonuses simply stack - requires_perk_id
+    # only gates the *purchase*, it isn't a replacement/upgrade mechanic.
+    # content/loader.py cross-references this against the full perk
+    # catalog (unknown id, self-reference, and cycles all fail loudly at
+    # load time - none of that is checkable from a single PerkDef alone).
+    requires_perk_id: str | None = None
 
     @model_validator(mode="after")
     def exactly_one_bonus_or_skill(self) -> "PerkDef":

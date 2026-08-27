@@ -11,6 +11,22 @@ toughness_1:
   xp_cost: 40
   max_hp_bonus: 5
 
+# A perk tier - toughness_2 can't be learned until toughness_1 already is
+# (see content/schema.py's PerkDef.requires_perk_id, Engine.learn_perk).
+# Both stay learned forever once bought, so their bonuses simply stack:
+# 5 + 8 = 13 total max HP from this line once both are learned. Priced
+# steeper than tier 1, reflecting both the bigger bonus and that it's
+# gated behind an earlier investment, not a first purchase.
+toughness_2:
+  name: Greater Toughness
+  description: >
+    The same discipline, carried further - the kind of conditioning that
+    only comes after Toughness is already second nature. Permanently
+    raises your max HP by another 8. Requires Toughness.
+  xp_cost: 80
+  max_hp_bonus: 8
+  requires_perk_id: toughness_1
+
 weapon_training_1:
   name: Weapon Training
   description: Drilled footwork and follow-through, the kind that only comes from repetition. Permanently raises your melee attack by 2.

@@ -1633,6 +1633,57 @@ already established, verified end-to-end via `tools/play_llm.py`'s
 24-hour cooldown that only moves on the overworld; Ground Pound clearing
 a pack of adjacent monsters at once, back off cooldown five turns later).
 
+## 0aa. Perk tiers (`PerkDef.requires_perk_id`)
+
+A perk can gate its purchase behind an earlier one -
+`requires_perk_id: toughness_1` on `toughness_2` means `Engine.learn_perk`
+refuses to sell tier 2 until tier 1 is already in
+`Entity.learned_perk_ids`. Orthogonal to *which* of the three perk shapes
+(§0z) a tiered perk is - `requires_perk_id` only gates the purchase
+moment, nothing about how the perk's own bonus applies once bought.
+
+**Both tiers stay learned forever and simply stack** - a perk is never
+unlearned or replaced (established well before this pass), so
+`requires_perk_id` is purely a purchase gate, not an upgrade/replace
+mechanic. `toughness_1` (+5 max HP) and `toughness_2` (+8 max HP) both
+remain in `learned_perk_ids` once both are bought, for +13 total - there
+is no single "current tier" to track, no removal of tier 1's bonus when
+tier 2 is learned. This is why `learn_perk`'s prerequisite check is pure
+`learned_perk_ids` membership, nothing about *which* Trainer taught it:
+learning `toughness_1` from one NPC satisfies `toughness_2`'s requirement
+at any other Trainer that happens to teach it too.
+
+**Validated at three levels, matching the project's established "fail
+loudly at content-load time" posture:**
+- `content/loader.py` cross-references `requires_perk_id` against the
+  full perk catalog once every `PerkDef` is loaded (schema.py alone can't
+  do this - a single `PerkDef` has no visibility into the rest of the
+  catalog, the same reason `trainer_perks`/`drop_item_id`/`shop_inventory`
+  are all cross-checked in loader.py rather than schema.py). An unknown
+  id and a perk requiring itself are both rejected directly.
+- **Cycle detection**: `A requires B requires A` would make every perk in
+  the cycle permanently unlearnable - each one forever waiting on the
+  next. Walking each perk's own prerequisite chain and checking for a
+  revisit catches this (and any longer cycle) before it ever ships,
+  rather than leaving it as a live soft-lock a player could actually hit.
+- `Engine.learn_perk` re-checks at the moment of purchase (not just at
+  content-load time) - the actual gate a player experiences, returning
+  `"You need to learn {prereq name} first."` the same "return + log"
+  status-message convention every other `learn_perk`/`buy_from_shop`
+  rejection already uses.
+
+**The trainer screen shows *why* a tiered perk isn't purchasable yet**,
+not just that it isn't: `render_trainer`'s per-perk tag checks
+`requires_perk_id` before affordability (mirroring `learn_perk`'s own
+check order) and, when unmet, shows `"(requires {prereq name})"` instead
+of `"(can't afford)"` - a player staring at `toughness_2` with plenty of
+XP would otherwise have no way to tell why the trainer keeps refusing it.
+
+Ships one real tiered perk, `toughness_2` (requires `toughness_1`, both
+taught by the existing Trainer NPCs) - proving the mechanism rather than
+building out a full tree for every perk line, the same conservative,
+one-clear-example scope every mechanic in this pass has shipped with.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

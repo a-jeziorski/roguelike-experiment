@@ -173,6 +173,98 @@ def test_load_catalog_rejects_trainer_perks_referencing_unknown_perk(tmp_path):
         load_catalog(entities_path, items_path, perks_path)
 
 
+def test_load_catalog_accepts_a_valid_perk_tier_chain(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text("", encoding="utf-8")
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text(
+        "toughness_1:\n"
+        "  name: Toughness\n"
+        "  description: Raises max HP.\n"
+        "  xp_cost: 40\n"
+        "  max_hp_bonus: 5\n"
+        "toughness_2:\n"
+        "  name: Greater Toughness\n"
+        "  description: Raises max HP further.\n"
+        "  xp_cost: 80\n"
+        "  max_hp_bonus: 8\n"
+        "  requires_perk_id: toughness_1\n",
+        encoding="utf-8",
+    )
+
+    catalog = load_catalog(entities_path, items_path, perks_path)
+
+    assert catalog.perks["toughness_2"].requires_perk_id == "toughness_1"
+
+
+def test_load_catalog_rejects_requires_perk_id_referencing_unknown_perk(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text("", encoding="utf-8")
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text(
+        "toughness_2:\n"
+        "  name: Greater Toughness\n"
+        "  description: Raises max HP further.\n"
+        "  xp_cost: 80\n"
+        "  max_hp_bonus: 8\n"
+        "  requires_perk_id: nonexistent_perk\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="requires_perk_id references unknown perk"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_requires_perk_id_referencing_itself(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text("", encoding="utf-8")
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text(
+        "toughness_1:\n"
+        "  name: Toughness\n"
+        "  description: Raises max HP.\n"
+        "  xp_cost: 40\n"
+        "  max_hp_bonus: 5\n"
+        "  requires_perk_id: toughness_1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="can't reference itself"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_a_requires_perk_id_cycle(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text("", encoding="utf-8")
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text(
+        "perk_a:\n"
+        "  name: Perk A\n"
+        "  description: The first half of a cycle.\n"
+        "  xp_cost: 40\n"
+        "  max_hp_bonus: 5\n"
+        "  requires_perk_id: perk_b\n"
+        "perk_b:\n"
+        "  name: Perk B\n"
+        "  description: The second half of a cycle.\n"
+        "  xp_cost: 40\n"
+        "  attack_bonus: 2\n"
+        "  requires_perk_id: perk_a\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="requires_perk_id chain forms a cycle"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
 def test_load_catalog_rejects_trainer_perks_on_a_non_peaceful_entity(tmp_path):
     entities_path = tmp_path / "entities.yaml"
     items_path = tmp_path / "items.yaml"

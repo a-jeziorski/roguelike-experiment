@@ -5406,6 +5406,62 @@ def test_learn_perk_a_second_time_rejects_an_already_learned_perk():
     assert player.fighter.max_hp == 35  # not double-applied
 
 
+# --- perk tiers (requires_perk_id) ---
+
+
+def test_learn_perk_rejects_a_tiered_perk_without_the_prerequisite():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.xp = 100
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["toughness_1", "toughness_2"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.learn_perk("toughness_2")
+
+    assert message == "You need to learn Toughness first."
+    assert "toughness_2" not in player.learned_perk_ids
+    assert player.xp == 100  # not charged
+    assert player.fighter.max_hp == 30  # unchanged
+
+
+def test_learn_perk_allows_a_tiered_perk_once_the_prerequisite_is_learned():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.xp = 200
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["toughness_1", "toughness_2"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("toughness_1")
+    message = engine.learn_perk("toughness_2")
+
+    assert message == "You learn Greater Toughness."
+    assert "toughness_2" in player.learned_perk_ids
+    assert player.fighter.max_hp == 30 + 5 + 8  # both tiers stack
+
+
+def test_learn_perk_tier_prerequisite_can_come_from_a_different_trainer():
+    """The prerequisite check is purely learned_perk_ids membership, not
+    "taught by the same trainer" - once toughness_1 is learned anywhere,
+    it satisfies toughness_2's requirement everywhere."""
+    catalog = load_catalog()
+    game_map = make_open_map(6, 3)
+    player = make_player(1, 1, hp=30)
+    player.xp = 200
+    trainer_a = make_trainer(0, 1, trainer_perks=["toughness_1"])
+    trainer_b = make_trainer(4, 1, trainer_perks=["toughness_2"])
+    game_map.entities.extend([player, trainer_a, trainer_b])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("toughness_1")
+    player.x = 3  # move adjacent to trainer_b only - trainer_a now out of range
+    message = engine.learn_perk("toughness_2")
+
+    assert message == "You learn Greater Toughness."
+    assert "toughness_2" in player.learned_perk_ids
+
+
 def test_learn_perk_rejects_a_catalog_perk_not_taught_by_this_trainer():
     catalog = load_catalog()
     game_map = make_open_map(3, 3)

@@ -201,7 +201,7 @@ millhaven_trainer:
   description: Used to drill Kingdom levies before there was a Kingdom left to levy them for. Still willing to pass on what stuck.
   dialogue: Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would.
   trainer_perks: [
-    toughness_1, weapon_training_1, shield_training_1, marksman_training_1,
+    toughness_1, toughness_2, weapon_training_1, shield_training_1, marksman_training_1,
     steady_aim, light_feet, second_wind, ground_pound,
   ]
 
@@ -289,7 +289,7 @@ wayford_trainer:
   description: Hung up the blade years back, but not the habit of watching how everyone else holds theirs.
   dialogue: You've been out there, killed things, done what people asked of you - that's worth more than coin, if you know where to spend it. I know where.
   trainer_perks: [
-    toughness_1, weapon_training_1, shield_training_1, marksman_training_1,
+    toughness_1, toughness_2, weapon_training_1, shield_training_1, marksman_training_1,
     steady_aim, light_feet, second_wind, ground_pound,
   ]
 

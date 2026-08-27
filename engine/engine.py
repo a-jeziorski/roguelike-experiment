@@ -1053,6 +1053,11 @@ class Engine:
             self.message_log.add(message)
             return message
         perk = self.catalog.perks[perk_id]
+        if perk.requires_perk_id is not None and perk.requires_perk_id not in self.player.learned_perk_ids:
+            prereq_name = self.catalog.perks[perk.requires_perk_id].name
+            message = f"You need to learn {prereq_name} first."
+            self.message_log.add(message)
+            return message
         if self.player.xp < perk.xp_cost or self.player.gold < (perk.gold_cost or 0):
             message = "You can't afford that."
             self.message_log.add(message)

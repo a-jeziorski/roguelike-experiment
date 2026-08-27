@@ -1155,3 +1155,16 @@ def test_perk_def_rejects_out_of_range_skill_heal_pct():
             max_hp_bonus=None, skill_effect="heal", skill_heal_pct=1.5,
             skill_cooldown_kind="hours", skill_cooldown_amount=24,
         ))
+
+
+# --- perk tiers (requires_perk_id) ---
+
+
+def test_perk_def_requires_perk_id_defaults_none():
+    perk = PerkDef(**_perk_kwargs())
+    assert perk.requires_perk_id is None
+
+
+def test_perk_def_accepts_requires_perk_id():
+    perk = PerkDef(**_perk_kwargs(id="toughness_2", requires_perk_id="toughness_1"))
+    assert perk.requires_perk_id == "toughness_1"
