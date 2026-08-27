@@ -91,6 +91,8 @@ def _apply_damage(
         )
         if is_critical:
             engine.message_log.add("Critical hit!", category="combat")
+        if attacker.is_enraged:
+            engine.message_log.add(f"{attacker.name} fights with berserk fury!", category="combat")
         # Refreshes, never stacks: a repeat hit of the same kind overwrites
         # that dict entry rather than adding to it (see
         # Fighter.active_effects) - a different kind coexists independently.

@@ -64,6 +64,8 @@ def make_monster(
     alert_radius=None, flee_hp_pct=None, ranged_range=None, stationary=False,
     poison_potency=None, poison_duration=None, inflicts_effect=None,
     inflicts_potency=None, inflicts_duration=None,
+    enrage_hp_pct=None, enrage_attack_bonus=None,
+    pack_radius=None, pack_attack_bonus=None, regen_amount=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -85,6 +87,11 @@ def make_monster(
         inflicts_effect=inflicts_effect,
         inflicts_potency=inflicts_potency,
         inflicts_duration=inflicts_duration,
+        enrage_hp_pct=enrage_hp_pct,
+        enrage_attack_bonus=enrage_attack_bonus,
+        pack_radius=pack_radius,
+        pack_attack_bonus=pack_attack_bonus,
+        regen_amount=regen_amount,
         stationary=stationary,
     )
 
@@ -773,6 +780,205 @@ def test_ranged_basic_ignores_player_when_not_visible():
 
     assert (archer.x, archer.y) == (8, 1)  # never acted, out of sight
     assert player.fighter.hp == player.fighter.max_hp
+
+
+# --- enrage (bonus attack while badly hurt) ---
+
+
+def test_enrage_behaves_normally_above_threshold():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, hp=10, attack=4, ai="enrage", enrage_hp_pct=0.3, enrage_attack_bonus=3,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # full hp, above threshold: no bonus
+    assert not any("berserk" in m for m in engine.message_log.messages)
+
+
+def test_enrage_adds_attack_bonus_at_or_below_threshold():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, hp=10, attack=4, ai="enrage", enrage_hp_pct=0.3, enrage_attack_bonus=3,
+    )
+    monster.fighter.hp = 2  # 20%, at/below the 30% threshold
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - (4 + 3)
+    assert any("berserk" in m for m in engine.message_log.messages)
+
+
+def test_enrage_uses_engine_level_defaults_when_unset():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=10, attack=4, ai="enrage")
+    monster.fighter.hp = 3  # 30%, at the default 0.3 threshold
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - (4 + 2)  # DEFAULT_ENRAGE_ATTACK_BONUS
+
+
+def test_enrage_recovers_if_healed_back_above_threshold():
+    monster = make_monster(
+        2, 1, hp=10, attack=4, ai="enrage", enrage_hp_pct=0.3, enrage_attack_bonus=3,
+    )
+    monster.fighter.hp = 2
+    assert monster.is_enraged
+    assert monster.effective_attack == 4 + 3
+
+    monster.fighter.hp = 10
+    assert not monster.is_enraged
+    assert monster.effective_attack == 4
+
+
+# --- pack_hunter (bonus attack with a nearby ally) ---
+
+
+def test_pack_hunter_attacks_normally_with_no_nearby_ally():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=10, attack=4, ai="pack_hunter", pack_radius=3, pack_attack_bonus=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4
+
+
+def test_pack_hunter_gains_bonus_attack_with_a_nearby_hostile_ally():
+    game_map = make_open_map(6, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    hunter = make_monster(1, 1, hp=10, attack=4, ai="pack_hunter", pack_radius=3, pack_attack_bonus=3)
+    ally = make_monster(3, 1, hp=10, attack=1, ai="hostile_basic")  # too far to reach the player this turn
+    game_map.entities.extend([player, hunter, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - (4 + 3)  # hunter's own hit, boosted
+    assert hunter.pack_bonus_active == 3
+
+
+def test_pack_hunter_ignores_an_ally_outside_pack_radius():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    hunter = make_monster(1, 1, hp=10, attack=4, ai="pack_hunter", pack_radius=2, pack_attack_bonus=3)
+    ally = make_monster(9, 1, hp=10, attack=1, ai="hostile_basic")  # far outside pack_radius
+    game_map.entities.extend([player, hunter, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # no bonus, ally too far
+
+
+def test_pack_hunter_ignores_a_peaceful_nearby_entity():
+    game_map = make_open_map(6, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    hunter = make_monster(1, 1, hp=10, attack=4, ai="pack_hunter", pack_radius=3, pack_attack_bonus=3)
+    villager = make_villager(2, 2)
+    game_map.entities.extend([player, hunter, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # a peaceful neighbor doesn't count as an ally
+
+
+def test_pack_hunter_uses_engine_level_defaults_when_unset():
+    game_map = make_open_map(6, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    hunter = make_monster(1, 1, hp=10, attack=4, ai="pack_hunter")
+    ally = make_monster(3, 1, hp=10, attack=1, ai="hostile_basic")
+    game_map.entities.extend([player, hunter, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - (4 + 1)  # DEFAULT_PACK_RADIUS=3 covers distance 2, DEFAULT_PACK_ATTACK_BONUS=1
+
+
+# --- regenerator (heals every turn it acts) ---
+
+
+def test_regenerator_heals_each_of_its_own_turns():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    monster = make_monster(5, 1, hp=20, attack=4, ai="regenerator", regen_amount=3)
+    monster.fighter.hp = 10
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 13  # healed even though nowhere near the player
+    assert any("regenerates 3 HP" in m for m in engine.message_log.messages)
+
+
+def test_regenerator_heal_caps_at_max_hp():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    monster = make_monster(5, 1, hp=20, attack=4, ai="regenerator", regen_amount=3)
+    monster.fighter.hp = 19  # only 1 short of max_hp
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 20  # capped, not 22
+    assert any("regenerates 1 HP" in m for m in engine.message_log.messages)
+
+
+def test_regenerator_does_not_heal_or_log_at_full_hp():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    monster = make_monster(5, 1, hp=20, attack=4, ai="regenerator", regen_amount=3)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 20
+    assert not any("regenerates" in m for m in engine.message_log.messages)
+
+
+def test_regenerator_heals_and_attacks_the_same_turn_when_adjacent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=20, attack=4, ai="regenerator", regen_amount=3)
+    monster.fighter.hp = 10
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 13  # healed, still attacked the same turn
+    assert player.fighter.hp == 30 - 4
+
+
+def test_regenerator_uses_default_regen_amount_when_unset():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    monster = make_monster(5, 1, hp=20, attack=4, ai="regenerator")
+    monster.fighter.hp = 10
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 12  # DEFAULT_REGEN_AMOUNT = 2
 
 
 def test_player_death_sets_game_state_dead():

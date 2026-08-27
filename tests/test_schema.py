@@ -147,12 +147,56 @@ def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     )
     assert town_guard.ai == "town_guard"
 
+    berserker = EntityDef(
+        id="berserker", name="Berserker", glyph="b", color=(1, 2, 3),
+        hp=18, attack=5, defense=1, ai="enrage", enrage_hp_pct=0.4, enrage_attack_bonus=3,
+    )
+    assert berserker.enrage_hp_pct == 0.4
+    assert berserker.enrage_attack_bonus == 3
+
+    wolf = EntityDef(
+        id="wolf", name="Wolf", glyph="w", color=(1, 2, 3),
+        hp=10, attack=3, defense=0, ai="pack_hunter", pack_radius=4, pack_attack_bonus=2,
+    )
+    assert wolf.pack_radius == 4
+    assert wolf.pack_attack_bonus == 2
+
+    troll = EntityDef(
+        id="troll", name="Troll", glyph="T", color=(1, 2, 3),
+        hp=30, attack=6, defense=2, ai="regenerator", regen_amount=4,
+    )
+    assert troll.regen_amount == 4
+
 
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(
             id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
             ai="skittish", flee_hp_pct=1.5,
+        )
+
+
+def test_entity_def_rejects_out_of_range_enrage_hp_pct():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="berserker", name="Berserker", glyph="b", color=(1, 2, 3), hp=18, attack=5, defense=1,
+            ai="enrage", enrage_hp_pct=1.5,
+        )
+
+
+def test_entity_def_rejects_nonpositive_pack_attack_bonus():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="wolf", name="Wolf", glyph="w", color=(1, 2, 3), hp=10, attack=3, defense=0,
+            ai="pack_hunter", pack_attack_bonus=0,
+        )
+
+
+def test_entity_def_rejects_nonpositive_regen_amount():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="troll", name="Troll", glyph="T", color=(1, 2, 3), hp=30, attack=6, defense=2,
+            ai="regenerator", regen_amount=0,
         )
 
 

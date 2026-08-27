@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from content.schema import EffectKind, FlagDialogue, PerkDef
+from content.schema import AI_ENRAGE, EffectKind, FlagDialogue, PerkDef
 
 Color = tuple[int, int, int]
 
@@ -14,6 +14,16 @@ Color = tuple[int, int, int]
 RENDER_PRIORITY_ITEM = 0
 RENDER_PRIORITY_ACTOR = 1
 RENDER_PRIORITY_PLAYER = 2
+
+# AI_ENRAGE's engine-level fallbacks, used by Entity.is_enraged/
+# effective_attack below when an EntityDef leaves the corresponding field
+# unset - defined here rather than in engine/engine.py (where the other
+# AI defaults like DEFAULT_FLEE_HP_PCT live) because effective_attack
+# needs the resolved bonus value itself, not just a threshold, and
+# engine/entity.py can't import engine/engine.py (the dependency runs the
+# other way).
+DEFAULT_ENRAGE_HP_PCT = 0.3
+DEFAULT_ENRAGE_ATTACK_BONUS = 2
 
 
 @dataclass
@@ -122,6 +132,11 @@ class Entity:
         inflicts_effect: "EffectKind | None" = None,
         inflicts_potency: int | None = None,
         inflicts_duration: int | None = None,
+        enrage_hp_pct: float | None = None,
+        enrage_attack_bonus: int | None = None,
+        pack_radius: int | None = None,
+        pack_attack_bonus: int | None = None,
+        regen_amount: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -158,6 +173,23 @@ class Entity:
         self.inflicts_effect = inflicts_effect
         self.inflicts_potency = inflicts_potency
         self.inflicts_duration = inflicts_duration
+        # AI_ENRAGE's threshold/bonus and AI_PACK_HUNTER's radius/bonus -
+        # static per-entity-type config, set once at spawn like the
+        # inflicts_* fields above, never mutated. AI_REGENERATOR's
+        # regen_amount alongside them for the same reason.
+        self.enrage_hp_pct = enrage_hp_pct
+        self.enrage_attack_bonus = enrage_attack_bonus
+        self.pack_radius = pack_radius
+        self.pack_attack_bonus = pack_attack_bonus
+        self.regen_amount = regen_amount
+        # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
+        # this is recomputed by Engine._perform_ai every time this entity
+        # acts (see Engine._has_nearby_ally), immediately before it
+        # attacks, since "is an ally nearby right now" depends on the
+        # whole map's current entity positions, not anything Entity itself
+        # can compute. Defaults to 0 and is harmless for every entity that
+        # isn't AI_PACK_HUNTER, which never touches it.
+        self.pack_bonus_active = 0
         self.stationary = stationary
         self.description = description
         # The line the Talk action shows for this specific entity (see
@@ -229,10 +261,24 @@ class Entity:
         return weaken.potency if weaken else 0
 
     @property
+    def is_enraged(self) -> bool:
+        """True once this entity's own hp fraction has dropped to/below
+        its enrage threshold - AI_ENRAGE's whole hook (see
+        engine/engine.py's _perform_ai AI_ENRAGE branch, engine/combat.py's
+        berserk-hit message). Computed live off current hp rather than a
+        sticky flag, so effective_attack (and the message) stay correct
+        even if this entity is ever healed back above the threshold."""
+        if self.ai != AI_ENRAGE or self.fighter is None or self.fighter.max_hp <= 0:
+            return False
+        threshold = self.enrage_hp_pct or DEFAULT_ENRAGE_HP_PCT
+        return self.fighter.hp / self.fighter.max_hp <= threshold
+
+    @property
     def effective_attack(self) -> int:
         base = self.fighter.attack if self.fighter else 0
         bonus = self.equipped_weapon.item.attack_bonus if self.equipped_weapon else None
-        return max(0, base + (bonus or 0) - self._weaken_penalty)
+        enrage_bonus = (self.enrage_attack_bonus or DEFAULT_ENRAGE_ATTACK_BONUS) if self.is_enraged else 0
+        return max(0, base + (bonus or 0) + enrage_bonus + self.pack_bonus_active - self._weaken_penalty)
 
     @property
     def effective_defense(self) -> int:

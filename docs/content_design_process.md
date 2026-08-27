@@ -1250,6 +1250,68 @@ avoid pairing a stunner with anything else that also wants the player's
 attention in the same encounter - a solo, rare threat, not one two
 monsters deep in a pack.
 
+## 0u. Three new AI behaviors (`enrage`, `pack_hunter`, `regenerator`)
+
+Three more `AIType` values, each a variant of `hostile_basic`'s ordinary
+chase-and-attack with one extra mechanic layered on - same shape as
+`sleeping_guard` (chase-and-attack gated on alert_radius) and `skittish`
+(flee instead, gated on flee_hp_pct) already are. None are placed in any
+dungeon yet - capability-only, same "define now, place later" pattern as
+`wraith`/`gray_ooze` from §0t, deferred to the later bestiary-population
+pass.
+
+**`enrage`** - `Entity.is_enraged` (`engine/entity.py`) is a live property,
+not stored state: true whenever `fighter.hp / fighter.max_hp <=
+enrage_hp_pct` (default `DEFAULT_ENRAGE_HP_PCT = 0.3`). While true,
+`effective_attack` adds `enrage_attack_bonus` (default
+`DEFAULT_ENRAGE_ATTACK_BONUS = 2`). Being a live computation off current hp
+(mirroring `_weaken_penalty`'s shape) rather than a one-time flag means it
+correctly *un*-enrages if this entity is ever healed back above the
+threshold - nothing does that today, but the property doesn't assume it
+never will. `engine/combat.py`'s `_apply_damage` logs "fights with berserk
+fury!" alongside the damage line whenever `attacker.is_enraged`, the same
+place/shape as the crit message. The two engine-level defaults live in
+`engine/entity.py` itself, not alongside `DEFAULT_FLEE_HP_PCT` etc. in
+`engine/engine.py` - `effective_attack` needs the resolved bonus value, and
+`engine/entity.py` can't import `engine/engine.py` (the dependency only
+ever runs the other way).
+
+**`pack_hunter`** - the one behavior that can't be a pure `Entity`
+property, because "is an ally nearby" depends on the whole map's current
+entity positions, which only `Engine` (holding `game_map`) has access to.
+`Engine._has_nearby_ally` scans every other living, non-`PEACEFUL_AI_TYPES`
+entity for one within `pack_radius` tiles (default
+`DEFAULT_PACK_RADIUS = 3`); `_perform_ai`'s `AI_PACK_HUNTER` branch
+recomputes this fresh every time the entity acts and writes the result into
+`Entity.pack_bonus_active` (0, or `pack_attack_bonus` /
+`DEFAULT_PACK_ATTACK_BONUS = 1`) *before* calling `_chase_and_attack` -
+`effective_attack` just adds whatever's currently sitting there. This is
+the same "Engine mutates a live field on Entity right before combat reads
+it" shape `equipped_weapon`/`equipped_armor` already establish, not a new
+pattern - `pack_bonus_active` starts at 0 for every entity and is only ever
+written by the `AI_PACK_HUNTER` branch, so it's inert for everything else.
+It can go briefly stale between this entity's own turns (recomputed, not
+cleared, so it still reflects last turn's answer if read from anywhere
+else) - harmless in practice, since nothing displays a monster's
+`effective_attack` today (`engine/render.py` only ever shows the player's).
+The bonus is flat and binary (any one ally in range vs. none), not scaled
+by ally count - deliberately, so a pack_hunter placement can't snowball
+into an unbounded stack just from grouping enough of them together.
+
+**`regenerator`** - `Engine._regenerate`, called from `_perform_ai`'s
+`AI_REGENERATOR` branch immediately before `_chase_and_attack`, heals
+`regen_amount` (default `DEFAULT_REGEN_AMOUNT = 2`) HP per turn, capped at
+`max_hp`, logging "regenerates N HP." Runs every turn this entity acts,
+mid-fight or not - deliberately not gated on distance-to-player or combat
+state, since the whole point is a race against sustained damage: a player
+who can't out-pace the regen never finishes the fight, rather than just
+taking longer to. For hits-to-kill math (§2), this means a `regenerator`'s
+effective HP pool isn't just its `hp` stat - a slow, interrupted fight
+against one effectively heals back some fraction of whatever damage
+landed between engagements, so `regen_amount` needs to be small relative to
+the player's expected per-turn damage output, or the fight simply can't be
+won by attrition.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

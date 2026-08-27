@@ -51,8 +51,12 @@ AI_SKITTISH = "skittish"
 AI_RANGED_BASIC = "ranged_basic"
 AI_VILLAGER = "villager"
 AI_TOWN_GUARD = "town_guard"
+AI_ENRAGE = "enrage"
+AI_PACK_HUNTER = "pack_hunter"
+AI_REGENERATOR = "regenerator"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
+    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -145,6 +149,26 @@ class EntityDef(BaseModel):
     inflicts_effect: EffectKind | None = None
     inflicts_potency: int | None = Field(default=None, gt=0)
     inflicts_duration: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_ENRAGE - once this entity's own hp fraction
+    # drops to/below enrage_hp_pct, enrage_attack_bonus is added to its
+    # effective_attack (see engine/entity.py's Entity.is_enraged/
+    # effective_attack). Engine-level defaults apply when omitted, same
+    # optional-field convention as alert_radius/flee_hp_pct/ranged_range
+    # above - unlike inflicts_effect's fields, there's no "both or neither"
+    # requirement here since either field alone still has a sensible
+    # engine-level fallback.
+    enrage_hp_pct: float | None = Field(default=None, gt=0, le=1)
+    enrage_attack_bonus: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_PACK_HUNTER - pack_attack_bonus is added to
+    # effective_attack while at least one other living, hostile monster is
+    # within pack_radius tiles (see engine/engine.py's _has_nearby_ally,
+    # engine/entity.py's Entity.pack_bonus_active).
+    pack_radius: int | None = Field(default=None, gt=0)
+    pack_attack_bonus: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_REGENERATOR - hp healed (capped at max_hp) at
+    # the start of each of this entity's own turns, combat or not (see
+    # engine/engine.py's _regenerate).
+    regen_amount: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod

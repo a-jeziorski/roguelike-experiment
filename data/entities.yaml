@@ -427,9 +427,13 @@ giant_rat:
   hp: 10
   attack: 3
   defense: 0
-  ai: hostile_basic
+  ai: regenerator
+  # A conservative first pass (2 hp/turn on a 10-hp body) - exact tuning
+  # deferred like cave_spider's poison above, but enough that ignoring it
+  # for a few turns visibly undoes progress (docs/content_design_process.md §0u).
+  regen_amount: 2
   xp_reward: 5
-  description: Bigger and bolder than the sewer kind, and it doesn't scatter when you swing.
+  description: Bigger and bolder than the sewer kind - wounds close over almost as fast as it takes them, and it doesn't scatter when you swing.
 
 wolf:
   name: Wolf
@@ -438,7 +442,11 @@ wolf:
   hp: 14
   attack: 5
   defense: 1
-  ai: hostile_basic
+  ai: pack_hunter
+  # "Circles before it commits" made mechanical - hits harder once another
+  # wolf is close enough to also be in the fight (docs/content_design_process.md §0u).
+  pack_radius: 3
+  pack_attack_bonus: 2
   xp_reward: 5
   description: Lean and half-feral, running with whatever's left of a pack. Circles before it commits.
 
@@ -472,9 +480,14 @@ orc:
   hp: 15
   attack: 5
   defense: 1
-  ai: hostile_basic
+  ai: enrage
+  # Unhurried until it's actually losing - below 30% hp (4 of 15) it stops
+  # being confident and starts swinging like it knows it might lose
+  # (docs/content_design_process.md §0u).
+  enrage_hp_pct: 0.3
+  enrage_attack_bonus: 3
   xp_reward: 6
-  description: Broad-shouldered and unhurried about closing the distance - it's confident it doesn't need to be fast.
+  description: Broad-shouldered and unhurried about closing the distance - it's confident it doesn't need to be fast. Corner it, and that confidence turns to fury.
 
 hobgoblin:
   name: Hobgoblin

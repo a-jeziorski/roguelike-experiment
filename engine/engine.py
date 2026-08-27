@@ -7,8 +7,11 @@ import random
 from typing import TYPE_CHECKING
 
 from content.schema import (
+    AI_ENRAGE,
     AI_HOSTILE_BASIC,
+    AI_PACK_HUNTER,
     AI_RANGED_BASIC,
+    AI_REGENERATOR,
     AI_SKITTISH,
     AI_SLEEPING_GUARD,
     AI_TOWN_GUARD,
@@ -34,6 +37,13 @@ if TYPE_CHECKING:
 DEFAULT_ALERT_RADIUS = 4
 DEFAULT_FLEE_HP_PCT = 0.3
 DEFAULT_MONSTER_RANGED_RANGE = 4
+# AI_PACK_HUNTER/AI_REGENERATOR's own fallbacks - same "omit-friendly"
+# convention as above. AI_ENRAGE's equivalents (DEFAULT_ENRAGE_HP_PCT/
+# DEFAULT_ENRAGE_ATTACK_BONUS) live in engine/entity.py instead, since
+# Entity.effective_attack needs them and can't import this module.
+DEFAULT_PACK_RADIUS = 3
+DEFAULT_PACK_ATTACK_BONUS = 1
+DEFAULT_REGEN_AMOUNT = 2
 
 # Flat XP awarded for discovering a landmark (see
 # Engine._log_newly_seen_tile_announcements) - deliberately small relative
@@ -536,6 +546,26 @@ class Engine:
             else:
                 self._wander(entity)
 
+        elif entity.ai == AI_ENRAGE:
+            # Chases and attacks exactly like hostile_basic - the enrage
+            # bonus itself is entirely handled by Entity.is_enraged/
+            # effective_attack (computed live off current hp), nothing
+            # extra to do here beyond the ordinary chase-and-attack.
+            self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_PACK_HUNTER:
+            pack_radius = entity.pack_radius or DEFAULT_PACK_RADIUS
+            entity.pack_bonus_active = (
+                (entity.pack_attack_bonus or DEFAULT_PACK_ATTACK_BONUS)
+                if self._has_nearby_ally(entity, pack_radius)
+                else 0
+            )
+            self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_REGENERATOR:
+            self._regenerate(entity)
+            self._chase_and_attack(entity, dx, dy, distance)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -559,6 +589,34 @@ class Engine:
         or occupied, the same free behavior _flee relies on."""
         step_x, step_y = random.choice(_WANDER_MOVES)
         MovementAction(step_x, step_y).perform(self, entity)
+
+    def _has_nearby_ally(self, entity: Entity, radius: int) -> bool:
+        """True if another living, hostile (non-peaceful) monster is
+        within radius tiles of entity - AI_PACK_HUNTER's trigger
+        condition (see _perform_ai's AI_PACK_HUNTER branch). A peaceful
+        entity (villager/town_guard) never counts as a pack hunter's ally,
+        same PEACEFUL_AI_TYPES exclusion combat.py already uses elsewhere."""
+        for other in self.game_map.entities:
+            if other is entity or other is self.player or not other.is_alive:
+                continue
+            if other.ai is None or other.ai in PEACEFUL_AI_TYPES:
+                continue
+            if max(abs(other.x - entity.x), abs(other.y - entity.y)) <= radius:
+                return True
+        return False
+
+    def _regenerate(self, entity: Entity) -> None:
+        """Heals entity by its regen_amount (DEFAULT_REGEN_AMOUNT if
+        unset), capped at max_hp - AI_REGENERATOR's whole hook. Runs every
+        turn this entity acts, combat or not, by design: the player has to
+        out-damage the regen to make progress, not just eventually finish
+        it off given enough turns."""
+        if entity.fighter is None or entity.fighter.hp >= entity.fighter.max_hp:
+            return
+        amount = entity.regen_amount or DEFAULT_REGEN_AMOUNT
+        healed = min(amount, entity.fighter.max_hp - entity.fighter.hp)
+        entity.fighter.hp += healed
+        self.message_log.add(f"{entity.name} regenerates {healed} HP.", category="combat")
 
     def _handle_enemy_turns(self) -> None:
         for entity in list(self.game_map.entities):
