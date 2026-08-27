@@ -24,7 +24,7 @@ legend:
   ".": floor
   "@": player_start
   ">": stairs_down
-  "O": { entity: ogre }
+  "O": { entity: ogre, elite: true }
   "s": { entity: skeleton }
   "!": { item: healing_potion }
   "F": { tile: landmark, description: "A seam in the stone where construction stops looking built and starts looking grown - no join, no mortar, no edge the eye can find. It's warm, faintly, though nothing here should be." }

@@ -80,6 +80,11 @@ ogre:
   defense: 3
   ai: hostile_basic
   xp_reward: 14
+  # A real weapon upgrade, not just coin - fits a solitary guardian rather
+  # than a common raider. An elite spawn of this entity (see §0w) turns
+  # this into a guarantee (docs/content_design_process.md §0v/§0w).
+  drop_item_id: iron_sword
+  drop_chance: 0.4
   description: A hulking brute that guards the deepest halls.
 
 guard:

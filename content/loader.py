@@ -77,6 +77,7 @@ class EntitySpawn:
     entity: EntityDef
     dialogue: str | None = None
     flag_dialogue: list[FlagDialogue] = field(default_factory=list)
+    elite: bool = False
 
 
 @dataclass
@@ -807,11 +808,18 @@ def load_level(
                         f"legend symbol '{symbol}' references unknown entity "
                         f"'{entry.entity}'"
                     )
+                elif entry.elite and catalog.entities[entry.entity].ai in PEACEFUL_AI_TYPES:
+                    errors.append(
+                        f"legend symbol '{symbol}' sets elite: true on '{entry.entity}', "
+                        f"which is a peaceful NPC (ai '{catalog.entities[entry.entity].ai}') - "
+                        "elite only makes sense for a real hostile encounter"
+                    )
                 else:
                     entity_spawns.append(
                         EntitySpawn(
                             x=x, y=y, entity=catalog.entities[entry.entity],
                             dialogue=entry.dialogue, flag_dialogue=entry.flag_dialogue,
+                            elite=entry.elite,
                         )
                     )
 

@@ -826,6 +826,14 @@ class LegendEntry(BaseModel):
     would otherwise be saying. Checked in list order, first matching flag
     wins: {entity: village_chief, flag_dialogue: [{flag: wayford_razed,
     line: "..."}]}.
+
+    An `{entity: ...}` mapping may also set `elite: true` - a stronger,
+    more rewarding version of that same catalog monster for this one
+    placement, without a second near-duplicate EntityDef (see
+    engine/game_map.py's build_game_map/_apply_elite_scaling): boosted
+    hp/attack/xp, a flat defense bonus, a guaranteed drop if one was
+    already configured, and an "Elite " name prefix so it reads as
+    distinct at a glance. {entity: orc, elite: true}.
     """
 
     tile: TileType
@@ -838,11 +846,18 @@ class LegendEntry(BaseModel):
     dialogue: str | None = None
     announce: bool = False
     flag_dialogue: list[FlagDialogue] = Field(default_factory=list)
+    elite: bool = False
 
     @model_validator(mode="after")
     def announce_requires_description(self) -> "LegendEntry":
         if self.announce and not self.description:
             raise ValueError("announce requires description to be set")
+        return self
+
+    @model_validator(mode="after")
+    def elite_requires_entity(self) -> "LegendEntry":
+        if self.elite and self.entity is None:
+            raise ValueError("elite requires entity to be set")
         return self
 
     @classmethod
@@ -857,6 +872,7 @@ class LegendEntry(BaseModel):
                     tile=raw.get("tile", "floor"), entity=raw["entity"], description=description,
                     dialogue=raw.get("dialogue"), announce=announce,
                     flag_dialogue=raw.get("flag_dialogue") or [],
+                    elite=raw.get("elite", False),
                 )
             if "item" in raw:
                 return cls(
@@ -889,6 +905,7 @@ class LegendEntry(BaseModel):
                 dialogue=raw.get("dialogue"),
                 announce=announce,
                 flag_dialogue=raw.get("flag_dialogue") or [],
+                elite=raw.get("elite", False),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 

@@ -977,6 +977,84 @@ def test_load_level_collects_per_spawn_flag_dialogue(tmp_path):
     assert level.entity_spawns[0].flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It is gone.")]
 
 
+def test_load_level_collects_elite_entity_spawn(tmp_path):
+    level_path = tmp_path / "with_elite.lvl"
+    level_path.write_text(
+        "id: with_elite\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #g#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "g": { entity: goblin, elite: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.entity_spawns) == 1
+    assert level.entity_spawns[0].elite is True
+
+
+def test_load_level_entity_spawn_without_elite_defaults_false(tmp_path):
+    level_path = tmp_path / "no_elite.lvl"
+    level_path.write_text(
+        "id: no_elite\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #g#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "g": { entity: goblin }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert level.entity_spawns[0].elite is False
+
+
+def test_load_level_rejects_elite_on_a_peaceful_entity(tmp_path):
+    level_path = tmp_path / "elite_villager.lvl"
+    level_path.write_text(
+        "id: elite_villager\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, elite: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="elite only makes sense for a real hostile encounter"):
+        load_level(level_path, catalog)
+
+
 def test_load_level_entity_spawn_without_flag_dialogue_defaults_to_empty_list(tmp_path):
     level_path = tmp_path / "no_flag_dialogue.lvl"
     level_path.write_text(

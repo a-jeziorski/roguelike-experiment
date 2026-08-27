@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import tcod.map
 
@@ -33,6 +35,19 @@ DARK_FOV_RADIUS = 3
 # NPC there, absent a murder (see GameMap.mark_peaceful_npc_murdered) - see
 # GameMap.trigger_guard_hostility/guards_hostile.
 HOSTILITY_COOLDOWN_DAYS = 7
+
+# LegendEntry.elite's scaling (see _apply_elite_scaling below) - a stronger,
+# more rewarding version of an ordinary catalog monster for one specific
+# placement, without a second near-duplicate EntityDef. hp/attack/xp_reward
+# scale multiplicatively, rounded up (math.ceil, not round - same
+# "must always be strictly stronger, never accidentally identical at a low
+# stat value" reasoning as engine/combat.py's crit multiplier). Defense is
+# a flat bonus instead of a multiplier: many monsters have single-digit or
+# zero base defense, where multiplying would do nothing at all.
+ELITE_STAT_MULTIPLIER = 2.0
+ELITE_DEFENSE_BONUS = 1
+ELITE_XP_MULTIPLIER = 2.0
+ELITE_NAME_PREFIX = "Elite "
 
 
 class GameMap:
@@ -242,6 +257,25 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
     )
 
 
+def _apply_elite_scaling(entity: Entity) -> None:
+    """Mutates an already-built monster Entity in place into its elite
+    version - called right after construction, in build_game_map's
+    entity-spawn loop, for any spawn whose LegendEntry set elite: true. A
+    drop already configured on the base entity (drop_item_id set) becomes
+    guaranteed; an entity with no drop at all still gets none - this
+    amplifies the existing drop system (see content_design_process.md
+    §0v/§0w), it doesn't invent a separate elite-only loot table."""
+    entity.name = ELITE_NAME_PREFIX + entity.name
+    entity.color = tuple(min(255, int(c * 1.4) + 20) for c in entity.color)
+    entity.fighter.max_hp = math.ceil(entity.fighter.max_hp * ELITE_STAT_MULTIPLIER)
+    entity.fighter.hp = entity.fighter.max_hp
+    entity.fighter.attack = math.ceil(entity.fighter.attack * ELITE_STAT_MULTIPLIER)
+    entity.fighter.defense += ELITE_DEFENSE_BONUS
+    entity.xp_reward = math.ceil(entity.xp_reward * ELITE_XP_MULTIPLIER)
+    if entity.drop_item_id is not None:
+        entity.drop_chance = 1.0
+
+
 def build_game_map(
     level: ParsedLevel, catalog: Catalog, player: Entity | None = None
 ) -> tuple[GameMap, Entity]:
@@ -321,6 +355,8 @@ def build_game_map(
             trainer_perks=edef.trainer_perks,
             entity_id=edef.id,
         )
+        if spawn.elite:
+            _apply_elite_scaling(entity)
         game_map.entities.append(entity)
         game_map.entity_spawn_index[index] = entity
 

@@ -264,6 +264,21 @@ def test_legend_entry_from_entity_mapping_parses_flag_dialogue():
     assert entry.flag_dialogue == [FlagDialogue(flag="wayford_razed", line="It's gone.")]
 
 
+def test_legend_entry_elite_defaults_false():
+    entry = LegendEntry.from_raw({"entity": "rat"})
+    assert entry.elite is False
+
+
+def test_legend_entry_from_entity_mapping_with_elite():
+    entry = LegendEntry.from_raw({"entity": "orc", "elite": True})
+    assert entry.elite is True
+
+
+def test_legend_entry_elite_requires_entity():
+    with pytest.raises(ValidationError, match="elite requires entity"):
+        LegendEntry.from_raw({"tile": "floor", "elite": True})
+
+
 def test_legend_entry_from_item_mapping():
     entry = LegendEntry.from_raw({"item": "healing_potion"})
     assert entry.tile == "floor"

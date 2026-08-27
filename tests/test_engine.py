@@ -2286,6 +2286,78 @@ def test_build_game_map_populates_entity_and_item_spawn_index(tmp_path):
     assert goblin in game_map.entities
 
 
+def test_build_game_map_elite_spawn_boosts_stats_name_color_and_drop(tmp_path):
+    level_path = tmp_path / "elite.lvl"
+    level_path.write_text(
+        "id: elite\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@..#\n"
+        "  #.g.#\n"
+        "  #..>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "g": { entity: goblin, elite: true }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    base = catalog.entities["goblin"]
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    elite = game_map.entity_spawn_index[0]
+
+    assert elite.name == "Elite Goblin"
+    assert elite.fighter.max_hp == 24  # base 12, ELITE_STAT_MULTIPLIER=2.0
+    assert elite.fighter.hp == 24  # spawns at full (boosted) hp
+    assert elite.fighter.attack == 8  # base 4, doubled
+    assert elite.fighter.defense == base.defense + 1  # flat ELITE_DEFENSE_BONUS
+    assert elite.xp_reward == base.xp_reward * 2
+    assert elite.drop_chance == 1.0  # base goblin's 0.25 becomes guaranteed
+    assert elite.drop_item_id == base.drop_item_id
+    assert elite.color != base.color  # visually distinct from an ordinary goblin
+
+
+def test_build_game_map_non_elite_spawn_is_unaffected(tmp_path):
+    level_path = tmp_path / "not_elite.lvl"
+    level_path.write_text(
+        "id: not_elite\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@..#\n"
+        "  #.g.#\n"
+        "  #..>#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "g": { entity: goblin }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+    base = catalog.entities["goblin"]
+    level = load_level(level_path, catalog)
+    game_map, _player = build_game_map(level, catalog)
+
+    goblin = game_map.entity_spawn_index[0]
+
+    assert goblin.name == "Goblin"
+    assert goblin.fighter.max_hp == base.hp
+    assert goblin.fighter.attack == base.attack
+    assert goblin.fighter.defense == base.defense
+    assert goblin.xp_reward == base.xp_reward
+    assert goblin.drop_chance == base.drop_chance
+    assert goblin.color == base.color
+
+
 def test_build_game_map_populates_auto_announce_tiles_only_for_flagged_spawns(tmp_path):
     level_path = tmp_path / "announce.lvl"
     level_path.write_text(

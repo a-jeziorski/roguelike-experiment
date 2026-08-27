@@ -1354,6 +1354,51 @@ drop's only observable effect is "an item appears," so wiring it onto
 real content immediately is both the simplest way to exercise it and
 actually delivers the gap the whole pass exists to close.
 
+## 0w. Elite monster variants (`LegendEntry.elite`)
+
+A stronger, more rewarding version of an ordinary catalog monster for one
+specific placement - `{entity: orc, elite: true}` in a level's legend -
+without a second, near-duplicate `EntityDef` per elite. `LegendEntry.elite`
+(only meaningful alongside `entity`, validated the same "requires" shape as
+`announce`/`description`) flows through `EntitySpawn.elite` into
+`engine/game_map.py`'s `build_game_map`, which calls `_apply_elite_scaling`
+on the just-built `Entity` before it's added to `game_map.entities`. This
+is a **per-placement flag on the level file, not a property of the
+monster type** - the same `wolf` catalog entry can be an ordinary spawn in
+one room and an elite in another, unlike `enrage`/`pack_hunter`/
+`inflicts_effect` (§0t/§0u), which are baked into the `EntityDef` itself
+and apply to every spawn of that id everywhere.
+
+**Scaling, and why each stat scales the way it does:**
+- `max_hp`/`attack`/`xp_reward` scale by `ELITE_STAT_MULTIPLIER`/
+  `ELITE_XP_MULTIPLIER` (both `2.0`), rounded up with `math.ceil` - the
+  same "must always come out strictly higher, never accidentally
+  identical at a low stat value" reasoning `engine/combat.py`'s crit
+  multiplier already established (§2's balance methodology).
+- `defense` gets a flat `ELITE_DEFENSE_BONUS` (`1`) instead of a
+  multiplier - most of the roster has single-digit or zero base defense,
+  where multiplying does nothing at all (`0 * 2.0 == 0`).
+- `drop_chance` becomes guaranteed (`1.0`) **only if the base entity
+  already has `drop_item_id` set** (§0v) - elite amplifies the existing
+  drop system, it deliberately doesn't invent a separate elite-only loot
+  table. An elite spawn of a monster with no drop configured still drops
+  nothing.
+- `name` gets an `"Elite "` prefix and `color` is brightened
+  (`min(255, int(c * 1.4) + 20)` per channel) - the two-part signal that
+  makes an elite readable as different at a glance: the name in every
+  message/HUD line that already prints it, the color in the map view
+  itself. This only affects the plain-glyph ASCII rendering path
+  (`engine/render.py` reads `entity.color` directly) - a sprite-mode
+  render keyed by `entity_id` would still show the base monster's sprite,
+  since `entity_id` itself is unchanged (still `"goblin"`, not a distinct
+  elite id). Acceptable for a first pass; revisit if/when sprite mode
+  needs its own elite treatment.
+
+**Rejected on a peaceful NPC**, same reasoning `xp_reward`/`drop_item_id`
+already establish - checked at the legend/spawn level in `load_level`
+(not `load_catalog`, since `elite` is a per-placement fact about a
+specific level file, not a fact about the catalog entry itself).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
