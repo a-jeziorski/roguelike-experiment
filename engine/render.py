@@ -16,8 +16,17 @@ VIEWPORT_HEIGHT) rather than 1:1 onto the console: a level's dimensions are
 authored content and can exceed the console's size in either direction, so map
 coordinates always go through compute_camera() + a `- cam_x, - cam_y`
 translation before hitting console.print()/console.rgb - never printed at raw
-map coordinates. The HUD/log area is anchored at the fixed row VIEWPORT_HEIGHT
-+ 1, independent of the map's actual height, for the same reason."""
+map coordinates. The HUD is anchored at the fixed row VIEWPORT_HEIGHT + 1,
+independent of the map's actual height, for the same reason.
+
+The message log is a separate, independent panel to the right of the map/HUD
+column entirely (LOG_PANEL_X onward), spanning the full console height rather
+than sharing vertical space with the HUD below the map - a single vertical
+"|" divider column (LOG_PANEL_GAP) separates the two. This is deliberate:
+earlier the log had to compete with the HUD for a handful of leftover rows
+and lost messages during busy turns; giving it its own always-full-height
+column plus PageUp/PageDown scrolling (see main.py, clamp_log_scroll_offset
+below) fixes that without the HUD's own layout needing to change at all."""
 
 from __future__ import annotations
 
@@ -101,13 +110,21 @@ TARGET_INVALID_BG = (110, 40, 40)
 PROJECTILE_FG = (255, 230, 120)
 IMPACT_BG = (200, 60, 30)
 
-MESSAGE_LOG_HEIGHT = 5
-
 # The map is drawn into this fixed-size window regardless of a level's actual
-# size; VIEWPORT_HEIGHT leaves room below it for the HUD (up to ~7 lines) plus
-# a blank separator plus MESSAGE_LOG_HEIGHT lines within main.py's CONSOLE_ROWS.
+# size; VIEWPORT_HEIGHT leaves room below it for the HUD (up to ~10 lines)
+# within main.py's CONSOLE_ROWS - the message log no longer shares this
+# column at all, see LOG_PANEL_* below.
 VIEWPORT_WIDTH = 70
-VIEWPORT_HEIGHT = 26
+VIEWPORT_HEIGHT = 30
+
+# The message log's own vertical panel, to the right of the map/HUD column -
+# a single "|" divider column (LOG_PANEL_GAP) separates the two, and the
+# panel itself spans the full console height (see render_all/render_look_frame/
+# render_target_frame), not just whatever's left below the HUD. main.py's
+# CONSOLE_COLUMNS = LOG_PANEL_X + LOG_PANEL_WIDTH.
+LOG_PANEL_GAP = 1
+LOG_PANEL_WIDTH = 34
+LOG_PANEL_X = VIEWPORT_WIDTH + LOG_PANEL_GAP
 
 
 def compute_camera(
@@ -253,8 +270,10 @@ def flash_impact(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     """Prints the HUD starting at row y, wrapping any line too long for the
     console. Returns the row just past the last line printed, so callers can
-    place whatever comes next without assuming a fixed HUD height."""
-    width = console.width
+    place whatever comes next without assuming a fixed HUD height. Confined
+    to VIEWPORT_WIDTH (not console.width) so HUD text never wraps into the
+    message log panel's own columns to the right."""
+    width = VIEWPORT_WIDTH
     player = engine.player
     fighter = player.fighter
     inventory = player.inventory
@@ -312,30 +331,45 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     return y
 
 
-def render_message_log(console: "Console", message_log: "MessageLog", x: int, y: int) -> None:
-    """Fills whatever vertical space remains below y (up to MESSAGE_LOG_HEIGHT
-    lines) with the most recent messages, wrapping each to fit and dropping
-    older messages that no longer fit rather than clipping any single one.
-    Each wrapped line keeps its source message's category (LOG_COLORS) so a
-    message that wraps to two lines doesn't lose its color partway through."""
-    width = max(console.width - x, 1)
-    max_lines = min(MESSAGE_LOG_HEIGHT, max(console.height - y, 0))
-    if max_lines == 0:
-        return
-
+def _wrap_message_log(message_log: "MessageLog", width: int) -> list[tuple[str, str]]:
+    """Every message, oldest to newest, wrapped to width and paired with its
+    category - the shared computation behind render_message_log and
+    clamp_log_scroll_offset, so wrapping logic never drifts between them."""
     lines: list[tuple[str, str]] = []
-    for message in reversed(message_log.messages):
+    for message in message_log.messages:
         wrapped = textwrap.wrap(message, width) or [message]
-        wrapped_with_category = [(line, message.category) for line in wrapped]
-        if len(lines) + len(wrapped_with_category) > max_lines:
-            break
-        lines = wrapped_with_category + lines
+        lines.extend((line, message.category) for line in wrapped)
+    return lines
 
-    for i, (line, category) in enumerate(lines):
+
+def clamp_log_scroll_offset(message_log: "MessageLog", width: int, height: int, offset: int) -> int:
+    """Keeps a message-log scroll offset within [0, as-far-back-as-history-
+    actually-goes] - 0 means "showing the most recent messages," a larger
+    value means further back. Exposed separately from render_message_log so
+    main.py can clamp after each PageUp/PageDown (see engine/actions.py's
+    ScrollLogAction) without re-deriving the wrapping/height math itself."""
+    max_offset = max(0, len(_wrap_message_log(message_log, width)) - height)
+    return max(0, min(offset, max_offset))
+
+
+def render_message_log(
+    console: "Console", message_log: "MessageLog", x: int, y: int, width: int, height: int,
+    scroll_offset: int = 0,
+) -> None:
+    """Fills a width x height panel starting at (x, y) with message history,
+    newest at the bottom - scroll_offset (see clamp_log_scroll_offset) shows
+    further back in history instead of the tail end. Each wrapped line keeps
+    its source message's category (LOG_COLORS) so a message that wraps to
+    two lines doesn't lose its color partway through."""
+    lines = _wrap_message_log(message_log, width)
+    scroll_offset = max(0, min(scroll_offset, max(0, len(lines) - height)))
+    end = len(lines) - scroll_offset
+    start = max(0, end - height)
+    for i, (line, category) in enumerate(lines[start:end]):
         console.print(x, y + i, line, fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=width)
 
 
-def render_all(console: "Console", engine: "Engine") -> None:
+def render_all(console: "Console", engine: "Engine", log_scroll_offset: int = 0) -> None:
     console.clear()
     cam_x, cam_y = compute_camera(
         engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
@@ -345,8 +379,13 @@ def render_all(console: "Console", engine: "Engine") -> None:
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     hud_y = VIEWPORT_HEIGHT + 1
-    log_y = render_hud(console, engine, hud_y) + 1
-    render_message_log(console, engine.message_log, 0, log_y)
+    render_hud(console, engine, hud_y)
+
+    for row in range(console.height):
+        console.print(VIEWPORT_WIDTH, row, "|", fg=HUD_FG)
+    render_message_log(
+        console, engine.message_log, LOG_PANEL_X, 0, LOG_PANEL_WIDTH, console.height, log_scroll_offset,
+    )
 
 
 def describe_tile(
@@ -399,8 +438,9 @@ def render_look_hud(
     console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, y: int
 ) -> int:
     """Mirrors render_hud's contract: prints starting at y, wraps long lines,
-    and returns the row just past the last line printed."""
-    width = console.width
+    and returns the row just past the last line printed. Confined to
+    VIEWPORT_WIDTH, same reasoning as render_hud."""
+    width = VIEWPORT_WIDTH
     player = engine.player
     fighter = player.fighter
     weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
@@ -497,8 +537,11 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
     )
 
     hud_y = VIEWPORT_HEIGHT + 1
-    log_y = render_look_hud(console, engine, cursor_x, cursor_y, hud_y) + 1
-    render_message_log(console, engine.message_log, 0, log_y)
+    render_look_hud(console, engine, cursor_x, cursor_y, hud_y)
+
+    for row in range(console.height):
+        console.print(VIEWPORT_WIDTH, row, "|", fg=HUD_FG)
+    render_message_log(console, engine.message_log, LOG_PANEL_X, 0, LOG_PANEL_WIDTH, console.height)
 
 
 def render_target_hud(
@@ -510,8 +553,9 @@ def render_target_hud(
     y: int,
 ) -> int:
     """Mirrors render_hud's contract: prints starting at y, wraps long lines,
-    and returns the row just past the last line printed."""
-    width = console.width
+    and returns the row just past the last line printed. Confined to
+    VIEWPORT_WIDTH, same reasoning as render_hud."""
+    width = VIEWPORT_WIDTH
     fighter = engine.player.fighter
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
@@ -555,8 +599,11 @@ def render_target_frame(
     )
 
     hud_y = VIEWPORT_HEIGHT + 1
-    log_y = render_target_hud(console, engine, cursor_x, cursor_y, max_range, hud_y) + 1
-    render_message_log(console, engine.message_log, 0, log_y)
+    render_target_hud(console, engine, cursor_x, cursor_y, max_range, hud_y)
+
+    for row in range(console.height):
+        console.print(VIEWPORT_WIDTH, row, "|", fg=HUD_FG)
+    render_message_log(console, engine.message_log, LOG_PANEL_X, 0, LOG_PANEL_WIDTH, console.height)
 
 
 def render_quest_log(
@@ -646,6 +693,7 @@ def render_help(console: "Console") -> None:
     binding("f", "Aim and fire an equipped ranged weapon")
     binding("l", "Look around - inspect any tile")
     binding("t", "Talk to an adjacent NPC")
+    binding("Page Up / Page Down", "Scroll the message log")
     y += 1
 
     section("Screens")
@@ -686,12 +734,14 @@ def render_confirm_attack_prompt(console: "Console", engine: "Engine", entity_na
     including the NPC in question. Shown whenever a BumpAction would
     resolve to attacking a still-peaceful NPC (see
     Engine.would_attack_peaceful_npc) instead of attacking outright - see
-    main.py's run_confirm_attack_mode."""
+    main.py's run_confirm_attack_mode. Printed right after the HUD's own
+    content (confined to VIEWPORT_WIDTH), not at the console's bottom rows -
+    those now belong to the message log panel, which spans the full console
+    height."""
     render_all(console, engine)
-    width = console.width
-    y = console.height - 2
-    console.print(0, y, f"Attack {entity_name}? They aren't hostile.", fg=HUD_FG, width=width)
-    console.print(0, console.height - 1, "[y] attack  [n/esc] cancel", fg=HUD_FG, width=width)
+    y = render_hud(console, engine, VIEWPORT_HEIGHT + 1) + 1
+    console.print(0, y, f"Attack {entity_name}? They aren't hostile.", fg=HUD_FG, width=VIEWPORT_WIDTH)
+    console.print(0, y + 1, "[y] attack  [n/esc] cancel", fg=HUD_FG, width=VIEWPORT_WIDTH)
 
 
 def render_shop(

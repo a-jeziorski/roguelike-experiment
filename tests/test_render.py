@@ -21,17 +21,21 @@ from engine.render import (
     CURSOR_BG,
     IMPACT_BG,
     LOG_COLORS,
+    LOG_PANEL_WIDTH,
+    LOG_PANEL_X,
     TARGET_INVALID_BG,
     TARGET_VALID_BG,
     TILE_VISUALS,
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
+    clamp_log_scroll_offset,
     compute_camera,
     describe_tile,
     flash_impact,
     projectile_glyph,
     projectile_path,
     render_all,
+    render_confirm_attack_prompt,
     render_continue_prompt,
     render_entities,
     render_help,
@@ -91,6 +95,86 @@ def test_render_all_does_not_raise_for_level_01():
     render_all(console, engine)  # should not raise
 
 
+def _full_console() -> tcod.console.Console:
+    """A console sized like main.py's real CONSOLE_COLUMNS/CONSOLE_ROWS -
+    wide enough to actually contain the message log panel (LOG_PANEL_X
+    onward), unlike the deliberately-undersized 70x40 console the older
+    tests above use just to check render_all doesn't raise."""
+    return tcod.console.Console(LOG_PANEL_X + LOG_PANEL_WIDTH, VIEWPORT_HEIGHT + 12, order="F")
+
+
+def test_render_all_places_the_log_panel_right_of_a_divider():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+    engine.message_log.add("A distinctive test message.")
+
+    console = _full_console()
+    render_all(console, engine)
+
+    text = console_text(console)
+    lines = text.split("\n")
+    assert any(line[VIEWPORT_WIDTH] == "|" for line in lines)  # the divider column
+    assert "A distinctive test message." in text
+    log_area = "\n".join(line[LOG_PANEL_X:] for line in lines)
+    assert "A distinctive test message." in log_area  # specifically inside the panel, not just somewhere
+
+
+def test_render_all_shows_far_more_than_five_lines_of_log_history():
+    """The actual problem this feature fixes: MESSAGE_LOG_HEIGHT (5) used
+    to cap visible history regardless of available space. The new panel
+    spans the full console height instead."""
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+    for i in range(15):
+        engine.message_log.add(f"Distinct test message {i}.")
+
+    console = _full_console()
+    render_all(console, engine)
+
+    text = console_text(console)
+    visible = sum(1 for i in range(15) if f"Distinct test message {i}." in text)
+    assert visible > 5
+
+
+def test_render_all_forwards_the_log_scroll_offset():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+    for i in range(80):
+        engine.message_log.add(f"Distinct test message {i}.")
+
+    console = _full_console()
+    render_all(console, engine, log_scroll_offset=30)
+
+    text = console_text(console)
+    assert "Distinct test message 79." not in text  # scrolled well past the latest
+    assert "Distinct test message 0." not in text  # not scrolled all the way back either
+    assert "Distinct test message 49." in text  # 79 - 30 offset lands here
+
+
+def test_render_confirm_attack_prompt_stays_within_the_viewport_column():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+
+    console = _full_console()
+    render_confirm_attack_prompt(console, engine, "Villager")
+
+    text = console_text(console)
+    assert "Attack Villager? They aren't hostile." in text
+    assert "[y] attack" in text
+    # never printed into the log panel's own columns
+    for line in text.split("\n"):
+        assert "Attack Villager" not in line[VIEWPORT_WIDTH:]
+        assert "[y] attack" not in line[VIEWPORT_WIDTH:]
+
+
 def test_render_hud_does_not_show_control_hints():
     """The control scheme was removed from the HUD (it took up a lot of
     space) - regression coverage so it doesn't quietly come back."""
@@ -141,7 +225,7 @@ def test_render_message_log_colors_each_category():
     log.add('Villager: "Hello."', category="dialogue")
 
     console = tcod.console.Console(70, 10, order="F")
-    render_message_log(console, log, 0, 0)
+    render_message_log(console, log, 0, 0, 70, 10)
 
     assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["info"])
     assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["combat"])
@@ -153,10 +237,67 @@ def test_render_message_log_keeps_category_across_a_wrapped_message():
     log.add("Rat hits you for two damage in melee combat today, for sure.", category="combat")
 
     console = tcod.console.Console(20, 10, order="F")
-    render_message_log(console, log, 0, 0)
+    render_message_log(console, log, 0, 0, 20, 10)
 
     assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["combat"])
     assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["combat"])
+
+
+def _numbered_log(count: int) -> MessageLog:
+    log = MessageLog()
+    for i in range(count):
+        log.add(f"Message {i}")
+    return log
+
+
+def test_clamp_log_scroll_offset_clamps_negative_to_zero():
+    log = _numbered_log(20)
+    assert clamp_log_scroll_offset(log, width=30, height=5, offset=-3) == 0
+
+
+def test_clamp_log_scroll_offset_clamps_to_available_history():
+    log = _numbered_log(20)  # 20 one-line messages, width=30 so no wrapping
+    # can never scroll back further than total_lines - height
+    assert clamp_log_scroll_offset(log, width=30, height=5, offset=1000) == 15
+
+
+def test_clamp_log_scroll_offset_is_zero_when_everything_already_fits():
+    log = _numbered_log(3)
+    assert clamp_log_scroll_offset(log, width=30, height=10, offset=5) == 0
+
+
+def test_render_message_log_scroll_offset_zero_shows_the_latest_messages():
+    log = _numbered_log(20)
+    console = tcod.console.Console(30, 5, order="F")
+
+    render_message_log(console, log, 0, 0, 30, 5, scroll_offset=0)
+
+    text = console_text(console)
+    assert "Message 19" in text
+    assert "Message 15" in text
+    assert "Message 14" not in text  # scrolled past, only the latest 5 fit
+
+
+def test_render_message_log_scroll_offset_shows_an_older_window():
+    log = _numbered_log(20)
+    console = tcod.console.Console(30, 5, order="F")
+
+    render_message_log(console, log, 0, 0, 30, 5, scroll_offset=5)
+
+    text = console_text(console)
+    assert "Message 14" in text
+    assert "Message 10" in text
+    assert "Message 19" not in text  # scrolled back, latest no longer visible
+
+
+def test_render_message_log_scroll_offset_beyond_history_clamps_to_oldest():
+    log = _numbered_log(20)
+    console = tcod.console.Console(30, 5, order="F")
+
+    render_message_log(console, log, 0, 0, 30, 5, scroll_offset=1000)
+
+    text = console_text(console)
+    assert "Message 0" in text  # the very oldest message, not blank space
 
 
 def test_render_hud_shows_the_world_clock():

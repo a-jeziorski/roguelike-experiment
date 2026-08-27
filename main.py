@@ -31,6 +31,7 @@ from engine.actions import (
     QuestLogAction,
     RestartAction,
     SaveGameAction,
+    ScrollLogAction,
     ShopAction,
     TalkAction,
     TrainerAction,
@@ -52,8 +53,11 @@ from engine.input_handlers import (
     handle_trainer_event,
 )
 from engine.render import (
+    LOG_PANEL_WIDTH,
+    LOG_PANEL_X,
     VIEWPORT_HEIGHT,
     VIEWPORT_WIDTH,
+    clamp_log_scroll_offset,
     compute_camera,
     flash_impact,
     projectile_glyph,
@@ -85,11 +89,14 @@ OVERWORLD_KEY = "overworld"
 # 16x16 resolution exactly (crisp, no resize) and downscales RLTiles' native
 # 32x32 by a clean 2x - see engine/sprites.py.
 TILE_SIZE = 16
-# The console must be at least as wide as the map viewport (no horizontal HUD
-# sidebar); its extra rows below VIEWPORT_HEIGHT are the HUD/message log area,
-# sized independently of any level's actual height - see engine/render.py.
-CONSOLE_COLUMNS = VIEWPORT_WIDTH
-CONSOLE_ROWS = 40
+# The map/HUD column (VIEWPORT_WIDTH) plus the message log's own vertical
+# panel (LOG_PANEL_X onward) - see engine/render.py, whose module docstring
+# has the full layout picture. CONSOLE_ROWS covers VIEWPORT_HEIGHT + a gap
+# row + the HUD's worst-case height below the map; the log panel spans this
+# entire height independently, to the right, not just what's left under the
+# HUD.
+CONSOLE_COLUMNS = LOG_PANEL_X + LOG_PANEL_WIDTH
+CONSOLE_ROWS = 42
 
 PROJECTILE_FRAME_SECONDS = 0.035
 IMPACT_FLASH_SECONDS = 0.09
@@ -864,9 +871,10 @@ def main() -> int:
             encounter_registry, sprite_codepoints, console, context, SAVE_PATH,
         )
         engine = active_engines[active_key]
+        log_scroll_offset = 0
 
         while True:
-            render_all(console, engine)
+            render_all(console, engine, log_scroll_offset)
             context.present(console)
 
             for event in tcod.event.wait():
@@ -904,6 +912,12 @@ def main() -> int:
 
                 if isinstance(action, HelpAction):
                     run_help_mode(console, context)
+                    continue
+
+                if isinstance(action, ScrollLogAction):
+                    log_scroll_offset = clamp_log_scroll_offset(
+                        engine.message_log, LOG_PANEL_WIDTH, CONSOLE_ROWS, log_scroll_offset + action.lines,
+                    )
                     continue
 
                 if isinstance(action, ShopAction):
@@ -944,6 +958,7 @@ def main() -> int:
                                     sprite_codepoints=sprite_codepoints,
                                     encounter_registry=encounter_registry,
                                 )
+                                log_scroll_offset = 0
                     continue
 
                 if isinstance(action, BumpAction) and engine.game_state == "playing":
@@ -963,6 +978,7 @@ def main() -> int:
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
                     encounter_registry=encounter_registry,
                 )
+                log_scroll_offset = 0
 
 
 if __name__ == "__main__":

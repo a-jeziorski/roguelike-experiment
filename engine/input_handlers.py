@@ -16,6 +16,7 @@ from engine.actions import (
     QuestLogAction,
     RestartAction,
     SaveGameAction,
+    ScrollLogAction,
     ShopAction,
     TalkAction,
     TrainerAction,
@@ -90,6 +91,12 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.H:
             return HelpAction()
+
+        if sym == tcod.event.KeySym.PAGEUP:
+            return ScrollLogAction(10)
+
+        if sym == tcod.event.KeySym.PAGEDOWN:
+            return ScrollLogAction(-10)
 
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()

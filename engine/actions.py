@@ -86,6 +86,21 @@ class HelpAction(Action):
         pass
 
 
+class ScrollLogAction(Action):
+    """Scrolls the message log panel by `lines` (positive = further back
+    into history, negative = toward the latest message) - free, costs no
+    turn. main.py recognizes this before it would ever reach
+    Engine.process_turn and adjusts its own local scroll-offset state
+    directly instead; perform() is never actually called in practice, kept
+    only so ScrollLogAction satisfies the Action interface."""
+
+    def __init__(self, lines: int):
+        self.lines = lines
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class SaveGameAction(Action):
     """Saves the current run to disk - free, costs no turn, same shape as
     QuestLogAction/LookAction. main.py recognizes this before it would ever

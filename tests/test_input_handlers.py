@@ -14,6 +14,7 @@ from engine.actions import (
     QuestLogAction,
     RestartAction,
     SaveGameAction,
+    ScrollLogAction,
     ShopAction,
     TrainerAction,
     WaitAction,
@@ -96,6 +97,18 @@ def test_handle_event_c_returns_cycle_potion_kind_action():
 
 def test_handle_event_h_returns_help_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.H)), HelpAction)
+
+
+def test_handle_event_pageup_returns_scroll_log_action_back_into_history():
+    action = handle_event(key_down(tcod.event.KeySym.PAGEUP))
+    assert isinstance(action, ScrollLogAction)
+    assert action.lines > 0
+
+
+def test_handle_event_pagedown_returns_scroll_log_action_toward_latest():
+    action = handle_event(key_down(tcod.event.KeySym.PAGEDOWN))
+    assert isinstance(action, ScrollLogAction)
+    assert action.lines < 0
 
 
 def test_handle_continue_prompt_event_y_returns_yes():
