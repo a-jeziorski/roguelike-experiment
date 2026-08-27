@@ -518,4 +518,6 @@ giant_spider:
   defense: 1
   ai: hostile_basic
   xp_reward: 9
+  poison_potency: 2
+  poison_duration: 3
   description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.

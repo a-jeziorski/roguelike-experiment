@@ -218,13 +218,46 @@ well after the game's start (`pre_arrival_until_day: 67`, gated behind
 the goblin horde dispersing near Wayford), so a player reasonably has
 real investment (perks/gear) by the time they'd actually walk in here,
 not a bare-baseline build. `balance_reference_xp` is now `120`, not `0`.
-**The roster/potion numbers above have not yet been re-tested or
-re-tuned against that figure** - `21` goblins across two levels, sized
-for a 0-XP baseline, is very likely trivial at 120 XP investment. Run
-`testbuild silver_mountain_caves` with a representative ~120 XP build
-before trusting this section's placement counts; see
-`docs/dungeon_bibles/sunless_hollow.md`'s own balance correction for the
-shape this kind of pass takes.
+
+**Re-tested against that figure - the roster holds up, no count/placement
+changes needed.** `testbuild silver_mountain_caves --perk toughness_1
+--perk weapon_training_1 --perk shield_training_1 --potions 2` (130
+XP-equivalent, `+10` over the 120 reference - a clean "three early perks"
+build with no gear, close enough to representative) was walked through
+both levels via real CLI moves (`walk`/`goto`/`attack`), fully clearing
+every goblin and cave spider on both levels rather than only the ones
+blocking a direct path - deliberately the harder, more thorough case than
+the bible's own "avoid the dens" advice requires. At ATK 7/DEF 3, each
+goblin now dies in 2 hits (was 3 at bare baseline) and lands roughly 1
+damage per hit back (was ~3) - individually easier than the baseline
+math in this section describes, but the *volume* still adds up: HP ran
+from 35 down to a low of 14/35 (40%) mid-`level_02`, before settling at
+17/35 (49%) once every goblin and spider on both levels was dead. Four
+`healing_potion`s were found along the route (2/level, as designed) plus
+the 2 the build carried in; only 1 was ever drunk, leaving 3 unused at
+the end - **no retreat-to-heal trip was ever needed**, unlike Sunless
+Hollow's wolves. Read together: a full, deliberately-thorough clear costs
+a real chunk of the HP pool without requiring the retreat-and-heal lever,
+comfortably inside the "accomplishable but not trivially so" bar - the
+`21` goblins/`9` cave spiders and `4` potions stay as authored, no
+count/placement changes made this pass.
+
+**One real finding, not about density**: at this build's ATK 7, a single
+melee hit deals exactly 7 damage - enough to kill a cave spider (`hp: 7`)
+outright rather than dropping it to 2/7 and triggering `flee_hp_pct: 0.4`
+the way the baseline math above describes. Every spider encountered this
+playthrough died in one hit; none ever fled. This doesn't break combat
+(spiders were never a real threat either way - their `atk 3` fully
+absorbs into this build's `def 3` for 0 damage, so poison never triggered
+either), but it does shift the cull-while-preserving mechanic's risk
+profile: an *incidental* hit near a den, which the bible's `flee_hp_pct`
+reasoning assumes only wounds a spider, now outright kills one at this
+investment level. `target_preserve_tolerance: 5` (on `the_uninvited_tribe`,
+against 9 spiders total across both levels) still comfortably absorbs a
+handful of accidental one-shot kills, so this isn't a broken quest - just
+worth knowing if a future pass touches `cave_spider.hp` or the tolerance
+value: they're now more load-bearing against each other than the original
+"wounds, doesn't kill" framing assumed.
 
 Two `healing_potion`s per level (four total), placed along the main
 route rather than inside any den - per the standing lesson that a real
