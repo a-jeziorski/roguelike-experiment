@@ -1312,6 +1312,48 @@ landed between engagements, so `regen_amount` needs to be small relative to
 the player's expected per-turn damage output, or the fight simply can't be
 won by attrition.
 
+## 0v. Monster drops (`EntityDef.drop_item_id`/`drop_chance`)
+
+There were no monster drops at all before this pass - a kill granted
+`xp_reward` and nothing else. `Engine._maybe_drop_loot`, called from
+`on_entity_death` right after the `xp_reward` check, rolls
+`entity.drop_chance` and on success places one fresh `drop_item_id` on the
+ground at the entity's own `(x, y)` - reusing `item_entity_from_def` +
+`game_map.entities.append`, the exact shape `build_game_map`'s own
+item-spawn loop already uses, so a drop is afterward just an ordinary
+ground item: `PickupAction` picks it up like anything else, no special
+casing anywhere else in the engine. No-ops entirely if the entity has no
+drop configured, or `self.catalog is None` (a synthetic `Engine` built
+without a catalog - same guard `complete_quest`'s `reward_item_id` branch
+already uses).
+
+**One item, one chance - deliberately not a weighted drop table.**
+`EntityDef.drop_item_id`/`drop_chance` are a single optional pair, "both
+or neither" validated the same shape as `inflicts_effect`/
+`inflicts_duration` (§0t). Nothing in the current content roster needs
+more than one possible drop per monster, and a single pair is trivial to
+widen into a list later without touching what's already shipped -
+premature to build the general case before anything needs it.
+`content/loader.py` cross-references `drop_item_id` against the item
+catalog (fails loudly on a typo, same `shop_inventory`/`trainer_perks`
+precedent) and rejects it on a `PEACEFUL_AI_TYPES` entity, same reasoning
+as `xp_reward`'s existing check - killing a villager is murder, not a
+legitimate kill, and shouldn't reward the player either way.
+
+**Wired onto real, already-placed monsters, not deferred like the last
+two passes.** Unlike `enrage`/`pack_hunter`/`regenerator` (§0u) and
+`stun`/`weaken` (§0t), which only touched still-unplaced bestiary entries,
+drops were added directly to monsters already spawning in shipped
+dungeons - `goblin`/`guard`/`crossbow_guard` (a conservative first-pass
+25% chance of a `gold_pile`), `bandit` (30%, a hair more likely - it's
+explicitly written as fighting for coin), and `bandit_captain`/
+`windrest_captain` (guaranteed `gold_stash`, the bigger pile - a leader's
+cut, not a coin flip). The mechanic itself needed nowhere placed to be
+verified in isolation the way a new AI behavior or status effect does; a
+drop's only observable effect is "an item appears," so wiring it onto
+real content immediately is both the simplest way to exercise it and
+actually delivers the gap the whole pass exists to close.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

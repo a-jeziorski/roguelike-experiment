@@ -66,6 +66,7 @@ def make_monster(
     inflicts_potency=None, inflicts_duration=None,
     enrage_hp_pct=None, enrage_attack_bonus=None,
     pack_radius=None, pack_attack_bonus=None, regen_amount=None,
+    drop_item_id=None, drop_chance=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -92,6 +93,8 @@ def make_monster(
         pack_radius=pack_radius,
         pack_attack_bonus=pack_attack_bonus,
         regen_amount=regen_amount,
+        drop_item_id=drop_item_id,
+        drop_chance=drop_chance,
         stationary=stationary,
     )
 
@@ -979,6 +982,74 @@ def test_regenerator_uses_default_regen_amount_when_unset():
     engine.process_turn(WaitAction())
 
     assert monster.fighter.hp == 12  # DEFAULT_REGEN_AMOUNT = 2
+
+
+# --- monster drops (on-death loot) ---
+
+
+def test_monster_drop_lands_on_the_ground_when_the_roll_succeeds(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, ai="hostile_basic", drop_item_id="healing_potion", drop_chance=0.5,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.4)  # below drop_chance - succeeds
+
+    engine.on_entity_death(monster)
+
+    drops = [e for e in game_map.entities if e.entity_id == "healing_potion"]
+    assert len(drops) == 1
+    assert (drops[0].x, drops[0].y) == (2, 1)  # dropped where the monster died
+    assert any("drops a Healing Potion" in m for m in engine.message_log.messages)
+
+
+def test_monster_drop_does_not_land_when_the_roll_fails(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, ai="hostile_basic", drop_item_id="healing_potion", drop_chance=0.5,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.9)  # at/above drop_chance - fails
+
+    engine.on_entity_death(monster)
+
+    assert not any(e.entity_id == "healing_potion" for e in game_map.entities)
+    assert not any("drops a" in m for m in engine.message_log.messages)
+
+
+def test_monster_without_drop_configured_never_drops_anything(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always succeed if configured
+
+    engine.on_entity_death(monster)
+
+    assert not any("drops a" in m for m in engine.message_log.messages)
+
+
+def test_monster_drop_no_ops_without_a_catalog(monkeypatch):
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, ai="hostile_basic", drop_item_id="healing_potion", drop_chance=0.5,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")  # no catalog passed
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always succeed if there were a catalog
+
+    engine.on_entity_death(monster)
+
+    assert not any("drops a" in m for m in engine.message_log.messages)
 
 
 def test_player_death_sets_game_state_dead():

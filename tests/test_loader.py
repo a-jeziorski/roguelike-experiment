@@ -226,6 +226,61 @@ def test_load_catalog_rejects_xp_reward_on_a_peaceful_entity(tmp_path):
         load_catalog(entities_path, items_path, perks_path)
 
 
+def test_load_catalog_rejects_drop_item_id_referencing_unknown_item(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "looter_rat:\n"
+        "  name: Looter Rat\n"
+        "  glyph: r\n"
+        "  color: [140, 90, 60]\n"
+        "  hp: 6\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: hostile_basic\n"
+        "  drop_item_id: nonexistent_item\n"
+        "  drop_chance: 0.5\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="drop_item_id references unknown item"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_drop_item_id_on_a_peaceful_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "farmable_villager:\n"
+        "  name: Farmable Villager\n"
+        "  glyph: v\n"
+        "  color: [170, 140, 90]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n"
+        "  drop_item_id: trinket\n"
+        "  drop_chance: 0.5\n",
+        encoding="utf-8",
+    )
+    items_path.write_text(
+        "trinket:\n"
+        "  name: Trinket\n"
+        "  glyph: '?'\n"
+        "  color: [255, 255, 255]\n"
+        "  cost: 5\n",
+        encoding="utf-8",
+    )
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="shouldn't reward the player for killing it"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
 @pytest.mark.parametrize(
     "entity_id,hp,attack,defense,ai",
     [

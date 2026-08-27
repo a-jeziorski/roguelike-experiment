@@ -306,6 +306,8 @@ def build_game_map(
             pack_radius=edef.pack_radius,
             pack_attack_bonus=edef.pack_attack_bonus,
             regen_amount=edef.regen_amount,
+            drop_item_id=edef.drop_item_id,
+            drop_chance=edef.drop_chance,
             stationary=edef.stationary,
             description=edef.description,
             dialogue=spawn.dialogue or edef.dialogue,

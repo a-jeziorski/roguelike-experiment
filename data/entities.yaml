@@ -22,6 +22,11 @@ goblin:
   defense: 1
   ai: hostile_basic
   xp_reward: 5
+  # A conservative first pass on drop odds across the board - common
+  # humanoid raiders have some chance of carrying coin, nothing guaranteed
+  # (docs/content_design_process.md §0v).
+  drop_item_id: gold_pile
+  drop_chance: 0.25
   description: A snarling green raider with a rusty blade.
 
 cave_spider:
@@ -86,6 +91,8 @@ guard:
   defense: 2
   ai: hostile_basic
   xp_reward: 5
+  drop_item_id: gold_pile
+  drop_chance: 0.25
   description: A prison guard in scuffed leather armor, club in hand.
 
 feral_prisoner:
@@ -110,6 +117,8 @@ crossbow_guard:
   ai: ranged_basic
   ranged_range: 5
   xp_reward: 5
+  drop_item_id: gold_pile
+  drop_chance: 0.25
   description: A guard with a loaded crossbow, watching the halls from a distance.
 
 warden:
@@ -362,6 +371,8 @@ bandit:
   defense: 1
   ai: hostile_basic
   xp_reward: 5
+  drop_item_id: gold_pile
+  drop_chance: 0.3
   description: A ragged raider squatting in what used to be Kingdom infrastructure. Fights for what's in your pockets, not for a cause.
 
 bandit_captain:
@@ -373,6 +384,10 @@ bandit_captain:
   defense: 2
   ai: hostile_basic
   xp_reward: 9
+  # A leader's cut is a better bet than a follower's - guaranteed instead
+  # of a coin flip, and the bigger stash (docs/content_design_process.md §0v).
+  drop_item_id: gold_stash
+  drop_chance: 1.0
   description: Whoever's left standing at the top of the watchtower's rickety hierarchy. Wears looted Kingdom mail like it was always his.
 
 windrest_captain:
@@ -384,6 +399,8 @@ windrest_captain:
   defense: 2
   ai: hostile_basic
   xp_reward: 9
+  drop_item_id: gold_stash
+  drop_chance: 1.0
   # Own catalog id, not a reused `bandit_captain` spawn, deliberately - a
   # kill quest's completion check (QuestLog.killed_entity_ids) is a global
   # boolean, correct only for a catalog id that spawns in exactly one

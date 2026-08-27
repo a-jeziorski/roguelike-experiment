@@ -291,6 +291,25 @@ class Engine:
                     self.message_log.add(quest.failure_message)
             if entity.xp_reward:
                 self._award_xp(entity.xp_reward, "kill")
+            self._maybe_drop_loot(entity)
+
+    def _maybe_drop_loot(self, entity: Entity) -> None:
+        """Rolls entity's own drop_chance (if any) and, on success, places
+        one fresh drop_item_id on the ground at entity's last (x, y) - same
+        "item_entity_from_def + append to game_map.entities" shape
+        build_game_map's own item-spawn loop already uses, so the drop is
+        just an ordinary ground item afterward (PickupAction, no special
+        handling). No-ops entirely if this entity has no drop configured,
+        or self.catalog is None (a synthetic Engine built without a
+        catalog, same guard complete_quest's reward_item_id branch uses)."""
+        if entity.drop_item_id is None or entity.drop_chance is None or self.catalog is None:
+            return
+        if random.random() >= entity.drop_chance:
+            return
+        idef = self.catalog.items[entity.drop_item_id]
+        drop = item_entity_from_def(idef, entity.x, entity.y)
+        self.game_map.entities.append(drop)
+        self.message_log.add(f"The {entity.name} drops a {drop.name}.")
 
     def _entity_type_cleared_from_dungeon(self, entity_id: str) -> bool:
         """True if no living entity with this catalog id remains anywhere

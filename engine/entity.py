@@ -137,6 +137,8 @@ class Entity:
         pack_radius: int | None = None,
         pack_attack_bonus: int | None = None,
         regen_amount: int | None = None,
+        drop_item_id: str | None = None,
+        drop_chance: float | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -182,6 +184,12 @@ class Entity:
         self.pack_radius = pack_radius
         self.pack_attack_bonus = pack_attack_bonus
         self.regen_amount = regen_amount
+        # This entity's on-death drop capability - drop_chance probability
+        # of leaving drop_item_id on the ground where it died (see
+        # Engine._maybe_drop_loot). Static, set once at spawn, never
+        # mutated - same shape as inflicts_effect above.
+        self.drop_item_id = drop_item_id
+        self.drop_chance = drop_chance
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

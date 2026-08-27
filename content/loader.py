@@ -215,6 +215,15 @@ def load_catalog(
                 "target, so this would let the player farm XP by killing "
                 "villagers/town guards"
             )
+        if edef.drop_item_id is not None:
+            if edef.ai in PEACEFUL_AI_TYPES:
+                errors.append(
+                    f"entity '{entity_id}': drop_item_id is set but ai is "
+                    f"'{edef.ai}' - same reasoning as xp_reward above, a "
+                    "peaceful NPC shouldn't reward the player for killing it"
+                )
+            if edef.drop_item_id not in items:
+                errors.append(f"entity '{entity_id}': drop_item_id references unknown item '{edef.drop_item_id}'")
         if not edef.trainer_perks:
             continue
         if edef.ai not in PEACEFUL_AI_TYPES:

@@ -169,6 +169,17 @@ class EntityDef(BaseModel):
     # the start of each of this entity's own turns, combat or not (see
     # engine/engine.py's _regenerate).
     regen_amount: int | None = Field(default=None, gt=0)
+    # On death, this entity has a drop_chance probability of leaving one
+    # drop_item_id on the ground where it died (see Engine._maybe_drop_loot).
+    # Must be set together or not at all, same "both or neither" shape as
+    # inflicts_effect/inflicts_duration above. Deliberately a single
+    # item/chance pair, not a weighted drop table - nothing in the content
+    # roster needs more than one possible drop per monster yet, and this is
+    # easy to widen into a list later without disturbing what's already
+    # shipped. content/loader.py cross-references drop_item_id against the
+    # item catalog, the same shop_inventory/trainer_perks precedent.
+    drop_item_id: str | None = None
+    drop_chance: float | None = Field(default=None, gt=0, le=1)
 
     @field_validator("glyph")
     @classmethod
@@ -176,6 +187,12 @@ class EntityDef(BaseModel):
         if len(v) != 1:
             raise ValueError(f"glyph must be a single character, got {v!r}")
         return v
+
+    @model_validator(mode="after")
+    def drop_item_id_and_chance_both_or_neither(self) -> "EntityDef":
+        if (self.drop_item_id is None) != (self.drop_chance is None):
+            raise ValueError("drop_item_id and drop_chance must be set together or not at all")
+        return self
 
     @model_validator(mode="after")
     def inflicts_effect_and_duration_both_or_neither(self) -> "EntityDef":

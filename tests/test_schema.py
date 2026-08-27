@@ -168,6 +168,45 @@ def test_entity_def_accepts_known_ai_types_with_optional_tuning():
     assert troll.regen_amount == 4
 
 
+def test_entity_def_drop_fields_default_none():
+    e = EntityDef(id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0)
+    assert e.drop_item_id is None
+    assert e.drop_chance is None
+
+
+def test_entity_def_accepts_drop_item_id_with_chance():
+    e = EntityDef(
+        id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+        drop_item_id="rusty_dagger", drop_chance=0.25,
+    )
+    assert e.drop_item_id == "rusty_dagger"
+    assert e.drop_chance == 0.25
+
+
+def test_entity_def_rejects_drop_item_id_without_chance():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+            drop_item_id="rusty_dagger",
+        )
+
+
+def test_entity_def_rejects_drop_chance_without_item_id():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+            drop_chance=0.25,
+        )
+
+
+def test_entity_def_rejects_out_of_range_drop_chance():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="rat", name="Rat", glyph="r", color=(1, 2, 3), hp=5, attack=2, defense=0,
+            drop_item_id="rusty_dagger", drop_chance=1.5,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(
