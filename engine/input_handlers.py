@@ -10,6 +10,7 @@ from engine.actions import (
     CyclePotionKindAction,
     EscapeAction,
     FireModeAction,
+    HelpAction,
     LookAction,
     PickupAction,
     QuestLogAction,
@@ -86,6 +87,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.S:
             return SaveGameAction()
+
+        if sym == tcod.event.KeySym.H:
+            return HelpAction()
 
         if sym == tcod.event.KeySym.ESCAPE:
             return EscapeAction()
@@ -226,6 +230,23 @@ def handle_trainer_event(event: tcod.event.Event) -> str | None:
             return "learn"
 
         if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.P):
+            return "exit"
+
+    return None
+
+
+def handle_help_event(event: tcod.event.Event) -> str | None:
+    """Input while inside the help screen: Escape/H exit back to normal
+    play. No selection/cursor state - it's a static reference sheet, same
+    shape as run_continue_prompt but simpler still (no yes/no choice
+    either). Returns "exit" or None."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.H):
             return "exit"
 
     return None

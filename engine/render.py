@@ -303,6 +303,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}",
         fg=HUD_FG, width=width,
     )
+    y += console.print(0, y, "Press [h] for help.", fg=HUD_FG, width=width)
     if engine.game_state == "dead":
         y += console.print(
             0, y, "You have died. [r] play again  [esc] quit", fg=DEAD_FG, width=width
@@ -608,6 +609,73 @@ def render_continue_prompt(console: "Console") -> None:
 
     y = console.height - 1
     console.print(0, y, "[y] continue saved game  [n] start a new game", fg=HUD_FG, width=width)
+
+
+def render_help(console: "Console") -> None:
+    """The help screen: a static keybinding reference sheet, same "no map,
+    no engine state needed" shape as render_continue_prompt. Grouped by
+    purpose (movement, actions, screens, other) rather than listed
+    alphabetically, so a player scanning for "how do I talk to someone"
+    finds it under Actions instead of hunting for T. Kept in sync by hand
+    with engine/input_handlers.py's actual bindings - there's no single
+    source of truth to generate this from, so a new keybinding needs a
+    line added here too."""
+    console.clear()
+    width = console.width
+    y = 0
+    y += console.print(0, y, "Help - Controls", fg=HUD_FG, width=width)
+    y += 1
+
+    def section(title: str) -> None:
+        nonlocal y
+        y += console.print(0, y, title, fg=HUD_FG, width=width)
+
+    def binding(keys: str, description: str) -> None:
+        nonlocal y
+        y += console.print(2, y, f"{keys:<22}{description}", fg=HUD_FG, width=width - 2)
+
+    section("Movement")
+    binding("Arrows / Numpad", "Move, or attack whatever's in the way")
+    binding("Numpad 5 / .", "Wait one turn")
+    y += 1
+
+    section("Actions")
+    binding("g", "Pick up whatever's underfoot")
+    binding("u", "Use/drink the selected potion")
+    binding("c", "Cycle which potion kind 'u' drinks")
+    binding("f", "Aim and fire an equipped ranged weapon")
+    binding("l", "Look around - inspect any tile")
+    binding("t", "Talk to an adjacent NPC")
+    y += 1
+
+    section("Screens")
+    binding("q", "Quest log")
+    binding("b", "Shop - buy from an adjacent trader")
+    binding("p", "Trainer - learn perks from an adjacent trainer")
+    binding("s", "Save the game")
+    binding("h", "This help screen")
+    y += 1
+
+    section("Other")
+    binding("r", "Restart (only once you've died)")
+    binding("esc", "Cancel a screen / quit the game")
+    y += 1
+
+    section("Notes")
+    y += console.print(
+        2, y, "Walking into a hostile monster attacks it.", fg=HUD_FG, width=width - 2
+    )
+    y += console.print(
+        2, y,
+        "Walking into a still-peaceful NPC asks for confirmation first -",
+        fg=HUD_FG, width=width - 2,
+    )
+    y += console.print(
+        2, y, "attacking one turns every guard nearby hostile.", fg=HUD_FG, width=width - 2
+    )
+
+    y = console.height - 1
+    console.print(0, y, "[h/esc] exit", fg=HUD_FG, width=width)
 
 
 def render_confirm_attack_prompt(console: "Console", engine: "Engine", entity_name: str) -> None:

@@ -72,6 +72,20 @@ class QuestLogAction(Action):
         pass
 
 
+class HelpAction(Action):
+    """Enters the help screen: a free, non-turn reference sheet of every
+    keybinding in the game. main.py recognizes this before it would ever
+    reach Engine.process_turn and runs its own nested input loop instead -
+    perform() is never actually called in practice, kept only so
+    HelpAction satisfies the Action interface. Unlike every other free
+    screen action, main.py dispatches this one unconditionally, not
+    gated on game_state == "playing" - a reference sheet is exactly as
+    useful (arguably more so) from the death screen as mid-run."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class SaveGameAction(Action):
     """Saves the current run to disk - free, costs no turn, same shape as
     QuestLogAction/LookAction. main.py recognizes this before it would ever

@@ -9,6 +9,7 @@ from engine.actions import (
     CyclePotionKindAction,
     EscapeAction,
     FireModeAction,
+    HelpAction,
     LookAction,
     QuestLogAction,
     RestartAction,
@@ -20,6 +21,7 @@ from engine.actions import (
 from engine.input_handlers import (
     handle_continue_prompt_event,
     handle_event,
+    handle_help_event,
     handle_look_event,
     handle_quest_log_event,
     handle_shop_event,
@@ -90,6 +92,10 @@ def test_handle_event_s_returns_save_game_action():
 
 def test_handle_event_c_returns_cycle_potion_kind_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.C)), CyclePotionKindAction)
+
+
+def test_handle_event_h_returns_help_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.H)), HelpAction)
 
 
 def test_handle_continue_prompt_event_y_returns_yes():
@@ -241,3 +247,17 @@ def test_handle_trainer_event_unmapped_key_returns_none():
 def test_handle_trainer_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_trainer_event(tcod.event.Quit(sdl_event=None))
+
+
+@pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.H])
+def test_handle_help_event_exit_keys(sym):
+    assert handle_help_event(key_down(sym)) == "exit"
+
+
+def test_handle_help_event_unmapped_key_returns_none():
+    assert handle_help_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_help_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_help_event(tcod.event.Quit(sdl_event=None))

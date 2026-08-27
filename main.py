@@ -26,6 +26,7 @@ from engine.actions import (
     EscapeAction,
     FireAction,
     FireModeAction,
+    HelpAction,
     LookAction,
     QuestLogAction,
     RestartAction,
@@ -43,6 +44,7 @@ from engine.sprites import apply_sprites
 from engine.input_handlers import (
     handle_continue_prompt_event,
     handle_event,
+    handle_help_event,
     handle_look_event,
     handle_quest_log_event,
     handle_shop_event,
@@ -59,6 +61,7 @@ from engine.render import (
     render_all,
     render_confirm_attack_prompt,
     render_continue_prompt,
+    render_help,
     render_look_frame,
     render_projectile,
     render_quest_log,
@@ -339,6 +342,24 @@ def run_trainer_mode(console: tcod.console.Console, context: tcod.context.Contex
                 selected = (selected + 1) % len(perk_ids)
             if result == "learn" and perk_ids:
                 status = engine.learn_perk(perk_ids[selected])
+
+
+def run_help_mode(console: tcod.console.Console, context: tcod.context.Context) -> None:
+    """Nested event loop for the help screen: a static keybinding reference
+    sheet, no engine state needed at all (unlike run_confirm_attack_mode's
+    overlay, this fully replaces the view rather than drawing on top of
+    it) - same reasoning as prompt_continue_saved_game taking no Engine.
+    Never touches Engine.process_turn, so it costs no game turn."""
+    while True:
+        render_help(console)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_help_event(event)
+
+            if result == "exit":
+                return
 
 
 def prompt_continue_saved_game(console: tcod.console.Console, context: tcod.context.Context) -> bool:
@@ -879,6 +900,10 @@ def main() -> int:
                     handle_save_game_action(
                         engine, active_key, active_engines, clock, quest_log, overworld_level, SAVE_PATH,
                     )
+                    continue
+
+                if isinstance(action, HelpAction):
+                    run_help_mode(console, context)
                     continue
 
                 if isinstance(action, ShopAction):

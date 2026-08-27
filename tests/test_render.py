@@ -34,6 +34,7 @@ from engine.render import (
     render_all,
     render_continue_prompt,
     render_entities,
+    render_help,
     render_look_frame,
     render_map,
     render_message_log,
@@ -131,7 +132,6 @@ def test_render_hud_shows_per_kind_potion_counts_with_selected_marker():
     text = console_text(console)
     assert ">Healing 1" in text
     assert " Teleport 1" in text
-    assert "[" not in text  # no bracket-style control-hint marker
 
 
 def test_render_message_log_colors_each_category():
@@ -212,6 +212,19 @@ def test_render_hud_shows_xp():
 
     text = console_text(console)
     assert "XP: 17" in text
+
+
+def test_render_hud_shows_the_help_reminder():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "Press [h] for help." in text
 
 
 def test_render_hud_shows_poison_status_when_afflicted():
@@ -316,6 +329,21 @@ def test_render_quest_log_shows_the_caller_supplied_description():
     assert "A resolved description, not warden.description itself." in text
     assert "Kill the Warden of Prison Tower." not in text
     assert "Warn the town." not in text
+
+
+def test_render_help_lists_every_keybinding():
+    console = tcod.console.Console(70, 40, order="F")
+
+    render_help(console)
+
+    text = console_text(console)
+    # One representative binding per section - a full inventory of every
+    # single line would just be duplicating render_help's own source.
+    assert "Move" in text
+    assert "g" in text and "Pick up" in text
+    assert "q" in text and "Quest log" in text
+    assert "r" in text and "Restart" in text
+    assert "[h/esc] exit" in text
 
 
 def test_render_continue_prompt_shows_the_prompt_and_footer_hint():
