@@ -37,7 +37,7 @@ from content.loader import PLAYER_ENTITY_ID, Catalog, ParsedLevel
 from content.schema import QuestStatus
 from engine.clock import GameClock
 from engine.engine import Engine
-from engine.entity import RENDER_PRIORITY_PLAYER, Entity, Fighter, apply_perk_stat_bonus
+from engine.entity import RENDER_PRIORITY_PLAYER, ActiveEffect, Entity, Fighter, apply_perk_stat_bonus
 from engine.game_map import (
     PLAYER_ATTACK,
     PLAYER_DEFENSE,
@@ -61,6 +61,16 @@ CURRENT_SAVE_VERSION = 1
 class SavedItemSlot(BaseModel):
     entity_id: str
     quantity: int = 1
+
+
+class SavedActiveEffect(BaseModel):
+    """Mirrors engine/entity.py's ActiveEffect exactly - a separate model
+    rather than reusing that dataclass directly, same reasoning every
+    other Saved* model in this file already follows (runtime state gets
+    its own persistence shape, decoupled from the live class)."""
+
+    potency: int
+    turns_remaining: int
 
 
 class SavedGroundItem(BaseModel):
@@ -158,13 +168,11 @@ class SavedPlayer(BaseModel):
     equipped_armor: SavedItemSlot | None = None
     equipped_ranged_weapon: SavedItemSlot | None = None
     selected_potion_kind: str = "healing"
-    # The player's live poisoned-status affliction, if any (see
-    # Fighter.poison_damage_per_turn/poison_turns_remaining) - monster
-    # poison state is never saved, consistent with monster Fighter state
-    # beyond (x, y, hp) never being saved today (SavedLevelState's own
-    # alive_entity_spawns).
-    poison_damage_per_turn: int = 0
-    poison_turns_remaining: int = 0
+    # The player's live status-effect afflictions, if any (see
+    # Fighter.active_effects) - monster effect state is never saved,
+    # consistent with monster Fighter state beyond (x, y, hp) never being
+    # saved today (SavedLevelState's own alive_entity_spawns).
+    active_effects: dict[str, SavedActiveEffect] = Field(default_factory=dict)
 
 
 class SaveGame(BaseModel):
@@ -275,8 +283,10 @@ def capture_save(
         equipped_armor=_save_item_slot(player.equipped_armor),
         equipped_ranged_weapon=_save_item_slot(player.equipped_ranged_weapon),
         selected_potion_kind=player.selected_potion_kind,
-        poison_damage_per_turn=player.fighter.poison_damage_per_turn,
-        poison_turns_remaining=player.fighter.poison_turns_remaining,
+        active_effects={
+            kind: SavedActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
+            for kind, effect in player.fighter.active_effects.items()
+        },
     )
 
     places = {
@@ -320,8 +330,10 @@ def _build_item_entity(slot: SavedItemSlot, catalog: Catalog) -> Entity:
 
 def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     fighter = Fighter(max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE)
-    fighter.poison_damage_per_turn = saved.poison_damage_per_turn
-    fighter.poison_turns_remaining = saved.poison_turns_remaining
+    fighter.active_effects = {
+        kind: ActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
+        for kind, effect in saved.active_effects.items()
+    }
     # Perk-derived stat totals are *derived* from learned_perk_ids at
     # restore time, never stored redundantly (see SavedPlayer.learned_perk_ids) -
     # deliberately never touches fighter.hp here (see apply_perk_stat_bonus's

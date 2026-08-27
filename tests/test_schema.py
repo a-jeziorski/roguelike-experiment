@@ -41,34 +41,78 @@ def test_entity_def_rejects_unknown_ai():
         )
 
 
-def test_entity_def_poison_fields_default_none():
+def test_entity_def_inflicts_effect_fields_default_none():
     e = EntityDef(id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0)
-    assert e.poison_potency is None
-    assert e.poison_duration is None
+    assert e.inflicts_effect is None
+    assert e.inflicts_potency is None
+    assert e.inflicts_duration is None
 
 
-def test_entity_def_accepts_poison_potency_and_duration_together():
+def test_entity_def_accepts_poison_effect_with_potency_and_duration():
     e = EntityDef(
         id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
-        poison_potency=1, poison_duration=3,
+        inflicts_effect="poison", inflicts_potency=1, inflicts_duration=3,
     )
-    assert e.poison_potency == 1
-    assert e.poison_duration == 3
+    assert e.inflicts_effect == "poison"
+    assert e.inflicts_potency == 1
+    assert e.inflicts_duration == 3
 
 
-def test_entity_def_rejects_poison_potency_without_poison_duration():
+def test_entity_def_accepts_weaken_effect_with_potency_and_duration():
+    e = EntityDef(
+        id="gray_ooze", name="Gray Ooze", glyph="j", color=(1, 2, 3), hp=16, attack=4, defense=1,
+        inflicts_effect="weaken", inflicts_potency=2, inflicts_duration=3,
+    )
+    assert e.inflicts_effect == "weaken"
+    assert e.inflicts_potency == 2
+
+
+def test_entity_def_accepts_stun_effect_with_no_potency():
+    e = EntityDef(
+        id="wraith", name="Wraith", glyph="Y", color=(1, 2, 3), hp=20, attack=6, defense=2,
+        inflicts_effect="stun", inflicts_duration=1,
+    )
+    assert e.inflicts_effect == "stun"
+    assert e.inflicts_potency is None
+
+
+def test_entity_def_rejects_inflicts_effect_without_duration():
     with pytest.raises(ValidationError, match="must be set together"):
         EntityDef(
             id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
-            poison_potency=1,
+            inflicts_effect="poison", inflicts_potency=1,
         )
 
 
-def test_entity_def_rejects_poison_duration_without_poison_potency():
+def test_entity_def_rejects_inflicts_duration_without_effect():
     with pytest.raises(ValidationError, match="must be set together"):
         EntityDef(
             id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
-            poison_duration=3,
+            inflicts_duration=3,
+        )
+
+
+def test_entity_def_rejects_poison_without_potency():
+    with pytest.raises(ValidationError, match="requires inflicts_potency"):
+        EntityDef(
+            id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
+            inflicts_effect="poison", inflicts_duration=3,
+        )
+
+
+def test_entity_def_rejects_stun_with_potency():
+    with pytest.raises(ValidationError, match="no intensity concept"):
+        EntityDef(
+            id="wraith", name="Wraith", glyph="Y", color=(1, 2, 3), hp=20, attack=6, defense=2,
+            inflicts_effect="stun", inflicts_potency=1, inflicts_duration=1,
+        )
+
+
+def test_entity_def_rejects_unknown_inflicts_effect():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="cave_spider", name="Cave Spider", glyph="x", color=(1, 2, 3), hp=7, attack=3, defense=0,
+            inflicts_effect="fire", inflicts_potency=1, inflicts_duration=3,
         )
 
 

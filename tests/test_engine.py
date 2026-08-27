@@ -16,6 +16,7 @@ from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
     RENDER_PRIORITY_PLAYER,
+    ActiveEffect,
     Entity,
     Fighter,
     ItemEffect,
@@ -61,8 +62,17 @@ def make_player(x: int, y: int, hp: int = 30, attack: int = 5, defense: int = 1)
 def make_monster(
     x: int, y: int, hp=5, attack=2, defense=0, ai=None,
     alert_radius=None, flee_hp_pct=None, ranged_range=None, stationary=False,
-    poison_potency=None, poison_duration=None,
+    poison_potency=None, poison_duration=None, inflicts_effect=None,
+    inflicts_potency=None, inflicts_duration=None,
 ) -> Entity:
+    # poison_potency/poison_duration kept as this helper's own kwarg names
+    # (translated below) purely so the many existing call sites that pass
+    # them didn't all need touching for this generalization - inflicts_effect
+    # is the real, general param, needed only by tests exercising stun/weaken.
+    if poison_potency is not None or poison_duration is not None:
+        inflicts_effect, inflicts_potency, inflicts_duration = (
+            "poison", poison_potency, poison_duration,
+        )
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
         blocks_movement=True,
@@ -72,8 +82,9 @@ def make_monster(
         alert_radius=alert_radius,
         flee_hp_pct=flee_hp_pct,
         ranged_range=ranged_range,
-        poison_potency=poison_potency,
-        poison_duration=poison_duration,
+        inflicts_effect=inflicts_effect,
+        inflicts_potency=inflicts_potency,
+        inflicts_duration=inflicts_duration,
         stationary=stationary,
     )
 
@@ -1002,7 +1013,7 @@ def test_dodge_prevents_all_damage_and_any_on_hit_effect(monkeypatch):
     resolve_attack(engine_, attacker=monster, defender=player)
 
     assert player.fighter.hp == 30  # fully dodged, not even a 0-damage hit
-    assert player.fighter.poison_turns_remaining == 0  # no on-hit effect from a non-connecting attack
+    assert "poison" not in player.fighter.active_effects  # no on-hit effect from a non-connecting attack
     assert "dodges" in engine_.message_log.messages[-1]
 
 
@@ -1046,8 +1057,8 @@ def test_poisonous_attacker_afflicts_poison_on_a_landed_hit():
     engine.process_turn(WaitAction())
 
     assert player.fighter.hp == 30 - 4 - 2  # direct hit, then poison's own first tick
-    assert player.fighter.poison_damage_per_turn == 2
-    assert player.fighter.poison_turns_remaining == 2  # duration 3, minus this turn's own tick
+    assert player.fighter.active_effects["poison"].potency == 2
+    assert player.fighter.active_effects["poison"].turns_remaining == 2  # duration 3, minus this turn's own tick
 
 
 def test_poison_does_not_apply_when_the_hit_is_fully_absorbed_by_defense():
@@ -1060,7 +1071,7 @@ def test_poison_does_not_apply_when_the_hit_is_fully_absorbed_by_defense():
     engine.process_turn(WaitAction())
 
     assert player.fighter.hp == 30  # attack 2 - defense 2 = 0 damage
-    assert player.fighter.poison_turns_remaining == 0
+    assert "poison" not in player.fighter.active_effects
 
 
 def test_poison_ticks_the_same_turn_it_is_inflicted():
@@ -1074,9 +1085,9 @@ def test_poison_ticks_the_same_turn_it_is_inflicted():
 
     # -4 direct damage, then poison's own first tick (-2) lands the SAME
     # turn as the bite - duration=3 means 3 total ticks starting now, not
-    # starting next turn (see Engine._apply_poison_damage's docstring).
+    # starting next turn (see Engine._tick_active_effects's docstring).
     assert player.fighter.hp == 30 - 4 - 2
-    assert player.fighter.poison_turns_remaining == 2
+    assert player.fighter.active_effects["poison"].turns_remaining == 2
 
 
 def test_poison_expires_after_its_full_duration():
@@ -1091,7 +1102,7 @@ def test_poison_expires_after_its_full_duration():
 
     engine.process_turn(WaitAction())  # second tick
     engine.process_turn(WaitAction())  # third and final tick
-    assert player.fighter.poison_turns_remaining == 0
+    assert "poison" not in player.fighter.active_effects
 
     hp_after_poison_expires = player.fighter.hp
     engine.process_turn(WaitAction())
@@ -1106,19 +1117,19 @@ def test_a_new_poisoning_hit_refreshes_rather_than_stacks():
     engine = Engine(game_map, player, "Test Level")
 
     engine.process_turn(WaitAction())
-    assert player.fighter.poison_damage_per_turn == 3
-    assert player.fighter.poison_turns_remaining == 4  # duration 5, minus this turn's own tick
+    assert player.fighter.active_effects["poison"].potency == 3
+    assert player.fighter.active_effects["poison"].turns_remaining == 4  # duration 5, minus this turn's own tick
 
-    monster.poison_potency = 1
-    monster.poison_duration = 2
+    monster.inflicts_potency = 1
+    monster.inflicts_duration = 2
     engine.process_turn(WaitAction())
 
-    # Overwritten, not stacked: damage_per_turn is the NEW bite's potency
-    # (1, not 3+1=4 or max(3,1)=3), and turns_remaining is the NEW bite's
-    # own duration minus this turn's own tick (2-1=1, not summed with what
-    # was left of the old affliction).
-    assert player.fighter.poison_damage_per_turn == 1
-    assert player.fighter.poison_turns_remaining == 1
+    # Overwritten, not stacked: potency is the NEW bite's potency (1, not
+    # 3+1=4 or max(3,1)=3), and turns_remaining is the NEW bite's own
+    # duration minus this turn's own tick (2-1=1, not summed with what was
+    # left of the old affliction).
+    assert player.fighter.active_effects["poison"].potency == 1
+    assert player.fighter.active_effects["poison"].turns_remaining == 1
 
 
 def test_poison_kills_a_poisoned_monster_via_on_entity_death():
@@ -1128,9 +1139,8 @@ def test_poison_kills_a_poisoned_monster_via_on_entity_death():
     monster.xp_reward = 5
     # Nothing in-game poisons a monster today (only cave_spider inflicts
     # poison, and only the player is ever its defender) - set the live
-    # affliction directly to exercise _apply_poison_damage's monster path.
-    monster.fighter.poison_damage_per_turn = 3
-    monster.fighter.poison_turns_remaining = 1
+    # affliction directly to exercise _tick_active_effects' monster path.
+    monster.fighter.active_effects["poison"] = ActiveEffect(potency=3, turns_remaining=1)
     game_map.entities.extend([player, monster])
     engine = Engine(game_map, player, "Test Level")
 
@@ -1143,8 +1153,7 @@ def test_poison_kills_a_poisoned_monster_via_on_entity_death():
 def test_poison_kills_the_player_and_sets_dead_game_state():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1, hp=30, defense=0)
-    player.fighter.poison_damage_per_turn = 30
-    player.fighter.poison_turns_remaining = 1
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=30, turns_remaining=1)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")
 
@@ -1152,6 +1161,147 @@ def test_poison_kills_the_player_and_sets_dead_game_state():
 
     assert engine.game_state == "dead"
     assert player.fighter.hp <= 0
+
+
+# --- weaken (temporary attack reduction) ---
+
+
+def test_weaken_reduces_effective_attack_and_ranged_attack_while_active():
+    player = make_player(1, 1, attack=5)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=2, turns_remaining=3)
+
+    assert player.effective_attack == 3
+    assert player.effective_ranged_attack == 3
+
+
+def test_weaken_never_drives_effective_attack_negative():
+    player = make_player(1, 1, attack=1)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=5, turns_remaining=3)
+
+    assert player.effective_attack == 0
+
+
+def test_weaken_does_not_affect_effective_defense():
+    player = make_player(1, 1, defense=3)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=2, turns_remaining=3)
+
+    assert player.effective_defense == 3
+
+
+def test_weakening_attacker_afflicts_weaken_on_a_landed_hit():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0, attack=5)
+    monster = make_monster(
+        2, 1, hp=5, attack=4, ai="hostile_basic",
+        inflicts_effect="weaken", inflicts_potency=2, inflicts_duration=3,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.active_effects["weaken"].potency == 2
+    assert player.fighter.active_effects["weaken"].turns_remaining == 2  # duration 3, minus this turn's own tick
+    assert player.effective_attack == 3  # 5 base - 2 weaken
+    assert "Player is weakened!" in engine.message_log.messages
+
+
+def test_weaken_expires_after_its_full_duration_and_restores_effective_attack():
+    player = make_player(1, 1, attack=5)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=2, turns_remaining=1)
+    game_map = make_open_map(3, 3)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert "weaken" not in player.fighter.active_effects
+    assert player.effective_attack == 5
+
+
+# --- stun (skips a turn) ---
+
+
+def test_stunned_player_skips_their_action_but_the_world_still_moves():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_effects["stun"] = ActiveEffect(potency=0, turns_remaining=1)
+    monster = make_monster(2, 1, hp=20, attack=3, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))  # would attack the monster if not stunned
+
+    assert monster.fighter.hp == 20  # the attack never happened
+    assert player.fighter.hp == 30 - 3  # but the monster still got its own turn
+    assert "You are stunned and can't act!" in engine.message_log.messages
+
+
+def test_stunned_monster_skips_its_turn():
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 1, hp=30)
+    monster = make_monster(2, 1, hp=10, attack=5, ai="hostile_basic")
+    monster.fighter.active_effects["stun"] = ActiveEffect(potency=0, turns_remaining=1)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (monster.x, monster.y) == (2, 1)  # never chased
+    assert player.fighter.hp == 30  # never attacked
+    assert "Rat is stunned and can't act." in engine.message_log.messages
+
+
+def test_stun_expires_after_its_duration():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.active_effects["stun"] = ActiveEffect(potency=0, turns_remaining=1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert "stun" not in player.fighter.active_effects
+
+    # No longer stunned - a real action now goes through.
+    monster = make_monster(2, 1, hp=5, attack=0, defense=0, ai=None)
+    game_map.entities.append(monster)
+    engine.process_turn(BumpAction(1, 0))
+    assert monster.fighter.hp < 5
+
+
+def test_stunning_attacker_afflicts_stun_on_a_landed_hit():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, hp=5, attack=4, ai="hostile_basic",
+        inflicts_effect="stun", inflicts_duration=1,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert "stun" in player.fighter.active_effects
+    assert "Player is stunned!" in engine.message_log.messages
+
+
+# --- multiple simultaneous effects ---
+
+
+def test_poisoned_and_weakened_effects_tick_independently_on_the_same_entity():
+    player = make_player(1, 1, hp=30, attack=5)
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=2)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=1, turns_remaining=1)
+    game_map = make_open_map(3, 3)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 2  # poison ticked
+    assert player.fighter.active_effects["poison"].turns_remaining == 1  # still active
+    assert "weaken" not in player.fighter.active_effects  # expired on its own, independently
+    assert player.effective_attack == 5  # weaken's penalty is gone with it
 
 
 def test_first_ranged_weapon_pickup_equips_directly():

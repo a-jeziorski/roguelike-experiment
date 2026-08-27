@@ -270,6 +270,16 @@ def _render_map_region(
     return "\n".join("".join(row) for row in grid), legend
 
 
+# Mirrors engine/render.py's own _EFFECT_HUD_LABELS - a parallel copy, not
+# a shared import, same "own implementation, not reaching into render.py's
+# console-shaped internals" reasoning as render_hud_text's own docstring.
+_EFFECT_HUD_LABELS = {
+    "poison": lambda e: f"POISONED: {e.potency} dmg/turn ({e.turns_remaining} turn(s) left)",
+    "stun": lambda e: f"STUNNED: can't act ({e.turns_remaining} turn(s) left)",
+    "weaken": lambda e: f"WEAKENED: -{e.potency} attack ({e.turns_remaining} turn(s) left)",
+}
+
+
 def render_hud_text(engine) -> str:
     """Mirrors engine/render.py's render_hud field-for-field, as an
     f-string block instead of console.print calls - a parallel
@@ -295,11 +305,8 @@ def render_hud_text(engine) -> str:
     if active_quest is not None:
         lines.append(active_quest.format_for_hud())
     lines.append(f"HP: {fighter.hp}/{fighter.max_hp}")
-    if fighter.poison_turns_remaining > 0:
-        lines.append(
-            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
-            f"({fighter.poison_turns_remaining} turn(s) left)"
-        )
+    for kind, effect in fighter.active_effects.items():
+        lines.append(_EFFECT_HUD_LABELS[kind](effect))
     lines.append(
         f"ATK: {player.effective_attack}  DEF: {player.effective_defense}  "
         f"RANGED ATK: {player.effective_ranged_attack}"

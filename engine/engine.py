@@ -13,6 +13,8 @@ from content.schema import (
     AI_SLEEPING_GUARD,
     AI_TOWN_GUARD,
     AI_VILLAGER,
+    EFFECT_POISON,
+    EFFECT_STUN,
     PEACEFUL_AI_TYPES,
 )
 from engine.actions import Action, MovementAction
@@ -475,6 +477,12 @@ class Engine:
         if not self.game_map.visible[entity.x, entity.y]:
             return
 
+        if entity.fighter is not None and EFFECT_STUN in entity.fighter.active_effects:
+            self.message_log.add(f"{entity.name} is stunned and can't act.", category="combat")
+            self._consume_stun_turn(entity.fighter)
+            return
+
+
         dx = self.player.x - entity.x
         dy = self.player.y - entity.y
         distance = max(abs(dx), abs(dy))
@@ -578,33 +586,61 @@ class Engine:
             "Wind-driven sand tears at exposed skin and eyes.", category="combat"
         )
 
-    def _apply_poison_damage(self) -> None:
-        """Ticks every currently-poisoned entity (player or monster) once,
-        for whatever damage/duration engine/combat.py's _apply_damage last
-        set on its Fighter - refresh semantics, no stacking (see
+    def _tick_active_effects(self) -> None:
+        """Ticks every active poison/weaken affliction on every entity
+        (player or monster) once - refresh semantics, no stacking, and
+        different kinds on the same entity tick independently of each
+        other (see Fighter.active_effects, engine/combat.py's
         _apply_damage). Runs once per process_enemy_phase call, strictly
         after both process_player_action (earlier this turn) and
         _handle_enemy_turns (just above) have resolved - so an entity
-        poisoned for the first time this turn, by either side, still takes
-        its first tick immediately: poison_duration=N means N total ticks,
-        the first landing the same turn as the bite, not the turn after.
-        Snapshots game_map.entities fresh each call - anything that died
-        earlier this same turn via combat.py's own direct on_entity_death
-        call is already gone (monster: already removed from
-        game_map.entities; player: already caught by process_enemy_phase's
-        own "if game_state == playing" guard around this call), so
-        on_entity_death can never double-fire for the same death in one
-        turn - don't hoist this snapshot earlier without re-checking that
-        invariant."""
+        afflicted for the first time this turn, by either side, still
+        takes its first tick immediately: inflicts_duration=N means N
+        total ticks, the first landing the same turn as the hit, not the
+        turn after.
+
+        Only poison does anything ON the tick itself (damage); weaken is
+        purely passive while active (reducing effective_attack -
+        Entity._weaken_penalty) - this method's only job for it is
+        counting turns_remaining down and removing it once it expires
+        (see ActiveEffect's own docstring on why expiry means key
+        removal, not a value left at 0).
+
+        Deliberately excludes EFFECT_STUN entirely - see
+        _consume_stun_turn's own docstring for why stun is decremented at
+        the moment process_player_action/_perform_ai actually block that
+        entity's turn, not here. Ticking it here too would double-decrement
+        it (once here, once at the block site) and, worse, could expire a
+        duration=1 stun in the very turn it was inflicted - before the
+        afflicted entity ever gets a turn to actually be blocked on.
+
+        Snapshots game_map.entities fresh each call, same reasoning the
+        poison-only version of this method already established: anything
+        that died earlier this same turn via combat.py's own direct
+        on_entity_death call is already gone (monster: already removed
+        from game_map.entities; player: already caught by
+        process_enemy_phase's own "if game_state == playing" guard around
+        this call), so on_entity_death can never double-fire for the same
+        death in one turn - don't hoist this snapshot earlier without
+        re-checking that invariant."""
         for entity in list(self.game_map.entities):
-            if entity.fighter is None or entity.fighter.poison_turns_remaining <= 0:
+            if entity.fighter is None or not entity.fighter.active_effects:
                 continue
-            dmg = entity.fighter.poison_damage_per_turn
-            entity.fighter.hp -= dmg
-            entity.fighter.poison_turns_remaining -= 1
-            self.message_log.add(
-                f"{entity.name} writhes from poison, taking {dmg} damage.", category="combat"
-            )
+            expired_kinds = []
+            for kind, effect in entity.fighter.active_effects.items():
+                if kind == EFFECT_STUN:
+                    continue
+                if kind == EFFECT_POISON:
+                    entity.fighter.hp -= effect.potency
+                    self.message_log.add(
+                        f"{entity.name} writhes from poison, taking {effect.potency} damage.",
+                        category="combat",
+                    )
+                effect.turns_remaining -= 1
+                if effect.turns_remaining <= 0:
+                    expired_kinds.append(kind)
+            for kind in expired_kinds:
+                del entity.fighter.active_effects[kind]
             if entity.fighter.hp <= 0:
                 self.on_entity_death(entity)
 
@@ -993,6 +1029,24 @@ class Engine:
         for quest in self.quest_log.check_cull_report(target.entity_id):
             self.complete_quest(quest)
 
+    def _consume_stun_turn(self, fighter: "Fighter") -> None:
+        """Decrements a blocked turn off an active stun and removes it once
+        exhausted - called from process_player_action/_perform_ai exactly
+        when the block actually takes effect, deliberately NOT from
+        _tick_active_effects. Poison/weaken tick in that shared end-of-turn
+        sweep because their own effect (damage / a passive stat penalty)
+        *is* the tick; stun's effect (blocking an action) happens earlier
+        in the turn sequence, at the moment process_player_action/_perform_ai
+        are about to run this same entity's turn - decrementing it there
+        instead is what makes duration=1 block exactly the entity's next
+        turn, rather than expiring in the same tick sweep that runs on the
+        very turn it was inflicted, before that entity ever got a turn to
+        actually be blocked on."""
+        effect = fighter.active_effects[EFFECT_STUN]
+        effect.turns_remaining -= 1
+        if effect.turns_remaining <= 0:
+            del fighter.active_effects[EFFECT_STUN]
+
     def process_player_action(self, action: Action) -> bool:
         """The first half of a turn: just the player's own action. Returns
         False (and does nothing else) if the game had already ended before
@@ -1005,9 +1059,21 @@ class Engine:
         appears on the tile it left rather than on the monster. Player
         position never changes as a side effect of an attack action, so
         skipping the FOV update until process_enemy_phase causes no visible
-        staleness during that in-between animation."""
+        staleness during that in-between animation. A stunned player still
+        "acts" in the sense that a turn passes (returns True, so
+        process_enemy_phase still runs - the world doesn't pause just
+        because the player can't) - only action.perform() itself is
+        skipped, matching _perform_ai's own stun check for a monster's
+        turn. Free/non-turn actions (Look, Talk, the shop/quest-log
+        screens, ...) never reach this method at all - main.py's dispatch
+        intercepts them before dispatch_action, so stun correctly never
+        blocks any of those, only real turn-costing actions."""
         if self.game_state != "playing":
             return False
+        if EFFECT_STUN in self.player.fighter.active_effects:
+            self.message_log.add("You are stunned and can't act!", category="combat")
+            self._consume_stun_turn(self.player.fighter)
+            return True
         action.perform(self, self.player)
         return True
 
@@ -1024,7 +1090,7 @@ class Engine:
             self._apply_environmental_hazard()
 
         if self.game_state == "playing":
-            self._apply_poison_damage()
+            self._tick_active_effects()
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)

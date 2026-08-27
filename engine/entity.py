@@ -4,9 +4,9 @@ content files)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from content.schema import FlagDialogue, PerkDef
+from content.schema import EffectKind, FlagDialogue, PerkDef
 
 Color = tuple[int, int, int]
 
@@ -14,6 +14,21 @@ Color = tuple[int, int, int]
 RENDER_PRIORITY_ITEM = 0
 RENDER_PRIORITY_ACTOR = 1
 RENDER_PRIORITY_PLAYER = 2
+
+
+@dataclass
+class ActiveEffect:
+    """One status effect currently afflicting a Fighter - see
+    Fighter.active_effects. `potency` is meaningful only for the effect
+    kinds that have an intensity concept (poison's damage/turn, weaken's
+    attack reduction); 0 for stun, which doesn't. `turns_remaining` ticks
+    down once per turn (engine/engine.py's _tick_active_effects); the key
+    is removed from active_effects entirely once it hits 0, rather than
+    left inert at 0 - "currently affected" is membership in the dict, not
+    a >0 comparison on a value inside it."""
+
+    potency: int
+    turns_remaining: int
 
 
 @dataclass
@@ -28,13 +43,18 @@ class Fighter:
     # derives entirely from `attack` plus the equipped weapon's bonus), so
     # a ranged-specific perk needs this separate field.
     perk_ranged_attack_bonus: int = 0
-    # This fighter's own live "poisoned" affliction, ticking down turn by
-    # turn (see engine/engine.py's _apply_poison_damage) - distinct from
-    # Entity.poison_potency/poison_duration below, which is an attacker's
-    # static bite capability, never mutated. poison_turns_remaining <= 0
-    # means not currently poisoned.
-    poison_damage_per_turn: int = 0
-    poison_turns_remaining: int = 0
+    # This fighter's own live status-effect afflictions, keyed by kind
+    # ("poison"/"stun"/"weaken") - a repeat hit of the same kind refreshes
+    # (overwrites) rather than stacks, but different kinds coexist
+    # independently (poisoned AND weakened at once is fine). Distinct from
+    # Entity.inflicts_effect/inflicts_potency/inflicts_duration below,
+    # which is an attacker's static capability, never mutated. field(...)
+    # not a bare {} default - dataclasses require a factory for a mutable
+    # default so every Fighter instance gets its own dict, never a shared
+    # one. See engine/engine.py's _tick_active_effects (poison damage,
+    # duration countdown, expiry) and process_player_action/_perform_ai
+    # (stun blocking an action) for where this is actually read/mutated.
+    active_effects: dict[str, ActiveEffect] = field(default_factory=dict)
 
 
 def apply_perk_stat_bonus(fighter: Fighter, perk: PerkDef) -> None:
@@ -99,8 +119,9 @@ class Entity:
         alert_radius: int | None = None,
         flee_hp_pct: float | None = None,
         ranged_range: int | None = None,
-        poison_potency: int | None = None,
-        poison_duration: int | None = None,
+        inflicts_effect: "EffectKind | None" = None,
+        inflicts_potency: int | None = None,
+        inflicts_duration: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -129,13 +150,14 @@ class Entity:
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
-        # This entity's innate bite/attack poison capability, if any - set
-        # once at spawn from EntityDef.poison_potency/poison_duration,
-        # never mutated. See Fighter.poison_damage_per_turn/
-        # poison_turns_remaining above for the victim-side live state this
-        # inflicts on a landed hit (engine/combat.py's _apply_damage).
-        self.poison_potency = poison_potency
-        self.poison_duration = poison_duration
+        # This entity's innate on-hit status-effect capability, if any - set
+        # once at spawn from EntityDef.inflicts_effect/inflicts_potency/
+        # inflicts_duration, never mutated. See Fighter.active_effects
+        # above for the victim-side live state this inflicts on a landed
+        # hit (engine/combat.py's _apply_damage).
+        self.inflicts_effect = inflicts_effect
+        self.inflicts_potency = inflicts_potency
+        self.inflicts_duration = inflicts_duration
         self.stationary = stationary
         self.description = description
         # The line the Talk action shows for this specific entity (see
@@ -195,10 +217,22 @@ class Entity:
         return self.fighter is not None and self.fighter.hp > 0
 
     @property
+    def _weaken_penalty(self) -> int:
+        """The live attack reduction from an active "weaken" affliction, if
+        any - shared by effective_attack/effective_ranged_attack below,
+        since both derive from the same fighter.attack base (see
+        effective_ranged_attack's own docstring precedent) and a weaker
+        swing should weaken the aim just as much as the blow."""
+        if self.fighter is None:
+            return 0
+        weaken = self.fighter.active_effects.get("weaken")
+        return weaken.potency if weaken else 0
+
+    @property
     def effective_attack(self) -> int:
         base = self.fighter.attack if self.fighter else 0
         bonus = self.equipped_weapon.item.attack_bonus if self.equipped_weapon else None
-        return base + (bonus or 0)
+        return max(0, base + (bonus or 0) - self._weaken_penalty)
 
     @property
     def effective_defense(self) -> int:
@@ -215,7 +249,7 @@ class Entity:
             if self.equipped_ranged_weapon
             else None
         )
-        return base + perk_bonus + (weapon_bonus or 0)
+        return max(0, base + perk_bonus + (weapon_bonus or 0) - self._weaken_penalty)
 
     def __repr__(self) -> str:
         return f"Entity({self.name!r} at ({self.x},{self.y}))"

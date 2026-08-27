@@ -37,8 +37,9 @@ cave_spider:
   # A conservative first pass, roughly doubling one bite's total effective
   # damage (3 direct + 3 poison over 3 turns) - exact tuning deferred to
   # the upcoming Silversilk Caves rebalance pass (docs/content_design_process.md §0t/§2).
-  poison_potency: 1
-  poison_duration: 3
+  inflicts_effect: poison
+  inflicts_potency: 1
+  inflicts_duration: 3
   description: A fist-sized skitterer that drops from the dark on a single thread. Bites hard for its size, then bolts.
 
 skeleton:
@@ -496,6 +497,13 @@ wraith:
   ai: sleeping_guard
   alert_radius: 4
   xp_reward: 9
+  # A single lost turn per landed hit - modest on its own, but stacked on
+  # top of sleeping_guard's ambush potential (the player is often already
+  # adjacent and mid-fight before it wakes), a first hit that stuns can
+  # cost a second free hit on top of the direct damage. Kept to duration 1
+  # rather than something longer for exactly that reason.
+  inflicts_effect: stun
+  inflicts_duration: 1
   description: A shape the light won't quite settle on, guarding something that predates whatever built the walls around it.
 
 gray_ooze:
@@ -507,6 +515,13 @@ gray_ooze:
   defense: 1
   ai: hostile_basic
   xp_reward: 6
+  # "Both wear down eventually" made mechanical - a corrosive touch that
+  # saps attack for a few turns, same duration precedent as poison's
+  # giant_spider entry. A fight against more than one ooze compounds this
+  # into a real problem, not just flavor.
+  inflicts_effect: weaken
+  inflicts_potency: 2
+  inflicts_duration: 3
   description: Formless, patient, and indifferent to the difference between stone and flesh. Both wear down eventually.
 
 giant_spider:
@@ -518,6 +533,7 @@ giant_spider:
   defense: 1
   ai: hostile_basic
   xp_reward: 9
-  poison_potency: 2
-  poison_duration: 3
+  inflicts_effect: poison
+  inflicts_potency: 2
+  inflicts_duration: 3
   description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.

@@ -11,6 +11,7 @@ from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
     RENDER_PRIORITY_PLAYER,
+    ActiveEffect,
     Entity,
     Fighter,
     ItemEffect,
@@ -420,8 +421,7 @@ def test_render_hud_shows_poison_status_when_afflicted():
     catalog = load_catalog()
     level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
     game_map, player = build_game_map(level, catalog)
-    player.fighter.poison_damage_per_turn = 2
-    player.fighter.poison_turns_remaining = 3
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=3)
     engine = Engine(game_map, player, level.name)
 
     console = tcod.console.Console(70, 40, order="F")
@@ -429,6 +429,22 @@ def test_render_hud_shows_poison_status_when_afflicted():
 
     text = console_text(console)
     assert "POISONED: 2 dmg/turn (3 turn(s) left)" in text
+
+
+def test_render_hud_shows_multiple_simultaneous_effects():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=3)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=1, turns_remaining=2)
+    engine = Engine(game_map, player, level.name)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "POISONED: 2 dmg/turn (3 turn(s) left)" in text
+    assert "WEAKENED: -1 attack (2 turn(s) left)" in text
 
 
 def test_render_hud_omits_poison_status_when_not_afflicted():

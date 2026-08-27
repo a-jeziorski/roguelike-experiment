@@ -10,6 +10,7 @@ from pathlib import Path
 from content.loader import load_catalog, load_dungeon_registry, load_encounters, load_overworld, load_quests
 from engine.clock import GameClock
 from engine.engine import Engine
+from engine.entity import ActiveEffect
 from engine.game_map import build_game_map, item_entity_from_def
 from engine.quest import create_quest_log
 from engine.save import capture_save, load_from_path, restore_save, save_to_path
@@ -218,8 +219,7 @@ def test_round_trip_preserves_poison_affliction(tmp_path):
     quest_log = create_quest_log(quest_defs)
     engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
     active_engines = {"prison_tower": engine}
-    engine.player.fighter.poison_damage_per_turn = 2
-    engine.player.fighter.poison_turns_remaining = 3
+    engine.player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=3)
 
     save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
     active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
@@ -227,14 +227,35 @@ def test_round_trip_preserves_poison_affliction(tmp_path):
     )
 
     restored_fighter = active_engines2[active_key].player.fighter
-    assert restored_fighter.poison_damage_per_turn == 2
-    assert restored_fighter.poison_turns_remaining == 3
+    assert restored_fighter.active_effects["poison"].potency == 2
+    assert restored_fighter.active_effects["poison"].turns_remaining == 3
 
 
-def test_restore_save_defaults_poison_fields_for_an_old_format_save(tmp_path):
-    """A save file written before poison_damage_per_turn/poison_turns_remaining
-    existed has no such fields - pydantic should fill in the defaults
-    rather than erroring, so old saves keep loading."""
+def test_round_trip_preserves_multiple_simultaneous_effects(tmp_path):
+    """Different kinds coexist independently - a save/reload must not
+    silently collapse a poisoned-and-weakened player down to just one."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=3)
+    engine.player.fighter.active_effects["weaken"] = ActiveEffect(potency=1, turns_remaining=2)
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    restored_effects = active_engines2[active_key].player.fighter.active_effects
+    assert restored_effects["poison"].potency == 2
+    assert restored_effects["weaken"].turns_remaining == 2
+
+
+def test_restore_save_defaults_active_effects_for_an_old_format_save(tmp_path):
+    """A save file written before active_effects existed has no such
+    field - pydantic should fill in the default rather than erroring, so
+    old saves keep loading."""
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
     quest_log = create_quest_log(quest_defs)
@@ -245,8 +266,7 @@ def test_restore_save_defaults_poison_fields_for_an_old_format_save(tmp_path):
     path = tmp_path / "old_save.json"
     save_to_path(save, path)
     raw = json.loads(path.read_text(encoding="utf-8"))
-    del raw["player"]["poison_damage_per_turn"]
-    del raw["player"]["poison_turns_remaining"]
+    del raw["player"]["active_effects"]
     path.write_text(json.dumps(raw), encoding="utf-8")
 
     loaded = load_from_path(path)
@@ -255,8 +275,7 @@ def test_restore_save_defaults_poison_fields_for_an_old_format_save(tmp_path):
     )
 
     restored_fighter = active_engines2[active_key].player.fighter
-    assert restored_fighter.poison_damage_per_turn == 0
-    assert restored_fighter.poison_turns_remaining == 0
+    assert restored_fighter.active_effects == {}
 
 
 def test_round_trip_preserves_xp_and_re_derives_learned_perk_bonuses(tmp_path):

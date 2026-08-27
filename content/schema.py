@@ -67,6 +67,23 @@ PEACEFUL_AI_TYPES = (AI_VILLAGER, AI_TOWN_GUARD)
 # on engine/*.
 QuestStatus = Literal["not_given", "in_progress", "completed", "failed"]
 
+# The status effects a landed hit can inflict on its defender (see
+# EntityDef.inflicts_effect/inflicts_potency/inflicts_duration below,
+# engine/combat.py's _apply_damage, engine/entity.py's ActiveEffect/
+# Fighter.active_effects). Defined once here for the same reason AIType is -
+# an unrecognized kind fails loudly at content-load time, and
+# engine/engine.py's tick/block logic dispatches on these same constants.
+EFFECT_POISON = "poison"
+EFFECT_STUN = "stun"
+EFFECT_WEAKEN = "weaken"
+EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN]
+# Effects with a meaningful intensity, not just a duration - poison's
+# potency is damage/turn, weaken's is a flat attack reduction. Stun has no
+# intensity concept (an entity either can act or can't), so inflicts_potency
+# is required for these two and rejected for stun - see
+# EntityDef.inflicts_potency_matches_effect_kind below.
+_EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
+
 
 class EntityDef(BaseModel):
     """A monster type, as defined once in data/entities.yaml and referenced by id
@@ -117,13 +134,17 @@ class EntityDef(BaseModel):
     # a PEACEFUL_AI_TYPES entity, enforced the same way as shop_inventory).
     trainer_perks: list[str] = Field(default_factory=list)
     # A landed hit (damage > 0 after defense) from this entity afflicts the
-    # defender with "poisoned": poison_potency damage per turn for
-    # poison_duration turns, refreshing rather than stacking on a repeat
-    # hit (see engine/combat.py's _apply_damage, engine/engine.py's
-    # _apply_poison_damage). None (the default) means this entity's
-    # attacks never poison anyone.
-    poison_potency: int | None = Field(default=None, gt=0)
-    poison_duration: int | None = Field(default=None, gt=0)
+    # defender with inflicts_effect for inflicts_duration turns, refreshing
+    # rather than stacking on a repeat hit (see engine/combat.py's
+    # _apply_damage, engine/entity.py's Fighter.active_effects,
+    # engine/engine.py's _tick_active_effects). None (the default) means
+    # this entity's attacks never afflict anything. Generalizes what used
+    # to be a poison-only pair of fields (poison_potency/poison_duration) -
+    # every currently-shipped use is still poison (cave_spider, giant_spider),
+    # but the mechanism itself no longer knows or cares which kind it is.
+    inflicts_effect: EffectKind | None = None
+    inflicts_potency: int | None = Field(default=None, gt=0)
+    inflicts_duration: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod
@@ -133,9 +154,23 @@ class EntityDef(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def poison_potency_and_duration_both_or_neither(self) -> "EntityDef":
-        if (self.poison_potency is None) != (self.poison_duration is None):
-            raise ValueError("poison_potency and poison_duration must be set together or not at all")
+    def inflicts_effect_and_duration_both_or_neither(self) -> "EntityDef":
+        if (self.inflicts_effect is None) != (self.inflicts_duration is None):
+            raise ValueError("inflicts_effect and inflicts_duration must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def inflicts_potency_matches_effect_kind(self) -> "EntityDef":
+        if self.inflicts_effect is None:
+            return self
+        needs_potency = self.inflicts_effect in _EFFECT_KINDS_WITH_POTENCY
+        if needs_potency and self.inflicts_potency is None:
+            raise ValueError(f"inflicts_effect '{self.inflicts_effect}' requires inflicts_potency to be set")
+        if not needs_potency and self.inflicts_potency is not None:
+            raise ValueError(
+                f"inflicts_effect '{self.inflicts_effect}' has no intensity concept - "
+                "inflicts_potency must be left unset"
+            )
         return self
 
 

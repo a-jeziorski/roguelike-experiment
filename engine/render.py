@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from content.loader import Catalog
     from engine.engine import Engine, MessageLog
-    from engine.entity import Entity
+    from engine.entity import Entity, Fighter
     from engine.game_map import GameMap
     from engine.quest import Quest
     from engine.sprites import SpriteCodepoints
@@ -272,6 +272,27 @@ def flash_impact(console: "Console", game_map: "GameMap", cam_x: int, cam_y: int
         _print_highlighted_cell(console, game_map, sx, sy, x, y, IMPACT_BG)
 
 
+# One HUD line per active status effect, keyed by EffectKind - shared by
+# render_hud/render_look_hud/render_target_hud (see _render_active_effects
+# below) so the three don't drift out of sync the way three independent
+# poison-only blocks already had to be kept in lockstep by hand. Each
+# entry is a callable, not a plain string, since the exact numbers shown
+# differ per kind (poison's damage/turn vs. weaken's attack reduction);
+# stun has no potency to show at all (see ActiveEffect's own docstring).
+_EFFECT_HUD_LABELS = {
+    "poison": lambda e: f"POISONED: {e.potency} dmg/turn ({e.turns_remaining} turn(s) left)",
+    "stun": lambda e: f"STUNNED: can't act ({e.turns_remaining} turn(s) left)",
+    "weaken": lambda e: f"WEAKENED: -{e.potency} attack ({e.turns_remaining} turn(s) left)",
+}
+
+
+def _render_active_effects(console: "Console", fighter: "Fighter", y: int, width: int) -> int:
+    for kind, effect in fighter.active_effects.items():
+        label = _EFFECT_HUD_LABELS[kind](effect)
+        y += console.print(0, y, label, fg=HUD_FG, width=width)
+    return y
+
+
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     """Prints the HUD starting at row y, wrapping any line too long for the
     console. Returns the row just past the last line printed, so callers can
@@ -297,13 +318,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     if active_quest is not None:
         y += console.print(0, y, active_quest.format_for_hud(), fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
-    if fighter.poison_turns_remaining > 0:
-        y += console.print(
-            0, y,
-            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
-            f"({fighter.poison_turns_remaining} turn(s) left)",
-            fg=HUD_FG, width=width,
-        )
+    y = _render_active_effects(console, fighter, y, width)
     y += console.print(
         0,
         y,
@@ -473,13 +488,7 @@ def render_look_hud(
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
-    if fighter.poison_turns_remaining > 0:
-        y += console.print(
-            0, y,
-            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
-            f"({fighter.poison_turns_remaining} turn(s) left)",
-            fg=HUD_FG, width=width,
-        )
+    y = _render_active_effects(console, fighter, y, width)
     y += console.print(
         0,
         y,
@@ -584,13 +593,7 @@ def render_target_hud(
 
     y += console.print(0, y, engine.level_name, fg=HUD_FG, width=width)
     y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
-    if fighter.poison_turns_remaining > 0:
-        y += console.print(
-            0, y,
-            f"POISONED: {fighter.poison_damage_per_turn} dmg/turn "
-            f"({fighter.poison_turns_remaining} turn(s) left)",
-            fg=HUD_FG, width=width,
-        )
+    y = _render_active_effects(console, fighter, y, width)
 
     if is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range):
         target = engine.game_map.blocking_entity_at(cursor_x, cursor_y)

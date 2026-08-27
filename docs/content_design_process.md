@@ -1126,64 +1126,94 @@ Perks are applied by calling the same `apply_perk_stat_bonus`/HP-bump logic
 adjacent Trainer first - deliberate: this exists to test a dungeon in
 isolation, not to simulate legitimately reaching it.
 
-## 0t. Status effects (`poison`, the first one)
+## 0t. Status effects: a general framework (`poison`, `stun`, `weaken`)
 
-The first status effect: a landed hit (damage > 0 after defense) from an
-entity with `EntityDef.poison_potency`/`poison_duration` set afflicts the
-defender with "poisoned" - `poison_potency` damage per turn for
-`poison_duration` turns. `cave_spider` is the only entity that sets these
-today (a conservative first pass, `poison_potency: 1`/`poison_duration: 3`
-- exact tuning deferred to the upcoming Silversilk Caves rebalance pass,
-§0s/§2). Both fields must be set together or not at all (mirrors the
-established "both or neither" validator shape, e.g. `QuestDef.deadline_year`/
-`deadline_day`).
+Started as a poison-only, hardcoded field pair; generalized into a real
+small framework once a second and third effect (stun, weaken) were added,
+keeping poison's own observable behavior identical throughout. A landed
+hit (damage > 0 after defense) from an entity with `EntityDef.inflicts_effect`
+set afflicts the defender with that effect - `inflicts_potency` (meaningful
+for poison/weaken only - see below) for `inflicts_duration` turns.
+`EffectKind` (`content/schema.py`) is `"poison" | "stun" | "weaken"`, the
+same "string constants + Literal, fails loudly on an unrecognized value at
+content-load time" shape as `AIType`. `cave_spider`/`giant_spider` set
+poison; `wraith` (stun) and `gray_ooze` (weaken) are the two bestiary-
+expansion entries this framework's first pass added the *capability* to,
+not yet placed in any dungeon - same "define now, place later" pattern
+already used for the rest of the unplaced roster.
 
 **Two clearly separate pieces of state**, matching the existing split
 between an entity's static innate capabilities and its live combat state:
 
-- **Attacker capability** (`Entity.poison_potency`/`poison_duration`,
-  `int | None`, named identically to `EntityDef`'s fields, same shape as
-  `flee_hp_pct`/`alert_radius`/`ranged_range`): "my bite poisons for X
-  potency, Y duration." Set once at spawn (`engine/game_map.py`'s
-  `build_game_map` entity-spawn loop), never mutated.
-- **Victim's live affliction** (`Fighter.poison_damage_per_turn`/
-  `poison_turns_remaining`, `int = 0`): "I am currently poisoned, ticking
-  down." Lives on whichever `Fighter` (player's or a monster's) currently
-  carries it - poison is symmetric in principle (either side could carry
-  the live-affliction fields), even though only the player is ever
-  actually poisoned today, since nothing currently gives the player a
-  poison attack of its own.
+- **Attacker capability** (`Entity.inflicts_effect`/`inflicts_potency`/
+  `inflicts_duration`, set once at spawn from the matching `EntityDef`
+  fields, never mutated): "my bite inflicts kind X, potency Y, duration Z."
+  `inflicts_effect`/`inflicts_duration` must be set together or not at all
+  (the established "both or neither" validator shape); `inflicts_potency`
+  is required for poison/weaken and *rejected* for stun (no intensity
+  concept - an entity either can act or can't), enforced by a second
+  validator keyed off `EffectKind`.
+- **Victim's live affliction** (`Fighter.active_effects: dict[str,
+  ActiveEffect]`, keyed by kind, `ActiveEffect(potency, turns_remaining)`):
+  "I am currently afflicted by these effects, each ticking down
+  independently." Lives on whichever `Fighter` (player's or a monster's)
+  currently carries it - symmetric in principle, even though only the
+  player is ever actually afflicted today, since nothing currently gives
+  the player an on-hit attack of its own.
 
-**Refresh, not stack**: a new poisoning hit always overwrites both live
-fields (`engine/combat.py`'s `_apply_damage`, inside the existing
-`damage > 0` block - a fully-absorbed hit correctly never poisons, no
-extra guard needed). No window/multi-source bookkeeping - the simplest
-correct choice for a first status effect, matching how nothing else in
-this codebase stacks a duration or magnitude.
+**Refresh per kind, not stack - and different kinds coexist.** A repeat
+hit of the *same* kind overwrites that dict entry (`engine/combat.py`'s
+`_apply_damage`, inside the existing `damage > 0` block - a fully-absorbed
+hit correctly never afflicts, no extra guard needed); a *different* kind
+lives in its own dict entry, ticking independently - a player can be
+poisoned and weakened at once, and losing one doesn't touch the other.
+"Currently affected by kind X" is dict-key membership, not a `>0` check on
+a value inside it - `ActiveEffect` entries are deleted outright once
+`turns_remaining` hits 0, never left inert.
 
-**Same-turn tick - the one subtle thing worth getting right on purpose.**
-Damage ticks in a new `Engine._apply_poison_damage`, called from
-`process_enemy_phase` right after `_apply_environmental_hazard` (both are
-damage-over-time sources, grouped together, checked before the generic
-player-death gate), NOT gated on `is_overworld` since poison should tick
-in dungeons too. Because that call happens strictly after *both* places
-poison could be freshly applied this same turn - `process_player_action`
-(the player's own attack, earlier) and `_handle_enemy_turns` (monster
-attacks, just above it) - **every freshly-poisoned entity takes its first
-tick immediately, the same turn as the bite**: `poison_duration=3` means 3
-total ticks, the first landing on the turn of the hit itself, not the turn
-after. Get this backwards and a monster's whole roster's damage-over-time
-math (§2) will be off by one tick per poisonous hit.
+**Same-turn tick for poison/weaken - stun is the deliberate exception.**
+Poison damage and weaken's passive countdown both tick in
+`Engine._tick_active_effects`, called from `process_enemy_phase` right
+after `_apply_environmental_hazard` (all damage/duration-over-time
+sources, grouped together, checked before the generic player-death gate),
+NOT gated on `is_overworld`. Because that call happens strictly after
+*both* places an effect could be freshly applied this same turn -
+`process_player_action` (the player's own attack, earlier) and
+`_handle_enemy_turns` (monster attacks, just above it) - **every
+freshly-poisoned/weakened entity takes its first tick immediately, the
+same turn as the bite**: `inflicts_duration=3` means 3 total ticks, the
+first landing on the turn of the hit itself, not the turn after. Get this
+backwards and a monster's whole roster's damage-over-time math (§2) will
+be off by one tick per hit.
 
-**Killing via poison calls `on_entity_death` directly**, unlike
+Stun is deliberately **excluded** from `_tick_active_effects` and
+decremented instead at `Engine._consume_stun_turn`, called from exactly
+the two places a stun actually *blocks* something -
+`process_player_action` (the player's own turn) and `_perform_ai` (a
+monster's) - the instant the block takes effect, not in the shared
+end-of-turn sweep. This isn't an arbitrary inconsistency: poison/weaken's
+*effect* (damage, a stat penalty) genuinely is the tick itself, so ticking
+them at end-of-turn is correct and lets the same hit's damage-over-time
+start immediately. Stun's effect (skipping a turn) happens at a different
+point in the turn sequence entirely - if it decremented in the same
+end-of-turn sweep, a `inflicts_duration=1` stun inflicted mid-turn (during
+`_handle_enemy_turns`) would already be back at 0 and deleted by the time
+that same call returns, *before* the afflicted entity's own next
+`process_player_action`/`_perform_ai` check ever ran - meaning it would
+never actually block anything. Decrementing at the block site instead
+means a stun inflicted this turn blocks exactly `inflicts_duration` of the
+afflicted entity's *own subsequent* turns, which is the only sensible
+reading of "skip a turn."
+
+**Killing via a poison tick calls `on_entity_death` directly**, unlike
 `_apply_environmental_hazard`'s pattern (which only ever hits the player
 and safely defers to `process_enemy_phase`'s own generic
 `if not self.player.is_alive: on_entity_death(...)` check right after it).
-Poison must call it directly because it also has to correctly kill a
-*monster* - nothing else in `process_enemy_phase` ever calls
-`on_entity_death` on a non-player entity after `_handle_enemy_turns`
+`_tick_active_effects` must call it directly because it also has to
+correctly kill a *monster* - nothing else in `process_enemy_phase` ever
+calls `on_entity_death` on a non-player entity after `_handle_enemy_turns`
 returns. This is safe from a double-call (re-logged death message,
-re-awarded XP) only because `_apply_poison_damage` snapshots
+re-awarded XP) only because `_tick_active_effects` snapshots
 `game_map.entities` **fresh, at the top of its own call**, after
 `_handle_enemy_turns` has already run: anything that died earlier the same
 turn via `engine/combat.py`'s own direct `on_entity_death` call is already
@@ -1194,12 +1224,31 @@ re-verifying this invariant holds.
 
 Expected total damage from one poisonous attacker's landed hit for hits-
 to-kill math (§2) is `direct + potency * duration`, not just `direct` -
-factor this in when placing or rebalancing any poisonous monster. Monster
-poison state is never persisted across a save/load (`engine/save.py`'s
-`SavedPlayer` only carries the *player's* `poison_damage_per_turn`/
-`poison_turns_remaining`) - consistent with monster `Fighter` state beyond
-`(x, y, hp)` never being saved today; acceptable since nothing poisons a
-monster in this pass.
+factor this in when placing or rebalancing any poisonous monster. A
+weakening hit doesn't change the defender's own hits-to-kill directly, but
+*does* reduce the defender's own damage output for `inflicts_duration`
+turns - factor this into a multi-hit exchange's math the same way. Monster
+effect state is never persisted across a save/load (`engine/save.py`'s
+`SavedPlayer` only carries the *player's* `active_effects`) - consistent
+with monster `Fighter` state beyond `(x, y, hp)` never being saved today;
+acceptable since nothing afflicts a monster in this pass.
+
+**The stun-lock trap - a real risk to design around, not a bug to fix
+mechanically.** A stunning monster that lands a hit *every* turn it acts
+can re-stun the player before their own previous stun's block ever lets
+them act at all, live-verified: a wraith attacking every turn keeps the
+player permanently stunned turn after turn, never landing a single swing
+back, until it kills them outright. This is correct per spec (each landed
+hit refreshes the affliction, same as poison/weaken), and it's the
+well-known classic-roguelike "stun-lock" failure mode, not something to
+solve by weakening the mechanic itself. Whoever places a stunning monster
+in a real dungeon (`wraith` is capability-only, unplaced, as of this
+writing) must design around it instead: keep `inflicts_duration` at 1 (already
+the case), keep the monster's own hit rate/attack low enough relative to
+player defense that consecutive landed hits aren't a near-certainty, and
+avoid pairing a stunner with anything else that also wants the player's
+attention in the same encounter - a solo, rare threat, not one two
+monsters deep in a pack.
 
 ## 1. Narrative framing
 

@@ -6,11 +6,22 @@ import math
 import random
 from typing import TYPE_CHECKING
 
-from content.schema import PEACEFUL_AI_TYPES
+from content.schema import EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, PEACEFUL_AI_TYPES
+from engine.entity import ActiveEffect
 
 if TYPE_CHECKING:
     from engine.engine import Engine
     from engine.entity import Entity
+
+# The message logged the instant an effect is inflicted (distinct from
+# _tick_active_effects' own per-turn message, e.g. poison's "writhes from
+# poison, taking N damage") - one per EffectKind, since each reads
+# differently as a fresh affliction.
+_EFFECT_INFLICT_MESSAGES = {
+    EFFECT_POISON: "{name} is poisoned!",
+    EFFECT_STUN: "{name} is stunned!",
+    EFFECT_WEAKEN: "{name} is weakened!",
+}
 
 # Global on/off switch for the variance layer below - flip to False to
 # fully restore the original deterministic formula (max(0, attack -
@@ -80,12 +91,18 @@ def _apply_damage(
         )
         if is_critical:
             engine.message_log.add("Critical hit!", category="combat")
-        # Refreshes, never stacks: a repeat poisonous hit overwrites both
-        # fields rather than adding to them (see Fighter.poison_turns_remaining).
-        if attacker.poison_potency and attacker.poison_duration:
-            defender.fighter.poison_damage_per_turn = attacker.poison_potency
-            defender.fighter.poison_turns_remaining = attacker.poison_duration
-            engine.message_log.add(f"{defender.name} is poisoned!", category="combat")
+        # Refreshes, never stacks: a repeat hit of the same kind overwrites
+        # that dict entry rather than adding to it (see
+        # Fighter.active_effects) - a different kind coexists independently.
+        if attacker.inflicts_effect:
+            defender.fighter.active_effects[attacker.inflicts_effect] = ActiveEffect(
+                potency=attacker.inflicts_potency or 0,
+                turns_remaining=attacker.inflicts_duration,
+            )
+            engine.message_log.add(
+                _EFFECT_INFLICT_MESSAGES[attacker.inflicts_effect].format(name=defender.name),
+                category="combat",
+            )
     else:
         engine.message_log.add(
             f"{attacker.name} {verb} {defender.name} but does no damage.", category="combat"
