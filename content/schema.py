@@ -351,6 +351,26 @@ class ItemDef(BaseModel):
         return self
 
 
+# An active skill's cooldown unit (PerkDef.skill_cooldown_kind below) -
+# "hours" only ticks down while the world clock actually advances
+# (overworld turns only, see Engine._advance_world_clock/GameClock), so a
+# skill on this cooldown genuinely requires leaving to rest, not just
+# taking more turns wherever the player already is; "turns" ticks down on
+# every turn taken anywhere, dungeon or overworld (see
+# Engine._tick_skill_cooldowns). Same "string constants + Literal" shape
+# as AIType/EffectKind, for the same fail-loudly-at-load-time reason.
+SKILL_COOLDOWN_HOURS = "hours"
+SKILL_COOLDOWN_TURNS = "turns"
+SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
+
+# What a triggered active skill actually does - "heal" restores a
+# percentage of max_hp, "aoe_damage" strikes every hostile entity adjacent
+# to the player for a flat amount (see Engine.use_skill).
+SKILL_EFFECT_HEAL = "heal"
+SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
+SkillEffectKind = Literal[SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE]
+
+
 class PerkDef(BaseModel):
     """A permanent player upgrade, as defined once in data/perks.yaml and
     taught by Trainer NPCs (EntityDef.trainer_perks) in exchange for XP -
@@ -360,12 +380,16 @@ class PerkDef(BaseModel):
     it's learned (see engine/entity.py's apply_perk_stat_bonus) and never
     removed - a perk is bought once, ever, never repurchased or unequipped.
 
-    Exactly one of the four bonus fields must be set (enforced below),
-    mirroring ItemDef's own single-equipment-slot discipline
-    (not_multiple_equipment_slots) - unambiguous which stat a perk
-    improves. A perk needing a mechanic beyond a flat stat bonus (the
-    "more complex ones" the project's XP/Perks feature anticipates) isn't
-    representable yet - this model covers only the first, simplest wave."""
+    A perk is exactly one of three shapes (enforced below): a flat stat
+    bonus (max_hp/attack/defense/ranged_attack - the original, simplest
+    wave), a passive rate bonus (crit_chance/dodge_chance - the permanent,
+    perk-tree equivalent of a trinket's own crit_chance/dodge_chance,
+    reusing that same percentage-point-on-top-of-the-base-rate idea), or
+    an active skill (skill_effect set, manually triggered on a cooldown -
+    see engine/actions.py's UseSkillAction, Engine.use_skill). Mirrors
+    ItemDef's own single-equipment-slot discipline
+    (not_multiple_equipment_slots) - unambiguous which of the three a
+    given perk is."""
 
     id: str
     name: str
@@ -382,15 +406,69 @@ class PerkDef(BaseModel):
     attack_bonus: int | None = None
     defense_bonus: int | None = None
     ranged_attack_bonus: int | None = None
+    # A passive rate bonus, same percentage-point idea as
+    # ItemDef.trinket_effect/trinket_bonus, folded permanently instead of
+    # depending on what's equipped - see Fighter.perk_crit_chance_bonus/
+    # perk_dodge_chance_bonus, engine/combat.py's crit/dodge rolls.
+    crit_chance_bonus: float | None = Field(default=None, gt=0, le=1)
+    dodge_chance_bonus: float | None = Field(default=None, gt=0, le=1)
+    # An active skill - manually triggered (UseSkillAction), costs a turn
+    # like any other real action, then goes on cooldown. All three must be
+    # set together or not at all (skill_fields_set_together below);
+    # skill_heal_pct is required for/exclusive to "heal", skill_aoe_damage
+    # for/exclusive to "aoe_damage" (skill_effect_matches_payload below).
+    skill_effect: SkillEffectKind | None = None
+    skill_cooldown_kind: SkillCooldownKind | None = None
+    skill_cooldown_amount: int | None = Field(default=None, gt=0)
+    skill_heal_pct: float | None = Field(default=None, gt=0, le=1)
+    skill_aoe_damage: int | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
-    def exactly_one_bonus(self) -> "PerkDef":
-        bonuses = [self.max_hp_bonus, self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus]
-        if sum(b is not None for b in bonuses) != 1:
+    def exactly_one_bonus_or_skill(self) -> "PerkDef":
+        bonuses = [
+            self.max_hp_bonus, self.attack_bonus, self.defense_bonus, self.ranged_attack_bonus,
+            self.crit_chance_bonus, self.dodge_chance_bonus,
+        ]
+        bonus_count = sum(b is not None for b in bonuses)
+        if self.skill_effect is not None:
+            if bonus_count > 0:
+                raise ValueError(
+                    "an active skill (skill_effect set) can't also set a passive stat/rate "
+                    "bonus - a perk is either a passive bonus or an active skill, not both"
+                )
+            return self
+        if bonus_count != 1:
             raise ValueError(
-                "a perk must set exactly one of max_hp_bonus/attack_bonus/"
-                "defense_bonus/ranged_attack_bonus (ambiguous which stat it improves)"
+                "a perk must set exactly one of max_hp_bonus/attack_bonus/defense_bonus/"
+                "ranged_attack_bonus/crit_chance_bonus/dodge_chance_bonus, or be an active "
+                "skill (skill_effect set) - ambiguous otherwise which stat it improves"
             )
+        return self
+
+    @model_validator(mode="after")
+    def skill_fields_set_together(self) -> "PerkDef":
+        fields_set = (
+            self.skill_effect is not None,
+            self.skill_cooldown_kind is not None,
+            self.skill_cooldown_amount is not None,
+        )
+        if len(set(fields_set)) > 1:
+            raise ValueError(
+                "skill_effect, skill_cooldown_kind, and skill_cooldown_amount must all be "
+                "set together or not at all"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def skill_effect_matches_payload(self) -> "PerkDef":
+        if self.skill_effect == SKILL_EFFECT_HEAL and self.skill_heal_pct is None:
+            raise ValueError("skill_effect 'heal' requires skill_heal_pct to be set")
+        if self.skill_effect != SKILL_EFFECT_HEAL and self.skill_heal_pct is not None:
+            raise ValueError("skill_heal_pct is only meaningful when skill_effect is 'heal'")
+        if self.skill_effect == SKILL_EFFECT_AOE_DAMAGE and self.skill_aoe_damage is None:
+            raise ValueError("skill_effect 'aoe_damage' requires skill_aoe_damage to be set")
+        if self.skill_effect != SKILL_EFFECT_AOE_DAMAGE and self.skill_aoe_damage is not None:
+            raise ValueError("skill_aoe_damage is only meaningful when skill_effect is 'aoe_damage'")
         return self
 
 

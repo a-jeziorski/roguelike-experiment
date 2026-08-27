@@ -1043,3 +1043,115 @@ def test_perk_def_accepts_gold_cost():
 def test_perk_def_rejects_nonpositive_gold_cost():
     with pytest.raises(ValidationError):
         PerkDef(**_perk_kwargs(gold_cost=0))
+
+
+# --- passive rate bonuses (crit_chance_bonus/dodge_chance_bonus) ---
+
+
+def test_perk_def_accepts_crit_chance_bonus_alone():
+    perk = PerkDef(**_perk_kwargs(max_hp_bonus=None, crit_chance_bonus=0.05))
+    assert perk.crit_chance_bonus == 0.05
+
+
+def test_perk_def_accepts_dodge_chance_bonus_alone():
+    perk = PerkDef(**_perk_kwargs(max_hp_bonus=None, dodge_chance_bonus=0.05))
+    assert perk.dodge_chance_bonus == 0.05
+
+
+def test_perk_def_rejects_crit_and_dodge_chance_bonus_together():
+    with pytest.raises(ValidationError, match="exactly one"):
+        PerkDef(**_perk_kwargs(max_hp_bonus=None, crit_chance_bonus=0.05, dodge_chance_bonus=0.05))
+
+
+def test_perk_def_rejects_crit_chance_bonus_combined_with_attack_bonus():
+    with pytest.raises(ValidationError, match="exactly one"):
+        PerkDef(**_perk_kwargs(crit_chance_bonus=0.05))  # max_hp_bonus=5 already set by _perk_kwargs
+
+
+def test_perk_def_rejects_out_of_range_crit_chance_bonus():
+    with pytest.raises(ValidationError):
+        PerkDef(**_perk_kwargs(max_hp_bonus=None, crit_chance_bonus=1.5))
+
+
+# --- active skills (skill_effect/skill_cooldown_kind/skill_cooldown_amount) ---
+
+
+def test_perk_def_accepts_a_heal_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+        skill_cooldown_kind="hours", skill_cooldown_amount=24,
+    ))
+    assert perk.skill_effect == "heal"
+    assert perk.skill_heal_pct == 0.5
+    assert perk.skill_cooldown_kind == "hours"
+    assert perk.skill_cooldown_amount == 24
+
+
+def test_perk_def_accepts_an_aoe_damage_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="aoe_damage", skill_aoe_damage=4,
+        skill_cooldown_kind="turns", skill_cooldown_amount=5,
+    ))
+    assert perk.skill_effect == "aoe_damage"
+    assert perk.skill_aoe_damage == 4
+    assert perk.skill_cooldown_kind == "turns"
+
+
+def test_perk_def_rejects_skill_effect_combined_with_a_stat_bonus():
+    with pytest.raises(ValidationError, match="either a passive"):
+        PerkDef(**_perk_kwargs(
+            skill_effect="heal", skill_heal_pct=0.5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))  # max_hp_bonus=5 still set by _perk_kwargs
+
+
+def test_perk_def_rejects_skill_effect_without_cooldown_kind_or_amount():
+    with pytest.raises(ValidationError, match="must all be set together"):
+        PerkDef(**_perk_kwargs(max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5))
+
+
+def test_perk_def_rejects_skill_effect_without_cooldown_amount():
+    with pytest.raises(ValidationError, match="must all be set together"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_cooldown_kind="hours",
+        ))
+
+
+def test_perk_def_rejects_heal_skill_without_heal_pct():
+    with pytest.raises(ValidationError, match="requires skill_heal_pct"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal",
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_aoe_damage_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'aoe_damage'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_aoe_damage=4,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
+def test_perk_def_rejects_aoe_damage_skill_without_aoe_damage():
+    with pytest.raises(ValidationError, match="requires skill_aoe_damage"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="aoe_damage",
+            skill_cooldown_kind="turns", skill_cooldown_amount=5,
+        ))
+
+
+def test_perk_def_rejects_aoe_damage_skill_with_heal_pct_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'heal'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="aoe_damage", skill_aoe_damage=4, skill_heal_pct=0.5,
+            skill_cooldown_kind="turns", skill_cooldown_amount=5,
+        ))
+
+
+def test_perk_def_rejects_out_of_range_skill_heal_pct():
+    with pytest.raises(ValidationError):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=1.5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))

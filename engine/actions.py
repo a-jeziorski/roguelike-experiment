@@ -413,6 +413,21 @@ class UseItemAction(Action):
             engine.wants_overworld = True
 
 
+class UseSkillAction(Action):
+    """Manually triggers a learned active-skill perk (see
+    content/schema.py's PerkDef.skill_effect, Engine.use_skill) - a real,
+    turn-costing action like UseItemAction above, not a free action like
+    Talk/Look. main.py binds one fixed key per shipped skill (not a
+    scalable hotbar - see engine/input_handlers.py) since there are only
+    two of them so far."""
+
+    def __init__(self, perk_id: str):
+        self.perk_id = perk_id
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        engine.use_skill(entity, self.perk_id)
+
+
 class CyclePotionKindAction(Action):
     """Cycles entity.selected_potion_kind through POTION_KINDS - free, costs
     no turn, same shape as TalkAction. main.py recognizes this before it

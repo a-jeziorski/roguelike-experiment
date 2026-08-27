@@ -163,6 +163,12 @@ class SavedPlayer(BaseModel):
     # perk_ranged_attack_bonus from this plus catalog.perks at restore
     # time, rather than saving those totals redundantly.
     learned_perk_ids: set[str] = Field(default_factory=set)
+    # Remaining cooldown units for a learned active-skill perk (see
+    # Entity.skill_cooldowns, Engine.use_skill) - genuine live state, not
+    # derivable from learned_perk_ids alone (depends on *when* a skill was
+    # last used), so unlike the stat-bonus totals above, this is saved
+    # directly rather than re-derived.
+    skill_cooldowns: dict[str, int] = Field(default_factory=dict)
     inventory: list[SavedItemSlot] = Field(default_factory=list)
     equipped_weapon: SavedItemSlot | None = None
     equipped_armor: SavedItemSlot | None = None
@@ -276,6 +282,7 @@ def capture_save(
     saved_player = SavedPlayer(
         x=player.x, y=player.y, hp=player.fighter.hp, gold=player.gold,
         xp=player.xp, learned_perk_ids=set(player.learned_perk_ids),
+        skill_cooldowns=dict(player.skill_cooldowns),
         inventory=[
             SavedItemSlot(entity_id=item.entity_id, quantity=item.item.quantity)
             for item in player.inventory
@@ -350,6 +357,7 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
         fighter=fighter,
         entity_id=PLAYER_ENTITY_ID, gold=saved.gold,
         xp=saved.xp, learned_perk_ids=set(saved.learned_perk_ids),
+        skill_cooldowns=dict(saved.skill_cooldowns),
     )
     player.inventory = [_build_item_entity(slot, catalog) for slot in saved.inventory]
     player.selected_potion_kind = saved.selected_potion_kind

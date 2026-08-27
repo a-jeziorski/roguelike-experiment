@@ -125,7 +125,10 @@ def _apply_damage(
         engine.game_map.trigger_guard_hostility(engine.clock)
         engine.quest_log.record_entity_intimidated(defender.entity_id)
 
-    dodge_chance = DODGE_CHANCE + _trinket_bonus(defender, "dodge_chance")
+    # Trinket + perk bonuses stack additively - a Light Feet/Steady Aim
+    # perk (permanent) and a matching trinket (equipped) both apply at
+    # once, same as any other additive bonus in this project.
+    dodge_chance = DODGE_CHANCE + _trinket_bonus(defender, "dodge_chance") + defender.fighter.perk_dodge_chance_bonus
     if COMBAT_VARIANCE_ENABLED and random.random() < dodge_chance:
         engine.message_log.add(
             f"{defender.name} dodges {attacker.name}'s attack.", category="combat"
@@ -134,7 +137,7 @@ def _apply_damage(
 
     damage = max(0, attack_value - defender.effective_defense)
     is_critical = False
-    crit_chance = CRIT_CHANCE + _trinket_bonus(attacker, "crit_chance")
+    crit_chance = CRIT_CHANCE + _trinket_bonus(attacker, "crit_chance") + attacker.fighter.perk_crit_chance_bonus
     if COMBAT_VARIANCE_ENABLED and damage > 0 and random.random() < crit_chance:
         # ceil, not round: a crit must always deal strictly more than the
         # base hit would have, even at low single-digit damage where
@@ -183,3 +186,18 @@ def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> 
 def resolve_ranged_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
     engine.ranged_attack_events.append((attacker.x, attacker.y, defender.x, defender.y))
     _apply_damage(engine, attacker, defender, attacker.effective_ranged_attack, "shoots")
+
+
+def resolve_skill_damage(
+    engine: "Engine", attacker: "Entity", defender: "Entity", damage_value: int, verb: str
+) -> None:
+    """An active skill's own damage source (see Engine.use_skill's
+    SKILL_EFFECT_AOE_DAMAGE branch, e.g. Ground Pound) - the same
+    _apply_damage pipeline resolve_attack/resolve_ranged_attack use, so
+    dodge/crit/weapon-affix procs and on_entity_death all apply exactly as
+    they would for an ordinary hit, just with a flat damage_value instead
+    of attacker.effective_attack/effective_ranged_attack. Deliberately
+    doesn't append to melee_attack_events/ranged_attack_events - a skill
+    hitting several targets at once isn't an ordinary bump/ranged attack,
+    and shouldn't be animated as one."""
+    _apply_damage(engine, attacker, defender, damage_value, verb)

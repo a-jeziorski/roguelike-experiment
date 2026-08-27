@@ -28,3 +28,48 @@ marksman_training_1:
   description: A steadier draw, a longer breath before the loose. Permanently raises your ranged attack by 2.
   xp_cost: 40
   ranged_attack_bonus: 2
+
+# Passive rate bonuses - the permanent, perk-tree equivalent of a
+# trinket's own crit_chance/dodge_chance (see content/schema.py's §0x/§0z
+# design notes), folded in once and never dependent on what's equipped.
+
+steady_aim:
+  name: Steady Aim
+  description: A calm read on an opening before you take it. Permanently raises your critical hit chance by 5%.
+  xp_cost: 45
+  crit_chance_bonus: 0.05
+
+light_feet:
+  name: Light Feet
+  description: Weight kept forward, never quite where a blow expects to land. Permanently raises your dodge chance by 5%.
+  xp_cost: 45
+  dodge_chance_bonus: 0.05
+
+# Active skills - manually triggered (see engine/actions.py's
+# UseSkillAction, bound to W/K respectively), each on its own cooldown.
+
+second_wind:
+  name: Second Wind
+  description: >
+    A hard-won trick for pulling yourself back from the brink - not
+    something the body can do twice in a hurry. Instantly recovers 50% of
+    your max HP. A day's rest between uses; the world clock only moves on
+    the surface, so working this off means actually leaving to rest, not
+    just outlasting the fight you're in.
+  xp_cost: 60
+  skill_effect: heal
+  skill_heal_pct: 0.5
+  skill_cooldown_kind: hours
+  skill_cooldown_amount: 24
+
+ground_pound:
+  name: Ground Pound
+  description: >
+    A driven-down strike that shakes everything standing close, at the
+    cost of finesse. Slams every adjacent enemy for 4 damage at once. A
+    few turns to recover your footing between uses.
+  xp_cost: 50
+  skill_effect: aoe_damage
+  skill_aoe_damage: 4
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 5

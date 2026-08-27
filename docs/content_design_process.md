@@ -1529,6 +1529,110 @@ shop-purchase-doesn't-auto-equip gap §0x already flagged (out of scope
 here too), which is exactly why both ship as ground pickups rather than
 shop stock alone.
 
+## 0z. Active-skill perks (`PerkDef.skill_effect` and the two rate-bonus perks)
+
+`PerkDef` was originally exactly-one-of-four-flat-stat-bonuses, with a
+docstring already anticipating "a perk needing a mechanic beyond a flat
+stat bonus... isn't representable yet." This pass fills that gap with two
+more perk shapes: a **passive rate bonus** (the permanent, perk-tree
+version of a trinket's `crit_chance`/`dodge_chance`, §0x) and an **active
+skill** (manually triggered, on a cooldown). A `PerkDef` is now exactly
+one of three things - flat stat bonus, rate bonus, or active skill -
+enforced by `exactly_one_bonus_or_skill`.
+
+**Passive rate bonuses (`crit_chance_bonus`/`dodge_chance_bonus`,
+`steady_aim`/`light_feet`)** fold permanently into
+`Fighter.perk_crit_chance_bonus`/`perk_dodge_chance_bonus` via
+`apply_perk_stat_bonus` (the same function that already folds
+`ranged_attack_bonus` into `perk_ranged_attack_bonus` for the identical
+"no base stat to bump" reason) - `Engine.learn_perk`'s existing call site
+needed no changes at all. `engine/combat.py` adds both this and a
+trinket's own bonus on top of the base `CRIT_CHANCE`/`DODGE_CHANCE`
+additively - a perk and a matching trinket stack, same as any other
+additive bonus in this project. Because `apply_perk_stat_bonus` already
+runs in a loop over `learned_perk_ids` at save-restore time
+(`engine/save.py`'s `_build_player`), these two bonuses are correctly
+re-derived on load with **no save-format changes required** - the save
+only needs to remember *which* perks were learned, same as every other
+stat bonus.
+
+**Active skills (`skill_effect`/`skill_cooldown_kind`/
+`skill_cooldown_amount`, `second_wind`/`ground_pound`)** are triggered
+manually via `engine/actions.py`'s `UseSkillAction(perk_id)` - a real,
+turn-costing action reached through the normal `process_player_action`
+path, same as `UseItemAction`, not a free action like Talk/Look.
+`Engine.use_skill` validates the perk exists, is actually an active skill,
+is learned, and isn't on cooldown, then applies one of two effects and
+sets `entity.skill_cooldowns[perk_id] = perk.skill_cooldown_amount`:
+- `SKILL_EFFECT_HEAL` (`second_wind`): restores `skill_heal_pct` of
+  `max_hp`, capped at `max_hp` - `math.ceil`, not `round`, same
+  "must always grant strictly more, never accidentally the same amount at
+  a low value" reasoning as the crit multiplier and the XP trinket.
+- `SKILL_EFFECT_AOE_DAMAGE` (`ground_pound`): strikes every
+  non-peaceful, adjacent (8-directional) hostile entity via
+  `resolve_skill_damage`, a public wrapper around the exact same
+  `_apply_damage` pipeline `resolve_attack`/`resolve_ranged_attack` use -
+  dodge, crit, and weapon-affix procs all apply to a Ground Pound hit
+  exactly as they would to an ordinary swing. This is a deliberate
+  emergent synergy (a venomous dagger's affix can trigger off a Ground
+  Pound hit too), not a special case worth avoiding. The target filter is
+  `fighter is not None and is_alive and ai not in PEACEFUL_AI_TYPES` -
+  *not* also `ai is not None`, which would be both redundant (no item
+  entity ever has a `Fighter` in the first place) and wrong (a real
+  monster's own `ai` is never actually `None` in shipped content) - an
+  early version of this filter had that extra, incorrect check, caught by
+  its own tests using `ai=None` test-double monsters (this file's own
+  "doesn't act on its own turn" convention) as legitimate Ground Pound
+  targets.
+
+**Two independent cooldown clocks, matching the user's own explicit
+framing** ("a turn-based cooldown would be fine for a less powerful
+skill... Second Wind on a turn timer would give the player unlimited
+healing that bypasses the world clock"):
+- `SKILL_COOLDOWN_TURNS` (`ground_pound`, 5 turns): ticked by
+  `Engine._tick_skill_cooldowns("turns")`, called once per turn from
+  `process_enemy_phase`, any turn anywhere - dungeon or overworld.
+- `SKILL_COOLDOWN_HOURS` (`second_wind`, 24 hours): ticked by the same
+  `_tick_skill_cooldowns("hours")`, but called only from
+  `_advance_world_clock` - which itself only ever runs on an overworld
+  turn (§0p/§2's own established invariant: the world clock is frozen
+  inside any dungeon/settlement). A player camped inside a dungeon
+  fighting the same encounter for 50 turns sees Second Wind's cooldown
+  not move at all; only actually leaving to the overworld and taking
+  turns there advances it - the literal "you'd have to leave the dungeon
+  and rest" the skill's own flavor text describes, not a figure of
+  speech. Both share one small helper (parameterized by cooldown kind)
+  rather than two near-duplicate methods; entries reaching 0 are deleted
+  outright, not left inert at 0 - same "membership is the state"
+  convention `Fighter.active_effects` already established (§0t).
+
+**Cooldown state is genuinely live, not re-derivable** - unlike the
+passive rate bonuses above, `Entity.skill_cooldowns` depends on *when* a
+skill was last used, which `learned_perk_ids` alone can't reconstruct, so
+`SavedPlayer.skill_cooldowns` is saved directly rather than re-derived at
+restore time.
+
+**Fixed key bindings, not a hotbar.** `engine/input_handlers.py` binds
+`W`/`K` directly to `UseSkillAction("second_wind")`/
+`UseSkillAction("ground_pound")` - a deliberate, scope-bounded choice
+given there are only two active skills so far, not a general "assign any
+skill to any slot" system. `tools/play_llm.py` exposes the same
+capability as a generic `skill <perk_id>` subcommand instead (since a CLI
+has no fixed-key constraint), and both HUD renderers
+(`engine/render.py`'s `render_hud`, `tools/play_llm.py`'s
+`render_hud_text`) add one line listing every *learned* active skill with
+its live cooldown status - omitted entirely for a player who hasn't
+learned any yet, so the HUD stays quiet until it's relevant.
+
+Both perks are taught by the two existing Trainer NPCs
+(`millhaven_trainer`/`wayford_trainer`), alongside `steady_aim`/
+`light_feet` - real, reachable content from the moment this shipped, the
+same "don't just define capability, place it" precedent §0v/§0w/§0x
+already established, verified end-to-end via `tools/play_llm.py`'s
+`testbuild`/`skill` commands (Second Wind healing on demand, on a
+24-hour cooldown that only moves on the overworld; Ground Pound clearing
+a pack of adjacent monsters at once, back off cooldown five turns later).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

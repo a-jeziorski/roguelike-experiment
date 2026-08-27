@@ -35,6 +35,7 @@ Usage:
     python tools/play_llm.py wait                           # one turn
     python tools/play_llm.py pickup                          # one turn
     python tools/play_llm.py use                              # drink selected potion - one turn
+    python tools/play_llm.py skill second_wind                 # trigger a learned active skill - one turn
     python tools/play_llm.py fire 12 5                         # one turn
     python tools/play_llm.py restart                            # only once dead
     python tools/play_llm.py talk                                 # free
@@ -71,7 +72,15 @@ from content.loader import (
     load_quests,
 )
 from content.schema import PEACEFUL_AI_TYPES
-from engine.actions import BumpAction, FireAction, PickupAction, RestartAction, UseItemAction, WaitAction
+from engine.actions import (
+    BumpAction,
+    FireAction,
+    PickupAction,
+    RestartAction,
+    UseItemAction,
+    UseSkillAction,
+    WaitAction,
+)
 from engine.clock import GameClock
 from engine.engine import Engine
 from engine.entity import apply_perk_stat_bonus, potion_kind
@@ -191,6 +200,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("item_id")
 
     p = sub.add_parser("learn", help="Learn a perk from an adjacent Trainer. Free.")
+    p.add_argument("perk_id")
+
+    p = sub.add_parser("skill", help="Trigger a learned active-skill perk (e.g. second_wind, ground_pound). Costs a turn.")
     p.add_argument("perk_id")
 
     sub.add_parser("cycle_potion", help="Cycle which potion kind 'use' drinks. Free.")
@@ -314,6 +326,18 @@ def render_hud_text(engine) -> str:
         f"RANGED ATK: {player.effective_ranged_attack}"
     )
     lines.append(f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}")
+    skill_parts = []
+    for perk_id, key in (("second_wind", "W"), ("ground_pound", "K")):
+        if perk_id not in player.learned_perk_ids or engine.catalog is None:
+            continue
+        perk = engine.catalog.perks.get(perk_id)
+        if perk is None:
+            continue
+        remaining = player.skill_cooldowns.get(perk_id, 0)
+        status = "ready" if remaining <= 0 else f"{remaining}{'h' if perk.skill_cooldown_kind == 'hours' else 't'}"
+        skill_parts.append(f"[{key}] {perk.name}: {status}")
+    if skill_parts:
+        lines.append("Skills: " + "  ".join(skill_parts))
     healing_marker = ">" if selected_potion == "healing" else " "
     teleport_marker = ">" if selected_potion == "teleport" else " "
     lines.append(
@@ -592,6 +616,8 @@ def apply_command(
         turn_action = PickupAction()
     elif cmd == "use":
         turn_action = UseItemAction()
+    elif cmd == "skill":
+        turn_action = UseSkillAction(args.perk_id)
     elif cmd == "fire":
         turn_action = FireAction(args.x, args.y)
     elif cmd == "restart":

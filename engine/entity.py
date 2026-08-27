@@ -53,6 +53,13 @@ class Fighter:
     # derives entirely from `attack` plus the equipped weapon's bonus), so
     # a ranged-specific perk needs this separate field.
     perk_ranged_attack_bonus: int = 0
+    # A learned perk's crit_chance_bonus/dodge_chance_bonus, permanently
+    # folded in the same way - same reasoning as perk_ranged_attack_bonus
+    # above (no base "crit chance" stat on Fighter to bump; combat.py adds
+    # these directly onto the module-level CRIT_CHANCE/DODGE_CHANCE
+    # constants, the same spot a trinket's own bonus is added).
+    perk_crit_chance_bonus: float = 0.0
+    perk_dodge_chance_bonus: float = 0.0
     # This fighter's own live status-effect afflictions, keyed by kind
     # ("poison"/"stun"/"weaken") - a repeat hit of the same kind refreshes
     # (overwrites) rather than stacks, but different kinds coexist
@@ -82,6 +89,15 @@ def apply_perk_stat_bonus(fighter: Fighter, perk: PerkDef) -> None:
         fighter.defense += perk.defense_bonus
     elif perk.ranged_attack_bonus:
         fighter.perk_ranged_attack_bonus += perk.ranged_attack_bonus
+    elif perk.crit_chance_bonus:
+        fighter.perk_crit_chance_bonus += perk.crit_chance_bonus
+    elif perk.dodge_chance_bonus:
+        fighter.perk_dodge_chance_bonus += perk.dodge_chance_bonus
+    # An active-skill perk (skill_effect set) folds nothing into Fighter at
+    # all - it has no passive bonus, only a manually-triggered effect (see
+    # engine/actions.py's UseSkillAction, Engine.use_skill). Nothing to do
+    # here for one; learn_perk still adds it to learned_perk_ids, which is
+    # what actually makes it usable.
 
 
 @dataclass
@@ -164,6 +180,7 @@ class Entity:
         gold: int = 0,
         xp: int = 0,
         learned_perk_ids: set[str] | None = None,
+        skill_cooldowns: dict[str, int] | None = None,
     ):
         self.x = x
         self.y = y
@@ -263,6 +280,13 @@ class Entity:
         # (see Engine.learn_perk). Defensively copied, same reasoning as
         # shop_inventory/trainer_perks above.
         self.learned_perk_ids: set[str] = set(learned_perk_ids) if learned_perk_ids is not None else set()
+        # Remaining cooldown units (hours or turns, per that skill's own
+        # PerkDef.skill_cooldown_kind) for a learned active-skill perk,
+        # keyed by perk_id - absent or <= 0 means ready to use (see
+        # Engine.use_skill, Engine._tick_skill_cooldowns/
+        # _advance_world_clock). Defensively copied, same reasoning as
+        # learned_perk_ids above.
+        self.skill_cooldowns: dict[str, int] = dict(skill_cooldowns) if skill_cooldowns is not None else {}
         # Which potion kind UseItemAction drinks (see POTION_KINDS/potion_kind) -
         # lives here rather than on Engine because the player Entity instance
         # itself is what survives every dungeon-to-dungeon hand-off unchanged

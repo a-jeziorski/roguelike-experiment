@@ -293,6 +293,40 @@ def _render_active_effects(console: "Console", fighter: "Fighter", y: int, width
     return y
 
 
+# Fixed key binding per shipped active skill (see engine/input_handlers.py's
+# same W/K bindings, engine/actions.py's UseSkillAction) - matches that
+# "not a scalable hotbar, just direct bindings" shape.
+_SKILL_KEYS = {"second_wind": "W", "ground_pound": "K"}
+
+
+def _render_skill_status(console: "Console", player: "Entity", catalog: "Catalog | None", y: int, width: int) -> int:
+    """One HUD line listing every active-skill perk the player has
+    learned, with its key binding and current cooldown status - omitted
+    entirely if the player hasn't learned any yet, so the HUD stays quiet
+    until skills are actually relevant. catalog may be None (a synthetic
+    Engine built without one, same guard several other render helpers/
+    Engine methods already use) - the line is just skipped in that case."""
+    if catalog is None:
+        return y
+    parts = []
+    for perk_id, key in _SKILL_KEYS.items():
+        if perk_id not in player.learned_perk_ids:
+            continue
+        perk = catalog.perks.get(perk_id)
+        if perk is None:
+            continue
+        remaining = player.skill_cooldowns.get(perk_id, 0)
+        if remaining <= 0:
+            status = "ready"
+        else:
+            unit = "h" if perk.skill_cooldown_kind == "hours" else "t"
+            status = f"{remaining}{unit}"
+        parts.append(f"[{key}] {perk.name}: {status}")
+    if parts:
+        y += console.print(0, y, "Skills: " + "  ".join(parts), fg=HUD_FG, width=width)
+    return y
+
+
 def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     """Prints the HUD starting at row y, wrapping any line too long for the
     console. Returns the row just past the last line printed, so callers can
@@ -334,6 +368,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         fg=HUD_FG,
         width=width,
     )
+    y = _render_skill_status(console, player, engine.catalog, y, width)
     healing_marker = ">" if selected_potion == "healing" else " "
     teleport_marker = ">" if selected_potion == "teleport" else " "
     y += console.print(

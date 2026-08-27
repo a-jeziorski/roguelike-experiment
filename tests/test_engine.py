@@ -9,7 +9,7 @@ from pathlib import Path
 import engine.combat
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
-from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
+from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, UseSkillAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import DUNE_DAMAGE, Engine
 from engine.entity import (
@@ -5463,6 +5463,302 @@ def test_learn_perk_never_advances_the_clock_or_processes_enemy_turns():
 
     assert engine.clock == GameClock()  # untouched
     assert (rat.x, rat.y) == rat_start  # no enemy turn was processed
+
+
+# --- passive rate-bonus perks (crit_chance_bonus/dodge_chance_bonus) ---
+
+
+def test_learn_perk_applies_crit_chance_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 45
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["steady_aim"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("steady_aim")
+
+    assert player.fighter.perk_crit_chance_bonus == 0.05
+
+
+def test_learn_perk_applies_dodge_chance_bonus():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 45
+    game_map.entities.extend([player, make_trainer(2, 1, trainer_perks=["light_feet"])])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("light_feet")
+
+    assert player.fighter.perk_dodge_chance_bonus == 0.05
+
+
+def test_perk_crit_chance_bonus_triggers_a_crit_the_base_rate_would_have_missed(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    import math
+
+    # Dodge roll first (must not beat DODGE_CHANCE=0.10), then crit roll:
+    # 0.3 is above the base CRIT_CHANCE=0.10 but below the perk-boosted
+    # 0.60 - a crit here can only be the perk's doing.
+    monkeypatch.setattr(random, "random", iter([0.99, 0.3]).__next__)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.fighter.perk_crit_chance_bonus = 0.5
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    base_damage = player.effective_attack - monster.effective_defense
+    expected_crit_damage = math.ceil(base_damage * engine.combat.CRIT_MULTIPLIER)
+    assert 20 - monster.fighter.hp == expected_crit_damage
+
+
+def test_perk_dodge_chance_bonus_triggers_a_dodge_the_base_rate_would_have_missed(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    # 0.3 is above the base DODGE_CHANCE=0.10 but below the perk-boosted
+    # 0.60 - a dodge here can only be the perk's doing.
+    monkeypatch.setattr(random, "random", lambda: 0.3)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.perk_dodge_chance_bonus = 0.5
+    monster = make_monster(2, 1, hp=5, attack=10, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine_, attacker=monster, defender=player)
+
+    assert player.fighter.hp == 30  # fully dodged
+    assert "dodges" in engine_.message_log.messages[-1]
+
+
+# --- active-skill perks (Engine.use_skill / UseSkillAction) ---
+
+
+def test_use_skill_heal_restores_hp_and_sets_cooldown():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "second_wind")
+
+    assert player.fighter.hp == 25  # 10 + ceil(30 * 0.5) = 25
+    assert player.skill_cooldowns["second_wind"] == 24
+    assert message == "You use Second Wind and recover 15 HP."
+    assert message in engine_.message_log.messages
+
+
+def test_use_skill_heal_caps_at_max_hp():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 25  # only 5 short of max - less than the skill would normally heal
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "second_wind")
+
+    assert player.fighter.hp == 30  # capped, not 40
+
+
+def test_use_skill_without_learning_it_first_does_nothing():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "second_wind")
+
+    assert player.fighter.hp == 10  # unchanged
+    assert message == "You don't know that skill."
+
+
+def test_use_skill_on_cooldown_does_nothing():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    player.learned_perk_ids.add("second_wind")
+    player.skill_cooldowns["second_wind"] = 5
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "second_wind")
+
+    assert player.fighter.hp == 10  # unchanged
+    assert message == "Second Wind is still on cooldown."
+
+
+def test_use_skill_with_unknown_perk_id_does_nothing():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    assert engine_.use_skill(player, "nonexistent_skill") == "That skill doesn't exist."
+
+
+def test_use_skill_with_no_catalog_does_not_crash():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level")  # no catalog
+
+    assert engine_.use_skill(player, "second_wind") == "That skill doesn't exist."
+
+
+def test_use_skill_rejects_a_passive_perk():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("toughness_1")  # learned, but not an active skill
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    assert engine_.use_skill(player, "toughness_1") == "You don't know that skill."
+
+
+def test_use_skill_aoe_damage_hits_all_adjacent_hostile_entities():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("ground_pound")
+    monster_n = make_monster(2, 1, hp=10, defense=0, ai=None)
+    monster_e = make_monster(3, 2, hp=10, defense=0, ai=None)
+    far_monster = make_monster(4, 4, hp=10, defense=0, ai=None)  # not adjacent
+    game_map.entities.extend([player, monster_n, monster_e, far_monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "ground_pound")
+
+    assert monster_n.fighter.hp == 10 - 4  # skill_aoe_damage=4, 0 defense
+    assert monster_e.fighter.hp == 10 - 4
+    assert far_monster.fighter.hp == 10  # untouched, not adjacent
+    assert player.skill_cooldowns["ground_pound"] == 5
+
+
+def test_use_skill_aoe_damage_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, defense=0)
+    player.learned_perk_ids.add("ground_pound")
+    villager = make_villager(2, 1)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "ground_pound")
+
+    assert villager.fighter.hp == villager.fighter.max_hp  # untouched
+
+
+def test_use_skill_aoe_damage_can_kill_an_adjacent_monster():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, defense=0)
+    player.learned_perk_ids.add("ground_pound")
+    monster = make_monster(2, 1, hp=1, defense=0, ai=None)
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "ground_pound")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_use_skill_action_triggers_the_skill_through_process_turn():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.process_turn(UseSkillAction("second_wind"))
+
+    assert player.fighter.hp == 25
+
+
+def test_ground_pound_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("ground_pound")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "ground_pound")
+    assert player.skill_cooldowns["ground_pound"] == 5
+
+    for _ in range(4):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["ground_pound"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "ground_pound" not in player.skill_cooldowns  # expired, deleted
+
+
+def test_second_wind_cooldown_does_not_tick_in_a_dungeon():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)  # is_overworld=False
+
+    engine_.use_skill(player, "second_wind")
+    assert player.skill_cooldowns["second_wind"] == 24
+
+    for _ in range(5):
+        engine_.process_turn(WaitAction())
+
+    assert player.skill_cooldowns["second_wind"] == 24  # unchanged - never left to rest
+
+
+def test_second_wind_cooldown_ticks_down_only_on_overworld_turns():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    clock = GameClock()
+    engine_ = Engine(game_map, player, "The Overworld", is_overworld=True, catalog=catalog, clock=clock)
+
+    engine_.use_skill(player, "second_wind")
+    assert player.skill_cooldowns["second_wind"] == 24
+
+    engine_.process_turn(WaitAction())
+
+    assert player.skill_cooldowns["second_wind"] == 23
+
+
+def test_second_wind_cooldown_expires_after_24_overworld_hours():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("second_wind")
+    game_map.entities.append(player)
+    clock = GameClock()
+    engine_ = Engine(game_map, player, "The Overworld", is_overworld=True, catalog=catalog, clock=clock)
+
+    engine_.use_skill(player, "second_wind")
+    for _ in range(24):
+        engine_.process_turn(WaitAction())
+
+    assert "second_wind" not in player.skill_cooldowns
 
 
 # --- XP awards (kills, quests, landmark discovery) ---

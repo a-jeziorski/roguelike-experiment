@@ -20,10 +20,14 @@ from content.schema import (
     EFFECT_POISON,
     EFFECT_STUN,
     PEACEFUL_AI_TYPES,
+    SKILL_COOLDOWN_HOURS,
+    SKILL_COOLDOWN_TURNS,
+    SKILL_EFFECT_AOE_DAMAGE,
+    SKILL_EFFECT_HEAL,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
-from engine.combat import resolve_attack, resolve_ranged_attack
+from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import POTION_KINDS, Entity, apply_perk_stat_bonus
 from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
 from engine.quest import Quest, QuestLog
@@ -730,6 +734,32 @@ class Engine:
             if entity.fighter.hp <= 0:
                 self.on_entity_death(entity)
 
+    def _tick_skill_cooldowns(self, kind: str) -> None:
+        """Decrements every active-skill cooldown of the given kind
+        ("turns" or "hours", see PerkDef.skill_cooldown_kind) on the
+        player by 1. "turns" is called once per turn from
+        process_enemy_phase, any turn anywhere (dungeon or overworld);
+        "hours" is called only from _advance_world_clock (overworld turns
+        only) - a skill on an hour-based cooldown is meant to genuinely
+        require leaving to rest, not just taking more turns wherever the
+        player already is. Entries reaching 0 are deleted outright, not
+        left inert at 0 - same "membership is the state" convention
+        Fighter.active_effects/_tick_active_effects already established."""
+        if self.catalog is None:
+            return
+        expired_ids = []
+        for perk_id, remaining in self.player.skill_cooldowns.items():
+            perk = self.catalog.perks.get(perk_id)
+            if perk is None or perk.skill_cooldown_kind != kind:
+                continue
+            remaining -= 1
+            if remaining <= 0:
+                expired_ids.append(perk_id)
+            else:
+                self.player.skill_cooldowns[perk_id] = remaining
+        for perk_id in expired_ids:
+            del self.player.skill_cooldowns[perk_id]
+
     def _advance_world_clock(self) -> None:
         """The only source of in-game time passing: one hour per turn taken
         on the overworld (dungeons/settlements never call this - is_overworld
@@ -737,6 +767,7 @@ class Engine:
         healing is the sole current effect of time passing; future effects
         can hang off self.clock without changing this method's shape."""
         self.clock.advance_hour()
+        self._tick_skill_cooldowns(SKILL_COOLDOWN_HOURS)
         fighter = self.player.fighter
         fighter.hp = min(fighter.max_hp, fighter.hp + 1)
 
@@ -1040,6 +1071,60 @@ class Engine:
         self.message_log.add(message)
         return message
 
+    def use_skill(self, entity: Entity, perk_id: str) -> str:
+        """Manually triggers a learned active-skill perk (see
+        engine/actions.py's UseSkillAction, which reaches this exactly the
+        way UseItemAction reaches its own inline logic - through the
+        normal process_player_action path, so this costs a turn like any
+        other real action, unlike learn_perk/buy_from_shop above). Returns
+        the status message (also logged), matching those two methods' own
+        "return + log" convention."""
+        if self.catalog is None or perk_id not in self.catalog.perks:
+            message = "That skill doesn't exist."
+            self.message_log.add(message)
+            return message
+        perk = self.catalog.perks[perk_id]
+        if perk.skill_effect is None or perk_id not in entity.learned_perk_ids:
+            message = "You don't know that skill."
+            self.message_log.add(message)
+            return message
+        if entity.skill_cooldowns.get(perk_id, 0) > 0:
+            message = f"{perk.name} is still on cooldown."
+            self.message_log.add(message)
+            return message
+
+        entity.skill_cooldowns[perk_id] = perk.skill_cooldown_amount
+
+        if perk.skill_effect == SKILL_EFFECT_HEAL:
+            fighter = entity.fighter
+            healed = min(fighter.max_hp - fighter.hp, math.ceil(fighter.max_hp * perk.skill_heal_pct))
+            fighter.hp += healed
+            message = f"You use {perk.name} and recover {healed} HP."
+            self.message_log.add(message)
+            return message
+
+        # SKILL_EFFECT_AOE_DAMAGE - strikes every hostile entity adjacent
+        # to entity (8-directional), reusing the full combat resolution
+        # pipeline per target (resolve_skill_damage -> _apply_damage), so
+        # dodge/crit/weapon-affix procs and on_entity_death all apply
+        # exactly as they would for an ordinary attack - not a special
+        # case to avoid, a nice emergent synergy with whatever's equipped.
+        message = f"You use {perk.name}!"
+        self.message_log.add(message)
+        # fighter is not None already excludes every item entity (no item
+        # ever has a Fighter) - an extra "ai is not None" check would be
+        # redundant for that and wrong besides, since a real monster's own
+        # ai is never actually None in shipped content.
+        targets = [
+            e for e in list(self.game_map.entities)
+            if e is not entity and e.fighter is not None and e.is_alive
+            and e.ai not in PEACEFUL_AI_TYPES
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= 1
+        ]
+        for target in targets:
+            resolve_skill_damage(self, entity, target, perk.skill_aoe_damage, "pounds")
+        return message
+
     def cycle_selected_potion_kind(self) -> None:
         """Free, non-turn action (see main.py's CyclePotionKindAction branch):
         advances player.selected_potion_kind to the next POTION_KINDS entry,
@@ -1177,6 +1262,9 @@ class Engine:
 
         if self.game_state == "playing":
             self._tick_active_effects()
+
+        if self.game_state == "playing":
+            self._tick_skill_cooldowns(SKILL_COOLDOWN_TURNS)
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)

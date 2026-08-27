@@ -21,6 +21,7 @@ from engine.actions import (
     TalkAction,
     TrainerAction,
     UseItemAction,
+    UseSkillAction,
     WaitAction,
 )
 
@@ -91,6 +92,16 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.H:
             return HelpAction()
+
+        # Fixed 1:1 key bindings for the two shipped active-skill perks
+        # (see content/schema.py's PerkDef.skill_effect, Engine.use_skill)
+        # - not a scalable hotbar, just direct bindings, since there are
+        # only two so far. Revisit if a third ever ships.
+        if sym == tcod.event.KeySym.W:
+            return UseSkillAction("second_wind")
+
+        if sym == tcod.event.KeySym.K:
+            return UseSkillAction("ground_pound")
 
         if sym == tcod.event.KeySym.PAGEUP:
             return ScrollLogAction(10)
