@@ -2969,6 +2969,23 @@ def test_talk_to_adjacent_shows_the_villagers_dialogue():
     assert 'Villager: "Well held up better than most things."' in engine.message_log.messages
 
 
+def test_talk_to_adjacent_dialogue_message_carries_the_speakers_name():
+    """See engine/render.py's render_message_log - the speaker field is
+    what lets the log highlight who's talking, separate from the message
+    text itself (which stays unchanged for backward compatibility)."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    villager = make_villager(2, 1, dialogue="Well held up better than most things.", name="Elder")
+    game_map.entities.extend([player, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.talk_to_adjacent()
+
+    message = engine.message_log.messages[-1]
+    assert message.speaker == "Elder"
+    assert message.category == "dialogue"
+
+
 def test_talk_to_adjacent_falls_back_to_catalog_default_dialogue():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)

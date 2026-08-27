@@ -73,13 +73,23 @@ class Message(str):
     than a separate wrapper type on purpose: every existing `"text" in
     message_log.messages` / `messages == [...]` / `.count(text)` comparison
     keeps working unchanged against a plain string - only render_message_log
-    needs to know about .category."""
+    needs to know about .category/.speaker.
+
+    speaker, when set, names who's talking - only ever set on a dialogue
+    message (see talk_to_adjacent, the one call site that constructs one),
+    whose text already starts with `f"{speaker}: "` by convention. It's a
+    separate field rather than something render_message_log parses back out
+    of the text, so a display change (highlighting the speaker's name, so
+    consecutive lines from different NPCs don't blend together) never
+    depends on guessing where a name ends inside free-form dialogue text."""
 
     category: str
+    speaker: str | None
 
-    def __new__(cls, text: str, category: str = "info") -> "Message":
+    def __new__(cls, text: str, category: str = "info", speaker: str | None = None) -> "Message":
         obj = str.__new__(cls, text)
         obj.category = category
+        obj.speaker = speaker
         return obj
 
 
@@ -87,8 +97,8 @@ class MessageLog:
     def __init__(self) -> None:
         self.messages: list[Message] = []
 
-    def add(self, text: str, category: str = "info") -> None:
-        self.messages.append(Message(text, category))
+    def add(self, text: str, category: str = "info", speaker: str | None = None) -> None:
+        self.messages.append(Message(text, category, speaker))
 
 
 class Engine:
@@ -953,7 +963,7 @@ class Engine:
             or target.dialogue
             or _DEFAULT_TALK_LINE
         )
-        self.message_log.add(f'{target.name}: "{line}"', category="dialogue")
+        self.message_log.add(f'{target.name}: "{line}"', category="dialogue", speaker=target.name)
 
         for quest in self.quest_log.check_questgiver(target.entity_id, self.clock):
             if quest.status == "completed":

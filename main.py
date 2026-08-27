@@ -877,6 +877,25 @@ def main() -> int:
             render_all(console, engine, log_scroll_offset)
             context.present(console)
 
+            # A scrolled-back log snaps to the latest message only when
+            # something actually worth seeing arrived this batch - either a
+            # new message on whichever engine ends up current (a genuine
+            # turn resolving, an NPC line, a shop/save confirmation...), or
+            # the engine itself changed (a dungeon transition, whose own
+            # fresh "You enter X." message wouldn't reliably differ in
+            # *count* from the old engine's log to begin with). Checked once
+            # per batch, after every event in it has been handled, rather
+            # than at each individual dispatch branch - every branch below
+            # uses `continue` to move on to the next queued event, not to
+            # leave this while-loop iteration, so code here still runs
+            # exactly once per batch regardless of which branches fired.
+            # Deliberately NOT reset on every keypress (an unrecognized key,
+            # or a bump that didn't actually move) - that was the original
+            # bug: scrolling back through history to read it kept getting
+            # yanked back to the bottom by keys that changed nothing.
+            engine_before_batch = engine
+            message_count_before = len(engine.message_log.messages)
+
             for event in tcod.event.wait():
                 context.convert_event(event)
                 try:
@@ -958,7 +977,6 @@ def main() -> int:
                                     sprite_codepoints=sprite_codepoints,
                                     encounter_registry=encounter_registry,
                                 )
-                                log_scroll_offset = 0
                     continue
 
                 if isinstance(action, BumpAction) and engine.game_state == "playing":
@@ -978,6 +996,8 @@ def main() -> int:
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
                     encounter_registry=encounter_registry,
                 )
+
+            if engine is not engine_before_batch or len(engine.message_log.messages) != message_count_before:
                 log_scroll_offset = 0
 
 

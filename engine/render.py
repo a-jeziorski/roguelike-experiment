@@ -103,6 +103,11 @@ LOG_COLORS = {
     "info": (210, 190, 90),
     "flavor": (170, 130, 200),
 }
+# A dialogue message's "Speaker: " prefix (see render_message_log) prints in
+# this brighter near-white instead of LOG_COLORS["dialogue"]'s solid blue -
+# otherwise consecutive lines from different NPCs are hard to tell apart at
+# a glance, since the whole line is normally one flat color.
+DIALOGUE_SPEAKER_FG = (255, 255, 255)
 DEAD_FG = (220, 50, 50)
 CURSOR_BG = (90, 90, 20)
 TARGET_VALID_BG = (40, 120, 40)
@@ -331,14 +336,19 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     return y
 
 
-def _wrap_message_log(message_log: "MessageLog", width: int) -> list[tuple[str, str]]:
+def _wrap_message_log(message_log: "MessageLog", width: int) -> list[tuple[str, str, str | None]]:
     """Every message, oldest to newest, wrapped to width and paired with its
-    category - the shared computation behind render_message_log and
-    clamp_log_scroll_offset, so wrapping logic never drifts between them."""
-    lines: list[tuple[str, str]] = []
+    category and (for the first wrapped line of a dialogue message only)
+    its speaker - the shared computation behind render_message_log and
+    clamp_log_scroll_offset, so wrapping logic never drifts between them.
+    A message that wraps to more than one line only carries `speaker` on
+    that first line - a continuation line doesn't start with "Name: ", so
+    there's nothing there for render_message_log to highlight."""
+    lines: list[tuple[str, str, str | None]] = []
     for message in message_log.messages:
         wrapped = textwrap.wrap(message, width) or [message]
-        lines.extend((line, message.category) for line in wrapped)
+        for i, line in enumerate(wrapped):
+            lines.append((line, message.category, message.speaker if i == 0 else None))
     return lines
 
 
@@ -360,13 +370,27 @@ def render_message_log(
     newest at the bottom - scroll_offset (see clamp_log_scroll_offset) shows
     further back in history instead of the tail end. Each wrapped line keeps
     its source message's category (LOG_COLORS) so a message that wraps to
-    two lines doesn't lose its color partway through."""
+    two lines doesn't lose its color partway through. A dialogue message's
+    speaker name (e.g. "Retired Sellsword: ") prints in DIALOGUE_SPEAKER_FG,
+    distinct from the rest of the line's LOG_COLORS["dialogue"] - otherwise
+    consecutive lines from different NPCs, all the same solid blue, are hard
+    to tell apart at a glance."""
     lines = _wrap_message_log(message_log, width)
     scroll_offset = max(0, min(scroll_offset, max(0, len(lines) - height)))
     end = len(lines) - scroll_offset
     start = max(0, end - height)
-    for i, (line, category) in enumerate(lines[start:end]):
-        console.print(x, y + i, line, fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=width)
+    for i, (line, category, speaker) in enumerate(lines[start:end]):
+        row = y + i
+        prefix = f"{speaker}: " if speaker is not None else None
+        if prefix is not None and line.startswith(prefix):
+            console.print(x, row, prefix, fg=DIALOGUE_SPEAKER_FG, width=width)
+            remainder = line[len(prefix):]
+            console.print(
+                x + len(prefix), row, remainder,
+                fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=max(width - len(prefix), 1),
+            )
+        else:
+            console.print(x, row, line, fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=width)
 
 
 def render_all(console: "Console", engine: "Engine", log_scroll_offset: int = 0) -> None:

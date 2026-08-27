@@ -19,6 +19,7 @@ from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog, create_quest_log
 from engine.render import (
     CURSOR_BG,
+    DIALOGUE_SPEAKER_FG,
     IMPACT_BG,
     LOG_COLORS,
     LOG_PANEL_WIDTH,
@@ -241,6 +242,53 @@ def test_render_message_log_keeps_category_across_a_wrapped_message():
 
     assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["combat"])
     assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["combat"])
+
+
+def test_render_message_log_highlights_the_speakers_name():
+    log = MessageLog()
+    log.add('Elder: "Hello there."', category="dialogue", speaker="Elder")
+
+    console = tcod.console.Console(70, 10, order="F")
+    render_message_log(console, log, 0, 0, 70, 10)
+
+    text = console_text(console)
+    assert 'Elder: "Hello there."' in text
+    prefix = "Elder: "
+    for i in range(len(prefix)):
+        assert console.rgb[i, 0]["fg"].tolist() == list(DIALOGUE_SPEAKER_FG)
+    # the rest of the line (the quoted line itself) keeps the plain
+    # dialogue color, not the speaker highlight
+    assert console.rgb[len(prefix), 0]["fg"].tolist() == list(LOG_COLORS["dialogue"])
+
+
+def test_render_message_log_does_not_highlight_a_dialogue_message_with_no_speaker():
+    """Regression guard for the pre-existing "There's no one here to talk
+    to." dialogue-category message, which has no speaker at all."""
+    log = MessageLog()
+    log.add("There's no one here to talk to.", category="dialogue")
+
+    console = tcod.console.Console(70, 10, order="F")
+    render_message_log(console, log, 0, 0, 70, 10)
+
+    assert console.rgb[0, 0]["fg"].tolist() == list(LOG_COLORS["dialogue"])
+
+
+def test_render_message_log_only_highlights_the_first_line_of_a_wrapped_dialogue_message():
+    log = MessageLog()
+    log.add(
+        'Old Drillmaster: "Killing things and surviving quests teaches a body plenty."',
+        category="dialogue", speaker="Old Drillmaster",
+    )
+
+    console = tcod.console.Console(30, 10, order="F")
+    render_message_log(console, log, 0, 0, 30, 10)
+
+    prefix = "Old Drillmaster: "
+    assert console.rgb[0, 0]["fg"].tolist() == list(DIALOGUE_SPEAKER_FG)
+    # the wrapped continuation line (row 1) never starts with the speaker's
+    # name again, so it should never get the highlight color either
+    assert console.rgb[0, 1]["fg"].tolist() == list(LOG_COLORS["dialogue"])
+    assert len(prefix) < 30  # sanity: the prefix really does fit on one line
 
 
 def _numbered_log(count: int) -> MessageLog:
