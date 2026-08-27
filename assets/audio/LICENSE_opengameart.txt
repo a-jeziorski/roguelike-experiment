@@ -1,0 +1,14 @@
+OpenGameArt.org music (assets/audio/music/*.ogg)
+
+  License: Creative Commons Zero, CC0
+  http://creativecommons.org/publicdomain/zero/1.0/
+
+  This content is free to use in personal, educational and commercial
+  projects with no attribution required. Credited below anyway, as good
+  practice (not mandatory).
+
+Sources:
+  dungeon.ogg   <- "Dungeon Ambience" by yd
+                   https://opengameart.org/content/dungeon-ambience
+  overworld.ogg <- "Peaceful Town" by ARoachIFoundOnMyPillow
+                   https://opengameart.org/content/peaceful-town
