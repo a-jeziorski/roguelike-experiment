@@ -10,7 +10,7 @@ map: |
   #.#....#..............#....#.#
   #.##D###..............######.#
   #........k...................#
-  #............................#
+  #..............N.............#
   #..........b.................#
   #.......................b....#
   #.....r......................#
@@ -31,3 +31,4 @@ legend:
   "=": { item: road_ledger, description: "An old duty room, half its shelving collapsed. This ledger's just been sitting on top of the wreckage - nobody here ever had a reason to move it.", announce: true }
   "b": { entity: bandit }
   "r": { entity: rat }
+  "N": { entity: giant_rat }

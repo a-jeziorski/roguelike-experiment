@@ -1684,6 +1684,60 @@ taught by the existing Trainer NPCs) - proving the mechanism rather than
 building out a full tree for every perk line, the same conservative,
 one-clear-example scope every mechanic in this pass has shipped with.
 
+## 0ab. Populating the bestiary (`giant_rat`/`kobold`/`kobold_shaman`/`orc`/`hobgoblin`/`giant_spider`)
+
+The last gap this pass closes: several catalog monsters had real stats and
+real mechanics (§0u/§0t) but no `{entity: ...}` spawn anywhere in any
+level file - defined, never placed, invisible in actual play. A quick
+audit (`grep -rl "entity: <id>" data/dungeons/`) found `wolf`/`wraith`/
+`gray_ooze` already placed by an earlier worldgen pass (and placed well -
+`wraith` in particular already sits as a solitary guardian, not paired
+with anything else that wants the player's attention, exactly the
+stun-lock caution §0t raised before this pass ever got to it). Six
+remained genuinely unplaced: `giant_rat`, `kobold`, `kobold_shaman`,
+`orc`, `hobgoblin`, `giant_spider`.
+
+Each was placed once, into an existing level whose theme or roster
+already fit it, rather than authoring new levels or a new dungeon -
+populating the bestiary, not expanding the map:
+- `giant_rat` (regenerator) - `broken_watch/level_01.lvl`, alongside the
+  existing lone `rat` - "the big one" in an already-established vermin
+  presence.
+- `kobold` x2 + `kobold_shaman` x1 - `sunken_mine/level_01.lvl`, a new
+  kobold warren in the mine's first level (already housed goblins/rats) -
+  the shaman gives the melee pair ranged backup, matching `kobold`'s own
+  "quick to pile in three-deep" flavor text.
+- `orc` (enrage) - `sunken_mine/level_03.lvl` ("The Last Vein," the
+  mine's sealed, terminal level), alone near the stairs down - the same
+  "solitary guardian of the deepest reach" role `ogre` already plays in
+  `forgotten_ruins`.
+- `giant_spider` (poison) - `silver_mountain_caves/level_02.lvl`, a few
+  tiles from one of the level's five existing `cave_spider`s - the
+  literal "big cousin" of a monster already thoroughly present there.
+  Poison's refresh-not-stack rule (§0t) means a player fighting near both
+  at once never takes double poison damage from two different attackers
+  landing hits - the mechanic already guards against exactly this
+  clustering, nothing extra needed here.
+- `hobgoblin` - `forgotten_ruins/level_02b.lvl` ("The Goblin Warren"),
+  among its two existing `goblin`s - a commander for a warren that didn't
+  have one, statted between `goblin` and `ogre` (hp 18 / attack 6 /
+  defense 2) rather than at either extreme.
+
+**Placement, not rebalancing** - each addition was checked against the
+existing roster it joined (no stun-capable monster placed near another,
+no cluster whose simultaneous burst damage would wildly exceed what that
+dungeon's existing monsters already establish) but wasn't run through a
+full formal hits-to-kill pass (§2) the way a from-scratch monster's own
+stats already were when each mechanic shipped (§0t/§0u). Exact tuning
+once these are played through for real is the natural next step, same
+"conservative first pass, defer exact tuning" precedent this whole
+project has followed since `cave_spider`'s own poison numbers.
+
+Every new spawn verified via `content/loader.py`'s real `load_dungeon_registry`
+(catches a malformed map row or unknown legend id immediately) and via a
+live `tools/play_llm.py` session against real dungeon content - the same
+verification bar every mechanic in this pass has been held to.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

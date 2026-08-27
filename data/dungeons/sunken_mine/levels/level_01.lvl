@@ -6,7 +6,7 @@ map: |
   #@...####............######
   #......../...$.y..t..######
   #....####..##.###.#..######
-  #########............######
+  #########.k...K...k..######
   #########......b.....######
   #########............######
   ###############.###########
@@ -27,6 +27,8 @@ legend:
   "b": { tile: landmark, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since.", announce: true }
   "r": { entity: rat }
   "g": { entity: goblin }
+  "k": { entity: kobold }
+  "K": { entity: kobold_shaman }
   "-": { item: rusty_key }
   "D": { door: rusty_key }
   "[": { item: leather_armor }

@@ -20,7 +20,7 @@ map: |
   ###.........................................####.....#
   ####.......###..........g...........##.......####....#
   ####...#######.......g..!..........####.......###...##
-  ###...#########...............##.c#####.......###...##
+  ###...#########..........X....##.c#####.......###...##
   ###...#########...............#########.............##
   ##.....#######.....g.##.........######..............##
   ##......###.....g....###.........####...............##
@@ -53,5 +53,6 @@ legend:
   "D": { stairs_down: null, description: "A narrow crack in the rock, cold air and grey light bleeding through it from somewhere above - not the way you came in, but a way out all the same.", announce: true }
   "g": { entity: goblin }
   "c": { entity: cave_spider }
+  "X": { entity: giant_spider }
   "!": { item: healing_potion }
   "Z": { tile: landmark, description: "A rockfall old enough that nothing living has disturbed it in years, choking the passage down. Whatever's below it isn't part of this fight.", announce: true }

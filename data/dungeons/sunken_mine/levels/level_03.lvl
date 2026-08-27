@@ -11,7 +11,7 @@ map: |
   #............####...p...#
   #..r.....g...####.......#
   #.....n.$......|....s...#
-  #............####.......#
+  #............####...O...#
   #...g.....r..####.......#
   #............####..>....#
   #################.......#
@@ -28,6 +28,7 @@ legend:
   "r": { entity: rat }
   "g": { entity: goblin }
   "s": { entity: skeleton }
+  "O": { entity: orc }
   "n": { tile: landmark, description: "A nest built from things that used to belong to someone else - gnawed timber, a stolen glove, a coil of rope chewed to fiber. Rats first, by the look of it. Whatever moved in after never bothered clearing them out.", announce: true }
   "|": { item: arrows }
   "M": { tile: mountain, description: "The rock face the mine was cutting toward, sealed by a fall that was never cleared. This is where the last shift stopped - not by choice." }

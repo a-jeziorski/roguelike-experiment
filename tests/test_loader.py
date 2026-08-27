@@ -20,6 +20,8 @@ FORGOTTEN_RUINS_LEVELS_DIR = DUNGEONS_DIR / "forgotten_ruins" / "levels"
 PRISON_TOWER_LEVELS_DIR = DUNGEONS_DIR / "prison_tower" / "levels"
 SUNKEN_MINE_LEVELS_DIR = DUNGEONS_DIR / "sunken_mine" / "levels"
 MILLHAVEN_LEVELS_DIR = DUNGEONS_DIR / "millhaven" / "levels"
+BROKEN_WATCH_LEVELS_DIR = DUNGEONS_DIR / "broken_watch" / "levels"
+SILVER_MOUNTAIN_CAVES_LEVELS_DIR = DUNGEONS_DIR / "silver_mountain_caves" / "levels"
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
@@ -1365,6 +1367,47 @@ def test_sunken_mine_level_02_has_the_pale_fungus():
 
     item_names = [s.item.name for s in level.item_spawns]
     assert "Pale Fungus" in item_names
+
+
+def test_sunken_mine_level_01_has_the_kobold_warren():
+    catalog = load_catalog()
+    level = load_level(SUNKEN_MINE_LEVELS_DIR / "level_01.lvl", catalog)
+
+    entity_names = sorted(s.entity.name for s in level.entity_spawns)
+    assert entity_names.count("Kobold") == 2
+    assert "Kobold Shaman" in entity_names
+
+
+def test_sunken_mine_level_03_has_the_orc_guarding_the_last_vein():
+    catalog = load_catalog()
+    level = load_level(SUNKEN_MINE_LEVELS_DIR / "level_03.lvl", catalog)
+
+    entity_names = [s.entity.name for s in level.entity_spawns]
+    assert "Orc" in entity_names
+
+
+def test_broken_watch_level_01_has_a_giant_rat():
+    catalog = load_catalog()
+    level = load_level(BROKEN_WATCH_LEVELS_DIR / "level_01.lvl", catalog)
+
+    entity_names = [s.entity.name for s in level.entity_spawns]
+    assert "Giant Rat" in entity_names
+
+
+def test_silver_mountain_caves_level_02_has_a_giant_spider():
+    catalog = load_catalog()
+    level = load_level(SILVER_MOUNTAIN_CAVES_LEVELS_DIR / "level_02.lvl", catalog)
+
+    entity_names = [s.entity.name for s in level.entity_spawns]
+    assert "Giant Spider" in entity_names
+
+
+def test_forgotten_ruins_level_02b_has_a_hobgoblin_leading_the_warren():
+    catalog = load_catalog()
+    level = load_level(FORGOTTEN_RUINS_LEVELS_DIR / "level_02b.lvl", catalog)
+
+    entity_names = [s.entity.name for s in level.entity_spawns]
+    assert "Hobgoblin" in entity_names
 
 
 def test_prison_tower_chain_links_all_levels():
