@@ -146,19 +146,33 @@ def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key")
     )
 
 
-def make_weapon(x: int, y: int, attack_bonus: int = 2, name: str = "Rusty Dagger") -> Entity:
+def make_weapon(
+    x: int, y: int, attack_bonus: int = 2, name: str = "Rusty Dagger",
+    affix_effect=None, affix_potency=None, affix_duration=None, affix_chance=None,
+) -> Entity:
     return Entity(
         x, y, "/", (180, 180, 190), name,
         render_priority=RENDER_PRIORITY_ITEM,
-        item=ItemEffect(attack_bonus=attack_bonus),
+        item=ItemEffect(
+            attack_bonus=attack_bonus,
+            affix_effect=affix_effect, affix_potency=affix_potency,
+            affix_duration=affix_duration, affix_chance=affix_chance,
+        ),
     )
 
 
-def make_armor(x: int, y: int, defense_bonus: int = 1, name: str = "Leather Armor") -> Entity:
+def make_armor(
+    x: int, y: int, defense_bonus: int = 1, name: str = "Leather Armor",
+    affix_effect=None, affix_potency=None, affix_duration=None, affix_chance=None,
+) -> Entity:
     return Entity(
         x, y, "[", (150, 110, 60), name,
         render_priority=RENDER_PRIORITY_ITEM,
-        item=ItemEffect(defense_bonus=defense_bonus),
+        item=ItemEffect(
+            defense_bonus=defense_bonus,
+            affix_effect=affix_effect, affix_potency=affix_potency,
+            affix_duration=affix_duration, affix_chance=affix_chance,
+        ),
     )
 
 
@@ -1411,6 +1425,116 @@ def test_combat_damage_reflects_equipped_weapon_and_armor():
 
     # player attack 5+4=9 vs monster defense 0+3=3 -> 6 damage
     assert monster.fighter.hp == 20 - 6
+
+
+# --- weapon/armor affixes (secondary status-effect procs) ---
+
+
+def test_weapon_affix_inflicts_its_effect_on_a_successful_proc(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.1)  # below affix_chance=0.3 - procs
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_weapon = make_weapon(
+        0, 0, attack_bonus=0, affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+    )
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert monster.fighter.active_effects["poison"].potency == 1
+    assert monster.fighter.active_effects["poison"].turns_remaining == 2  # duration 3, minus this turn's tick
+    assert any("poisoned" in m for m in engine.message_log.messages)
+
+
+def test_weapon_affix_does_not_inflict_on_a_failed_proc(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.9)  # above affix_chance=0.3 - fails
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_weapon = make_weapon(
+        0, 0, attack_bonus=0, affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+    )
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "poison" not in monster.fighter.active_effects
+
+
+def test_weapon_without_an_affix_never_procs_anything(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always proc if there were an affix
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_weapon = make_weapon(0, 0, attack_bonus=2)  # no affix
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert monster.fighter.active_effects == {}
+
+
+def test_armor_affix_retaliates_against_the_attacker_on_a_successful_proc(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.1)  # below affix_chance=0.3 - procs
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, attack=0, defense=0)
+    player.equipped_armor = make_armor(
+        0, 0, defense_bonus=0, affix_effect="weaken", affix_potency=2, affix_duration=2, affix_chance=0.3,
+    )
+    monster = make_monster(2, 1, hp=20, attack=5, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine, attacker=monster, defender=player)
+
+    assert monster.fighter.active_effects["weaken"].potency == 2
+    assert any("weakened" in m for m in engine.message_log.messages)
+
+
+def test_armor_affix_does_not_retaliate_on_a_failed_proc(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.9)  # above affix_chance=0.3 - fails
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, attack=0, defense=0)
+    player.equipped_armor = make_armor(
+        0, 0, defense_bonus=0, affix_effect="weaken", affix_potency=2, affix_duration=2, affix_chance=0.3,
+    )
+    monster = make_monster(2, 1, hp=20, attack=5, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine, attacker=monster, defender=player)
+
+    assert "weaken" not in monster.fighter.active_effects
+
+
+def test_weapon_and_armor_affixes_apply_independently_to_different_sides(monkeypatch):
+    """Both procs can fire off the same hit: the attacker's weapon affix
+    hits the defender, the defender's armor affix retaliates onto the
+    attacker - two different entities, two different effect kinds, no
+    interference between them."""
+    monkeypatch.setattr(random, "random", lambda: 0.1)  # below both affix_chance values
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    player.equipped_weapon = make_weapon(
+        0, 0, attack_bonus=0, affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+    )
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    monster.equipped_armor = make_armor(
+        0, 0, defense_bonus=0, affix_effect="weaken", affix_potency=2, affix_duration=2, affix_chance=0.3,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "poison" in monster.fighter.active_effects  # weapon affix hit the monster
+    assert "weaken" in player.fighter.active_effects  # armor affix retaliated onto the player
 
 
 def test_combat_variance_disabled_by_default_in_tests():

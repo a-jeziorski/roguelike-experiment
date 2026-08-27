@@ -15,7 +15,7 @@ map: |
   #......................#
   #..............###..C..#
   #..............###..>..#
-  #..............###.}...#
+  #......T.......###.}...#
   ########################
 
 legend:
@@ -30,3 +30,4 @@ legend:
   "}": { item: hunting_bow }
   "!": { item: healing_potion, description: "A guard's basic kit, kept at the post for exactly the kind of trouble a post like this expects.", announce: true }
   "$": { item: gold_pile, description: "A guard's own coin, still in the pouch he never got to spend it from.", announce: true }
+  "T": { item: thorned_plate }

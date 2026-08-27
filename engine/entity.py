@@ -100,6 +100,12 @@ class ItemEffect:
     # engine/combat.py's _trinket_bonus, Engine._award_xp.
     trinket_effect: "TrinketEffectKind | None" = None
     trinket_bonus: float | None = None
+    # A weapon/armor affix's secondary status-effect proc - see
+    # engine/combat.py's _maybe_apply_weapon_affix/_maybe_apply_armor_affix.
+    affix_effect: "EffectKind | None" = None
+    affix_potency: int | None = None
+    affix_duration: int | None = None
+    affix_chance: float | None = None
 
 
 # Cycle order for UseItemAction's potion-kind selection (see

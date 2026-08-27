@@ -1468,6 +1468,67 @@ against a flat attack/defense point the way `stat_point_rate` already is
 for the other three slots. Revisit once trinkets have shipped enough to
 have real balance data behind them.
 
+## 0y. Affix items (`ItemDef.affix_effect`/`affix_potency`/`affix_duration`/`affix_chance`)
+
+A secondary status-effect proc on a weapon or armor item, sitting
+alongside that item's ordinary `attack_bonus`/`defense_bonus` - reuses
+`EffectKind`/`ActiveEffect`/`Fighter.active_effects` exactly as they
+already work for a monster's `inflicts_effect` (§0t), rather than
+inventing a second status-effect mechanism. The one genuinely new piece
+is `affix_chance`: unlike a monster's bite, which always inflicts its
+effect on a landed hit, an affix is a **probability** roll per hit -
+without that, giving the player an always-on stun weapon would trivialize
+combat outright (recall §0t's stun-lock write-up; an unconditional
+player-side stun would just point that same failure mode at every
+monster in the game instead of the other way around).
+
+**Two triggers, not one, both fired from inside `_apply_damage`'s
+existing `damage > 0` block** (same gate `attacker.inflicts_effect`
+already uses):
+- `engine/combat.py`'s `_maybe_apply_weapon_affix` - an **offensive**
+  proc. Rolls `attacker.equipped_weapon.item.affix_chance`; on success,
+  inflicts `affix_effect` on the **defender**. A venomous dagger poisons
+  whatever it cuts.
+- `_maybe_apply_armor_affix` - a **defensive/retaliation** proc, the
+  mirror image. Rolls `defender.equipped_armor.item.affix_chance`; on
+  success, inflicts `affix_effect` on the **attacker** instead - spiked
+  armor doesn't protect the wearer from anything, it punishes whoever hit
+  them. Both read from the item that's actually relevant to that role
+  (`attacker.equipped_weapon` for the offensive one,
+  `defender.equipped_armor` for the defensive one) - a weapon's affix
+  never fires off a defender's turn, and vice versa.
+
+**Schema validation, following two established shapes at once:**
+`affix_effect`/`affix_duration`/`affix_chance` must all be set together or
+not at all (a three-way extension of the "both or neither" shape
+`inflicts_effect`/`inflicts_duration` already uses - `affix_chance` had
+to join that group too, since an affix with no chance to fire, or a
+chance with nothing to fire, are both meaningless). `affix_potency`
+follows `inflicts_potency`'s own kind-dependent rule unchanged (required
+for poison/weaken, rejected for stun). A new `affix_requires_weapon_or_armor`
+validator additionally requires **exactly one** of `attack_bonus`/
+`defense_bonus` to be set whenever `affix_effect` is - resolving which of
+the two triggers above applies to this specific item, and rejecting an
+affix on a trinket/ranged/potion item where neither trigger would ever
+run.
+
+**Deliberately not gated on `COMBAT_VARIANCE_ENABLED`.** That flag (§2) is
+specifically the crit/dodge experiment's own kill switch, not a general
+"anything probabilistic in combat" toggle - the status-effect framework
+(§0t) already shipped with no such gate, and affixes are status effects
+built on that same framework, not a new instance of the crit/dodge
+mechanic. An affix's `random.random()` roll is its own independent event,
+always live.
+
+Ships two real affix items, each placed as a real ground `item_spawn` (not
+just catalog-defined) so the mechanic is reachable in play today, same
+"deliver a working example" precedent §0v/§0w/§0x already established:
+`venomous_dagger` (poison, `forgotten_ruins/level_02a.lvl`) and
+`thorned_plate` (weaken, `prison_tower/level_01.lvl`) - inherits the same
+shop-purchase-doesn't-auto-equip gap §0x already flagged (out of scope
+here too), which is exactly why both ship as ground pickups rather than
+shop stock alone.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

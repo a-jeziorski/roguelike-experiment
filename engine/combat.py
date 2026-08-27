@@ -63,6 +63,48 @@ def _trinket_bonus(entity: "Entity", kind: str) -> float:
     return trinket.item.trinket_bonus or 0.0
 
 
+def _maybe_apply_weapon_affix(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    """An offensive affix proc - attacker's equipped weapon (if any) has an
+    affix_chance probability of inflicting affix_effect on defender,
+    whenever a hit deals damage (see _apply_damage's damage > 0 gate,
+    mirrored here since this is called from inside that same block). Reuses
+    Fighter.active_effects/ActiveEffect exactly like a monster's innate
+    inflicts_effect (§0t) - refreshes, never stacks, and coexists
+    independently alongside any different kind already active. Monsters
+    never equip weapons in shipped content, so this never doubles up with
+    attacker.inflicts_effect in practice, but nothing here assumes that."""
+    weapon = attacker.equipped_weapon
+    if weapon is None or weapon.item.affix_effect is None:
+        return
+    if random.random() >= weapon.item.affix_chance:
+        return
+    defender.fighter.active_effects[weapon.item.affix_effect] = ActiveEffect(
+        potency=weapon.item.affix_potency or 0, turns_remaining=weapon.item.affix_duration,
+    )
+    engine.message_log.add(
+        _EFFECT_INFLICT_MESSAGES[weapon.item.affix_effect].format(name=defender.name), category="combat",
+    )
+
+
+def _maybe_apply_armor_affix(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    """A defensive/retaliation affix proc - the mirror of
+    _maybe_apply_weapon_affix: defender's equipped armor (if any) has an
+    affix_chance probability of striking *back*, inflicting affix_effect
+    on attacker instead. Triggers off the same "a hit landed" moment as
+    the weapon affix, not off whether defender survives it."""
+    armor = defender.equipped_armor
+    if armor is None or armor.item.affix_effect is None:
+        return
+    if random.random() >= armor.item.affix_chance:
+        return
+    attacker.fighter.active_effects[armor.item.affix_effect] = ActiveEffect(
+        potency=armor.item.affix_potency or 0, turns_remaining=armor.item.affix_duration,
+    )
+    engine.message_log.add(
+        _EFFECT_INFLICT_MESSAGES[armor.item.affix_effect].format(name=attacker.name), category="combat",
+    )
+
+
 def _apply_damage(
     engine: "Engine", attacker: "Entity", defender: "Entity", attack_value: int, verb: str
 ) -> None:
@@ -122,6 +164,8 @@ def _apply_damage(
                 _EFFECT_INFLICT_MESSAGES[attacker.inflicts_effect].format(name=defender.name),
                 category="combat",
             )
+        _maybe_apply_weapon_affix(engine, attacker, defender)
+        _maybe_apply_armor_affix(engine, attacker, defender)
     else:
         engine.message_log.add(
             f"{attacker.name} {verb} {defender.name} but does no damage.", category="combat"

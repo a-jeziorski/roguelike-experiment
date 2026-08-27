@@ -162,6 +162,30 @@ scholars_pendant:
   cost: 75
   description: A pendant etched with notes too small to read without squinting. Sharpens the habit of learning from everything that happens to you.
 
+venomous_dagger:
+  name: Venomous Dagger
+  glyph: "`"
+  color: [90, 150, 70]
+  attack_bonus: 2
+  affix_effect: poison
+  affix_potency: 1
+  affix_duration: 3
+  affix_chance: 0.3
+  cost: 45
+  description: A dagger with a hollow fuller, packed with something that never quite dries. Sometimes the cut is the least of it.
+
+thorned_plate:
+  name: Thorned Plate
+  glyph: "_"
+  color: [120, 90, 60]
+  defense_bonus: 2
+  affix_effect: weaken
+  affix_potency: 2
+  affix_duration: 2
+  affix_chance: 0.3
+  cost: 45
+  description: Armor studded with something that bites back. Whoever strikes you here doesn't walk away unmarked.
+
 gold_pile:
   name: Gold Pile
   glyph: "$"

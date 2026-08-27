@@ -257,6 +257,23 @@ class ItemDef(BaseModel):
     # inflicts_duration.
     trinket_effect: TrinketEffectKind | None = None
     trinket_bonus: float | None = Field(default=None, gt=0, le=1)
+    # A secondary status-effect proc on a weapon or armor item (exactly
+    # one of attack_bonus/defense_bonus must also be set - see
+    # affix_requires_weapon_or_armor below), reusing the exact same
+    # EffectKind/potency/duration plumbing EntityDef.inflicts_effect
+    # already established (§0t) rather than inventing a new mechanism.
+    # On a weapon, affix_chance is rolled against the *defender* whenever
+    # this item's wielder lands a hit (an offensive proc); on armor, it's
+    # rolled against the *attacker* whenever this item's wearer is hit (a
+    # defensive/retaliation proc) - see engine/combat.py's
+    # _maybe_apply_weapon_affix/_maybe_apply_armor_affix. All three
+    # (affix_effect/affix_duration/affix_chance) must be set together or
+    # not at all; affix_potency follows the same poison/weaken-need-it,
+    # stun-rejects-it rule inflicts_potency already does.
+    affix_effect: EffectKind | None = None
+    affix_potency: int | None = Field(default=None, gt=0)
+    affix_duration: int | None = Field(default=None, gt=0)
+    affix_chance: float | None = Field(default=None, gt=0, le=1)
     is_key: bool = False
     # An ammo item stacks: one pickup can be worth several shots.
     is_ammo: bool = False
@@ -297,6 +314,40 @@ class ItemDef(BaseModel):
     def trinket_effect_and_bonus_both_or_neither(self) -> "ItemDef":
         if (self.trinket_effect is None) != (self.trinket_bonus is None):
             raise ValueError("trinket_effect and trinket_bonus must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def affix_effect_duration_and_chance_together(self) -> "ItemDef":
+        fields_set = (self.affix_effect is not None, self.affix_duration is not None, self.affix_chance is not None)
+        if len(set(fields_set)) > 1:
+            raise ValueError(
+                "affix_effect, affix_duration, and affix_chance must all be set together or not at all"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def affix_potency_matches_effect_kind(self) -> "ItemDef":
+        if self.affix_effect is None:
+            return self
+        needs_potency = self.affix_effect in _EFFECT_KINDS_WITH_POTENCY
+        if needs_potency and self.affix_potency is None:
+            raise ValueError(f"affix_effect '{self.affix_effect}' requires affix_potency to be set")
+        if not needs_potency and self.affix_potency is not None:
+            raise ValueError(
+                f"affix_effect '{self.affix_effect}' has no intensity concept - "
+                "affix_potency must be left unset"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def affix_requires_weapon_or_armor(self) -> "ItemDef":
+        if self.affix_effect is None:
+            return self
+        if (self.attack_bonus is None) == (self.defense_bonus is None):
+            raise ValueError(
+                "an affix requires exactly one of attack_bonus (a weapon affix) or "
+                "defense_bonus (an armor affix) to be set"
+            )
         return self
 
 

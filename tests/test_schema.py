@@ -483,6 +483,99 @@ def test_item_def_rejects_trinket_effect_combined_with_attack_bonus():
         )
 
 
+def test_item_def_affix_fields_default_none():
+    item = ItemDef(id="rusty_dagger", name="Rusty Dagger", glyph="/", color=(1, 2, 3), attack_bonus=2)
+    assert item.affix_effect is None
+    assert item.affix_potency is None
+    assert item.affix_duration is None
+    assert item.affix_chance is None
+
+
+def test_item_def_accepts_a_weapon_affix():
+    dagger = ItemDef(
+        id="venomous_dagger", name="Venomous Dagger", glyph="`", color=(1, 2, 3), attack_bonus=2,
+        affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+    )
+    assert dagger.affix_effect == "poison"
+    assert dagger.affix_chance == 0.3
+
+
+def test_item_def_accepts_an_armor_affix():
+    plate = ItemDef(
+        id="thorned_plate", name="Thorned Plate", glyph="_", color=(1, 2, 3), defense_bonus=2,
+        affix_effect="weaken", affix_potency=2, affix_duration=2, affix_chance=0.3,
+    )
+    assert plate.affix_effect == "weaken"
+
+
+def test_item_def_accepts_a_stun_affix_with_no_potency():
+    item = ItemDef(
+        id="stunning_mace", name="Stunning Mace", glyph="!", color=(1, 2, 3), attack_bonus=3,
+        affix_effect="stun", affix_duration=1, affix_chance=0.2,
+    )
+    assert item.affix_effect == "stun"
+    assert item.affix_potency is None
+
+
+def test_item_def_rejects_affix_effect_without_duration_or_chance():
+    with pytest.raises(ValidationError, match="must all be set together"):
+        ItemDef(
+            id="venomous_dagger", name="Venomous Dagger", glyph="`", color=(1, 2, 3), attack_bonus=2,
+            affix_effect="poison", affix_potency=1,
+        )
+
+
+def test_item_def_rejects_affix_chance_without_effect():
+    with pytest.raises(ValidationError, match="must all be set together"):
+        ItemDef(
+            id="rusty_dagger", name="Rusty Dagger", glyph="/", color=(1, 2, 3), attack_bonus=2,
+            affix_chance=0.3,
+        )
+
+
+def test_item_def_rejects_affix_poison_without_potency():
+    with pytest.raises(ValidationError, match="requires affix_potency"):
+        ItemDef(
+            id="venomous_dagger", name="Venomous Dagger", glyph="`", color=(1, 2, 3), attack_bonus=2,
+            affix_effect="poison", affix_duration=3, affix_chance=0.3,
+        )
+
+
+def test_item_def_rejects_affix_stun_with_potency():
+    with pytest.raises(ValidationError, match="no intensity concept"):
+        ItemDef(
+            id="stunning_mace", name="Stunning Mace", glyph="!", color=(1, 2, 3), attack_bonus=3,
+            affix_effect="stun", affix_potency=1, affix_duration=1, affix_chance=0.2,
+        )
+
+
+def test_item_def_rejects_affix_with_neither_attack_nor_defense_bonus():
+    with pytest.raises(ValidationError, match="exactly one of attack_bonus"):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+        )
+
+
+def test_item_def_rejects_affix_with_both_attack_and_defense_bonus():
+    # not_multiple_equipment_slots already rejects attack_bonus + defense_bonus
+    # together on its own, before affix_requires_weapon_or_armor is ever reached.
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="weird_item", name="Weird Item", glyph="?", color=(1, 2, 3),
+            attack_bonus=2, defense_bonus=1,
+            affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=0.3,
+        )
+
+
+def test_item_def_rejects_out_of_range_affix_chance():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="venomous_dagger", name="Venomous Dagger", glyph="`", color=(1, 2, 3), attack_bonus=2,
+            affix_effect="poison", affix_potency=1, affix_duration=3, affix_chance=1.5,
+        )
+
+
 def test_item_def_ammo_defaults():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.is_ammo is False
