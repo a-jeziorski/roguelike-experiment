@@ -217,6 +217,14 @@ class Engine:
         # here instead of forcing Engine to know about rendering.
         self.ranged_attack_events: list[tuple[int, int, int, int]] = []
         self.melee_attack_events: list[tuple[int, int]] = []
+        # Semantic sound-effect keys (e.g. "melee_hit", "pickup_gold" - see
+        # data/audio.yaml) queued during the last process_turn()/free-action
+        # call - same mailbox pattern as the two event lists above: Engine
+        # never reads these back, main.py's play_queued_sounds drains them
+        # and hands each key to engine/audio.py's SoundManager. Kept as
+        # plain strings, not an enum, so Engine never has to import
+        # anything audio-related.
+        self.sound_events: list[str] = []
         # Mailbox flags for main.py: Engine only ever sets these to signal "the
         # player wants to leave this dungeon/enter that dungeon" - it never acts
         # on them itself, since it has no access to the dungeon registry or the
@@ -251,8 +259,10 @@ class Engine:
         if entity is self.player:
             self.message_log.add("You have died...", category="combat")
             self.game_state = "dead"
+            self.sound_events.append("player_death")
         else:
             self.message_log.add(f"The {entity.name} dies.", category="combat")
+            self.sound_events.append("entity_death")
             if entity in self.game_map.entities:
                 self.game_map.entities.remove(entity)
             # A killed villager/guard makes this map's guard hostility
@@ -503,6 +513,7 @@ class Engine:
         self.message_log = MessageLog()
         self.ranged_attack_events = []
         self.melee_attack_events = []
+        self.sound_events = []
         self.wants_overworld = False
         self.pending_dungeon_entry = None
         self.last_position = (self.player.x, self.player.y)
@@ -1016,6 +1027,7 @@ class Engine:
         self.player.inventory.append(reward)
         message = f"You buy a {reward.name} for {cost} gold."
         self.message_log.add(message)
+        self.sound_events.append("shop_buy")
         return message
 
     def adjacent_trainer(self) -> Entity | None:
@@ -1074,6 +1086,7 @@ class Engine:
             self.player.fighter.hp += perk.max_hp_bonus
         message = f"You learn {perk.name}."
         self.message_log.add(message)
+        self.sound_events.append("perk_learn")
         return message
 
     def use_skill(self, entity: Entity, perk_id: str) -> str:

@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from content.schema import (
     PEACEFUL_AI_TYPES,
     TILE_PASSABILITY,
+    AudioManifestDef,
     DungeonDef,
     EncounterDef,
     EntityDef,
@@ -620,6 +621,31 @@ def load_sprite_manifest(
         items=parsed.items, tile_kinds=parsed.tile_kinds,
         dungeon_entrances=parsed.dungeon_entrances,
     )
+
+
+@dataclass
+class AudioManifest:
+    sfx: dict[str, str]
+    music: dict[str, str]
+
+
+def load_audio_manifest(path: Path) -> AudioManifest:
+    """Loads and validates data/audio.yaml (see content/schema.py's
+    AudioManifestDef) - a flat mapping from semantic event key (what
+    Engine.sound_events/main.py's sync_music actually deal in - see
+    engine/audio.py's SoundManager) to a repo-relative audio file path.
+    No catalog/dungeon-id cross-checking, unlike load_sprite_manifest -
+    the keys are free-standing engine-defined event names, not
+    references into other content. File existence is never checked here
+    either: SoundManager opens files lazily at play time and no-ops on
+    anything missing, so an empty manifest (no audio assets present, e.g.
+    under pytest) is always valid."""
+    raw = _load_yaml(path) or {}
+    try:
+        parsed = AudioManifestDef(**raw)
+    except ValidationError as e:
+        raise ContentValidationError(str(path), [str(e)]) from e
+    return AudioManifest(sfx=parsed.sfx, music=parsed.music)
 
 
 def _parse_map_rows(raw_map: str, legend: dict) -> tuple[list[str], list[str]]:

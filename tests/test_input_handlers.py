@@ -11,6 +11,7 @@ from engine.actions import (
     FireModeAction,
     HelpAction,
     LookAction,
+    MuteAction,
     QuestLogAction,
     RestartAction,
     SaveGameAction,
@@ -97,6 +98,10 @@ def test_handle_event_c_returns_cycle_potion_kind_action():
 
 def test_handle_event_h_returns_help_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.H)), HelpAction)
+
+
+def test_handle_event_m_returns_mute_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.M)), MuteAction)
 
 
 def test_handle_event_pageup_returns_scroll_log_action_back_into_history():

@@ -12,6 +12,7 @@ from engine.actions import (
     FireModeAction,
     HelpAction,
     LookAction,
+    MuteAction,
     PickupAction,
     QuestLogAction,
     RestartAction,
@@ -92,6 +93,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.H:
             return HelpAction()
+
+        if sym == tcod.event.KeySym.M:
+            return MuteAction()
 
         # Fixed 1:1 key bindings for the two shipped active-skill perks
         # (see content/schema.py's PerkDef.skill_effect, Engine.use_skill)

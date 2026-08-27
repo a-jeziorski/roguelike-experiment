@@ -180,11 +180,13 @@ def _apply_damage(
 
 def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
     engine.melee_attack_events.append((defender.x, defender.y))
+    engine.sound_events.append("melee_hit")
     _apply_damage(engine, attacker, defender, attacker.effective_attack, "hits")
 
 
 def resolve_ranged_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
     engine.ranged_attack_events.append((attacker.x, attacker.y, defender.x, defender.y))
+    engine.sound_events.append("ranged_hit")
     _apply_damage(engine, attacker, defender, attacker.effective_ranged_attack, "shoots")
 
 

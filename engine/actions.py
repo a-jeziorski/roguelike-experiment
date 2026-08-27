@@ -86,6 +86,17 @@ class HelpAction(Action):
         pass
 
 
+class MuteAction(Action):
+    """Toggles audio muting - free, costs no turn. Same "recognized before
+    Engine.process_turn, perform() never actually called" shape as
+    HelpAction/ScrollLogAction: main.py flips engine/audio.py's
+    SoundManager.muted directly, since Engine itself has no notion of
+    audio at all."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class ScrollLogAction(Action):
     """Scrolls the message log panel by `lines` (positive = further back
     into history, negative = toward the latest message) - free, costs no
@@ -204,6 +215,7 @@ class MovementAction(Action):
             engine.game_map.unlock_door(dest_x, dest_y)
             if entity is engine.player:
                 engine.message_log.add(f"You use the {matching_key.name} to unlock the door.")
+                engine.sound_events.append("door_unlock")
 
         if not engine.game_map.in_bounds(dest_x, dest_y):
             if entity is engine.player and engine.game_map.open_boundary:
@@ -293,6 +305,7 @@ class PickupAction(Action):
                 entity.inventory.append(candidate)
                 engine.game_map.entities.remove(candidate)
                 engine.message_log.add(f"You picked up a {candidate.name}.")
+                engine.sound_events.append("pickup_item")
             return
 
         engine.message_log.add("There is nothing here to pick up.")
@@ -318,6 +331,7 @@ class PickupAction(Action):
 
         bonus_word = _SLOT_BONUS_WORD[slot]
         engine.message_log.add(f"You equip the {candidate.name} (+{new_bonus} {bonus_word}).")
+        engine.sound_events.append("pickup_item")
 
         if current is not None:
             current.x, current.y = entity.x, entity.y
@@ -348,6 +362,7 @@ class PickupAction(Action):
         effect_word = _TRINKET_EFFECT_WORD[candidate.item.trinket_effect]
         bonus_pct = round(candidate.item.trinket_bonus * 100)
         engine.message_log.add(f"You equip the {candidate.name} (+{bonus_pct}% {effect_word}).")
+        engine.sound_events.append("pickup_item")
 
         if current is not None:
             current.x, current.y = entity.x, entity.y
@@ -360,6 +375,7 @@ class PickupAction(Action):
         entry per pickup."""
         existing = next((it for it in entity.inventory if it.item.is_ammo), None)
         engine.game_map.entities.remove(candidate)
+        engine.sound_events.append("pickup_item")
 
         if existing is not None:
             existing.item.quantity += candidate.item.quantity
@@ -377,6 +393,7 @@ class PickupAction(Action):
         one never touches entity.inventory."""
         entity.gold += candidate.item.gold_amount
         engine.game_map.entities.remove(candidate)
+        engine.sound_events.append("pickup_gold")
         engine.message_log.add(
             f"You pick up {candidate.item.gold_amount} gold ({entity.gold} total)."
         )

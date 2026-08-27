@@ -1,0 +1,21 @@
+# Maps semantic event keys (see engine/engine.py's sound_events mailbox
+# and main.py's sync_music) to repo-relative audio file paths. A key with
+# no entry here simply plays nothing - see content/loader.py's
+# load_audio_manifest. Paths point into assets/audio/, not yet populated
+# with real files (see assets/audio/LICENSE_kenney.txt and
+# LICENSE_bartmann.txt once the actual CC0 assets are downloaded).
+
+sfx:
+  melee_hit: assets/audio/sfx/melee_hit.ogg
+  ranged_hit: assets/audio/sfx/ranged_hit.ogg
+  entity_death: assets/audio/sfx/entity_death.ogg
+  player_death: assets/audio/sfx/player_death.ogg
+  pickup_item: assets/audio/sfx/pickup_item.ogg
+  pickup_gold: assets/audio/sfx/pickup_gold.ogg
+  door_unlock: assets/audio/sfx/door_unlock.ogg
+  shop_buy: assets/audio/sfx/shop_buy.ogg
+  perk_learn: assets/audio/sfx/perk_learn.ogg
+
+music:
+  overworld: assets/audio/music/overworld.ogg
+  dungeon: assets/audio/music/dungeon.ogg

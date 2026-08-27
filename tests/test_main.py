@@ -44,8 +44,10 @@ from main import (
     dispatch_action,
     fire_mode_gate,
     handle_save_game_action,
+    play_queued_sounds,
     resolve_transition,
     shop_gate,
+    sync_music,
     trainer_gate,
 )
 
@@ -1381,3 +1383,59 @@ def test_check_flag_dialogue_references_known_flags_accepts_a_known_flag():
     }
 
     _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)  # must not raise
+
+
+class _FakeSoundManager:
+    """Records calls instead of touching real audio - main.py's
+    play_queued_sounds/sync_music only need something shaped like
+    engine/audio.py's SoundManager, so no real pygame device is needed
+    here."""
+
+    def __init__(self):
+        self.played_sfx = []
+        self.played_music = []
+
+    def play_sfx(self, key):
+        self.played_sfx.append(key)
+
+    def play_music(self, key):
+        self.played_music.append(key)
+
+
+def test_play_queued_sounds_drains_engine_sound_events():
+    engine = make_engine()
+    engine.sound_events = ["melee_hit", "pickup_gold"]
+    sound_manager = _FakeSoundManager()
+
+    play_queued_sounds(engine, sound_manager)
+
+    assert sound_manager.played_sfx == ["melee_hit", "pickup_gold"]
+    assert engine.sound_events == []
+
+
+def test_play_queued_sounds_with_no_events_calls_nothing():
+    engine = make_engine()
+    sound_manager = _FakeSoundManager()
+
+    play_queued_sounds(engine, sound_manager)
+
+    assert sound_manager.played_sfx == []
+
+
+def test_sync_music_plays_dungeon_for_a_non_overworld_engine():
+    engine = make_engine()
+    sound_manager = _FakeSoundManager()
+
+    sync_music(engine, sound_manager)
+
+    assert sound_manager.played_music == ["dungeon"]
+
+
+def test_sync_music_plays_overworld_for_an_overworld_engine():
+    engine = make_engine()
+    engine.is_overworld = True
+    sound_manager = _FakeSoundManager()
+
+    sync_music(engine, sound_manager)
+
+    assert sound_manager.played_music == ["overworld"]

@@ -1344,3 +1344,17 @@ class SpriteManifestDef(BaseModel):
     items: dict[str, SpriteRef] = Field(default_factory=dict)
     tile_kinds: dict[str, SpriteRef] = Field(default_factory=dict)
     dungeon_entrances: dict[str, SpriteRef] = Field(default_factory=dict)
+
+
+class AudioManifestDef(BaseModel):
+    """The raw shape of data/audio.yaml: two flat sections mapping a
+    semantic event key (e.g. "melee_hit", "dungeon") to a repo-relative
+    audio file path. Unlike SpriteManifestDef, file existence isn't
+    checked here - engine/audio.py's SoundManager opens files lazily at
+    play time and silently no-ops on a missing/bad file, so an empty or
+    partial manifest (no audio assets present, e.g. under pytest) is
+    always valid, never an error. Any sound_events/music key with no
+    entry here simply plays nothing."""
+
+    sfx: dict[str, str] = Field(default_factory=dict)
+    music: dict[str, str] = Field(default_factory=dict)

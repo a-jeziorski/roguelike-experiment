@@ -766,6 +766,7 @@ def render_help(console: "Console") -> None:
     binding("p", "Trainer - learn perks from an adjacent trainer")
     binding("s", "Save the game")
     binding("h", "This help screen")
+    binding("m", "Mute/unmute sound")
     y += 1
 
     section("Other")

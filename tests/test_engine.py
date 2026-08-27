@@ -5876,3 +5876,223 @@ def test_complete_quest_with_no_reward_xp_amount_leaves_xp_untouched():
     engine.complete_quest(quest)
 
     assert player.xp == 0
+
+
+# --- Engine.sound_events - a mailbox to main.py's SoundManager, same
+# append/drain lifecycle as melee_attack_events/ranged_attack_events (see
+# e.g. test_melee_attack_records_a_melee_attack_event_at_the_defender
+# above). Engine never reads these back; only that the right semantic key
+# is queued at the right moment is under test here.
+
+def test_melee_attack_queues_a_melee_hit_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=6, attack=2, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "melee_hit" in engine.sound_events
+
+
+def test_ranged_attack_queues_a_ranged_hit_sound():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_ranged_weapon = make_ranged_weapon(0, 0, ranged_attack_bonus=3)
+    player.inventory.append(make_ammo(0, 0, quantity=5))
+    monster = make_monster(3, 1, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(FireAction(3, 1))
+
+    assert "ranged_hit" in engine.sound_events
+
+
+def test_sound_events_do_not_persist_across_process_turn_calls():
+    """main.py drains and clears this list every turn, same as
+    melee_attack_events/ranged_attack_events - a stale key from a prior
+    turn must never leak into a turn where nothing happened."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    monster = make_monster(2, 1, hp=6, attack=2, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+    engine.sound_events = []  # main.py's drain, simulated
+    engine.process_turn(WaitAction())
+
+    assert engine.sound_events == []
+
+
+def test_monster_death_queues_an_entity_death_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=99)
+    monster = make_monster(2, 1, hp=1, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "entity_death" in engine.sound_events
+    assert "player_death" not in engine.sound_events
+
+
+def test_player_death_queues_a_player_death_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=1, defense=0)
+    monster = make_monster(2, 1, hp=5, attack=99, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert "player_death" in engine.sound_events
+    assert "entity_death" not in engine.sound_events
+
+
+def test_generic_item_pickup_queues_a_pickup_item_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    scroll = Entity(
+        1, 1, "?", (200, 200, 200), "Mysterious Scroll",
+        render_priority=RENDER_PRIORITY_ITEM, item=ItemEffect(),
+    )
+    game_map.entities.extend([player, scroll])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert engine.sound_events == ["pickup_item"]
+
+
+def test_weapon_pickup_queues_a_pickup_item_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    weapon = make_weapon(1, 1, attack_bonus=2, name="Rusty Dagger")
+    game_map.entities.extend([player, weapon])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert engine.sound_events == ["pickup_item"]
+
+
+def test_ammo_pickup_queues_a_pickup_item_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    ammo = make_ammo(1, 1, quantity=5)
+    game_map.entities.extend([player, ammo])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert engine.sound_events == ["pickup_item"]
+
+
+def test_gold_pickup_queues_a_pickup_gold_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    gold = make_gold(1, 1, gold_amount=10)
+    game_map.entities.extend([player, gold])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert engine.sound_events == ["pickup_gold"]
+
+
+def test_a_weapon_not_better_than_the_current_one_queues_no_sound():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5)
+    player.equipped_weapon = make_weapon(0, 0, attack_bonus=4, name="Iron Sword")
+    worse_weapon = make_weapon(1, 1, attack_bonus=2, name="Rusty Dagger")
+    game_map.entities.extend([player, worse_weapon])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(PickupAction())
+
+    assert engine.sound_events == []
+
+
+def test_door_unlock_queues_a_door_unlock_sound():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "door"
+    game_map.walkable[2, 1] = False
+    game_map.transparent[2, 1] = False
+    game_map.locked_doors[(2, 1)] = "rusty_key"
+    player = make_player(1, 1)
+    player.inventory.append(make_key(0, 0))
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert "door_unlock" in engine.sound_events
+
+
+def test_locked_door_with_no_matching_key_queues_no_sound():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "door"
+    game_map.walkable[2, 1] = False
+    game_map.transparent[2, 1] = False
+    game_map.locked_doors[(2, 1)] = "rusty_key"
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert engine.sound_events == []
+
+
+def test_buy_from_shop_queues_a_shop_buy_sound():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.gold = 30
+    game_map.entities.extend([player, make_shopkeeper(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.buy_from_shop("healing_potion")
+
+    assert engine.sound_events == ["shop_buy"]
+
+
+def test_buy_from_shop_without_enough_gold_queues_no_sound():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.extend([player, make_shopkeeper(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.buy_from_shop("healing_potion")
+
+    assert engine.sound_events == []
+
+
+def test_learn_perk_queues_a_perk_learn_sound():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.xp = 40
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("toughness_1")
+
+    assert engine.sound_events == ["perk_learn"]
+
+
+def test_learn_perk_without_enough_xp_queues_no_sound():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.extend([player, make_trainer(2, 1)])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("toughness_1")
+
+    assert engine.sound_events == []

@@ -4,6 +4,7 @@ import pytest
 
 from content.loader import (
     ContentValidationError,
+    load_audio_manifest,
     load_catalog,
     load_dungeon,
     load_dungeon_registry,
@@ -1915,3 +1916,49 @@ def test_load_sprite_manifest_collects_multiple_errors_at_once(tmp_path):
     with pytest.raises(ContentValidationError) as exc_info:
         load_sprite_manifest(path, catalog)
     assert len(exc_info.value.errors) == 4  # 2 unknown ids + 2 unknown sheets
+
+
+def test_load_audio_manifest_loads_a_valid_manifest(tmp_path):
+    path = tmp_path / "audio.yaml"
+    path.write_text(
+        "sfx:\n"
+        "  melee_hit: assets/audio/sfx/melee_hit.ogg\n"
+        "music:\n"
+        "  dungeon: assets/audio/music/dungeon.ogg\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_audio_manifest(path)
+
+    assert manifest.sfx == {"melee_hit": "assets/audio/sfx/melee_hit.ogg"}
+    assert manifest.music == {"dungeon": "assets/audio/music/dungeon.ogg"}
+
+
+def test_load_audio_manifest_does_not_require_real_files_to_exist(tmp_path):
+    """SoundManager (engine/audio.py) resolves and opens these paths lazily
+    at play time, no-op-ing on anything missing - the loader itself never
+    touches the filesystem beyond the manifest YAML, so this is valid even
+    though assets/audio/sfx/nonexistent.ogg was never created."""
+    path = tmp_path / "audio.yaml"
+    path.write_text("sfx:\n  melee_hit: assets/audio/sfx/nonexistent.ogg\n", encoding="utf-8")
+
+    manifest = load_audio_manifest(path)
+
+    assert manifest.sfx["melee_hit"] == "assets/audio/sfx/nonexistent.ogg"
+
+
+def test_load_audio_manifest_defaults_to_empty_when_a_section_is_missing(tmp_path):
+    path = tmp_path / "audio.yaml"
+    path.write_text("sfx:\n  melee_hit: assets/audio/sfx/melee_hit.ogg\n", encoding="utf-8")
+
+    manifest = load_audio_manifest(path)
+
+    assert manifest.music == {}
+
+
+def test_load_audio_manifest_rejects_a_non_string_value(tmp_path):
+    path = tmp_path / "audio.yaml"
+    path.write_text("sfx:\n  melee_hit: [not, a, string]\n", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError):
+        load_audio_manifest(path)

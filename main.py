@@ -12,6 +12,7 @@ import tcod.event
 
 from content.loader import (
     ContentValidationError,
+    load_audio_manifest,
     load_catalog,
     load_dungeon_registry,
     load_encounters,
@@ -28,6 +29,7 @@ from engine.actions import (
     FireModeAction,
     HelpAction,
     LookAction,
+    MuteAction,
     QuestLogAction,
     RestartAction,
     SaveGameAction,
@@ -36,6 +38,7 @@ from engine.actions import (
     TalkAction,
     TrainerAction,
 )
+from engine.audio import SoundManager
 from engine.clock import GameClock
 from engine.engine import Engine
 from engine.game_map import build_game_map
@@ -81,6 +84,8 @@ QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
 ENCOUNTERS_PATH = Path(__file__).resolve().parent / "data" / "encounters.yaml"
 SPRITES_PATH = Path(__file__).resolve().parent / "data" / "sprites.yaml"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "tilesets"
+AUDIO_MANIFEST_PATH = Path(__file__).resolve().parent / "data" / "audio.yaml"
+REPO_ROOT = Path(__file__).resolve().parent
 SAVE_PATH = Path(__file__).resolve().parent / "saves" / "save.json"
 STARTING_DUNGEON_ID = "prison_tower"
 OVERWORLD_KEY = "overworld"
@@ -478,6 +483,25 @@ def animate_combat_feedback(
     animate_ranged_attacks(console, context, engine)
 
 
+def play_queued_sounds(engine: Engine, sound_manager: SoundManager) -> None:
+    """Drains Engine.sound_events - same mailbox lifecycle as
+    melee_attack_events/ranged_attack_events, which animate_combat_feedback
+    above drains for visual feedback. Called at every site that calls
+    animate_combat_feedback, same cadence."""
+    for key in engine.sound_events:
+        sound_manager.play_sfx(key)
+    engine.sound_events = []
+
+
+def sync_music(engine: Engine, sound_manager: SoundManager) -> None:
+    """Keyed only on engine.is_overworld - every non-overworld Engine
+    (including walkable settlements like Wayford/Millhaven) shares the one
+    "dungeon" track for now. SoundManager.play_music itself no-ops if this
+    key is already playing, so calling this on every transition/turn is
+    cheap."""
+    sound_manager.play_music("overworld" if engine.is_overworld else "dungeon")
+
+
 def _match_entrance(overworld_map, from_dungeon_id: str) -> tuple[int, int] | None:
     """The overworld tile whose dungeon_entrance targets from_dungeon_id, if
     one exists - where the player should land after leaving that dungeon.
@@ -851,12 +875,19 @@ def main() -> int:
         sprite_manifest = load_sprite_manifest(
             SPRITES_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
         )
+        audio_manifest = load_audio_manifest(AUDIO_MANIFEST_PATH)
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
 
     tileset = load_tileset()
     sprite_codepoints = apply_sprites(tileset, sprite_manifest, catalog, ASSETS_DIR)
+    # Constructed here, not at module level - keeps `from main import (...)`
+    # (used throughout tests/test_main.py) from ever touching
+    # pygame.mixer.init() just by being imported. Never raises: a missing
+    # audio device/asset just leaves SoundManager silently disabled (see
+    # engine/audio.py).
+    sound_manager = SoundManager(audio_manifest, REPO_ROOT)
 
     with tcod.context.new(
         columns=CONSOLE_COLUMNS,
@@ -872,6 +903,11 @@ def main() -> int:
         )
         engine = active_engines[active_key]
         log_scroll_offset = 0
+        sync_music(engine, sound_manager)
+
+        def _on_player_turn_resolved() -> None:
+            animate_combat_feedback(console, context, engine)
+            play_queued_sounds(engine, sound_manager)
 
         while True:
             render_all(console, engine, log_scroll_offset)
@@ -933,6 +969,10 @@ def main() -> int:
                     run_help_mode(console, context)
                     continue
 
+                if isinstance(action, MuteAction):
+                    sound_manager.set_muted(not sound_manager.muted)
+                    continue
+
                 if isinstance(action, ScrollLogAction):
                     log_scroll_offset = clamp_log_scroll_offset(
                         engine.message_log, LOG_PANEL_WIDTH, CONSOLE_ROWS, log_scroll_offset + action.lines,
@@ -967,9 +1007,10 @@ def main() -> int:
                             if target is not None:
                                 dispatch_action(
                                     engine, FireAction(*target),
-                                    on_player_turn_resolved=lambda: animate_combat_feedback(console, context, engine),
+                                    on_player_turn_resolved=_on_player_turn_resolved,
                                 )
                                 animate_combat_feedback(console, context, engine)
+                                play_queued_sounds(engine, sound_manager)
                                 active_key, engine = resolve_transition(
                                     active_key, engine, active_engines,
                                     dungeon_registry, overworld_level, catalog,
@@ -977,6 +1018,7 @@ def main() -> int:
                                     sprite_codepoints=sprite_codepoints,
                                     encounter_registry=encounter_registry,
                                 )
+                                sync_music(engine, sound_manager)
                     continue
 
                 if isinstance(action, BumpAction) and engine.game_state == "playing":
@@ -987,15 +1029,17 @@ def main() -> int:
 
                 if dispatch_action(
                     engine, action,
-                    on_player_turn_resolved=lambda: animate_combat_feedback(console, context, engine),
+                    on_player_turn_resolved=_on_player_turn_resolved,
                 ):
                     return 0
                 animate_combat_feedback(console, context, engine)
+                play_queued_sounds(engine, sound_manager)
                 active_key, engine = resolve_transition(
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
                     encounter_registry=encounter_registry,
                 )
+                sync_music(engine, sound_manager)
 
             if engine is not engine_before_batch or len(engine.message_log.messages) != message_count_before:
                 log_scroll_offset = 0
