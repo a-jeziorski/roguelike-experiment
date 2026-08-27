@@ -1,0 +1,9 @@
+id: overworld_multi_cell
+name: Multi Cell Test Overworld
+
+map: |
+  AB
+
+legend:
+  "A": left
+  "B": right

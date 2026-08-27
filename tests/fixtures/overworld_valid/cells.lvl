@@ -1,0 +1,8 @@
+id: overworld_valid
+name: Overworld Valid Fixture
+
+map: |
+  A
+
+legend:
+  "A": main

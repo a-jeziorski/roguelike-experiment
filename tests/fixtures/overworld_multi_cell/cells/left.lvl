@@ -1,0 +1,12 @@
+id: left
+name: Left Cell
+
+map: |
+  ^^^
+  @^P
+  ^^^
+
+legend:
+  "^": mountain
+  "@": player_start
+  "P": { dungeon_entrance: prison_tower }

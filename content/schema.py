@@ -1153,6 +1153,25 @@ class LevelDef(BaseModel):
         return v
 
 
+class CellsManifestDef(BaseModel):
+    """data/overworld/cells.lvl: the grid layout stitching individually-
+    authored cell files into one seamless overworld (see
+    content/loader.py's load_overworld). Reuses the same ASCII-map-plus-
+    legend idiom every other .lvl file uses, but each map *character*
+    here names a whole rectangular cell (via the legend, a filename stem
+    under cells/), not a single terrain tile - so the legend maps to a
+    plain str, not a LegendEntry. id/name become the assembled
+    ParsedLevel's own id/name; each individual cell file's own id/name
+    fields are effectively local, unused-downstream metadata, the same
+    way a dungeon level's id is only ever used for lookup within its own
+    dungeon."""
+
+    id: str
+    name: str
+    map: str
+    legend: dict[str, str]
+
+
 class DungeonDef(BaseModel):
     """A dungeon's manifest: identifies it and declares where a fresh run
     begins. Lives at data/dungeons/<dungeon_id>/dungeon.yaml, sitting

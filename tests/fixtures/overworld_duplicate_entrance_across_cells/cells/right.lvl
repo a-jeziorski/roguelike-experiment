@@ -1,0 +1,11 @@
+id: right
+name: Right Cell
+
+map: |
+  ^^^
+  ^P^
+  ^^^
+
+legend:
+  "^": mountain
+  "P": { dungeon_entrance: prison_tower }

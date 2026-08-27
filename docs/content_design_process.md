@@ -81,9 +81,23 @@ work).
 
 ## 0b. The overworld
 
-`data/overworld.lvl` is a single standalone file (not a directory - there is
-exactly one overworld, unlike dungeons) reusing the ordinary `.lvl`
-ASCII+legend format, loaded via `content/loader.py`'s `load_overworld`
+`data/overworld/` is a directory (there is still exactly one overworld,
+unlike dungeons - the directory holds an authoring-time split into cell
+files, not a menu of alternatives) containing a `cells.lvl` manifest plus
+one `.lvl` file per cell under `cells/`. `cells.lvl` uses the same
+ASCII+legend idiom every `.lvl` file does, but each map character names a
+whole rectangular cell (via its legend) rather than a single terrain
+tile; every cell must share identical dimensions (currently 150x90) so
+they tile into one seamless map with no visible seams or loading pauses
+at cell boundaries - this is purely a content-authoring split, not a
+runtime streaming system: `content/loader.py`'s `load_overworld` stitches
+every cell into one ordinary `ParsedLevel` at load time, and nothing
+downstream (`build_game_map`, `GameMap`, movement, FOV) is aware cells
+exist at all. Splitting a large region into its own cell file keeps
+individually-authored regions reviewable, and (planned future work) will
+let a corrupted/devastated variant of a region be authored as a sibling
+cell file. Each cell file reuses the ordinary `.lvl` ASCII+legend format,
+loaded via `content/loader.py`'s `load_overworld`/`_parse_overworld_cell`
 rather than `load_level`. It has its own, smaller tile vocabulary -
 `mountain`/`sea`/`forest`/`road`/`plains`/`town` terrain plus
 `dungeon_entrance` tiles (`{dungeon_entrance: forgotten_ruins}`) - and

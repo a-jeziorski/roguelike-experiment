@@ -91,8 +91,8 @@ from engine.save import capture_save, load_from_path, restore_save, save_to_path
 from main import (
     DUNGEONS_DIR,
     ENCOUNTERS_PATH,
+    OVERWORLD_DIR,
     OVERWORLD_KEY,
-    OVERWORLD_LEVEL_PATH,
     QUESTS_PATH,
     _check_destroyable_dungeons_have_ruin_content,
     _check_flag_dialogue_references_known_flags,
@@ -697,7 +697,7 @@ def load_content():
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     overworld_level = load_overworld(
-        OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        OVERWORLD_DIR, catalog, known_dungeon_ids=set(dungeon_registry)
     )
     quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
     _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)

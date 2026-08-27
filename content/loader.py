@@ -19,6 +19,7 @@ from content.schema import (
     PEACEFUL_AI_TYPES,
     TILE_PASSABILITY,
     AudioManifestDef,
+    CellsManifestDef,
     DungeonDef,
     EncounterDef,
     EntityDef,
@@ -951,24 +952,43 @@ def load_level(
     )
 
 
-def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) -> ParsedLevel:
-    """Parses and validates the overworld file - a single, standalone map (no
-    directory of levels, no manifest; there is exactly one overworld). Reuses
-    the same ParsedLevel shape as a dungeon level so build_game_map/Engine can
-    treat it identically, but its own tile vocabulary is deliberately smaller:
-    no entities, items, doors, or stairs (this is not a dungeon), only
-    terrain and dungeon_entrance tiles leading into a dungeon registry id
-    (not a level id - that's why this doesn't reuse known_level_ids)."""
+@dataclass
+class _OverworldCell:
+    """One cell's own locally-parsed content (coordinates relative to its
+    own top-left corner) - what _parse_overworld_cell produces, before
+    load_overworld offsets everything into the assembled world's global
+    coordinate space."""
+
+    width: int
+    height: int
+    tiles: list[list[str]]
+    player_starts: list[tuple[int, int]]
+    player_start_tile: str
+    dungeon_entrances: list[DungeonEntranceSpawn]
+    tile_descriptions: list[TileDescriptionSpawn]
+
+
+def _parse_overworld_cell(
+    path: Path, catalog: Catalog, known_dungeon_ids: set[str]
+) -> tuple["_OverworldCell | None", list[str]]:
+    """Parses and validates one overworld cell file - the same per-cell
+    body a single-file overworld used to run once for the whole world,
+    now run once per cell, entirely in that cell's own local coordinates.
+    Errors are returned rather than raised, so load_overworld can collect
+    problems across every cell in one pass; every message is prefixed
+    with `path` so it names the actual offending cell file, never the
+    umbrella cells.lvl. Returns (None, errors) if the cell's own LevelDef
+    doesn't even parse - there's nothing further to check in that case."""
     raw = _load_yaml(path)
     errors: list[str] = []
 
     try:
         level = LevelDef(**raw)
     except ValidationError as e:
-        raise ContentValidationError(str(path), [str(e)]) from e
+        return None, [f"{path}: {e}"]
 
     rows, row_errors = _parse_map_rows(level.map, level.legend)
-    errors.extend(row_errors)
+    errors.extend(f"{path}: {message}" for message in row_errors)
     width = len(rows[0]) if rows else 0
     height = len(rows)
 
@@ -1001,7 +1021,7 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
             if entry.tile == "dungeon_entrance":
                 if entry.dungeon_id not in known_dungeon_ids:
                     errors.append(
-                        f"legend symbol '{symbol}' dungeon_entrance references "
+                        f"{path}: legend symbol '{symbol}' dungeon_entrance references "
                         f"unknown dungeon '{entry.dungeon_id}'"
                     )
                 dungeon_entrances.append(
@@ -1010,24 +1030,143 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
 
             if entry.tile in ("stairs_down", "stairs_up", "door"):
                 errors.append(
-                    f"legend symbol '{symbol}' is a {entry.tile} tile, which has no "
-                    "meaning on the overworld - use dungeon_entrance instead"
+                    f"{path}: legend symbol '{symbol}' is a {entry.tile} tile, which has "
+                    "no meaning on the overworld - use dungeon_entrance instead"
                 )
 
             if entry.entity is not None or entry.item is not None:
                 errors.append(
-                    f"legend symbol '{symbol}' spawns an entity/item, which has no "
-                    "meaning on the overworld - there is no combat or itemization here"
+                    f"{path}: legend symbol '{symbol}' spawns an entity/item, which has "
+                    "no meaning on the overworld - there is no combat or itemization here"
                 )
         tiles.append(tile_row)
 
+    cell = _OverworldCell(
+        width=width, height=height, tiles=tiles,
+        player_starts=player_starts, player_start_tile=level.player_start_tile,
+        dungeon_entrances=dungeon_entrances, tile_descriptions=tile_descriptions,
+    )
+    return cell, errors
+
+
+def load_overworld(overworld_dir: Path, catalog: Catalog, known_dungeon_ids: set[str]) -> ParsedLevel:
+    """Parses and validates the overworld - a grid of separately-authored
+    cell files (overworld_dir/cells.lvl + overworld_dir/cells/*.lvl)
+    stitched into one seamless ParsedLevel at load time. This is purely a
+    content-authoring split: nothing downstream (build_game_map/GameMap/
+    movement/FOV) is aware cells exist - Engine only ever sees the one
+    assembled ParsedLevel this function returns, exactly as if the whole
+    overworld had been authored as a single file. Reuses the same
+    ParsedLevel shape as a dungeon level so build_game_map/Engine can
+    treat it identically; its own tile vocabulary is deliberately
+    smaller: no entities, items, doors, or stairs (this is not a
+    dungeon), only terrain and dungeon_entrance tiles leading into a
+    dungeon registry id (not a level id - that's why this doesn't reuse
+    known_level_ids)."""
+    manifest_path = overworld_dir / "cells.lvl"
+    raw_manifest = _load_yaml(manifest_path)
+
+    try:
+        manifest = CellsManifestDef(**raw_manifest)
+    except ValidationError as e:
+        raise ContentValidationError(str(manifest_path), [str(e)]) from e
+
+    grid_rows, grid_errors = _parse_map_rows(manifest.map, manifest.legend)
+    if grid_errors:
+        raise ContentValidationError(str(manifest_path), grid_errors)
+
+    grid_height = len(grid_rows)
+    grid_width = len(grid_rows[0]) if grid_rows else 0
+
+    errors: list[str] = []
+    cells: list[list["_OverworldCell | None"]] = []
+    expected_width: int | None = None
+    expected_height: int | None = None
+    first_cell_id: str | None = None
+
+    for gy, grid_row in enumerate(grid_rows):
+        cell_row: list["_OverworldCell | None"] = []
+        for symbol in grid_row:
+            cell_id = manifest.legend[symbol]
+            cell_path = overworld_dir / "cells" / f"{cell_id}.lvl"
+            if not cell_path.exists():
+                errors.append(
+                    f"cells.lvl symbol '{symbol}' references cell '{cell_id}', but "
+                    f"'{cell_path}' does not exist"
+                )
+                cell_row.append(None)
+                continue
+
+            cell, cell_errors = _parse_overworld_cell(cell_path, catalog, known_dungeon_ids)
+            errors.extend(cell_errors)
+            if cell is None:
+                cell_row.append(None)
+                continue
+
+            if expected_width is None:
+                expected_width, expected_height, first_cell_id = cell.width, cell.height, cell_id
+            elif (cell.width, cell.height) != (expected_width, expected_height):
+                errors.append(
+                    f"cell '{cell_id}' ({cell_path}): expected {expected_width}x{expected_height} "
+                    f"(cell size set by '{first_cell_id}'), got {cell.width}x{cell.height}"
+                )
+            cell_row.append(cell)
+        cells.append(cell_row)
+
+    if errors:
+        raise ContentValidationError(str(overworld_dir), errors)
+
+    # A grid with at least one row/column always has at least one cell, and
+    # the loop above always sets expected_width/height off the first one -
+    # an all-empty grid would already have failed _parse_map_rows above.
+    assert expected_width is not None and expected_height is not None
+
+    tiles: list[list[str]] = []
+    for gy in range(grid_height):
+        for ly in range(expected_height):
+            row: list[str] = []
+            for gx in range(grid_width):
+                row.extend(cells[gy][gx].tiles[ly])
+            tiles.append(row)
+
+    player_starts: list[tuple[int, int]] = []
+    player_start_tile = "floor"
+    dungeon_entrances: list[DungeonEntranceSpawn] = []
+    tile_descriptions: list[TileDescriptionSpawn] = []
+
+    for gy in range(grid_height):
+        for gx in range(grid_width):
+            cell = cells[gy][gx]
+            offset_x, offset_y = gx * expected_width, gy * expected_height
+            for x, y in cell.player_starts:
+                player_starts.append((x + offset_x, y + offset_y))
+                player_start_tile = cell.player_start_tile
+            for entrance in cell.dungeon_entrances:
+                dungeon_entrances.append(
+                    DungeonEntranceSpawn(
+                        x=entrance.x + offset_x, y=entrance.y + offset_y,
+                        dungeon_id=entrance.dungeon_id,
+                    )
+                )
+            for desc in cell.tile_descriptions:
+                tile_descriptions.append(
+                    TileDescriptionSpawn(
+                        x=desc.x + offset_x, y=desc.y + offset_y, text=desc.text,
+                        announce=desc.announce, is_landmark=desc.is_landmark,
+                    )
+                )
+
     if len(player_starts) != 1:
         errors.append(
-            f"map must contain exactly one player_start tile, found {len(player_starts)}"
+            "overworld must contain exactly one player_start tile across all "
+            f"cells, found {len(player_starts)}"
         )
 
     if not dungeon_entrances:
-        errors.append("map must contain at least one dungeon_entrance tile, found 0")
+        errors.append(
+            "overworld must contain at least one dungeon_entrance tile across "
+            "all cells, found 0"
+        )
 
     dungeon_targets: dict[str, list[tuple[int, int]]] = {}
     for entrance in dungeon_entrances:
@@ -1041,16 +1180,16 @@ def load_overworld(path: Path, catalog: Catalog, known_dungeon_ids: set[str]) ->
             )
 
     if errors:
-        raise ContentValidationError(str(path), errors)
+        raise ContentValidationError(str(overworld_dir), errors)
 
     return ParsedLevel(
-        id=level.id,
-        name=level.name,
-        width=width,
-        height=height,
+        id=manifest.id,
+        name=manifest.name,
+        width=grid_width * expected_width,
+        height=grid_height * expected_height,
         tiles=tiles,
         player_start=player_starts[0],
-        player_start_tile=level.player_start_tile,
+        player_start_tile=player_start_tile,
         entity_spawns=[],
         item_spawns=[],
         stairs=[],

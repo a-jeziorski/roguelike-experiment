@@ -79,7 +79,7 @@ from engine.render import (
 from engine.targeting import find_nearest_target
 
 DUNGEONS_DIR = Path(__file__).resolve().parent / "data" / "dungeons"
-OVERWORLD_LEVEL_PATH = Path(__file__).resolve().parent / "data" / "overworld.lvl"
+OVERWORLD_DIR = Path(__file__).resolve().parent / "data" / "overworld"
 QUESTS_PATH = Path(__file__).resolve().parent / "data" / "quests.yaml"
 ENCOUNTERS_PATH = Path(__file__).resolve().parent / "data" / "encounters.yaml"
 SPRITES_PATH = Path(__file__).resolve().parent / "data" / "sprites.yaml"
@@ -863,7 +863,7 @@ def main() -> int:
         catalog = load_catalog()
         dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
         overworld_level = load_overworld(
-            OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+            OVERWORLD_DIR, catalog, known_dungeon_ids=set(dungeon_registry)
         )
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
         _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)

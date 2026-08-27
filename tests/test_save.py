@@ -17,7 +17,7 @@ from engine.save import capture_save, load_from_path, restore_save, save_to_path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
-OVERWORLD_LEVEL_PATH = DATA_DIR / "overworld.lvl"
+OVERWORLD_DIR = DATA_DIR / "overworld"
 QUESTS_PATH = DATA_DIR / "quests.yaml"
 ENCOUNTERS_PATH = DATA_DIR / "encounters.yaml"
 OVERWORLD_KEY = "overworld"
@@ -27,7 +27,7 @@ def _world():
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     overworld_level = load_overworld(
-        OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        OVERWORLD_DIR, catalog, known_dungeon_ids=set(dungeon_registry)
     )
     quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
     encounter_registry = load_encounters(

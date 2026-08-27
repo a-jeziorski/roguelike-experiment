@@ -1,0 +1,8 @@
+id: overworld_unknown_dungeon
+name: Overworld Unknown Dungeon Fixture
+
+map: |
+  A
+
+legend:
+  "A": main

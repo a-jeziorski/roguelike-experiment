@@ -1,0 +1,8 @@
+id: overworld_with_stairs
+name: Overworld With Stairs Fixture
+
+map: |
+  A
+
+legend:
+  "A": main

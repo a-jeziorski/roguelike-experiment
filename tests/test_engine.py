@@ -2500,7 +2500,7 @@ def test_restart_after_reaching_terminal_stairs_returns_to_starting_level():
 def test_build_game_map_assigns_terrain_passability():
     catalog = load_catalog()
     level = load_overworld(
-        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        FIXTURES_DIR / "overworld_valid", catalog, known_dungeon_ids={"prison_tower"}
     )
     game_map, _player = build_game_map(level, catalog)
 
@@ -2515,7 +2515,7 @@ def test_build_game_map_assigns_terrain_passability():
 def test_build_game_map_populates_dungeon_entrances():
     catalog = load_catalog()
     level = load_overworld(
-        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        FIXTURES_DIR / "overworld_valid", catalog, known_dungeon_ids={"prison_tower"}
     )
     game_map, _player = build_game_map(level, catalog)
 
@@ -2525,7 +2525,7 @@ def test_build_game_map_populates_dungeon_entrances():
 def test_build_game_map_populates_tile_descriptions():
     catalog = load_catalog()
     level = load_overworld(
-        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        FIXTURES_DIR / "overworld_valid", catalog, known_dungeon_ids={"prison_tower"}
     )
     game_map, _player = build_game_map(level, catalog)
 
@@ -3039,7 +3039,7 @@ def test_arrive_player_resets_the_message_log():
 def test_movement_onto_dungeon_entrance_sets_pending_dungeon_entry():
     catalog = load_catalog()
     level = load_overworld(
-        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        FIXTURES_DIR / "overworld_valid", catalog, known_dungeon_ids={"prison_tower"}
     )
     game_map, player = build_game_map(level, catalog)
     engine = Engine(game_map, player, level.name, catalog=catalog)

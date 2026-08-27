@@ -1,0 +1,11 @@
+id: right
+name: Right Cell
+
+map: |
+  FFF
+  FWF
+  FFF
+
+legend:
+  "F": forest
+  "W": { dungeon_entrance: wayford }

@@ -1,0 +1,8 @@
+id: overworld_no_entrance
+name: Overworld No Entrance Fixture
+
+map: |
+  A
+
+legend:
+  "A": main

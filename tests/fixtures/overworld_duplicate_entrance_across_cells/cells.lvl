@@ -1,0 +1,9 @@
+id: overworld_duplicate_entrance_across_cells
+name: Duplicate Entrance Across Cells Test
+
+map: |
+  AB
+
+legend:
+  "A": left
+  "B": right

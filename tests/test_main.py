@@ -35,8 +35,8 @@ from engine.game_map import GameMap, build_game_map
 from engine.quest import Quest, QuestLog
 from main import (
     DUNGEONS_DIR,
+    OVERWORLD_DIR,
     OVERWORLD_KEY,
-    OVERWORLD_LEVEL_PATH,
     STARTING_DUNGEON_ID,
     _check_destroyable_dungeons_have_ruin_content,
     _check_flag_dialogue_references_known_flags,
@@ -311,7 +311,7 @@ def _world():
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     overworld_level = load_overworld(
-        OVERWORLD_LEVEL_PATH, catalog, known_dungeon_ids=set(dungeon_registry)
+        OVERWORLD_DIR, catalog, known_dungeon_ids=set(dungeon_registry)
     )
     return catalog, dungeon_registry, overworld_level
 

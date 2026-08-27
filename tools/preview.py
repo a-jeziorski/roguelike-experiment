@@ -12,6 +12,8 @@ Usage:
     python tools/preview.py data/dungeons/prison_tower                    # one dungeon
                                                                             # (manifest + levels)
     python tools/preview.py data/dungeons                                 # every dungeon
+    python tools/preview.py data/overworld                                # the assembled overworld
+                                                                            # (cells.lvl + cells/*.lvl)
 """
 
 from __future__ import annotations
@@ -48,6 +50,7 @@ TILE_GLYPHS = {
     "plains": ",",
     "town": "n",
     "landmark": "'",
+    "dunes": "s",
 }
 
 
@@ -134,13 +137,13 @@ def main(argv: list[str]) -> int:
     try:
         catalog = load_catalog()
 
-        if not target.is_dir() and target.name == "overworld.lvl":
+        if not target.is_dir():
+            preview_one(load_level(target, catalog))
+        elif (target / "cells.lvl").exists():
             # The overworld always lives alongside data/dungeons/ - load the
             # registry from there to validate dungeon_entrance references.
             dungeon_ids = set(load_dungeon_registry(target.parent / "dungeons", catalog))
             preview_one(load_overworld(target, catalog, known_dungeon_ids=dungeon_ids))
-        elif not target.is_dir():
-            preview_one(load_level(target, catalog))
         elif (target / "dungeon.yaml").exists():
             preview_dungeon(load_dungeon(target, catalog))
         elif any(target.glob("*.lvl")):

@@ -1,0 +1,8 @@
+id: overworld_ambiguous_entrances
+name: Overworld Ambiguous Entrances Fixture
+
+map: |
+  A
+
+legend:
+  "A": main

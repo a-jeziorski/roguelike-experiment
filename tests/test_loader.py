@@ -4,6 +4,7 @@ import pytest
 
 from content.loader import (
     ContentValidationError,
+    _parse_overworld_cell,
     load_audio_manifest,
     load_catalog,
     load_dungeon,
@@ -17,6 +18,7 @@ from content.schema import FlagDialogue
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
+OVERWORLD_DIR = DATA_DIR / "overworld"
 FORGOTTEN_RUINS_LEVELS_DIR = DUNGEONS_DIR / "forgotten_ruins" / "levels"
 PRISON_TOWER_LEVELS_DIR = DUNGEONS_DIR / "prison_tower" / "levels"
 SUNKEN_MINE_LEVELS_DIR = DUNGEONS_DIR / "sunken_mine" / "levels"
@@ -1428,7 +1430,7 @@ def test_prison_tower_chain_links_all_levels():
 def test_load_overworld_happy_path():
     catalog = load_catalog()
     level = load_overworld(
-        FIXTURES_DIR / "overworld_valid.lvl", catalog, known_dungeon_ids={"prison_tower"}
+        FIXTURES_DIR / "overworld_valid", catalog, known_dungeon_ids={"prison_tower"}
     )
 
     assert level.id == "overworld_valid"
@@ -1440,10 +1442,20 @@ def test_load_overworld_happy_path():
 
 
 def test_load_overworld_collects_announce_flag_on_tile_descriptions(tmp_path):
-    level_path = tmp_path / "overworld_announce.lvl"
-    level_path.write_text(
+    overworld_dir = tmp_path / "overworld_announce"
+    (overworld_dir / "cells").mkdir(parents=True)
+    (overworld_dir / "cells.lvl").write_text(
         "id: overworld_announce\n"
         "name: Test Overworld\n"
+        "map: |\n"
+        "  A\n"
+        "legend:\n"
+        '  "A": main\n',
+        encoding="utf-8",
+    )
+    (overworld_dir / "cells" / "main.lvl").write_text(
+        "id: main\n"
+        "name: Main Cell\n"
         "map: |\n"
         "  #####\n"
         "  #@.P#\n"
@@ -1457,7 +1469,7 @@ def test_load_overworld_collects_announce_flag_on_tile_descriptions(tmp_path):
     )
     catalog = load_catalog()
 
-    level = load_overworld(level_path, catalog, known_dungeon_ids={"prison_tower"})
+    level = load_overworld(overworld_dir, catalog, known_dungeon_ids={"prison_tower"})
 
     assert len(level.tile_descriptions) == 1
     assert level.tile_descriptions[0].announce is True
@@ -1467,7 +1479,7 @@ def test_load_overworld_rejects_unknown_dungeon_id():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="unknown dungeon 'no_such_dungeon'"):
         load_overworld(
-            FIXTURES_DIR / "overworld_unknown_dungeon.lvl", catalog,
+            FIXTURES_DIR / "overworld_unknown_dungeon", catalog,
             known_dungeon_ids={"prison_tower"},
         )
 
@@ -1476,7 +1488,7 @@ def test_load_overworld_rejects_ambiguous_entrances_to_the_same_dungeon():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="ambiguous which one is the return path"):
         load_overworld(
-            FIXTURES_DIR / "overworld_ambiguous_entrances.lvl", catalog,
+            FIXTURES_DIR / "overworld_ambiguous_entrances", catalog,
             known_dungeon_ids={"prison_tower"},
         )
 
@@ -1485,7 +1497,7 @@ def test_load_overworld_requires_at_least_one_dungeon_entrance():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="at least one dungeon_entrance"):
         load_overworld(
-            FIXTURES_DIR / "overworld_no_entrance.lvl", catalog, known_dungeon_ids={"prison_tower"}
+            FIXTURES_DIR / "overworld_no_entrance", catalog, known_dungeon_ids={"prison_tower"}
         )
 
 
@@ -1493,8 +1505,179 @@ def test_load_overworld_rejects_stairs_tiles():
     catalog = load_catalog()
     with pytest.raises(ContentValidationError, match="stairs_down.*has no meaning on the overworld"):
         load_overworld(
-            FIXTURES_DIR / "overworld_with_stairs.lvl", catalog, known_dungeon_ids={"prison_tower"}
+            FIXTURES_DIR / "overworld_with_stairs", catalog, known_dungeon_ids={"prison_tower"}
         )
+
+
+def test_load_overworld_rejects_unknown_cell_id(tmp_path):
+    overworld_dir = tmp_path / "overworld_bad_cell"
+    (overworld_dir / "cells").mkdir(parents=True)
+    (overworld_dir / "cells.lvl").write_text(
+        "id: overworld_bad_cell\n"
+        "name: Test Overworld\n"
+        "map: |\n"
+        "  A\n"
+        "legend:\n"
+        '  "A": nonexistent\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match="references cell 'nonexistent'"):
+        load_overworld(overworld_dir, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_overworld_rejects_a_bad_cells_own_content_naming_that_cell(tmp_path):
+    """A per-cell content error (not a cells.lvl-level problem) must name
+    the actual offending cell file, not the umbrella cells.lvl."""
+    overworld_dir = tmp_path / "overworld_bad_cell_content"
+    (overworld_dir / "cells").mkdir(parents=True)
+    (overworld_dir / "cells.lvl").write_text(
+        "id: overworld_bad_cell_content\n"
+        "name: Test Overworld\n"
+        "map: |\n"
+        "  A\n"
+        "legend:\n"
+        '  "A": main\n',
+        encoding="utf-8",
+    )
+    (overworld_dir / "cells" / "main.lvl").write_text(
+        "id: main\n"
+        "name: Main Cell\n"
+        "map: |\n"
+        "  #####\n"
+        "  #@xP#\n"
+        "  #####\n"
+        "legend:\n"
+        '  "#": mountain\n'
+        '  ".": plains\n'
+        '  "@": player_start\n'
+        '  "x": stairs_down\n'
+        '  "P": { dungeon_entrance: prison_tower }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match=r"main\.lvl.*stairs_down.*has no meaning"):
+        load_overworld(overworld_dir, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_overworld_rejects_a_cell_with_mismatched_dimensions(tmp_path):
+    overworld_dir = tmp_path / "overworld_mismatched_cells"
+    (overworld_dir / "cells").mkdir(parents=True)
+    (overworld_dir / "cells.lvl").write_text(
+        "id: overworld_mismatched_cells\n"
+        "name: Test Overworld\n"
+        "map: |\n"
+        "  AB\n"
+        "legend:\n"
+        '  "A": first\n'
+        '  "B": second\n',
+        encoding="utf-8",
+    )
+    (overworld_dir / "cells" / "first.lvl").write_text(
+        "id: first\n"
+        "name: First Cell\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #P#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": mountain\n'
+        '  "@": player_start\n'
+        '  "P": { dungeon_entrance: prison_tower }\n',
+        encoding="utf-8",
+    )
+    (overworld_dir / "cells" / "second.lvl").write_text(
+        "id: second\n"
+        "name: Second Cell\n"
+        "map: |\n"
+        "  ##\n"
+        "  ##\n"
+        "legend:\n"
+        '  "#": mountain\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    with pytest.raises(ContentValidationError, match=r"second.*expected 3x4.*got 2x2"):
+        load_overworld(overworld_dir, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_overworld_stitches_a_multi_cell_grid():
+    """2x1 grid of small, visually-distinguishable synthetic cells -
+    proves tile-array concatenation order and coordinate offsetting are
+    both correct, not just that a single cell still works."""
+    catalog = load_catalog()
+    fixtures_dir = FIXTURES_DIR / "overworld_multi_cell"
+
+    level = load_overworld(fixtures_dir, catalog, known_dungeon_ids={"prison_tower", "wayford"})
+
+    assert (level.width, level.height) == (6, 3)
+    # left cell (mountain) occupies columns 0-2, right cell (forest)
+    # occupies columns 3-5 - row 0/2 have no special tiles in either
+    # cell, proving horizontal concatenation didn't interleave or
+    # reorder the two cells' rows.
+    assert level.tiles[0] == ["mountain", "mountain", "mountain", "forest", "forest", "forest"]
+    assert level.tiles[2] == ["mountain", "mountain", "mountain", "forest", "forest", "forest"]
+    # player_start lives in the left cell at local (0, 1) -> global (0, 1) (first cell, no offset).
+    assert level.player_start == (0, 1)
+    entrances = {(e.x, e.y): e.dungeon_id for e in level.dungeon_entrances}
+    # prison_tower's entrance is local (2,1) in the left cell -> global (2,1).
+    assert entrances[(2, 1)] == "prison_tower"
+    # wayford's entrance is local (1,1) in the right cell -> global (4,1),
+    # i.e. offset by the left cell's own width (3).
+    assert entrances[(4, 1)] == "wayford"
+
+
+def test_load_overworld_rejects_two_cells_targeting_the_same_dungeon():
+    """A cross-cell duplicate dungeon_entrance target is impossible to
+    detect per-cell (each cell's own entrance is perfectly valid in
+    isolation) - only a whole-grid, post-assembly check catches it."""
+    catalog = load_catalog()
+    fixtures_dir = FIXTURES_DIR / "overworld_duplicate_entrance_across_cells"
+
+    with pytest.raises(ContentValidationError, match="ambiguous which one is the return path"):
+        load_overworld(fixtures_dir, catalog, known_dungeon_ids={"prison_tower"})
+
+
+def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_one_cell():
+    """Regression test for the migration off the single-file overworld.lvl:
+    today's real content is still just one cell (heartlands) - the
+    assembled overworld must be identical to that one cell's own raw
+    parse, proving the stitcher is a true no-op for the single-cell case.
+    Scalar facts below were captured directly from the pre-migration
+    single-file load_overworld's real output before this feature landed."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    known_dungeon_ids = set(dungeon_registry)
+
+    overworld = load_overworld(OVERWORLD_DIR, catalog, known_dungeon_ids=known_dungeon_ids)
+
+    assert overworld.id == "overworld"
+    assert overworld.name == "The Sundered Realm"
+    assert overworld.width == 150
+    assert overworld.height == 90
+    assert overworld.player_start == (29, 46)
+    assert overworld.player_start_tile == "plains"
+    assert len(overworld.dungeon_entrances) == 16
+    assert len(overworld.tile_descriptions) == 3
+
+    heartlands, cell_errors = _parse_overworld_cell(
+        OVERWORLD_DIR / "cells" / "heartlands.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
+    )
+    assert cell_errors == []
+    assert overworld.width == heartlands.width
+    assert overworld.height == heartlands.height
+    assert overworld.tiles == heartlands.tiles
+    assert overworld.player_start == heartlands.player_starts[0]
+    assert {(e.x, e.y, e.dungeon_id) for e in overworld.dungeon_entrances} == {
+        (e.x, e.y, e.dungeon_id) for e in heartlands.dungeon_entrances
+    }
+    assert {(d.x, d.y, d.text) for d in overworld.tile_descriptions} == {
+        (d.x, d.y, d.text) for d in heartlands.tile_descriptions
+    }
 
 
 def test_load_level_rejects_dungeon_entrance_tiles():
