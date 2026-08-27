@@ -67,7 +67,24 @@ def test_check_deadlines_past_due_fails():
 
     changed = log.check_deadlines(clock)
 
-    assert changed == [quest]
+    assert changed == [(quest, True)]
+    assert quest.status == "failed"
+
+
+def test_check_deadlines_fails_a_not_given_quest_too():
+    """A quest the player never picked up still fails once its deadline
+    passes - the world (and any on_fail consequences, e.g.
+    destroy_dungeon_id) doesn't wait for the player to have taken the
+    quest first. was_in_progress is False here so the caller
+    (Engine._check_quest_deadlines) knows not to show a failure_message
+    for a quest the player never received."""
+    quest = make_quest(deadline_year=87, deadline_day=57, status="not_given")
+    log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=87, day=58, hour=0)
+
+    changed = log.check_deadlines(clock)
+
+    assert changed == [(quest, False)]
     assert quest.status == "failed"
 
 
@@ -99,7 +116,7 @@ def test_check_deadlines_only_returns_quests_that_changed():
 
     changed = log.check_deadlines(clock)
 
-    assert changed == [overdue]
+    assert changed == [(overdue, True)]
     assert fine.status == "in_progress"
 
 

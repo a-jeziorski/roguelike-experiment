@@ -405,19 +405,31 @@ class QuestLog:
     def set_active_quest(self, quest_id: str) -> None:
         self.active_quest_id = quest_id
 
-    def check_deadlines(self, clock: GameClock) -> list[Quest]:
+    def check_deadlines(self, clock: GameClock) -> list[tuple[Quest, bool]]:
         """Called every overworld hour (Engine._check_quest_deadlines).
-        Marks overdue in-progress quests 'failed' and returns only the ones
-        that just changed - guarded on status == "in_progress" so an
-        already-terminal quest is never re-flagged, and a quest with no
-        deadline is skipped entirely (it can never fail this way)."""
+        Marks overdue not_given/in_progress quests 'failed' and returns
+        (quest, was_in_progress) pairs for only the ones that just changed -
+        guarded on status in ("not_given", "in_progress") so an already-
+        terminal quest is never re-flagged, and a quest with no deadline is
+        skipped entirely (it can never fail this way).
+
+        A not_given quest fails right along with an in_progress one - the
+        world doesn't wait for the player to have picked up the quest
+        before its on_fail consequences land (destroy_dungeon_id/set_flag:
+        e.g. spreading_the_warning razes Wayford whether or not the player
+        ever took the quest from the Village Chief). Same reasoning as
+        void_by_dungeon below. was_in_progress lets the caller
+        (Engine._check_quest_deadlines) decide whether failure_message is
+        worth showing - same "never announce the failure of a quest the
+        player never received" rule void_by_dungeon already follows."""
         changed = []
         for quest in self.quests.values():
-            if quest.status != "in_progress" or quest.deadline_year is None:
+            if quest.status not in ("not_given", "in_progress") or quest.deadline_year is None:
                 continue
             if (clock.year, clock.day) > (quest.deadline_year, quest.deadline_day):
+                was_in_progress = quest.status == "in_progress"
                 quest.status = "failed"
-                changed.append(quest)
+                changed.append((quest, was_in_progress))
         return changed
 
     def void_by_dungeon(self, dungeon_id: str) -> list[tuple[Quest, bool]]:

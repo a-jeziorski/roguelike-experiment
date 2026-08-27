@@ -3674,6 +3674,44 @@ def test_process_turn_applies_both_consequences_when_on_fail_has_a_destroy_and_a
     assert quest_log.world_flags == {"wayford_razed"}
 
 
+def test_process_turn_applies_on_fail_consequences_even_when_the_quest_was_never_given():
+    """Regression test: the player never picked up spreading_the_warning
+    (status stays "not_given" - e.g. they never talked to the Village
+    Chief to receive it), but its deadline still passes. Wayford must
+    still be razed - the world doesn't wait for the player to have taken
+    the quest before its consequences land. Unlike the in_progress case
+    above, no failure_message should be logged: announcing the failure of
+    a quest the player never received would be confusing."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(2, 0)] = "wayford"
+    quest = Quest(
+        id="spreading_the_warning", name="Spreading the Warning", description="",
+        completion_message="done", failure_message="too late",
+        deadline_year=STARTING_YEAR, deadline_day=STARTING_DAY,
+        on_fail=[
+            WorldConsequence(destroy_dungeon_id="wayford"),
+            WorldConsequence(set_flag="wayford_razed"),
+        ],
+        status="not_given",
+    )
+    quest_log = QuestLog(quests={quest.id: quest})
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        dungeon_ruin_data={"wayford": ("road", "Ash and quiet.", None)},
+    )
+
+    engine.process_turn(WaitAction())  # crosses into the next day - deadline crosses
+
+    assert quest.status == "failed"
+    assert (2, 0) not in game_map.dungeon_entrances
+    assert "wayford" in quest_log.destroyed_dungeon_ids
+    assert quest_log.world_flags == {"wayford_razed"}
+    assert "too late" not in engine.message_log.messages
+
+
 def test_tighten_deadline_shortens_a_later_deadline():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)

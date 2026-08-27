@@ -783,16 +783,24 @@ class Engine:
         fighter.hp = min(fighter.max_hp, fighter.hp + 1)
 
     def _check_quest_deadlines(self) -> None:
-        """Sibling to _advance_world_clock, called the same turn: any in-progress
-        quest whose deadline the clock just crossed gets its failure message
-        logged here. A separate method (not folded into _advance_world_clock)
-        so deadline logic is testable independent of clock/healing mechanics.
-        Only ever called while self.is_overworld (see the one call site in
-        process_turn) - a newly-failed quest's on_fail entries are safe to
-        act on immediately, since self.game_map is guaranteed to be the
-        overworld's own map here."""
-        for quest in self.quest_log.check_deadlines(self.clock):
-            self.message_log.add(quest.failure_message)
+        """Sibling to _advance_world_clock, called the same turn: any
+        not_given/in_progress quest whose deadline the clock just crossed
+        gets failed here. A separate method (not folded into
+        _advance_world_clock) so deadline logic is testable independent of
+        clock/healing mechanics. Only ever called while self.is_overworld
+        (see the one call site in process_turn) - a newly-failed quest's
+        on_fail entries are safe to act on immediately, since self.game_map
+        is guaranteed to be the overworld's own map here.
+
+        on_fail consequences (e.g. spreading_the_warning razing Wayford)
+        always apply, regardless of was_in_progress - the world doesn't
+        wait for the player to have taken the quest. failure_message is
+        only logged when was_in_progress, same "never announce the failure
+        of a quest the player never received" rule destroy_dungeon (below)
+        already follows via QuestLog.void_by_dungeon."""
+        for quest, was_in_progress in self.quest_log.check_deadlines(self.clock):
+            if was_in_progress:
+                self.message_log.add(quest.failure_message)
             self._apply_world_consequences(quest)
 
     def _apply_world_consequences(self, quest: Quest) -> None:
