@@ -1346,6 +1346,31 @@ less-secure floors toward the exit:
 
 ## 2. Balance methodology
 
+**Combat variance (crit/dodge)**: `engine/combat.py`'s `COMBAT_VARIANCE_ENABLED`
+(default `True`) layers a `DODGE_CHANCE` (10%, prevents all damage and any
+on-hit effect - poison, etc. - outright) and a `CRIT_CHANCE`/`CRIT_MULTIPLIER`
+(10% for 1.5x, rounded up) on top of the deterministic formula below,
+symmetrically for attacker and defender, player or monster. This is a
+deliberate, explicitly reversible experiment - the whole formula was fully
+deterministic before it and may go back to being so - so it's gated
+behind that one module constant rather than woven through the damage math
+inline: flip it to `False` to restore the original formula exactly, no
+other changes needed. Every existing (and future) test that asserts exact
+damage/message values relies on `tests/conftest.py`'s autouse fixture,
+which forces it off for the whole suite by default - a test that
+specifically needs to exercise crit/dodge must re-enable it itself
+(`monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)`)
+and pin `random.random` for its own determinism, same as any other
+randomness-dependent test in this project (see the villager-wander tests
+for the established pattern). Because both rolls share one `random.random()`
+call per hit, a test forcing a *crit* still needs the dodge roll to land
+on the non-dodge side first - sequence the mock's return values
+accordingly (`iter([0.99, 0.0]).__next__`), not a single constant.
+Hits-to-kill math elsewhere in this section is written against the
+*deterministic* formula - treat `DODGE_CHANCE`/`CRIT_CHANCE` as adding
+symmetric texture around that baseline, not something to re-derive every
+placement's arithmetic against.
+
 Damage is `max(0, attacker.effective_attack - defender.effective_defense)`
 (`engine/combat.py`). Player baseline is `PLAYER_MAX_HP`/`PLAYER_ATTACK`/
 `PLAYER_DEFENSE` in `engine/game_map.py` (30/5/1 as of this writing).

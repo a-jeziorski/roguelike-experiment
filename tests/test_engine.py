@@ -6,6 +6,7 @@ verify the loader and engine agree on level ids and player_start positions."""
 import random
 from pathlib import Path
 
+import engine.combat
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, WaitAction
@@ -952,6 +953,87 @@ def test_combat_damage_reflects_equipped_weapon_and_armor():
 
     # player attack 5+4=9 vs monster defense 0+3=3 -> 6 damage
     assert monster.fighter.hp == 20 - 6
+
+
+def test_combat_variance_disabled_by_default_in_tests():
+    """The conftest.py autouse fixture must actually be doing its job -
+    if this ever fails, every other deterministic combat test in this
+    suite is silently at risk of flaking."""
+    assert engine.combat.COMBAT_VARIANCE_ENABLED is False
+
+
+def test_crit_deals_more_than_the_base_hit(monkeypatch):
+    import math
+
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    # Two random.random() calls per hit: dodge roll first (must NOT beat
+    # DODGE_CHANCE, or the hit never lands at all), crit roll second (must
+    # beat CRIT_CHANCE).
+    monkeypatch.setattr(random, "random", iter([0.99, 0.0]).__next__)
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    base_damage = player.effective_attack - monster.effective_defense  # 5 - 0 = 5
+    expected_crit_damage = math.ceil(base_damage * engine.combat.CRIT_MULTIPLIER)
+    damage_dealt = 20 - monster.fighter.hp
+    assert damage_dealt == expected_crit_damage
+    assert damage_dealt > base_damage
+    assert any(f"for {expected_crit_damage} damage." in m for m in engine_.message_log.messages)
+    assert "Critical hit!" in engine_.message_log.messages
+
+
+def test_dodge_prevents_all_damage_and_any_on_hit_effect(monkeypatch):
+    monkeypatch.setattr(engine.combat, "COMBAT_VARIANCE_ENABLED", True)
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # always beats DODGE_CHANCE
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(
+        2, 1, hp=5, attack=10, ai=None, poison_potency=2, poison_duration=3,
+    )
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    from engine.combat import resolve_attack
+    resolve_attack(engine_, attacker=monster, defender=player)
+
+    assert player.fighter.hp == 30  # fully dodged, not even a 0-damage hit
+    assert player.fighter.poison_turns_remaining == 0  # no on-hit effect from a non-connecting attack
+    assert "dodges" in engine_.message_log.messages[-1]
+
+
+def test_crit_and_dodge_never_fire_when_variance_is_disabled(monkeypatch):
+    """COMBAT_VARIANCE_ENABLED = False (the default, see conftest.py) must
+    fully restore the original deterministic formula - a one-line revert,
+    not a partial one - regardless of what random.random() would return."""
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always crit/dodge if variance were on
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    assert monster.fighter.hp == 20 - 5  # plain 5 attack - 0 defense, no crit
+    assert "Critical hit!" not in engine_.message_log.messages
+
+
+def test_dodge_roll_only_checked_when_variance_enabled(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always dodge if variance were on
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=1)
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level")
+
+    engine_.process_turn(BumpAction(1, 0))
+
+    assert monster.fighter.hp == 20 - 5  # landed normally, not dodged
 
 
 def test_poisonous_attacker_afflicts_poison_on_a_landed_hit():
