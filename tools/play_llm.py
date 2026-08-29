@@ -782,7 +782,8 @@ def test_build_start(
     engine = Engine(
         game_map, player, overworld_level.name,
         catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
-        dungeon_ruin_data=dungeon_ruin_data, clock=clock, quest_log=quest_log, sprite_codepoints=None,
+        dungeon_ruin_data=dungeon_ruin_data, starting_level=overworld_level,
+        clock=clock, quest_log=quest_log, sprite_codepoints=None,
     )
     active_engines = {OVERWORLD_KEY: engine}
 

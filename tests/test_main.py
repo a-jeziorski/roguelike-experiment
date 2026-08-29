@@ -399,6 +399,26 @@ def test_resolve_transition_first_overworld_visit_lands_at_matched_entrance():
     assert (new_engine.player.x, new_engine.player.y) == _entrance_for(overworld_level, "prison_tower")
 
 
+def test_resolve_transition_first_overworld_visit_builds_an_engine_that_supports_restart():
+    """Regression test: the lazily-created overworld Engine used to omit
+    starting_level entirely, so Engine.restart() (fired by RestartAction
+    after death - see dispatch_action) crashed with an AttributeError on
+    self.starting_level.width the first time anyone died on the overworld
+    and pressed restart, rather than only inside a dungeon."""
+    catalog, dungeon_registry, overworld_level = _world()
+    engine = _dungeon_engine(dungeon_registry, catalog, "prison_tower")
+    engine.on_player_reach_stairs(None, "stairs_up")
+
+    _, new_engine = resolve_transition(
+        "prison_tower", engine, {"prison_tower": engine}, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert new_engine.starting_level is overworld_level
+    new_engine.game_state = "dead"
+    new_engine.restart()  # must not raise
+    assert new_engine.game_state == "playing"
+
+
 def test_resolve_transition_passes_the_given_clock_to_the_overworld_engine():
     catalog, dungeon_registry, overworld_level = _world()
     clock = GameClock()

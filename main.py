@@ -655,7 +655,7 @@ def resolve_transition(
             target = Engine(
                 game_map, player, overworld_level.name,
                 catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
-                dungeon_ruin_data=dungeon_ruin_data,
+                dungeon_ruin_data=dungeon_ruin_data, starting_level=overworld_level,
                 clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[OVERWORLD_KEY] = target
