@@ -11,7 +11,7 @@ from content.loader import load_catalog, load_level, load_levels, load_overworld
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, UseSkillAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
-from engine.engine import DUNE_DAMAGE, Engine
+from engine.engine import ENVIRONMENTAL_HAZARD_DAMAGE, Engine
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -3128,9 +3128,10 @@ def test_process_turn_applies_dune_damage_on_a_dunes_tile():
 
     engine.process_turn(WaitAction())
 
-    # -DUNE_DAMAGE from the hazard, +1 from the overworld's passive heal
-    # (see _advance_world_clock) - net loss, the whole point of the hazard.
-    assert player.fighter.hp == 30 - DUNE_DAMAGE + 1
+    # -ENVIRONMENTAL_HAZARD_DAMAGE from the hazard, +1 from the overworld's
+    # passive heal (see _advance_world_clock) - net loss, the whole point of
+    # the hazard.
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE + 1
 
 
 def test_process_turn_no_dune_damage_off_a_dunes_tile():
@@ -3154,19 +3155,44 @@ def test_dune_damage_applies_off_the_overworld_too_since_it_is_tile_based():
 
     engine.process_turn(WaitAction())
 
-    assert player.fighter.hp == 30 - DUNE_DAMAGE  # no passive heal outside the overworld
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE  # no passive heal outside the overworld
 
 
 def test_dune_damage_can_kill_the_player():
     game_map = make_open_map(3, 3)
     game_map.kinds[1, 1] = "dunes"
-    player = make_player(1, 1, hp=DUNE_DAMAGE)
+    player = make_player(1, 1, hp=ENVIRONMENTAL_HAZARD_DAMAGE)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")
 
     engine.process_turn(WaitAction())
 
     assert engine.game_state == "dead"
+
+
+def test_ashen_plains_reuses_the_same_hazard_mechanic_as_dunes():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "ashen_plains"
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
+
+    engine.process_turn(WaitAction())
+
+    # Same ENVIRONMENTAL_HAZARD_DAMAGE as dunes - only the flavor text differs.
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
+
+
+def test_blighted_forest_reuses_the_same_hazard_mechanic_as_dunes():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "blighted_forest"
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
 
 
 def test_process_turn_advances_clock_regardless_of_action_success():

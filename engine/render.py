@@ -70,6 +70,12 @@ TILE_VISUALS = {
     # sandy gold distinct enough from plains' green at a glance to warn a
     # player before they've taken the first hit of damage.
     "dunes": {"glyph": "\"", "dark": (75, 60, 30), "light": (210, 180, 110)},
+    # The Northern Steppe's corruption (see Engine.ENVIRONMENTAL_HAZARD_MESSAGES) -
+    # a sickly, ashen grey standing in for plains' green, distinct from dunes'
+    # warm gold so the two hazards still read apart from each other at a glance.
+    "ashen_plains": {"glyph": ";", "dark": (45, 42, 40), "light": (140, 130, 120)},
+    # A dead, blackened counterpart to forest's living green.
+    "blighted_forest": {"glyph": "Y", "dark": (25, 22, 22), "light": (70, 60, 65)},
 }
 
 TILE_DESCRIPTIONS = {
@@ -86,6 +92,8 @@ TILE_DESCRIPTIONS = {
     "dungeon_entrance": "An entrance leading underground.",
     "landmark": "Something here catches your eye.",
     "dunes": "Loose, shifting sand, scoured bare by a wind that never fully dies down. Standing here for long is a mistake.",
+    "ashen_plains": "Grassland burned down to grey ash, the ground still warm underfoot. Nothing grows here anymore.",
+    "blighted_forest": "Dead, blackened trees, bare in every season. The air itself feels wrong to breathe.",
 }
 
 HUD_FG = (220, 220, 220)

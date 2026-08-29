@@ -56,14 +56,30 @@ DEFAULT_REGEN_AMOUNT = 2
 # risk to find, only exploration.
 LANDMARK_XP_REWARD = 5
 
-# Flat damage per turn spent standing on a dunes tile (see
-# Engine._apply_environmental_hazard) - set one above _advance_world_clock's
-# +1/hour passive heal on purpose, so lingering in the open is a small but
-# real net loss (-1 HP/turn) rather than a wash. Deliberately not set any
-# higher: at player baseline (30 HP), a net -1/turn means even a fairly
-# long, straight-line crossing costs real HP without being an automatic
-# death sentence for a fresh, unprepared player.
-DUNE_DAMAGE = 2
+# Flat damage per turn spent standing on any hazardous tile kind (see
+# ENVIRONMENTAL_HAZARD_MESSAGES/Engine._apply_environmental_hazard) - set one
+# above _advance_world_clock's +1/hour passive heal on purpose, so lingering
+# in the open is a small but real net loss (-1 HP/turn) rather than a wash.
+# Deliberately not set any higher: at player baseline (30 HP), a net -1/turn
+# means even a fairly long, straight-line crossing costs real HP without
+# being an automatic death sentence for a fresh, unprepared player. Shared by
+# every hazardous kind rather than tuned per-kind - the Northern Steppe's
+# corruption is meant to be the same underlying danger as the Scoured
+# Reach's wind, just given a different name and story (see
+# docs/content_design_process.md §0p).
+ENVIRONMENTAL_HAZARD_DAMAGE = 2
+
+# Tile kinds Engine._apply_environmental_hazard punishes for lingering, each
+# mapped to the message logged when it fires - one hazard mechanic, several
+# flavors. `dunes` is the original (the Scoured Reach); `ashen_plains`/
+# `blighted_forest` are the Northern Steppe's corrupted ground, mechanically
+# identical, per the user's explicit "reuse the harmful effect... just
+# change the text" instruction - see docs/content_design_process.md §0p.
+ENVIRONMENTAL_HAZARD_MESSAGES: dict[str, str] = {
+    "dunes": "Wind-driven sand tears at exposed skin and eyes.",
+    "ashen_plains": "Ash-choked ground scrapes at exposed skin with every step.",
+    "blighted_forest": "Something in the blighted air burns to breathe here.",
+}
 
 # Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
 # "stay put" repeated 8 times, so a wandering villager holds position about
@@ -668,24 +684,25 @@ class Engine:
             self._perform_ai(entity)
 
     def _apply_environmental_hazard(self) -> None:
-        """Chip damage for ending a turn standing on a `dunes` tile (see
-        content/schema.py's TileType, docs/content_design_process.md §0p)
-        - the Scoured Reach's whole reason nobody's settled it. Player
+        """Chip damage for ending a turn standing on a hazardous tile kind
+        (see ENVIRONMENTAL_HAZARD_MESSAGES above, content/schema.py's
+        TileType, docs/content_design_process.md §0p) - the Scoured Reach's
+        and the Northern Steppe's whole reason nobody's settled them. Player
         only: whatever wildlife lives out there is already adapted to it,
         the same reasoning skittish/hostile monsters never flee a terrain
-        hazard the player would. DUNE_DAMAGE deliberately outpaces
-        _advance_world_clock's +1/hour passive heal (this runs first, same
-        turn) - standing still in the open is meant to be a losing trade,
-        not a wash. Runs regardless of is_overworld's dungeon/settlement
-        gate on the clock/heal below: dunes only ever appears on the
-        overworld map today, but the check is by tile kind, not location,
-        so it needs no special-casing if that ever changes."""
-        if self.game_map.kinds[self.player.x, self.player.y] != "dunes":
+        hazard the player would. ENVIRONMENTAL_HAZARD_DAMAGE deliberately
+        outpaces _advance_world_clock's +1/hour passive heal (this runs
+        first, same turn) - standing still in the open is meant to be a
+        losing trade, not a wash. Runs regardless of is_overworld's
+        dungeon/settlement gate on the clock/heal below: these kinds only
+        ever appear on the overworld map today, but the check is by tile
+        kind, not location, so it needs no special-casing if that ever
+        changes."""
+        message = ENVIRONMENTAL_HAZARD_MESSAGES.get(self.game_map.kinds[self.player.x, self.player.y])
+        if message is None:
             return
-        self.player.fighter.hp -= DUNE_DAMAGE
-        self.message_log.add(
-            "Wind-driven sand tears at exposed skin and eyes.", category="combat"
-        )
+        self.player.fighter.hp -= ENVIRONMENTAL_HAZARD_DAMAGE
+        self.message_log.add(message, category="combat")
 
     def _tick_active_effects(self) -> None:
         """Ticks every active poison/weaken affliction on every entity

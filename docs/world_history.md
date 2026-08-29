@@ -140,6 +140,16 @@ environmental hazard tile (`dunes`, see
 The hazard is the ground itself, not a passing storm - a permanent
 terrain condition, not weather.
 
+A fourth expansion, connected north of the Heartlands cell rather than
+grown outward within it (see `docs/content_design_process.md` §0b, the
+overworld cell-grid): the Northern Steppe, the same plains/forest/
+mountain climate as the Heartlands, extensively corrupted by the
+Visitor's months-long presence (see `docs/main_story.md`) - the
+homeland the goblin horde fled. See
+`docs/region_bibles/northern_steppe.md` for the region's full design;
+it ships this pass as overworld terrain only, with three future dungeon
+locations reserved as `landmark` tiles rather than built.
+
 ## Current roster
 
 As of the "Populating the Sundered Realm" pass, the Goblin Horde arc,

@@ -2,7 +2,9 @@ id: overworld
 name: The Sundered Realm
 
 map: |
+  B
   A
 
 legend:
   "A": heartlands
+  "B": northern_steppe

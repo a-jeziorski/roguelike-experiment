@@ -240,6 +240,13 @@ and `landmark` tiles rather than monster encounters). No longer a trial:
 new or revising existing, and fold it into the authoring checklist
 (§4) below.
 
+**Region bibles (`docs/region_bibles/`)** extend the same discipline one
+level up, for a whole overworld cell rather than one dungeon - write one
+before drawing a new cell's terrain, same as a dungeon bible before its
+geometry. `northern_steppe.md` is the first; expect it to cover named
+set pieces at region scale (corruption bands, reserved future-dungeon
+landmarks, a road's route) rather than room-by-room set pieces.
+
 ## 0e. Quests are content too (`data/quests.yaml`)
 
 Quests follow the same "engine defines the shape, `data/` fills it in"
@@ -888,12 +895,12 @@ it's obviously implied by "currently active."
 ## 0p. Environmental hazard tiles (`dunes`, `Engine._apply_environmental_hazard`)
 
 A tile-kind-driven mechanic, not a quest trigger: some ground is simply
-dangerous to stand on, independent of any monster or quest. First (and
-so far only) use is the Scoured Reach, the open, unforested, unsettled
-plains stretch in the map's east-central expanse - `dunes` explains
-*why* that space reads as empty on the overworld rather than leaving it
-unexplained, the same "environmental storytelling" job `world_history.md`
-asks every location to do.
+dangerous to stand on, independent of any monster or quest. First use is
+the Scoured Reach, the open, unforested, unsettled plains stretch in the
+map's east-central expanse - `dunes` explains *why* that space reads as
+empty on the overworld rather than leaving it unexplained, the same
+"environmental storytelling" job `world_history.md` asks every location
+to do.
 
 **Shipped once as `storm_plain`, renamed to `dunes` after user
 playtesting** - worth keeping as a cautionary note. "Storm" framed the
@@ -905,27 +912,47 @@ through - is the same mechanic wearing a name that matches what it
 actually does. See "Grounding an abstract mechanic" in §4 below for the
 general version of this lesson.
 
-**Mechanically**: `TILE_PASSABILITY` deliberately has no entry for
-`dunes`, falling through to its `(True, True)` default (walkable,
-transparent) - identical to `plains`. The danger isn't crossing it, it's
-lingering on it: `Engine._apply_environmental_hazard`, called every turn
-from `process_enemy_phase` (right after enemy AI, before the player-death
-check, so a lethal turn on the dunes is caught the same way a lethal hit
-already is), checks the player's current tile kind directly and deals
-flat `DUNE_DAMAGE` with no defense mitigation - this isn't an attack, it
-has no attacker. Checked by tile kind, not by `is_overworld`, so it isn't
-special-cased to the overworld specifically; `dunes` just doesn't appear
-anywhere else today.
+**Generalized for the Northern Steppe pass**: the mechanic isn't
+`dunes`-specific - `Engine.ENVIRONMENTAL_HAZARD_MESSAGES` maps any number
+of hazardous `TileType` kinds to the message logged when a turn ends on
+one, and `_apply_environmental_hazard` looks up the player's current tile
+kind in that dict rather than comparing against a single hardcoded
+string. `ashen_plains`/`blighted_forest` (the Northern Steppe's corrupted
+ground, standing in for `plains`/`forest` respectively) reuse the exact
+same mechanic and the same `ENVIRONMENTAL_HAZARD_DAMAGE` - per the design
+decision behind them, corruption is meant to be *the same danger as the
+Scoured Reach's wind*, wearing the Visitor's story instead of its own;
+only the flavor text differs per kind. Adding a future hazardous kind
+means one new dict entry, nothing else.
 
-**Why `DUNE_DAMAGE` is 2, not 1**: the overworld already heals the
-player +1/hour unconditionally (`_advance_world_clock`, same turn,
-right after this check runs). A hazard that merely matched the passive
-heal would be invisible - net zero, no felt cost, no reason to hurry.
-Set one above it on purpose so standing in the open is a small but real
-net loss (-1 HP/turn) rather than a wash - felt over a real crossing,
-but not so steep that a fresh, unprepared player dies outright
+**Mechanically**: `TILE_PASSABILITY` deliberately has no entry for
+`dunes`/`ashen_plains`, falling through to their `(True, True)` default
+(walkable, transparent) - identical to `plains`; `blighted_forest` does
+get an entry, matching `forest`'s `(True, False)` (blocks sightlines,
+since it's still visually a stand of trees, just dead ones). The danger
+isn't crossing it, it's lingering on it: `Engine._apply_environmental_hazard`,
+called every turn from `process_enemy_phase` (right after enemy AI,
+before the player-death check, so a lethal turn on a hazard tile is
+caught the same way a lethal hit already is), checks the player's
+current tile kind directly and deals flat `ENVIRONMENTAL_HAZARD_DAMAGE`
+with no defense mitigation - this isn't an attack, it has no attacker.
+Checked by tile kind, not by `is_overworld`, so it isn't special-cased to
+the overworld specifically; these kinds just don't appear anywhere else
+today.
+
+**Why `ENVIRONMENTAL_HAZARD_DAMAGE` is 2, not 1**: the overworld already
+heals the player +1/hour unconditionally (`_advance_world_clock`, same
+turn, right after this check runs). A hazard that merely matched the
+passive heal would be invisible - net zero, no felt cost, no reason to
+hurry. Set one above it on purpose so standing in the open is a small but
+real net loss (-1 HP/turn) rather than a wash - felt over a real
+crossing, but not so steep that a fresh, unprepared player dies outright
 attempting a straight-line dash across a sheltered-pocket-to-sheltered-
-pocket route.
+pocket route. This is also why the Northern Steppe's corrupted ground is
+authored as *patches within otherwise-ordinary terrain* rather than
+painting the whole region hazardous - the same "narrow enough to cross in
+one push" discipline the Scoured Reach follows, just repeated at several
+points across a much larger map instead of once.
 
 **Monsters are unaffected** - `_apply_environmental_hazard` only ever
 checks `self.player`. Whatever lives in a hazardous area is written as

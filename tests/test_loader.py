@@ -1642,13 +1642,14 @@ def test_load_overworld_rejects_two_cells_targeting_the_same_dungeon():
         load_overworld(fixtures_dir, catalog, known_dungeon_ids={"prison_tower"})
 
 
-def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_one_cell():
-    """Regression test for the migration off the single-file overworld.lvl:
-    today's real content is still just one cell (heartlands) - the
-    assembled overworld must be identical to that one cell's own raw
-    parse, proving the stitcher is a true no-op for the single-cell case.
-    Scalar facts below were captured directly from the pre-migration
-    single-file load_overworld's real output before this feature landed."""
+def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells():
+    """Regression test for the overworld cell-grid: today's real content is
+    a 1x2 grid, Northern Steppe (row 0, north) stacked on Heartlands (row 1,
+    south) - the assembled overworld's Heartlands half must be byte-for-byte
+    identical to that cell's own raw parse (offset by Northern Steppe's
+    height), proving the stitcher didn't disturb already-shipped content
+    when a second cell was added above it. Scalar facts below were captured
+    directly from the real assembled output when this pass landed."""
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     known_dungeon_ids = set(dungeon_registry)
@@ -1658,26 +1659,49 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_one_cell():
     assert overworld.id == "overworld"
     assert overworld.name == "The Sundered Realm"
     assert overworld.width == 150
-    assert overworld.height == 90
-    assert overworld.player_start == (29, 46)
+    assert overworld.height == 180
+    assert overworld.player_start == (29, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 16
-    assert len(overworld.tile_descriptions) == 3
+    assert len(overworld.dungeon_entrances) == 16  # Northern Steppe ships no dungeons yet
+    assert len(overworld.tile_descriptions) == 7  # heartlands' 3 signposts + Northern Steppe's 4 landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(
         OVERWORLD_DIR / "cells" / "heartlands.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
     )
     assert cell_errors == []
+    y_offset = overworld.height - heartlands.height  # Northern Steppe's own height (row 0 of the grid)
     assert overworld.width == heartlands.width
-    assert overworld.height == heartlands.height
-    assert overworld.tiles == heartlands.tiles
-    assert overworld.player_start == heartlands.player_starts[0]
-    assert {(e.x, e.y, e.dungeon_id) for e in overworld.dungeon_entrances} == {
+    assert overworld.tiles[y_offset:] == heartlands.tiles
+    hx, hy = heartlands.player_starts[0]
+    assert overworld.player_start == (hx, hy + y_offset)
+    assert {(e.x, e.y - y_offset, e.dungeon_id) for e in overworld.dungeon_entrances} == {
         (e.x, e.y, e.dungeon_id) for e in heartlands.dungeon_entrances
     }
-    assert {(d.x, d.y, d.text) for d in overworld.tile_descriptions} == {
-        (d.x, d.y, d.text) for d in heartlands.tile_descriptions
-    }
+    heartlands_descriptions = {(d.x, d.y, d.text) for d in heartlands.tile_descriptions}
+    assert {(d.x, d.y - y_offset, d.text) for d in overworld.tile_descriptions} >= heartlands_descriptions
+
+
+def test_load_overworld_northern_steppe_cell_parses_with_no_dungeons_yet():
+    """The Northern Steppe ships this pass as an overworld region only - no
+    dungeons yet (see docs/region_bibles/northern_steppe.md) - just four
+    `landmark` tiles reserving future dungeon locations."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    known_dungeon_ids = set(dungeon_registry)
+
+    steppe, cell_errors = _parse_overworld_cell(
+        OVERWORLD_DIR / "cells" / "northern_steppe.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
+    )
+
+    assert cell_errors == []
+    assert steppe.width == 150
+    assert steppe.height == 90
+    assert steppe.player_starts == []
+    assert steppe.dungeon_entrances == []
+    assert len(steppe.tile_descriptions) == 4
+    kinds = {tile for row in steppe.tiles for tile in row}
+    assert "ashen_plains" in kinds
+    assert "blighted_forest" in kinds
 
 
 def test_load_level_rejects_dungeon_entrance_tiles():

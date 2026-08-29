@@ -51,6 +51,8 @@ TILE_GLYPHS = {
     "town": "n",
     "landmark": "'",
     "dunes": "s",
+    "ashen_plains": ";",
+    "blighted_forest": "Y",
 }
 
 
