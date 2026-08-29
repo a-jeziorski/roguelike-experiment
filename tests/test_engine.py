@@ -11,7 +11,17 @@ from content.loader import load_catalog, load_level, load_levels, load_overworld
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, UseSkillAction, WaitAction
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
-from engine.engine import ENVIRONMENTAL_HAZARD_DAMAGE, Engine
+from engine.engine import (
+    ENVIRONMENTAL_HAZARD_DAMAGE,
+    VISITOR_BAND_ENCOUNTER_CHANCE,
+    Engine,
+    _ALL_VISITOR_CREATION_IDS,
+    _CINDER_MARCHES_MAX_Y,
+    _CINDER_MARCHES_BAND,
+    _FRAYED_EDGE_BAND,
+    _HOLLOW_REACH_BAND,
+    _HOLLOW_REACH_MAX_Y,
+)
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
     RENDER_PRIORITY_ITEM,
@@ -21,7 +31,7 @@ from engine.entity import (
     Fighter,
     ItemEffect,
 )
-from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map
+from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map, entity_from_def
 from engine.quest import Quest, QuestLog, create_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -3193,6 +3203,202 @@ def test_blighted_forest_reuses_the_same_hazard_mechanic_as_dunes():
     engine.process_turn(WaitAction())
 
     assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
+
+
+# --- Visitor band random encounters (ashen_plains/blighted_forest only) ---
+
+
+def test_visitor_band_does_not_spawn_off_a_corrupted_tile(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always succeed on a corrupted tile
+
+    engine._maybe_spawn_visitor_band()
+
+    assert game_map.entities == [player]
+
+
+def test_visitor_band_does_not_spawn_when_the_roll_fails(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: VISITOR_BAND_ENCOUNTER_CHANCE)  # at threshold - fails
+
+    engine._maybe_spawn_visitor_band()
+
+    assert game_map.entities == [player]
+
+
+def test_visitor_band_no_ops_without_a_catalog(monkeypatch):
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # no catalog passed
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always succeed if there were a catalog
+
+    engine._maybe_spawn_visitor_band()
+
+    assert game_map.entities == [player]
+
+
+def test_visitor_band_spawns_on_ashen_plains_when_the_roll_succeeds(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    spawned = [e for e in game_map.entities if e is not player]
+    assert len(spawned) == _HOLLOW_REACH_BAND[1][0]  # min band size, at (5, 5)'s y=5 -> Hollow Reach
+    assert all(e.entity_id in _HOLLOW_REACH_BAND[0] for e in spawned)
+    assert any("stirs" in m for m in engine.message_log.messages)
+
+
+def test_visitor_band_spawns_on_blighted_forest_too(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "blighted_forest"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    assert len([e for e in game_map.entities if e is not player]) > 0
+
+
+def test_visitor_band_picks_the_hollow_reach_tier_in_the_north(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 0] = "ashen_plains"
+    player = make_player(5, 0, hp=30)  # y=0 <= _HOLLOW_REACH_MAX_Y
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    spawned = [e for e in game_map.entities if e is not player]
+    assert len(spawned) > 0
+    assert all(e.entity_id in _HOLLOW_REACH_BAND[0] for e in spawned)
+
+
+def test_visitor_band_picks_the_cinder_marches_tier_in_the_middle(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 65)
+    game_map.kinds[5, 45] = "ashen_plains"
+    player = make_player(5, 45, hp=30)  # _HOLLOW_REACH_MAX_Y < 45 <= _CINDER_MARCHES_MAX_Y
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    spawned = [e for e in game_map.entities if e is not player]
+    assert len(spawned) > 0
+    assert all(e.entity_id in _CINDER_MARCHES_BAND[0] for e in spawned)
+
+
+def test_visitor_band_picks_the_frayed_edge_tier_in_the_south(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 95)
+    game_map.kinds[5, 89] = "ashen_plains"
+    player = make_player(5, 89, hp=30)  # y > _CINDER_MARCHES_MAX_Y
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    spawned = [e for e in game_map.entities if e is not player]
+    assert len(spawned) > 0
+    assert all(e.entity_id in _FRAYED_EDGE_BAND[0] for e in spawned)
+
+
+def test_visitor_band_does_not_stack_while_one_is_already_alive(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    existing = entity_from_def(catalog.entities["ash_bound_husk"], 6, 5)
+    game_map.entities.extend([player, existing])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # would always succeed otherwise
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    assert game_map.entities == [player, existing]
+
+
+def test_visitor_band_ignores_a_dead_existing_creation(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    dead = entity_from_def(catalog.entities["ash_bound_husk"], 6, 5)
+    dead.fighter.hp = 0
+    game_map.entities.extend([player, dead])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    assert len(game_map.entities) > 2  # a new band spawned alongside the corpse
+
+
+def test_visitor_band_spawns_nothing_and_logs_nothing_with_no_room_nearby(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "ashen_plains"
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    # Wall off every tile around the player - no valid spawn point exists.
+    for x in range(3):
+        for y in range(3):
+            if (x, y) != (1, 1):
+                game_map.walkable[x, y] = False
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine._maybe_spawn_visitor_band()
+
+    assert game_map.entities == [player]
+    assert not any("stirs" in m for m in engine.message_log.messages)
+
+
+def test_process_turn_can_spawn_a_visitor_band_on_ashen_plains(monkeypatch):
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_plains"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", catalog=catalog, is_overworld=True)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    monkeypatch.setattr(random, "randint", lambda lo, hi: lo)
+
+    engine.process_turn(WaitAction())
+
+    assert len([e for e in game_map.entities if e is not player]) > 0
 
 
 def test_process_turn_advances_clock_regardless_of_action_success():

@@ -8,7 +8,7 @@ import math
 import numpy as np
 import tcod.map
 
-from content.loader import PLAYER_ENTITY_ID, Catalog, ItemDef, ParsedLevel
+from content.loader import PLAYER_ENTITY_ID, Catalog, EntityDef, ItemDef, ParsedLevel
 from content.schema import TILE_PASSABILITY
 from engine.clock import GameClock
 from engine.entity import (
@@ -263,6 +263,50 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
     )
 
 
+def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
+    """Builds a standalone monster/NPC Entity from a catalog EntityDef - the
+    entity counterpart to item_entity_from_def above, and the same
+    extraction of build_game_map's own entity-spawn loop below (which still
+    applies a spawn's own per-placement dialogue/flag_dialogue/elite on top
+    of what this returns). Reusable outside a level's authored spawns - e.g.
+    Engine._maybe_spawn_visitor_band's runtime encounter spawns
+    (engine/engine.py), which have no LevelDef.EntitySpawn to read from at
+    all."""
+    return Entity(
+        x,
+        y,
+        edef.glyph,
+        edef.color,
+        edef.name,
+        blocks_movement=True,
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(
+            max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
+        ),
+        ai=edef.ai,
+        alert_radius=edef.alert_radius,
+        flee_hp_pct=edef.flee_hp_pct,
+        ranged_range=edef.ranged_range,
+        inflicts_effect=edef.inflicts_effect,
+        inflicts_potency=edef.inflicts_potency,
+        inflicts_duration=edef.inflicts_duration,
+        enrage_hp_pct=edef.enrage_hp_pct,
+        enrage_attack_bonus=edef.enrage_attack_bonus,
+        pack_radius=edef.pack_radius,
+        pack_attack_bonus=edef.pack_attack_bonus,
+        regen_amount=edef.regen_amount,
+        drop_item_id=edef.drop_item_id,
+        drop_chance=edef.drop_chance,
+        stationary=edef.stationary,
+        description=edef.description,
+        dialogue=edef.dialogue,
+        shop_inventory=edef.shop_inventory,
+        xp_reward=edef.xp_reward,
+        trainer_perks=edef.trainer_perks,
+        entity_id=edef.id,
+    )
+
+
 def _apply_elite_scaling(entity: Entity) -> None:
     """Mutates an already-built monster Entity in place into its elite
     version - called right after construction, in build_game_map's
@@ -322,45 +366,18 @@ def build_game_map(
                 game_map.landmark_announce_tiles.add((desc_spawn.x, desc_spawn.y))
 
     for index, spawn in enumerate(level.entity_spawns):
-        edef = spawn.entity
-        entity = Entity(
-            spawn.x,
-            spawn.y,
-            edef.glyph,
-            edef.color,
-            edef.name,
-            blocks_movement=True,
-            render_priority=RENDER_PRIORITY_ACTOR,
-            fighter=Fighter(
-                max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
-            ),
-            ai=edef.ai,
-            alert_radius=edef.alert_radius,
-            flee_hp_pct=edef.flee_hp_pct,
-            ranged_range=edef.ranged_range,
-            inflicts_effect=edef.inflicts_effect,
-            inflicts_potency=edef.inflicts_potency,
-            inflicts_duration=edef.inflicts_duration,
-            enrage_hp_pct=edef.enrage_hp_pct,
-            enrage_attack_bonus=edef.enrage_attack_bonus,
-            pack_radius=edef.pack_radius,
-            pack_attack_bonus=edef.pack_attack_bonus,
-            regen_amount=edef.regen_amount,
-            drop_item_id=edef.drop_item_id,
-            drop_chance=edef.drop_chance,
-            stationary=edef.stationary,
-            description=edef.description,
-            dialogue=spawn.dialogue or edef.dialogue,
-            # No "or edef.flag_dialogue" fallback (unlike dialogue above) -
-            # deliberately spawn-only, since a world-flag reaction is about
-            # this specific placement, not a generic trait of the monster/
-            # NPC type (EntityDef has no flag_dialogue field at all).
-            flag_dialogue=spawn.flag_dialogue,
-            shop_inventory=edef.shop_inventory,
-            xp_reward=edef.xp_reward,
-            trainer_perks=edef.trainer_perks,
-            entity_id=edef.id,
-        )
+        entity = entity_from_def(spawn.entity, spawn.x, spawn.y)
+        if spawn.dialogue:
+            entity.dialogue = spawn.dialogue
+        # No "or edef.flag_dialogue" fallback - deliberately spawn-only,
+        # since a world-flag reaction is about this specific placement, not
+        # a generic trait of the monster/NPC type (EntityDef has no
+        # flag_dialogue field at all; entity_from_def never sets one).
+        # Same defensive-copy shape Entity.__init__ itself uses for this
+        # field - entity_from_def leaves it at [], not None, so this always
+        # overwrites rather than needing an is-None guard.
+        if spawn.flag_dialogue:
+            entity.flag_dialogue = list(spawn.flag_dialogue)
         if spawn.elite:
             _apply_elite_scaling(entity)
         game_map.entities.append(entity)

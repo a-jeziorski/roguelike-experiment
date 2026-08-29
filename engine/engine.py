@@ -29,7 +29,13 @@ from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import POTION_KINDS, Entity, apply_perk_stat_bonus
-from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
+from engine.game_map import (
+    GameMap,
+    apply_dungeon_destruction,
+    build_game_map,
+    entity_from_def,
+    item_entity_from_def,
+)
 from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
@@ -80,6 +86,46 @@ ENVIRONMENTAL_HAZARD_MESSAGES: dict[str, str] = {
     "ashen_plains": "Ash-choked ground scrapes at exposed skin with every step.",
     "blighted_forest": "Something in the blighted air burns to breathe here.",
 }
+
+# Random-encounter chance (Engine._maybe_spawn_visitor_band) checked every
+# turn spent on ashen_plains/blighted_forest, same cadence as the chip
+# damage above - a second, more dramatic way the Northern Steppe's
+# corruption stands out from an ordinary hazard tile like dunes (the
+# user's own framing). Deliberately NOT extended to dunes: the Scoured
+# Reach isn't the Visitor's territory, so nothing in this roster belongs
+# there.
+VISITOR_BAND_ENCOUNTER_CHANCE = 0.1
+VISITOR_BAND_TILE_KINDS = frozenset({"ashen_plains", "blighted_forest"})
+
+# Row bands within the Northern Steppe cell
+# (data/overworld/cells/northern_steppe.lvl) that a spawned band's
+# composition escalates across - the same three corruption bands that
+# cell's own terrain generation used (docs/region_bibles/northern_steppe.md).
+# The Northern Steppe is the assembled overworld's row-0 cell (see
+# data/overworld/cells.lvl), so its local y already equals the assembled
+# map's global y with no offset - a content-shape assumption, accepted the
+# same way ENVIRONMENTAL_HAZARD_MESSAGES already assumes these tile kinds
+# only appear on the overworld at all.
+_HOLLOW_REACH_MAX_Y = 29
+_CINDER_MARCHES_MAX_Y = 59
+
+# (candidate entity ids, (min band size, max band size)) per corruption
+# band, escalating tier to tier - see data/entities.yaml's "The Visitor's
+# creations" block for the stats behind each id. excavation_warden is
+# deliberately excluded from every band: it's reserved to guard the
+# Northern Steppe's Elder Age excavation sites specifically, not a roaming
+# random encounter (see that same entities.yaml comment).
+_FRAYED_EDGE_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("ash_bound_husk", "bound_eye"), (2, 3))
+_CINDER_MARCHES_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("stitched_vanguard", "hollow_chanter"), (2, 3))
+_HOLLOW_REACH_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("charnel_colossus",), (1, 2))
+
+# Every id any band above can roll, plus excavation_warden - used only to
+# check "is a Visitor creation already loose somewhere," so a hand-placed
+# Warden (or a previous band the player fled rather than cleared) still
+# correctly blocks a new band from piling on.
+_ALL_VISITOR_CREATION_IDS = frozenset(
+    _FRAYED_EDGE_BAND[0] + _CINDER_MARCHES_BAND[0] + _HOLLOW_REACH_BAND[0] + ("excavation_warden",)
+)
 
 # Candidate steps for AI_VILLAGER's idle wander: the 8 directions plus
 # "stay put" repeated 8 times, so a wandering villager holds position about
@@ -704,6 +750,67 @@ class Engine:
         self.player.fighter.hp -= ENVIRONMENTAL_HAZARD_DAMAGE
         self.message_log.add(message, category="combat")
 
+    def _nearby_spawn_tiles(self, x: int, y: int, count: int, radius: int = 3) -> list[tuple[int, int]]:
+        """Up to `count` distinct walkable, unoccupied, in-bounds tiles
+        within `radius` of (x, y), excluding (x, y) itself - how
+        _maybe_spawn_visitor_band below places a freshly spawned band
+        without ever landing one on top of the player, another entity, or
+        impassable terrain. Returns fewer than `count` (down to an empty
+        list) if the surrounding terrain can't fit that many - callers must
+        handle a short result rather than assume the full count spawned."""
+        candidates = [
+            (cx, cy)
+            for cx in range(x - radius, x + radius + 1)
+            for cy in range(y - radius, y + radius + 1)
+            if (cx, cy) != (x, y)
+            and self.game_map.in_bounds(cx, cy)
+            and self.game_map.is_walkable(cx, cy)
+            and self.game_map.blocking_entity_at(cx, cy) is None
+        ]
+        random.shuffle(candidates)
+        return candidates[:count]
+
+    def _maybe_spawn_visitor_band(self) -> None:
+        """A chance, each turn spent on Northern Steppe corruption
+        (VISITOR_BAND_TILE_KINDS above), to spawn a small band of the
+        Visitor's creations near the player - per the user's explicit ask
+        that these tiles stand out from an ordinary hazard tile like dunes
+        by more than just the shared chip damage. No-ops without a catalog
+        (a synthetic Engine built without one, same guard
+        complete_quest's reward_item_id branch already uses) or while any
+        previously-spawned (or hand-placed) instance of these ids is still
+        alive anywhere on the map, so bands never stack - the player has to
+        actually deal with (or lose track of) one before another appears."""
+        if self.catalog is None:
+            return
+        if self.game_map.kinds[self.player.x, self.player.y] not in VISITOR_BAND_TILE_KINDS:
+            return
+        if random.random() >= VISITOR_BAND_ENCOUNTER_CHANCE:
+            return
+        if any(
+            entity.entity_id in _ALL_VISITOR_CREATION_IDS and entity.is_alive
+            for entity in self.game_map.entities
+        ):
+            return
+
+        if self.player.y <= _HOLLOW_REACH_MAX_Y:
+            candidate_ids, (min_size, max_size) = _HOLLOW_REACH_BAND
+        elif self.player.y <= _CINDER_MARCHES_MAX_Y:
+            candidate_ids, (min_size, max_size) = _CINDER_MARCHES_BAND
+        else:
+            candidate_ids, (min_size, max_size) = _FRAYED_EDGE_BAND
+
+        size = random.randint(min_size, max_size)
+        spawn_tiles = self._nearby_spawn_tiles(self.player.x, self.player.y, size)
+        if not spawn_tiles:
+            return
+        for spawn_x, spawn_y in spawn_tiles:
+            edef = self.catalog.entities[random.choice(candidate_ids)]
+            self.game_map.entities.append(entity_from_def(edef, spawn_x, spawn_y))
+        self.message_log.add(
+            "The corrupted ground stirs - something claws its way free.", category="combat"
+        )
+
     def _tick_active_effects(self) -> None:
         """Ticks every active poison/weaken affliction on every entity
         (player or monster) once - refresh semantics, no stacking, and
@@ -1293,15 +1400,19 @@ class Engine:
 
     def process_enemy_phase(self) -> None:
         """The second half of a turn: enemy AI turns, environmental hazard
-        damage, player-death bookkeeping, world clock/quest deadlines, and
-        the FOV update - see process_player_action's docstring for why this
-        is split out. Guarded the same way process_turn's tail always was:
-        each step only runs if the game is still "playing" going into it."""
+        damage, a chance to spawn a Visitor band, player-death bookkeeping,
+        world clock/quest deadlines, and the FOV update - see
+        process_player_action's docstring for why this is split out.
+        Guarded the same way process_turn's tail always was: each step
+        only runs if the game is still "playing" going into it."""
         if self.game_state == "playing":
             self._handle_enemy_turns()
 
         if self.game_state == "playing":
             self._apply_environmental_hazard()
+
+        if self.game_state == "playing" and self.player.is_alive:
+            self._maybe_spawn_visitor_band()
 
         if self.game_state == "playing":
             self._tick_active_effects()

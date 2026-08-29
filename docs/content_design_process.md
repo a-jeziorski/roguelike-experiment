@@ -1834,6 +1834,54 @@ worth of parts" with zero recoloring needed), `mummy_priest` (Chanter),
 visually commanding option available, deliberately reserved for the
 roster's single toughest entity).
 
+## 0ad. Visitor band random encounters (`Engine._maybe_spawn_visitor_band`)
+
+The user's explicit ask, after `0ac` shipped a roster with nowhere to
+appear yet: make `ashen_plains`/`blighted_forest` stand out from an
+ordinary hazard tile like `dunes` by more than the shared chip damage -
+a chance, each turn spent on one, to spawn a small band of the Visitor's
+creations near the player. A genuinely new trigger shape, not a variant
+of the existing `data/encounters.yaml` system (`0g`): that system is
+quest-gated, fires once per run, and redirects the player into a whole
+separate hand-authored dungeon. This is tile-kind-gated (same "checked
+by tile kind, not location" discipline `0p`'s hazard damage already
+established), can fire repeatedly, and spawns directly onto the current
+map instead of transporting the player anywhere - closer to a classic
+roguelike random encounter than a scripted story beat.
+
+**Mechanically**: `_maybe_spawn_visitor_band`, called from
+`process_enemy_phase` right after `_apply_environmental_hazard` (same
+turn, same tile-kind check, `VISITOR_BAND_TILE_KINDS`), rolls
+`VISITOR_BAND_ENCOUNTER_CHANCE` (10%) and, on success, picks a band size
+and candidate roster by the player's current row - the same three
+corruption bands `0ac`'s roster was tiered against
+(`_HOLLOW_REACH_MAX_Y`/`_CINDER_MARCHES_MAX_Y` thresholds against the
+Northern Steppe's own local-y-equals-global-y coupling, documented
+in-line same as `0p`'s own content-shape assumptions), then places up to
+that many of them on nearby walkable, unoccupied tiles
+(`_nearby_spawn_tiles`) via a new `entity_from_def` (`engine/game_map.py` -
+extracted from `build_game_map`'s own entity-spawn loop, a pure
+refactor, so a runtime spawn and a level-authored one build an identical
+`Entity` from the same `EntityDef`). Logs one flavor message on success,
+nothing on a failed roll or a room-constrained empty spawn.
+
+**Doesn't stack**: no roll succeeds while any instance of these six ids
+(including a future hand-placed `excavation_warden`) is already alive
+anywhere on the map - the player has to actually deal with (or lose
+track of) a band before another can appear, rather than accumulating
+several at once. This is a global scan, not a nearby-only one; accepted
+as simple and correct rather than adding cooldown-timer state that would
+need its own save/load handling.
+
+**`excavation_warden` never rolls** - every band pool draws only from
+the other five ids, keeping the Warden's Elder-Age-site placement
+meaningful rather than diluting it into the ambient encounter pool (see
+`0ac`).
+
+**No dungeon/settlement gate** - deliberately, matching `0p`'s existing
+precedent that a tile-kind check needs no `is_overworld` special-casing;
+these two tile kinds simply don't exist anywhere else today.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
