@@ -390,3 +390,56 @@ a_debt_worth_collecting:
   target_intimidate_entity_id: millhaven_debtor
   reward_gold_amount: 20
   reward_xp_amount: 25
+
+word_from_the_north:
+  name: Word from the North
+  description: >
+    Wayford knows about the horde now, same as Millhaven - but nobody's
+    said where it actually came from, or whether there's more of it
+    still moving. The Road Warden wants an answer, not a fight: go far
+    enough north to actually see what drove them out, then come back
+    and say so.
+  target_visited_description: >
+    You've seen it - ground gone the color of ash long before you
+    reached what's left of a watch post up there, and things moving in
+    it that don't behave like anything should. Get back to Wayford and
+    tell the Road Warden what's actually out there.
+  completed_description: >
+    You went, you saw, and you came back - which is more than the
+    horde's own home managed. Whatever's doing that to the land north
+    of here, the Road Warden's first question wasn't "can we fight it."
+    It was "how much time do we have."
+  failed_description: >
+    Whatever you saw north of the mountains, there's nobody left at
+    Wayford to tell about it now.
+  completion_message: You made it there and back, and the news is worse than a horde. Wayford knows to keep watching north now, not just west.
+  failure_message: "Wayford's gone before the warning ever came back south. Whatever's happening north of the mountains, nobody here got to hear it first."
+  given_message: "New quest: Word from the North - the Road Warden wants to know where the horde actually came from, and whether more of it is coming. Not a fight - just go far enough to see for yourself, and come back."
+  questgiver_done_dialogue: Ash instead of grass, you said. And something living in it that isn't goblins. I believe you - wish I didn't have to.
+  questgiver_entity_id: wayford_road_warden
+  requires_quest_id: spreading_the_warning
+  target_dungeon_id: northern_watch_post
+  voided_by_dungeon_id: wayford
+  reward_xp_amount: 20
+
+a_warning_worth_carrying:
+  name: A Warning Worth Carrying
+  description: >
+    The Sentry's watched this road long enough to know Millhaven's
+    closer to whatever's coming than anyone there realizes. They're not
+    asking for help - just for someone willing to carry the word the
+    rest of the way, since nobody up here is in a position to leave.
+  completed_description: >
+    You told the Village Chief what the Sentry asked you to - that
+    whatever's happening north of Wayford isn't finished happening, and
+    Millhaven should hear it from somebody before they hear it from no
+    one at all. The Chief didn't look surprised, just tired, the way
+    people get when a warning confirms something they'd already started
+    to suspect.
+  completion_message: Millhaven's been warned again - this time about what's coming from farther off than a wandering horde.
+  given_message: "New quest: A Warning Worth Carrying - the Sentry wants Millhaven told what's happening on the Northern Steppe, since nobody at the post is in a position to carry the word there themselves."
+  questgiver_done_dialogue: Millhaven knows now. That's one more town that isn't waiting to find out the hard way.
+  target_done_dialogue: North of Wayford, is it. First the goblins ran from something, now you're telling me what it was doing to the land. I'll have Millhaven keep its own watch up, for whatever good that does us this far from it.
+  questgiver_entity_id: watch_post_sentry
+  target_entity_id: village_chief
+  reward_xp_amount: 15

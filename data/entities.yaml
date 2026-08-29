@@ -710,3 +710,14 @@ excavation_warden:
   inflicts_duration: 1
   xp_reward: 65
   description: Posted at the dig and forgotten there on purpose - patient in a way nothing alive manages, and in no hurry to let anyone closer.
+
+watch_post_sentry:
+  name: Sentry
+  glyph: s
+  color: [150, 140, 120]
+  hp: 10
+  attack: 0
+  defense: 0
+  ai: villager
+  stationary: true
+  description: Keeps the watch this post is named for, same as whoever kept it before they left. Somebody has to.

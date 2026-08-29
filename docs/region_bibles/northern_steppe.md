@@ -87,15 +87,18 @@ survives even though nothing currently walks it in the other direction.
 
 ### 1. The Watch Post
 
-A landmark (not yet a dungeon) in the Frayed Edge, near the road, close
-enough to the Heartlands border that whoever kept this post could
-plausibly still be alive to carry a warning south. **Reserved for**: a
-settler town or similar outpost whose questgiver sends the player back
-south with a fresh warning to Millhaven - the next link in the chain
-`spreading_the_warning`/`a_wall_worth_holding` already built. Its
-current landmark description ("a hastily-abandoned watch post... left in
-a hurry, heading south") is deliberately ambiguous about whether anyone
-is still there - that's a decision for whoever builds the real dungeon.
+**Built.** What was a `landmark` is now a real dungeon
+(`data/dungeons/northern_watch_post/`, `docs/dungeon_bibles/northern_watch_post.md`) -
+a small settlement in the Frayed Edge, near the road, close enough to
+the Heartlands border that whoever kept this post could plausibly still
+be alive to carry a warning south. The ambiguity the original landmark
+description left open ("left in a hurry, heading south") resolved to:
+mostly, but not entirely - one Sentry stayed, plus two more who didn't
+leave. Reached via `word_from_the_north` (Wayford's Road Warden,
+`requires_quest_id: spreading_the_warning` - the next link in the chain
+`spreading_the_warning`/`a_wall_worth_holding` already built) and
+`a_warning_worth_carrying` (the Sentry sending the player on to
+Millhaven, closing the loop this section originally promised).
 
 ### 2. The Goblin Camp
 
@@ -123,12 +126,12 @@ of recent digging, nothing explained beyond that.
 
 ## Roster
 
-The overworld cell itself still ships with zero entities, zero items,
-and zero dungeon entrances - purely terrain, exactly as the schema
-already permits (`load_overworld` only ever produces empty
-`entity_spawns`/`item_spawns`/`doors`/`stairs` for every cell, cells or
-no cells). Nothing is actually spawned anywhere in the Northern Steppe
-yet.
+The overworld cell itself still ships with zero entities and zero
+items - purely terrain, exactly as the schema already permits
+(`load_overworld` only ever produces empty `entity_spawns`/`item_spawns`/
+`doors`/`stairs` for every cell, cells or no cells). It now has exactly
+one real `dungeon_entrance` (the Watch Post, above) - the region's first
+actual place to arrive at, rather than a landmark to merely look at.
 
 The Visitor's creations - the monster roster this region's eventual
 dungeons and any overworld encounters will draw on - are designed and

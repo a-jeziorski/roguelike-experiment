@@ -1,0 +1,26 @@
+id: level_01
+name: The Watch Post
+
+player_start_tile: plains
+
+map: |
+  ####################
+  #,x@,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,S,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,1,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,2,,,#
+  ####################
+
+legend:
+  "#": wall
+  ",": plains
+  "@": player_start
+  "x": { stairs_up: null, description: "Back out onto open, wind-scoured ground - the road south is still there, for now.", announce: true }
+  "S": { entity: watch_post_sentry, tile: plains, dialogue: "Someone should tell Millhaven before they hear it from whoever runs next. Word's easier carried by choice than dragged in after." }
+  "1": { entity: villager, tile: plains, dialogue: "Wasn't much of a choice, staying. Nowhere south felt like it'd have us, not with what we'd seen behind us." }
+  "2": { entity: villager, tile: plains, dialogue: "No cart's come through since before the leaves turned. Didn't used to go a whole season without one." }

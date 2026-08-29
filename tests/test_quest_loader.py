@@ -20,13 +20,13 @@ ALL_SHIPPED_QUEST_IDS = {
     "clearing_the_watch_road", "a_record_worth_keeping", "word_down_the_road",
     "spreading_the_warning", "a_wall_worth_holding", "what_the_tide_kept",
     "a_debt_worth_collecting", "the_uninvited_tribe", "reclaiming_the_windrest",
-    "clearing_the_sunless_hollow",
+    "clearing_the_sunless_hollow", "word_from_the_north", "a_warning_worth_carrying",
 }
 
 
 def test_load_quests_loads_the_real_shipped_file():
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
 
     assert set(quests) == ALL_SHIPPED_QUEST_IDS
     assert quests["goblin_warning"].starting_status == "in_progress"
@@ -39,7 +39,7 @@ def test_load_quests_loads_the_real_shipped_file():
 
 def test_real_shipped_content_spreading_the_warning_tightens_a_wall_worth_holding():
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
 
     tighten = next(
         c.tighten_deadline for c in quests["spreading_the_warning"].on_fail
@@ -55,7 +55,7 @@ def test_load_quests_end_to_end_matches_pre_refactor_values():
     create_starting_quest_log() hardcoded, now loaded through the full
     load_quests -> create_quest_log pipeline against the real file."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
 
     assert set(log.quests) == ALL_SHIPPED_QUEST_IDS
@@ -1084,7 +1084,7 @@ def test_load_quests_allows_the_full_set_of_description_overrides(tmp_path):
 
 def test_load_quests_real_shipped_quests_have_the_new_description_overrides():
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
 
     assert quests["goblin_warning"].completed_description
     assert quests["goblin_warning"].failed_description
@@ -1099,6 +1099,10 @@ def test_load_quests_real_shipped_quests_have_the_new_description_overrides():
     assert quests["word_down_the_road"].completed_description
     assert quests["a_debt_worth_collecting"].target_intimidated_description
     assert quests["a_debt_worth_collecting"].completed_description
+    assert quests["word_from_the_north"].target_visited_description
+    assert quests["word_from_the_north"].completed_description
+    assert quests["word_from_the_north"].failed_description
+    assert quests["a_warning_worth_carrying"].completed_description
     assert quests["a_debt_worth_collecting"].failed_description
 
 
@@ -1112,7 +1116,7 @@ def test_fetch_fungus_current_description_progresses_through_every_real_stage():
     against the real shipped fetch_fungus quest: starting pitch -> carrying
     the item -> completed, each stage a genuinely different string."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
     quest = log.quests["fetch_fungus"]
 
@@ -1135,7 +1139,7 @@ def test_kill_the_warden_current_description_progresses_through_every_real_stage
     the kill-then-report shape: starting pitch -> target recorded dead ->
     completed, each stage a genuinely different string."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
     quest = log.quests["kill_the_warden"]
 
@@ -1158,7 +1162,7 @@ def test_word_down_the_road_current_description_progresses_through_every_real_st
     report shape: starting pitch -> Millhaven recorded visited -> completed,
     each stage a genuinely different string."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
     quest = log.quests["word_down_the_road"]
 
@@ -1181,7 +1185,7 @@ def test_a_debt_worth_collecting_current_description_progresses_through_every_re
     shape: starting pitch -> debtor recorded intimidated -> completed, each
     stage a genuinely different string."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
     quest = log.quests["a_debt_worth_collecting"]
 
@@ -1199,12 +1203,58 @@ def test_a_debt_worth_collecting_current_description_progresses_through_every_re
     assert completed not in (starting, intimidated)
 
 
+def test_word_from_the_north_current_description_progresses_through_every_real_stage():
+    """Same end-to-end regression net again, for the Northern Steppe recon
+    hook's dungeon-arrival -> report shape: starting pitch -> the Watch Post
+    recorded visited -> completed, each stage a genuinely different string."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
+    log = create_quest_log(quests)
+    quest = log.quests["word_from_the_north"]
+
+    starting = quest.current_description([], set(), set(), set())
+    assert starting == quest.description
+
+    quest.status = "in_progress"
+    visited = quest.current_description([], set(), {"northern_watch_post"}, set())
+    assert visited == quest.target_visited_description
+    assert visited != starting
+
+    quest.status = "completed"
+    completed = quest.current_description([], set(), {"northern_watch_post"}, set())
+    assert completed == quest.completed_description
+    assert completed not in (starting, visited)
+
+
+def test_word_from_the_north_is_withheld_until_spreading_the_warning_completes():
+    """requires_quest_id chain-gating, checked directly at the loader/quest-log
+    level (test_engine.py's own chain test covers the live Talk-driven
+    behavior end to end) - word_from_the_north must not be grantable while
+    spreading_the_warning is still in_progress."""
+    catalog = load_catalog()
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
+    log = create_quest_log(quests)
+
+    hook = log.quests["word_from_the_north"]
+    prerequisite = log.quests["spreading_the_warning"]
+
+    assert hook.status == "not_given"
+    assert hook.requires_quest_id == "spreading_the_warning"
+    assert hook.voided_by_dungeon_id == "wayford"
+    assert prerequisite.status in ("not_given", "in_progress")  # not completed yet - the real starting state
+
+    carry_word = log.quests["a_warning_worth_carrying"]
+    assert carry_word.questgiver_entity_id == "watch_post_sentry"
+    assert carry_word.target_entity_id == "village_chief"
+    assert carry_word.requires_quest_id is None  # granted freely once the Sentry's actually been met
+
+
 def test_a_debt_worth_collecting_fails_immediately_if_the_debtor_is_killed_instead():
     """The intimidate shape's unique failure path: killing the target force-
     fails the quest right away (fail_intimidate_by_death), not on the next
     report - unlike every other trigger shape's fail conditions."""
     catalog = load_catalog()
-    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford"})
+    quests = load_quests(QUESTS_PATH, catalog, known_dungeon_ids={"millhaven", "wayford", "northern_watch_post"})
     log = create_quest_log(quests)
     quest = log.quests["a_debt_worth_collecting"]
     quest.status = "in_progress"

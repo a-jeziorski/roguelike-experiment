@@ -4517,13 +4517,15 @@ def test_talk_to_adjacent_completes_a_fetch_quest_when_carrying_the_item():
 
 
 def test_talk_to_adjacent_chains_spreading_the_warning_after_goblin_warning():
-    """Full requires_quest_id chain against the real shipped content: the
-    Village Chief's follow-up quest is withheld until goblin_warning is
+    """Full requires_quest_id chain against the real shipped content, now
+    three links deep (goblin_warning -> spreading_the_warning ->
+    word_from_the_north): each quest is withheld until its prerequisite is
     actually completed, needs a second Talk to grant (check_questgiver runs
-    before check_talked_to within the same call, so the chain quest can't
-    grant itself in the same Talk that completes its prerequisite), and the
-    Chief's post-completion line updates instead of getting stuck on
-    goblin_warning's own line (the followup_dialogue reversed-order fix)."""
+    before check_talked_to/check_dungeon_report within the same call, so a
+    chain quest can't grant itself in the same Talk that completes its
+    prerequisite), and each questgiver's post-completion line updates
+    instead of getting stuck on the prerequisite's own line (the
+    followup_dialogue reversed-order fix)."""
     catalog = load_catalog()
     game_map = make_open_map(5, 5)
     player = make_player(1, 1)
@@ -4558,9 +4560,12 @@ def test_talk_to_adjacent_chains_spreading_the_warning_after_goblin_warning():
     assert chained.status == "completed"
     assert chained.completion_message in engine.message_log.messages
 
-    engine.talk_to_adjacent()  # talk to the Warden again: his own line updates too
+    engine.talk_to_adjacent()  # talk to the Warden again: his own line replays, and it also grants the next chained quest
 
-    assert engine.message_log.messages[-1] == f'Road Warden: "{chained.target_done_dialogue}"'
+    next_chained = quest_log.quests["word_from_the_north"]
+    assert next_chained.status == "in_progress"  # granted by this same Talk - a third link in the chain
+    assert engine.message_log.messages[-2] == f'Road Warden: "{chained.target_done_dialogue}"'
+    assert engine.message_log.messages[-1] == next_chained.given_message
 
     player.x, player.y = 1, 1  # back to the Chief
     engine.talk_to_adjacent()

@@ -146,9 +146,13 @@ overworld cell-grid): the Northern Steppe, the same plains/forest/
 mountain climate as the Heartlands, extensively corrupted by the
 Visitor's months-long presence (see `docs/main_story.md`) - the
 homeland the goblin horde fled. See
-`docs/region_bibles/northern_steppe.md` for the region's full design;
-it ships this pass as overworld terrain only, with three future dungeon
-locations reserved as `landmark` tiles rather than built.
+`docs/region_bibles/northern_steppe.md` for the region's full design.
+It now has its first real inhabited location - the Watch Post
+(`northern_watch_post`, a small settlement of survivors who stayed
+behind), reached via `word_from_the_north`/`a_warning_worth_carrying`
+(`data/quests.yaml`) - three further locations (the goblin homeland, two
+Elder Age sites) are still reserved as `landmark` tiles rather than
+built.
 
 ## Current roster
 

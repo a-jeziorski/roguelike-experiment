@@ -1264,10 +1264,11 @@ SHIPPED_DUNGEON_IDS = {
     "farrows_stake",
     "sunless_hollow",
     "visitor_band_ambush",
+    "northern_watch_post",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow"]
-SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "windbreak_hold", "farrows_stake"]
+SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "windbreak_hold", "farrows_stake", "northern_watch_post"]
 
 
 def test_load_dungeon_registry_finds_all_shipped_dungeons():
@@ -1663,8 +1664,8 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.height == 180
     assert overworld.player_start == (29, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 16  # Northern Steppe ships no dungeons yet
-    assert len(overworld.tile_descriptions) == 7  # heartlands' 3 signposts + Northern Steppe's 4 landmarks
+    assert len(overworld.dungeon_entrances) == 17  # heartlands' 16 + Northern Steppe's first, the Watch Post
+    assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(
         OVERWORLD_DIR / "cells" / "heartlands.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
@@ -1675,17 +1676,23 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.tiles[y_offset:] == heartlands.tiles
     hx, hy = heartlands.player_starts[0]
     assert overworld.player_start == (hx, hy + y_offset)
-    assert {(e.x, e.y - y_offset, e.dungeon_id) for e in overworld.dungeon_entrances} == {
+    # Only the entrances actually inside the Heartlands portion (y >= y_offset) -
+    # the Northern Steppe now has its own first entrance (the Watch Post),
+    # which has no counterpart in heartlands.lvl and would otherwise show up
+    # as a spurious mismatch here.
+    assert {(e.x, e.y - y_offset, e.dungeon_id) for e in overworld.dungeon_entrances if e.y >= y_offset} == {
         (e.x, e.y, e.dungeon_id) for e in heartlands.dungeon_entrances
     }
     heartlands_descriptions = {(d.x, d.y, d.text) for d in heartlands.tile_descriptions}
     assert {(d.x, d.y - y_offset, d.text) for d in overworld.tile_descriptions} >= heartlands_descriptions
 
 
-def test_load_overworld_northern_steppe_cell_parses_with_no_dungeons_yet():
-    """The Northern Steppe ships this pass as an overworld region only - no
-    dungeons yet (see docs/region_bibles/northern_steppe.md) - just four
-    `landmark` tiles reserving future dungeon locations."""
+def test_load_overworld_northern_steppe_cell_has_its_first_dungeon():
+    """The Northern Steppe's first real dungeon - the Watch Post
+    (see docs/region_bibles/northern_steppe.md, docs/dungeon_bibles/
+    northern_watch_post.md) - replaces what was originally a `landmark`-only
+    placeholder; the region's other three reserved locations (the goblin
+    homeland, two Elder Age sites) are still landmarks, no dungeons yet."""
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     known_dungeon_ids = set(dungeon_registry)
@@ -1698,8 +1705,9 @@ def test_load_overworld_northern_steppe_cell_parses_with_no_dungeons_yet():
     assert steppe.width == 150
     assert steppe.height == 90
     assert steppe.player_starts == []
-    assert steppe.dungeon_entrances == []
-    assert len(steppe.tile_descriptions) == 4
+    assert len(steppe.dungeon_entrances) == 1
+    assert steppe.dungeon_entrances[0].dungeon_id == "northern_watch_post"
+    assert len(steppe.tile_descriptions) == 3
     kinds = {tile for row in steppe.tiles for tile in row}
     assert "ashen_plains" in kinds
     assert "blighted_forest" in kinds

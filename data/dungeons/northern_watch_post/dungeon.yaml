@@ -1,0 +1,13 @@
+id: northern_watch_post
+name: The Watch Post
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A small watch post on the Northern Steppe's southern edge, most of its
+  people long gone with the rest of the fleeing tribe further north - one
+  or two stayed anyway, keeping the same watch on the road south the post
+  was always meant to keep. Reached from the Heartlands via the overworld
+  connection north of Wayford (see docs/region_bibles/northern_steppe.md);
+  the first real destination in the Northern Steppe, deliberately safe -
+  no hostile roster here at all.
+inspect_text: A lean-to roof, still standing, and someone under it who never stopped watching the road south.

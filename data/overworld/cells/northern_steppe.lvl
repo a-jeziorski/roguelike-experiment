@@ -102,7 +102,7 @@ legend:
   ".": road
   ";": ashen_plains
   "Y": blighted_forest
-  "1": { tile: landmark, description: "A hastily-abandoned watch post, its lean-to roof still standing. Whoever kept this post left in a hurry, heading south.", announce: true }
+  "1": { dungeon_entrance: northern_watch_post }
   "2": { tile: landmark, description: "The bones of a goblin camp - firepits gone cold, huts caved in under drifting ash. Whatever lived here left everything behind but its people.", announce: true }
   "3": { tile: landmark, description: "A stone shape half-swallowed by the ash, its lines too deliberate to be natural. Something has been digging around its base, recently.", announce: true }
   "4": { tile: landmark, description: "A wide, terraced scar in the earth - not a quarry, not a mine, dug with a patience nothing living seems to have. It is far from finished.", announce: true }
