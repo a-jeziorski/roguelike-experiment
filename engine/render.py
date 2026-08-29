@@ -71,11 +71,16 @@ TILE_VISUALS = {
     # player before they've taken the first hit of damage.
     "dunes": {"glyph": "\"", "dark": (75, 60, 30), "light": (210, 180, 110)},
     # The Northern Steppe's corruption (see Engine.ENVIRONMENTAL_HAZARD_MESSAGES) -
-    # a sickly, ashen grey standing in for plains' green, distinct from dunes'
-    # warm gold so the two hazards still read apart from each other at a glance.
-    "ashen_plains": {"glyph": ";", "dark": (45, 42, 40), "light": (140, 130, 120)},
-    # A dead, blackened counterpart to forest's living green.
-    "blighted_forest": {"glyph": "Y", "dark": (25, 22, 22), "light": (70, 60, 65)},
+    # a sickly, cool grey standing in for plains' green, distinct from dunes'
+    # warm gold so the two hazards still read apart from each other at a
+    # glance. Colors tuned to match data/sprites.yaml's tile_kinds.ashen_plains
+    # sprite (a grey stone-texture tile, repurposed as scorched ground) under
+    # engine/sprites.py's fg-tint compositing, not just picked for the ASCII glyph.
+    "ashen_plains": {"glyph": ";", "dark": (42, 45, 47), "light": (140, 150, 155)},
+    # A dead, bare-branched counterpart to forest's living green - see
+    # tile_kinds.blighted_forest's sprite (a leafless tree over ashen_plains).
+    # Colors tuned to the same sprite for the same reason as ashen_plains above.
+    "blighted_forest": {"glyph": "Y", "dark": (35, 27, 20), "light": (110, 85, 60)},
 }
 
 TILE_DESCRIPTIONS = {
