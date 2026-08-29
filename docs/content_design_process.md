@@ -1834,53 +1834,79 @@ worth of parts" with zero recoloring needed), `mummy_priest` (Chanter),
 visually commanding option available, deliberately reserved for the
 roster's single toughest entity).
 
-## 0ad. Visitor band random encounters (`Engine._maybe_spawn_visitor_band`)
+## 0ad. Visitor band ambush encounters (`Engine._maybe_trigger_visitor_band_encounter`)
 
 The user's explicit ask, after `0ac` shipped a roster with nowhere to
 appear yet: make `ashen_plains`/`blighted_forest` stand out from an
 ordinary hazard tile like `dunes` by more than the shared chip damage -
-a chance, each turn spent on one, to spawn a small band of the Visitor's
-creations near the player. A genuinely new trigger shape, not a variant
-of the existing `data/encounters.yaml` system (`0g`): that system is
-quest-gated, fires once per run, and redirects the player into a whole
-separate hand-authored dungeon. This is tile-kind-gated (same "checked
-by tile kind, not location" discipline `0p`'s hazard damage already
-established), can fire repeatedly, and spawns directly onto the current
-map instead of transporting the player anywhere - closer to a classic
-roguelike random encounter than a scripted story beat.
+a chance, each turn spent on one, to pull the player into a fight with a
+band of the Visitor's creations. First built as a direct-spawn-onto-the-
+overworld-map mechanic; the user clarified they meant something modeled
+on `goblin_ambush` instead (`0g`) - pulled off the overworld into a
+dedicated encounter dungeon, not monsters appearing where you stand.
+Rebuilt on that model. The one genuinely new piece relative to
+`goblin_ambush`: the trigger itself is tile-kind-and-chance (same
+"checked by tile kind, not location" discipline `0p`'s hazard damage
+already established), not quest-gated, and can fire repeatedly rather
+than once per run - closer to a classic roguelike random encounter than
+a scripted story beat, wearing `goblin_ambush`'s exact delivery
+mechanism.
 
-**Mechanically**: `_maybe_spawn_visitor_band`, called from
-`process_enemy_phase` right after `_apply_environmental_hazard` (same
-turn, same tile-kind check, `VISITOR_BAND_TILE_KINDS`), rolls
-`VISITOR_BAND_ENCOUNTER_CHANCE` (10%) and, on success, picks a band size
-and candidate roster by the player's current row - the same three
-corruption bands `0ac`'s roster was tiered against
-(`_HOLLOW_REACH_MAX_Y`/`_CINDER_MARCHES_MAX_Y` thresholds against the
+**The trigger, Engine-side**: `_maybe_trigger_visitor_band_encounter`,
+called from `process_enemy_phase` right after `_apply_environmental_hazard`
+(same turn, same `VISITOR_BAND_TILE_KINDS` check), rolls
+`VISITOR_BAND_ENCOUNTER_CHANCE` (10%), gated on `is_overworld` (mirroring
+`_due_encounter`'s own gate in `main.py`, since this drives the same
+kind of cross-Engine handoff) and sets `wants_visitor_band_encounter` -
+a mailbox flag, same shape as `wants_overworld`/`pending_dungeon_entry`.
+This `Engine` has no access to the dungeon registry, so it can only
+signal the intent; `main.py`'s `resolve_transition` is what actually
+acts on it.
+
+**The redirect, main.py-side**: `_redirect_into_visitor_band`, checked
+first inside `resolve_transition`'s existing `is_overworld` block (ahead
+of `_due_encounter`), departs the player onto
+`VISITOR_BAND_AMBUSH_DUNGEON_ID` ("visitor_band_ambush," a real
+dungeon-registry entry - `data/dungeons/visitor_band_ambush/`, an open
+`plains` clearing ringed by `mountain` with gaps for `open_boundary` to
+work, no fixed roster of its own; see its own dungeon bible). Picks a
+band size and roster by the player's row at the moment of firing
+(`roll_visitor_band`, `engine/engine.py` - the same three corruption
+bands `0ac`'s roster was tiered against,
+`HOLLOW_REACH_MAX_Y`/`CINDER_MARCHES_MAX_Y` thresholds against the
 Northern Steppe's own local-y-equals-global-y coupling, documented
-in-line same as `0p`'s own content-shape assumptions), then places up to
-that many of them on nearby walkable, unoccupied tiles
-(`_nearby_spawn_tiles`) via a new `entity_from_def` (`engine/game_map.py` -
-extracted from `build_game_map`'s own entity-spawn loop, a pure
-refactor, so a runtime spawn and a level-authored one build an identical
-`Entity` from the same `EntityDef`). Logs one flavor message on success,
-nothing on a failed roll or a room-constrained empty spawn.
+in-line same as `0p`'s own content-shape assumptions), places them on
+walkable, unoccupied tiles near the arena's `player_start`
+(`nearby_walkable_tiles`, `engine/game_map.py`) via `entity_from_def`
+(also `engine/game_map.py` - extracted from `build_game_map`'s own
+entity-spawn loop, a pure refactor verified against the full suite
+before use, so a runtime-injected monster and a level-authored one build
+an identical `Entity` from the same `EntityDef`).
 
-**Doesn't stack**: no roll succeeds while any instance of these six ids
-(including a future hand-placed `excavation_warden`) is already alive
-anywhere on the map - the player has to actually deal with (or lose
-track of) a band before another can appear, rather than accumulating
-several at once. This is a global scan, not a nearby-only one; accepted
-as simple and correct rather than adding cooldown-timer state that would
-need its own save/load handling.
+**Never resumes a cached fight - always rebuilds fresh.** Every other
+encounter dungeon (`goblin_ambush` included) caches its `Engine` in
+`active_engines` and resumes it on a later visit, because the fight is
+always the same one. This dungeon's roster is different every single
+time it fires, so `_redirect_into_visitor_band` always builds a new
+`Engine` and unconditionally overwrites whatever was previously cached
+under that dungeon id - resuming a stale one would either replay a
+finished fight or silently discard a freshly rolled band. Verified with
+a dedicated test that fires the encounter twice and checks the second
+`Engine` is a distinct instance with live (not already-killed) monsters.
 
-**`excavation_warden` never rolls** - every band pool draws only from
-the other five ids, keeping the Warden's Elder-Age-site placement
-meaningful rather than diluting it into the ambient encounter pool (see
-`0ac`).
+**`excavation_warden` never rolls** - every band pool in
+`roll_visitor_band` draws only from the other five ids, keeping the
+Warden's Elder-Age-site placement meaningful rather than diluting it
+into the ambient encounter pool (see `0ac`).
 
-**No dungeon/settlement gate** - deliberately, matching `0p`'s existing
-precedent that a tile-kind check needs no `is_overworld` special-casing;
-these two tile kinds simply don't exist anywhere else today.
+**Known limitation, accepted rather than solved**: a band's monsters are
+appended directly to the arena's `GameMap.entities`, not through
+`LevelDef.entity_spawns`, so they never populate `GameMap.entity_spawn_index` -
+the only thing `engine/save.py`'s `capture_save`/`restore_save` actually
+round-trips monster state through. Saving mid-ambush and reloading loses
+the band entirely. Same "conservative first pass, document the gap"
+precedent as monster status effects never persisting across a save/load
+(`0t`) - see the dungeon's own bible for the full note.
 
 ## 1. Narrative framing
 

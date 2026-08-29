@@ -40,8 +40,8 @@ from engine.actions import (
 )
 from engine.audio import SoundManager
 from engine.clock import GameClock
-from engine.engine import Engine
-from engine.game_map import build_game_map
+from engine.engine import Engine, roll_visitor_band
+from engine.game_map import build_game_map, entity_from_def, nearby_walkable_tiles
 from engine.quest import QuestLog, create_quest_log
 from engine.save import capture_save, load_from_path, restore_save, save_to_path
 from engine.sprites import apply_sprites
@@ -89,6 +89,11 @@ REPO_ROOT = Path(__file__).resolve().parent
 SAVE_PATH = Path(__file__).resolve().parent / "saves" / "save.json"
 STARTING_DUNGEON_ID = "prison_tower"
 OVERWORLD_KEY = "overworld"
+# The Northern Steppe's random-encounter destination (see
+# Engine._maybe_trigger_visitor_band_encounter, _redirect_into_visitor_band
+# below) - a real dungeon-registry entry like goblin_ambush, just never
+# pointed to by an overworld dungeon_entrance tile.
+VISITOR_BAND_AMBUSH_DUNGEON_ID = "visitor_band_ambush"
 
 # 16 rather than an arbitrary size: matches the Kenney sprite packs' native
 # 16x16 resolution exactly (crisp, no resize) and downscales RLTiles' native
@@ -590,6 +595,43 @@ def _redirect_into_encounter(
     return encounter.encounter_dungeon_id, enc_target
 
 
+def _redirect_into_visitor_band(
+    overworld_engine: Engine, active_engines: dict[str, Engine],
+    dungeon_registry: dict, catalog, sprite_codepoints, position: tuple[int, int],
+) -> tuple[str, Engine]:
+    """The Visitor-band-ambush counterpart to _redirect_into_encounter
+    above, fired by Engine._maybe_trigger_visitor_band_encounter's
+    wants_visitor_band_encounter mailbox flag rather than a quest-gated
+    EncounterDef. Always builds a fresh VISITOR_BAND_AMBUSH_DUNGEON_ID
+    Engine and overwrites any previously cached one in active_engines -
+    unlike every other encounter dungeon, this one has no fixed roster to
+    resume: each fire rolls a brand-new random band (roll_visitor_band),
+    so reusing a stale cached instance would either resume a stale fight
+    or (worse) silently drop the new roll on the floor. `position` is
+    wherever the player actually was on the Northern Steppe the moment
+    this fired - both the tier roll_visitor_band uses and (via
+    Engine.overworld_return_position) where fleeing/clearing the ambush
+    hands the player back to."""
+    enc_player = overworld_engine.depart_player()
+    dungeon = dungeon_registry[VISITOR_BAND_AMBUSH_DUNGEON_ID]
+    starting_level = dungeon.levels[dungeon.starting_level]
+    enc_map, _ = build_game_map(starting_level, catalog, player=enc_player)
+    enc_target = Engine(
+        enc_map, enc_player, starting_level.name,
+        catalog=catalog, levels=dungeon.levels, starting_level=starting_level,
+        clock=overworld_engine.clock, quest_log=overworld_engine.quest_log,
+        sprite_codepoints=sprite_codepoints, overworld_return_position=position,
+    )
+    band = roll_visitor_band(position[1])
+    spawn_tiles = nearby_walkable_tiles(enc_map, enc_player.x, enc_player.y, len(band), radius=5)
+    for (spawn_x, spawn_y), entity_id in zip(spawn_tiles, band):
+        enc_map.entities.append(entity_from_def(catalog.entities[entity_id], spawn_x, spawn_y))
+    active_engines[VISITOR_BAND_AMBUSH_DUNGEON_ID] = enc_target
+    enc_target.message_log.add("Shapes rise from the ash around you!")
+    enc_target.quest_log.record_dungeon_arrival(VISITOR_BAND_AMBUSH_DUNGEON_ID)
+    return VISITOR_BAND_AMBUSH_DUNGEON_ID, enc_target
+
+
 def resolve_transition(
     active_key: str,
     engine: Engine,
@@ -617,6 +659,14 @@ def resolve_transition(
     on first visit and cached in active_engines thereafter, so leaving and
     later returning resumes exactly the state that dungeon was left in.
 
+    Checked first, also only while on the overworld: Engine's own
+    wants_visitor_band_encounter mailbox flag (set by
+    Engine._maybe_trigger_visitor_band_encounter, a tile-kind-and-chance
+    check with no quest gate at all) redirects into a freshly randomized
+    VISITOR_BAND_AMBUSH_DUNGEON_ID via _redirect_into_visitor_band - see
+    that function's own docstring for why it can't reuse encounter_registry's
+    cached-per-dungeon-id pattern below.
+
     `encounter_registry` (data/encounters.yaml, EncounterDef -> ...) drives
     a two-step arm-then-fire sequence, not an instant redirect: departing
     trigger_dungeon_id with its gate quest at gate_quest_status arms a
@@ -633,6 +683,11 @@ def resolve_transition(
         return active_key, engine
 
     if engine.is_overworld:
+        if engine.wants_visitor_band_encounter:
+            return _redirect_into_visitor_band(
+                engine, active_engines, dungeon_registry, catalog,
+                sprite_codepoints, (engine.player.x, engine.player.y),
+            )
         encounter = _due_encounter(engine.quest_log, encounter_registry, engine.clock)
         if encounter is not None:
             return _redirect_into_encounter(

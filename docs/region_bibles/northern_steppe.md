@@ -162,12 +162,16 @@ each one.
   line-of-sight like ordinary `forest` does (dead trees still stand in
   the way); `ashen_plains` stays walkable/transparent like `dunes`.
 - **A second reason these tiles are dangerous**: standing on either one
-  also carries a chance, each turn, to spawn a band of the Visitor's
-  creations nearby (`Engine._maybe_spawn_visitor_band`, see
-  `docs/content_design_process.md` §0ad) - the roster designed above
-  isn't just reserved for future dungeons, it's already live wherever
-  the region's corrupted ground is. Band composition escalates by row
-  the same way the corruption bands themselves do.
+  also carries a chance, each turn, to be pulled into a fight with a band
+  of the Visitor's creations - modeled on `goblin_ambush`
+  (`Engine._maybe_trigger_visitor_band_encounter`,
+  `main.py`'s `_redirect_into_visitor_band`, see
+  `docs/content_design_process.md` §0ad and the ambush's own
+  `docs/dungeon_bibles/visitor_band_ambush.md`) rather than monsters
+  appearing directly on the overworld. The roster designed above isn't
+  just reserved for future dungeons, it's already live wherever the
+  region's corrupted ground is. Band composition escalates by row the
+  same way the corruption bands themselves do.
 - **Not a uniform hazard field**: per the "narrow enough to cross in one
   push" discipline the Scoured Reach already established, the corruption
   is authored as organic patches (denser heading north) rather than

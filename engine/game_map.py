@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import math
+import random
 
 import numpy as np
 import tcod.map
@@ -305,6 +306,27 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         trainer_perks=edef.trainer_perks,
         entity_id=edef.id,
     )
+
+
+def nearby_walkable_tiles(game_map: "GameMap", x: int, y: int, count: int, radius: int = 3) -> list[tuple[int, int]]:
+    """Up to `count` distinct walkable, unoccupied, in-bounds tiles within
+    `radius` of (x, y), excluding (x, y) itself - how main.py's
+    _redirect_into_visitor_band places a freshly rolled band in the ambush
+    arena without ever landing one on top of the player, another entity, or
+    impassable terrain. Returns fewer than `count` (down to an empty list)
+    if the surrounding terrain can't fit that many - callers must handle a
+    short result rather than assume the full count was placed."""
+    candidates = [
+        (cx, cy)
+        for cx in range(x - radius, x + radius + 1)
+        for cy in range(y - radius, y + radius + 1)
+        if (cx, cy) != (x, y)
+        and game_map.in_bounds(cx, cy)
+        and game_map.is_walkable(cx, cy)
+        and game_map.blocking_entity_at(cx, cy) is None
+    ]
+    random.shuffle(candidates)
+    return candidates[:count]
 
 
 def _apply_elite_scaling(entity: Entity) -> None:

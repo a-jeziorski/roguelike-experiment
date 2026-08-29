@@ -1,0 +1,28 @@
+id: level_01
+name: Scoured Ground
+
+open_boundary: true
+open_boundary_message: "You break away across the ash, back the way you came."
+player_start_tile: plains
+
+map: |
+  ^^^^^^^^^,^^^^^^^^^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ,,,,,,,,,@,,,,,,,,,
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^,,,,,,,,,,,,,,,,,^
+  ^^^^^^^^^,^^^^^^^^^
+
+legend:
+  "^": mountain
+  ",": plains
+  "@": player_start

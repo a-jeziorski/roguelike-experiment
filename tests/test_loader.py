@@ -1263,6 +1263,7 @@ SHIPPED_DUNGEON_IDS = {
     "the_windrest",
     "farrows_stake",
     "sunless_hollow",
+    "visitor_band_ambush",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow"]

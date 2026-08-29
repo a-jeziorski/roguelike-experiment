@@ -1286,11 +1286,95 @@ def test_resolve_transition_ambush_resumes_the_same_cached_engine_after_a_restar
     assert goblin not in ambush_engine_2.game_map.entities  # still dead, not rebuilt fresh
 
 
+# --- Visitor band ambush (Engine.wants_visitor_band_encounter) ---
+
+
+def _overworld_engine(catalog, dungeon_registry, overworld_level, *, player_y=None, clock=None, quest_log=None):
+    overworld_map, overworld_player = build_game_map(overworld_level, catalog)
+    if player_y is not None:
+        overworld_player.y = player_y
+    engine = Engine(
+        overworld_map, overworld_player, overworld_level.name,
+        catalog=catalog, is_overworld=True, clock=clock, quest_log=quest_log,
+    )
+    return engine
+
+
+def test_resolve_transition_redirects_into_a_visitor_band_ambush_when_armed():
+    catalog, dungeon_registry, overworld_level = _world()
+    overworld_engine = _overworld_engine(catalog, dungeon_registry, overworld_level, player_y=0)
+    original_position = (overworld_engine.player.x, overworld_engine.player.y)
+    overworld_engine.wants_visitor_band_encounter = True
+
+    active_key, ambush_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, {OVERWORLD_KEY: overworld_engine},
+        dungeon_registry, overworld_level, catalog,
+    )
+
+    assert active_key == "visitor_band_ambush"
+    assert ambush_engine.is_overworld is False
+    assert ambush_engine.overworld_return_position == original_position
+    spawned = [e for e in ambush_engine.game_map.entities if e is not ambush_engine.player]
+    assert len(spawned) > 0
+    assert all(e.entity_id == "charnel_colossus" for e in spawned)  # y=0 -> Hollow Reach
+    assert any("rise from the ash" in m for m in ambush_engine.message_log.messages)
+
+
+def test_resolve_transition_visitor_band_ambush_tiers_by_the_players_row():
+    catalog, dungeon_registry, overworld_level = _world()
+    overworld_engine = _overworld_engine(catalog, dungeon_registry, overworld_level, player_y=89)
+    overworld_engine.wants_visitor_band_encounter = True
+
+    _, ambush_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, {OVERWORLD_KEY: overworld_engine},
+        dungeon_registry, overworld_level, catalog,
+    )
+
+    spawned = [e for e in ambush_engine.game_map.entities if e is not ambush_engine.player]
+    assert len(spawned) > 0
+    assert all(e.entity_id in ("ash_bound_husk", "bound_eye") for e in spawned)  # y=89 -> Frayed Edge
+
+
+def test_resolve_transition_visitor_band_ambush_is_freshly_rebuilt_each_time():
+    """Unlike goblin_ambush, this dungeon has no fixed roster to resume - a
+    second fire must not reuse the first fire's cached Engine/monsters."""
+    catalog, dungeon_registry, overworld_level = _world()
+    overworld_engine = _overworld_engine(catalog, dungeon_registry, overworld_level, player_y=0)
+    overworld_engine.wants_visitor_band_encounter = True
+    active_engines = {OVERWORLD_KEY: overworld_engine}
+
+    _, first_ambush_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+    active_engines["visitor_band_ambush"] = first_ambush_engine
+    first_spawned = [e for e in first_ambush_engine.game_map.entities if e is not first_ambush_engine.player]
+    for entity in first_spawned:
+        entity.fighter.hp = 0  # simulate having killed everything in the first fight
+
+    # Return to the overworld and immediately arm a second ambush.
+    first_ambush_engine.wants_overworld = True
+    active_key, overworld_engine_2 = resolve_transition(
+        "visitor_band_ambush", first_ambush_engine, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+    active_engines[OVERWORLD_KEY] = overworld_engine_2
+    overworld_engine_2.player.y = 0
+    overworld_engine_2.wants_visitor_band_encounter = True
+
+    _, second_ambush_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine_2, active_engines, dungeon_registry, overworld_level, catalog,
+    )
+
+    assert second_ambush_engine is not first_ambush_engine
+    second_spawned = [e for e in second_ambush_engine.game_map.entities if e is not second_ambush_engine.player]
+    assert len(second_spawned) > 0
+    assert all(e.fighter.hp > 0 for e in second_spawned)  # a real new band, not the first fight's corpses
+
+
 # Dungeons deliberately unreachable by walking there - only ever entered via
 # an EncounterDef's redirect (see main.py's _armable_encounter/_due_encounter)
 # - carved out of the "every registered dungeon has an overworld entrance"
 # check below.
-ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush"}
+ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush", "visitor_band_ambush"}
 
 
 def test_overworld_has_all_sixteen_shipped_entrances_mutually_reachable():

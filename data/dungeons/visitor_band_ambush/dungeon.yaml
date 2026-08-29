@@ -1,0 +1,15 @@
+id: visitor_band_ambush
+name: Scoured Ground
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A scripted overworld encounter, not a real place on the map - reached only
+  by lingering on the Northern Steppe's corrupted ground (ashen_plains/
+  blighted_forest - see Engine._maybe_trigger_visitor_band_encounter and
+  docs/region_bibles/northern_steppe.md), never by walking to it. No
+  overworld dungeon_entrance tile targets this dungeon, so inspect_text
+  (below) is never shown - left blank rather than written for an audience
+  that will never see it. Unlike every other encounter, this level carries
+  no fixed roster of its own - main.py's _redirect_into_visitor_band injects
+  a freshly randomized band (engine/engine.py's roll_visitor_band) each time
+  it fires, tiered by where on the Northern Steppe the player was standing.
