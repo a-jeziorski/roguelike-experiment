@@ -99,6 +99,15 @@ entities:
   grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
   windbreak_captain:       {sheet: rltiles, name: human, recolor: true}
   farrows_scout:           {sheet: rltiles, name: human, recolor: true}
+  # The Visitor's creations (docs/content_design_process.md's Northern
+  # Steppe bestiary entry in data/entities.yaml) - not yet placed in any
+  # level, sprites picked ahead of placement like the rest of that batch.
+  ash_bound_husk:          {sheet: rltiles, name: kobold_zombie}
+  bound_eye:               {sheet: rltiles, name: unseen_horror}
+  stitched_vanguard:       {sheet: rltiles, name: ettin_zombie}
+  hollow_chanter:          {sheet: rltiles, name: mummy_priest}
+  charnel_colossus:        {sheet: rltiles, name: abomination_large4}
+  excavation_warden:       {sheet: rltiles, name: barrow_wight}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}

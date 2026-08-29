@@ -578,3 +578,135 @@ giant_spider:
   inflicts_potency: 2
   inflicts_duration: 3
   description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.
+
+# The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
+# not yet placed in any level, same "define now, place later" pattern as
+# the bestiary expansion above. A deliberately new, higher power band: the
+# existing roster above tops out around hp 28-30/attack 8/defense 3 (ogre,
+# stone_sentinel), calibrated against a player near baseline stats. These
+# six are calibrated against a player who has thoroughly cleared the
+# Heartlands - roughly 300 XP spent on perks (both Toughness tiers +
+# Weapon/Shield Training + both rate perks - Steady Aim, Light Feet -
+# comes to exactly 300 XP, see data/perks.yaml) plus a mid-upper gear
+# tier already found (a broadsword/bone_plate/orcish_bow-equivalent, not
+# necessarily the rarest drop of each slot) - call this the "reference
+# build": ~43 hp, ~12 effective melee attack, ~6 effective defense
+# (tools/balance.py's build_xp_total confirms the perk+gear math). A
+# fully optimized version of the same build (banded_mail instead of
+# bone_plate, say) pushes defense toward ~9 - hits-to-kill math below was
+# checked against both ends of that range, not just one point. Three
+# tiers, matching the region's own
+# corruption bands: Frayed Edge (challenging), Cinder Marches (very
+# dangerous), Hollow Reach (extremely dangerous, deliberately matching
+# the eventual necroship's own difficulty - see the region bible).
+
+ash_bound_husk:
+  name: Ash-Bound Husk
+  glyph: z
+  color: [120, 110, 100]
+  hp: 30
+  attack: 13
+  defense: 2
+  ai: pack_hunter
+  # Crude and low-defense on its own (the Visitor's least deliberate
+  # creation) - the danger is entirely in numbers, same "circles before it
+  # commits" pack math as wolf above, just at Northern Steppe's higher
+  # damage tier (docs/content_design_process.md §0u).
+  pack_radius: 3
+  pack_attack_bonus: 2
+  xp_reward: 20
+  description: Whatever this used to be, the shape barely holds now - ash-grey and half-collapsed, it doesn't move well alone. It doesn't need to.
+
+bound_eye:
+  name: Bound Eye
+  glyph: I
+  color: [170, 40, 180]
+  hp: 22
+  attack: 12
+  defense: 1
+  ai: ranged_basic
+  ranged_range: 5
+  # A support threat, not a primary one - low hp/defense means it dies in
+  # two clean hits once actually reached, same "kill it fast or keep
+  # eating chip damage" role skeleton_archer plays at the Heartlands' own
+  # power level.
+  xp_reward: 18
+  description: A single eye, torn free of whatever it once watched for, bound in cord and sinew that shouldn't move on their own. It doesn't blink.
+
+stitched_vanguard:
+  name: Stitched Vanguard
+  glyph: F
+  color: [140, 60, 45]
+  hp: 40
+  attack: 18
+  defense: 4
+  ai: regenerator
+  # More than one body's worth of parts means more than one body's worth
+  # of hp to chip through - regen_amount 4 (up from giant_rat's 2) turns a
+  # sustained fight into a real race rather than a formality
+  # (docs/content_design_process.md §0u).
+  regen_amount: 4
+  xp_reward: 32
+  description: More than one body's worth of parts, crudely joined and still working. Wounds close before they've finished opening.
+
+hollow_chanter:
+  name: Hollow Chanter
+  glyph: H
+  color: [190, 165, 130]
+  hp: 28
+  attack: 16
+  defense: 2
+  ai: ranged_basic
+  ranged_range: 5
+  # Necrotic bolts that sap strength rather than flesh outright - same
+  # weaken shape as gray_ooze above, scaled to this tier's numbers. Two of
+  # these landing in the same fight still only ever apply one weaken at a
+  # time (refresh-not-stack, docs/content_design_process.md §0t).
+  inflicts_effect: weaken
+  inflicts_potency: 3
+  inflicts_duration: 3
+  xp_reward: 30
+  description: Enough throat left to keep chanting whatever it was chanting when it died. The words don't mean anything anymore. They still work.
+
+charnel_colossus:
+  name: Charnel Colossus
+  glyph: L
+  color: [150, 55, 15]
+  hp: 48
+  attack: 24
+  defense: 6
+  ai: enrage
+  # Already capable of a near-3-hit kill against an underprepared player
+  # at base stats - enraged (below 30% hp) it's closer to a 2-hit kill,
+  # deliberately: this is meant to be the Hollow Reach's common patrol,
+  # not a rare set-piece, so it needs to stay dangerous even once its
+  # novelty wears off (docs/content_design_process.md §0u).
+  enrage_hp_pct: 0.3
+  enrage_attack_bonus: 5
+  xp_reward: 55
+  description: A heap of the dead built up into something that stands and swings. It doesn't tire, and cornered, it stops holding back.
+
+excavation_warden:
+  name: Excavation Warden
+  glyph: D
+  color: [95, 75, 100]
+  hp: 55
+  attack: 16
+  defense: 8
+  ai: sleeping_guard
+  alert_radius: 3
+  # The roster's toughest defense by a wide margin, not its hardest
+  # puncher - a long, attritional fight rather than Charnel Colossus's
+  # burst, made genuinely dangerous by a stun on every landed hit
+  # (inflicts_duration kept at 1, matching wraith above - see
+  # docs/content_design_process.md §0t's stun-lock warning: a long fight
+  # means many chances for a lock to start, so whoever places this should
+  # keep the wraith-precedent discipline of a solo, rare placement,
+  # nothing else drawing the player's attention in the same encounter).
+  # Reserved to guard the Northern Steppe's Elder Age excavation
+  # sites specifically (docs/region_bibles/northern_steppe.md) - the
+  # concrete, mechanical reason those sites aren't accessible yet.
+  inflicts_effect: stun
+  inflicts_duration: 1
+  xp_reward: 65
+  description: Posted at the dig and forgotten there on purpose - patient in a way nothing alive manages, and in no hurry to let anyone closer.

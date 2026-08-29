@@ -1779,6 +1779,61 @@ Every new spawn verified via `content/loader.py`'s real `load_dungeon_registry`
 live `tools/play_llm.py` session against real dungeon content - the same
 verification bar every mechanic in this pass has been held to.
 
+## 0ac. A second power band: the Northern Steppe bestiary (`ash_bound_husk` and five others)
+
+Every monster before this pass (`0ab`'s batch included) was calibrated
+against a player near baseline stats - `ogre`/`stone_sentinel`'s hp
+28-30/attack 8/defense 3 is that whole era's ceiling. The Northern
+Steppe (`docs/region_bibles/northern_steppe.md`) needed something a
+thoroughly-Heartlands-geared player would still call "challenging," so
+rather than nudge the existing ceiling up, this pass opened a **second,
+explicitly higher power band** - six new entities, still capability-only
+(not placed in any level yet, same discipline as `0ab`/`0u`/`0t`'s
+unplaced batches), sized against a concrete **reference build** instead
+of player baseline: roughly 300 XP spent on perks (both Toughness tiers
++ Weapon/Shield Training + both rate perks, `data/perks.yaml`) plus a
+found mid-upper gear tier (a broadsword/bone_plate/orcish_bow
+equivalent) - `tools/balance.py`'s `build_xp_total` against exactly that
+perk list confirms the 300 XP figure and the derived effective stats
+(~43 hp, ~12 melee attack, ~6-9 defense depending how optimized the
+gear is). See `data/entities.yaml`'s own comment block above these six
+entries for the full hits-to-kill table this was checked against, in
+both directions, at both ends of that defense range - the same
+discipline §2 asks for, just against a new baseline instead of the old
+one.
+
+**Three tiers, one per corruption band**, escalating in a different way
+each time rather than just bigger numbers:
+- Frayed Edge (challenging): `ash_bound_husk` (`pack_hunter` - a lone one
+  is manageable, several aren't) and `bound_eye` (`ranged_basic` - a
+  glass-cannon support threat, not a primary one).
+- Cinder Marches (very dangerous): `stitched_vanguard` (`regenerator`,
+  a genuinely sustained fight) and `hollow_chanter` (`ranged_basic` +
+  `weaken` - saps the player's own damage output mid-fight).
+- Hollow Reach (extremely dangerous, deliberately matching the
+  eventual necroship's own difficulty - see the region bible):
+  `charnel_colossus` (`enrage` - a burst-damage common patrol, worse
+  once it's already losing) and `excavation_warden` (`sleeping_guard` +
+  `stun` - the highest defense in the game, an attritional fight rather
+  than a fast one, made dangerous by the stun-lock risk (§0t) compounding
+  over many rounds rather than by raw per-hit damage). `excavation_warden`
+  is placed here on purpose: it's the concrete, mechanical reason the
+  region's Elder Age dig sites aren't accessible yet, not just narration
+  that they aren't.
+
+**Sprites** (`data/sprites.yaml`) all draw from `rltiles` by name, no new
+sheet needed: `kobold_zombie` (Husk), `unseen_horror` (Eye - reframed as
+a torn-free, bound eye rather than literal bone, once the actual art
+didn't match the first-draft "bone construct" concept - picking the
+concept to fit an existing sprite, not forcing a sprite to fit an
+already-fixed concept, same lesson as `docs/content_design_process.md`'s
+"Grounding an abstract mechanic" note in §4), `ettin_zombie` (Vanguard -
+its native two-headed silhouette already reads as "more than one body's
+worth of parts" with zero recoloring needed), `mummy_priest` (Chanter),
+`abomination_large4` (Colossus), and `barrow_wight` (Warden - the most
+visually commanding option available, deliberately reserved for the
+roster's single toughest entity).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -123,12 +123,34 @@ of recent digging, nothing explained beyond that.
 
 ## Roster
 
-None. This region ships with zero entities, zero items, and zero
-dungeon entrances - purely overworld terrain, exactly as the schema
+The overworld cell itself still ships with zero entities, zero items,
+and zero dungeon entrances - purely terrain, exactly as the schema
 already permits (`load_overworld` only ever produces empty
 `entity_spawns`/`item_spawns`/`doors`/`stairs` for every cell, cells or
-no cells). No monster/NPC content is authored for the Northern Steppe
-this pass.
+no cells). Nothing is actually spawned anywhere in the Northern Steppe
+yet.
+
+The Visitor's creations - the monster roster this region's eventual
+dungeons and any overworld encounters will draw on - are designed and
+in `data/entities.yaml` (see the "The Visitor's creations" block at the
+end of that file, and `docs/content_design_process.md` §2 for the
+hits-to-kill math they were checked against), same "define now, place
+later" discipline the rest of the bestiary follows. Six entities across
+three tiers matching this bible's corruption bands:
+
+| Tier / Band | Entity | Role |
+|---|---|---|
+| Frayed Edge (challenging) | `ash_bound_husk` | Crude melee, dangerous in packs (`pack_hunter`) |
+| Frayed Edge (challenging) | `bound_eye` | Ranged support, dies fast once reached |
+| Cinder Marches (very dangerous) | `stitched_vanguard` | Melee, self-repairing (`regenerator`) |
+| Cinder Marches (very dangerous) | `hollow_chanter` | Ranged, saps the player's own attack (`weaken`) |
+| Hollow Reach (extremely dangerous) | `charnel_colossus` | Common patrol, burst damage, worse enraged below 30% hp |
+| Hollow Reach (extremely dangerous) | `excavation_warden` | Reserved specifically for the Elder Age sites - the highest defense in the game and a stun on every landed hit; a long, attritional, genuinely-meant-to-deter-you fight |
+
+`excavation_warden` is the mechanical answer to "perhaps more time must
+be spent on excavations" above - it isn't just narration that the sites
+aren't accessible yet, it's a specific, very hard guardian standing at
+each one.
 
 ## Mechanical notes
 
