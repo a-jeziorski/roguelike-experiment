@@ -1326,6 +1326,22 @@ def test_goblin_ambush_uses_open_boundary_instead_of_a_stairway():
     assert goblin_names == ["Goblin", "Goblin", "Goblin"]
 
 
+def test_visitor_band_ambush_ground_looks_corrupted_but_is_not_hazardous():
+    """The arena's ground is scoured_ground, not ashen_plains - visually
+    identical (same TILE_VISUALS/sprite), but deliberately not one of the
+    kinds Engine._apply_environmental_hazard punishes for lingering. A
+    monster band is already the danger here; the ground doesn't need to be
+    too (see docs/dungeon_bibles/visitor_band_ambush.md)."""
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "visitor_band_ambush", catalog)
+    level = dungeon.levels["level_01"]
+
+    kinds = {tile for row in level.tiles for tile in row}
+    assert "scoured_ground" in kinds
+    assert "ashen_plains" not in kinds
+    assert level.player_start_tile == "scoured_ground"
+
+
 def test_prison_tower_level_01_content():
     catalog = load_catalog()
     level = load_level(PRISON_TOWER_LEVELS_DIR / "level_01.lvl", catalog)

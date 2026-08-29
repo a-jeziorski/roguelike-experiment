@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 TileType = Literal[
     "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
-    "landmark", "dunes", "ashen_plains", "blighted_forest",
+    "landmark", "dunes", "ashen_plains", "blighted_forest", "scoured_ground",
 ]
 
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -

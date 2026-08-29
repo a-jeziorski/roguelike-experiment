@@ -3203,6 +3203,24 @@ def test_blighted_forest_reuses_the_same_hazard_mechanic_as_dunes():
     assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
 
 
+def test_scoured_ground_looks_corrupted_but_deals_no_damage():
+    """scoured_ground shares ashen_plains' exact look (engine/render.py's
+    TILE_VISUALS, data/sprites.yaml) but is deliberately absent from
+    ENVIRONMENTAL_HAZARD_MESSAGES - ground that reads as Northern Steppe
+    corruption without punishing a player for standing on it (see
+    data/dungeons/visitor_band_ambush)."""
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "scoured_ground"
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    for _ in range(10):
+        engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30
+
+
 # --- Visitor band ambush encounters (ashen_plains/blighted_forest only) ---
 # See tests/test_main.py for the actual redirect-into-a-dungeon mechanics
 # (goblin_ambush's own shape) - these only cover the mailbox flag Engine

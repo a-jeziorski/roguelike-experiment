@@ -968,6 +968,21 @@ built around this hazard, but isn't needed for a first pass where the
 hazardous stretch is narrow enough to cross in one push - same "flag it,
 don't build it" discipline as Silversilk Caves' lower levels.
 
+**Splitting the look from the mechanic**: `scoured_ground` (added for
+`data/dungeons/visitor_band_ambush`) is the same ashen-grey look as
+`ashen_plains` - identical `TILE_VISUALS` entry, identical sprite in
+`data/sprites.yaml` - but deliberately left out of
+`ENVIRONMENTAL_HAZARD_MESSAGES`, so it deals no damage at all. Useful
+whenever a place should *read* as corrupted ground without actually
+being hazardous - a monster encounter (or any other danger) already
+covers that job, and stacking chip damage on top would just be two
+separate threats competing for the same beat rather than one clear one.
+The general pattern: a hazard tile kind and its message are two
+independent facts (the kind drives rendering via `TILE_VISUALS`, the
+dict entry drives the damage) - a new kind can borrow one without the
+other by copying `TILE_VISUALS`'s values verbatim and simply never
+adding a dict entry.
+
 **The overworld region's own shape was a second, separate problem**: it
 shipped as a hand-edited rectangle - a hard, straight-edged box of
 `dunes` tiles dropped onto the map, immediately readable as authored

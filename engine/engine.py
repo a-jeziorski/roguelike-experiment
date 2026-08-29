@@ -75,6 +75,13 @@ ENVIRONMENTAL_HAZARD_DAMAGE = 2
 # `blighted_forest` are the Northern Steppe's corrupted ground, mechanically
 # identical, per the user's explicit "reuse the harmful effect... just
 # change the text" instruction - see docs/content_design_process.md §0p.
+# `scoured_ground` (content/schema.py's TileType, engine/render.py's
+# TILE_VISUALS) is the deliberate exception: same ashen-grey look as
+# `ashen_plains`, intentionally left out of this dict so it deals no
+# damage at all - a place that should read as Northern Steppe corruption
+# without punishing the player for standing on it (see
+# data/dungeons/visitor_band_ambush, where the encounter itself is
+# already the danger).
 ENVIRONMENTAL_HAZARD_MESSAGES: dict[str, str] = {
     "dunes": "Wind-driven sand tears at exposed skin and eyes.",
     "ashen_plains": "Ash-choked ground scrapes at exposed skin with every step.",

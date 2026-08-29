@@ -3,7 +3,7 @@ name: Scoured Ground
 
 open_boundary: true
 open_boundary_message: "You break away across the ash, back the way you came."
-player_start_tile: ashen_plains
+player_start_tile: scoured_ground
 
 map: |
   ,,,,,,,,,,,,,,,,,,,
@@ -23,5 +23,5 @@ map: |
   ,,,,,,,,,,,,,,,,,,,
 
 legend:
-  ",": ashen_plains
+  ",": scoured_ground
   "@": player_start

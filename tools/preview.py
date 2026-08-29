@@ -53,6 +53,7 @@ TILE_GLYPHS = {
     "dunes": "s",
     "ashen_plains": ";",
     "blighted_forest": "Y",
+    "scoured_ground": ";",
 }
 
 

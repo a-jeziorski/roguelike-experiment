@@ -37,19 +37,27 @@ assumption a variable encounter can't guarantee.
 
 ## Terrain
 
-A single walkable `plains` clearing ringed by `mountain` (impassable,
-unlike `goblin_ambush`'s fully-walkable `forest` border) with one
-`plains` gap carved at the midpoint of each side - `open_boundary`
-requires at least one walkable perimeter tile to ever be reachable
+A single open clearing, every tile walkable - no border at all, so
+`open_boundary`'s "at least one walkable perimeter tile" requirement
 (`content/schema.py`'s validator catches a fully-sealed ring at
-content-load time), and four gaps read better as a real, if narrow, way
-out than a single one would. `mountain` for the ring itself reads better
-than a wall of trees for ground this far into the corrupted Northern
-Steppe. Deliberately *not* `ashen_plains`/
-`blighted_forest` inside the arena itself: stacking the hazard tiles'
-own chip damage on top of a live monster band would compound two
-separate dangers at once for no real design benefit - the encounter is
-already the threat, the ground doesn't need to be too (see
+content-load time) is trivially satisfied from any edge. An earlier
+version of this level used a `mountain` ring with gaps carved in for
+egress; simplified to a fully open field since geometry can't be built
+around any one specific encounter here anyway (see "why an open field"
+above) - a border was adding shape without adding a design decision it
+was actually enforcing.
+
+The ground itself is `scoured_ground`
+(`content/schema.py`'s `TileType`, `engine/render.py`'s `TILE_VISUALS`) -
+visually identical to `ashen_plains` (same glyph, same colors, same
+sprite) so the arena still *reads* as Northern Steppe corruption, but
+deliberately excluded from `Engine.ENVIRONMENTAL_HAZARD_MESSAGES`, so it
+deals no chip damage. This was originally plain `plains` for exactly the
+opposite-looking reason (avoid stacking hazard damage on top of a live
+monster band), then briefly `ashen_plains` itself (which brought the
+damage back), before landing here: the corrupted *look* was worth
+keeping for atmosphere, the corrupted *hazard* wasn't - the encounter is
+already the danger, the ground doesn't need to be too (see
 `docs/content_design_process.md` §0p's own "narrow enough to cross in
 one push" discipline, applied here as "don't punish standing still to
 fight").

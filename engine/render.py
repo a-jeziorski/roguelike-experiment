@@ -81,6 +81,14 @@ TILE_VISUALS = {
     # tile_kinds.blighted_forest's sprite (a leafless tree over ashen_plains).
     # Colors tuned to the same sprite for the same reason as ashen_plains above.
     "blighted_forest": {"glyph": "Y", "dark": (35, 27, 20), "light": (110, 85, 60)},
+    # Visually identical to ashen_plains (same glyph/colors, same sprite in
+    # data/sprites.yaml) but deliberately absent from
+    # Engine.ENVIRONMENTAL_HAZARD_MESSAGES - corrupted-looking ground with
+    # no chip damage, for a place that should *read* as Northern Steppe
+    # corruption without punishing a player for standing on it (see
+    # data/dungeons/visitor_band_ambush - a monster encounter is already
+    # the danger there, the ground doesn't need to be too).
+    "scoured_ground": {"glyph": ";", "dark": (42, 45, 47), "light": (140, 150, 155)},
 }
 
 TILE_DESCRIPTIONS = {
@@ -99,6 +107,7 @@ TILE_DESCRIPTIONS = {
     "dunes": "Loose, shifting sand, scoured bare by a wind that never fully dies down. Standing here for long is a mistake.",
     "ashen_plains": "Grassland burned down to grey ash, the ground still warm underfoot. Nothing grows here anymore.",
     "blighted_forest": "Dead, blackened trees, bare in every season. The air itself feels wrong to breathe.",
+    "scoured_ground": "Ash-grey ground, same as the corrupted stretches further out - whatever burned through here already did its work and moved on.",
 }
 
 HUD_FG = (220, 220, 220)
