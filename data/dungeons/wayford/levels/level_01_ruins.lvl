@@ -4,7 +4,7 @@ name: Wayford's Ruins
 player_start_tile: plains
 
 map: |
-  #############################x############################
+  #############################a############################
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -13,44 +13,44 @@ map: |
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,1,,,,,,.,,,,,,2,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,3,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,4,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#######,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,d,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#::c::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,5,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###:###,,,,,,,,6,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FFFFF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FjFFF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FFkFF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FFFFF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###F###,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,###########,,,,#
-  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #.....#::R:::............T...+...T........:::::M::::#....#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,@,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
+  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#FFFFF#,,,,,,,,,,,,,,~,.,~,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#FjFFF#,,,,,,,,,,,,,,,,~,,,,,,,,,,,,#FFjFFFFFF#,,,,#
+  #.....#FFiFFF...............~b~...........FFFFFlFFFF#....#
+  #,,,,,#FFFjF#,,,,,,,,,,,,,,,,@,,,,,,,,,,,,#FFFFFFjFF#,,,,#
+  #,,,,,#FFFFF#,,,,,,,,,,,,,,,,~,,,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#FFFFFFFFF#,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,###########,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,7,,,,,,,,,,,,,,,,,,,,.,y,,,,,,,,,,,,,,,,,,,,8,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,i,,,,.,,,,,,,,,,,,,,n,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.######,,,,,,,,,,,,###,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.#FcFd#,,,,,,,,,,,,###,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FeFfF#,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.#FFFF#,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.######,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#####F#####,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#FgFFFFFgF#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFcFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFfFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFhFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#FFFFFFFFF#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#FFFFFFFFF#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#####:#####,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#:::::::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#:::::::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#::::P::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,9,,,,,,,a,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,e,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,f,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   ##########################################################
@@ -59,28 +59,18 @@ legend:
   "#": wall
   ",": plains
   ".": road
-  ":": floor
   "@": player_start
-  "x": { stairs_up: null, description: "Wayford's north gate, standing open on a hinge that never got the chance to close. The high road still runs through it, same as always - what's past it doesn't, anymore.", announce: true }
-  "+": { tile: landmark, description: "Ash where the cart-wheels used to wear the stone smooth. The roads still meet here - they're the only thing that still does.", announce: true }
-  "R": { tile: landmark, description: "The Road Warden's post, empty now - whatever came down that west road, it got here before any warning could. The watch-fire's long cold.", announce: true }
-  "c": { tile: landmark, description: "The Clerk's record house, gutted - what the fire didn't take, the horde didn't bother with. Whatever those old roads used to connect, nobody's writing it down anymore.", announce: true }
-  "M": { tile: landmark, description: "The caravan yard, one cart still standing - burned to its frame, wheels intact, going nowhere. It never got the chance to resume anything.", announce: true }
-  "P": { entity: wayford_provisioner, dialogue: "Cellar's stone all the way down - held better than the roof did. Lost people I'd known longer than I've known you, but I'm still here, and so's what's left of the stock. Coin's still good, if you've got it." }
-  "y": { entity: wayford_trainer, tile: plains, dialogue: "Guards didn't make it. I did - spent longer with a blade in hand than any of them, and it showed, that night. Doesn't feel like winning. Still willing to teach what I know, if you're still willing to learn it." }
-  "T": road
-  "d": plains
-  "n": plains
-  "1": plains
-  "2": plains
-  "3": plains
-  "4": plains
-  "5": plains
-  "6": plains
-  "7": plains
-  "8": plains
-  "9": plains
-  "a": plains
-  "e": plains
-  "f": plains
-  "i": plains
+  "F": floor
+  "~": scoured_ground
+  "a": { tile: stairs_up, next_level: null, description: "Wayford's north gate, standing open on a hinge that never got the chance to close. The high road still runs through it, same as always - what's past it doesn't, anymore.", announce: true }
+  "e": { tile: floor, entity: wayford_trainer, dialogue: "Guards didn't make it. I did - spent longer with a blade in hand than any of them, and it showed, that night. Doesn't feel like winning. Still willing to teach what I know, if you're still willing to learn it." }
+  "h": { tile: floor, entity: wayford_provisioner, dialogue: "Cellar's stone all the way down - held better than the roof did. Lost people I'd known longer than I've known you, but I'm still here, and so's what's left of the stock. Coin's still good, if you've got it." }
+  "b": { tile: landmark, description: "Ash where the cart-wheels used to wear the stone smooth. The roads still meet here - they're the only thing that still does.", announce: true }
+  "i": { tile: landmark, description: "The Road Warden's post, empty now - whatever came down that west road, it got here before any warning could. The watch-fire's long cold.", announce: true }
+  "k": { tile: landmark, description: "The Clerk's record house, gutted - what the fire didn't take, the horde didn't bother with. Whatever those old roads used to connect, nobody's writing it down anymore.", announce: true }
+  "l": { tile: landmark, description: "The caravan yard, one cart still standing - burned to its frame, wheels intact, going nowhere. It never got the chance to resume anything.", announce: true }
+  "c": { tile: floor, decoration: table }
+  "d": { tile: floor, decoration: bookshelf }
+  "f": { tile: floor, decoration: chair }
+  "g": { tile: floor, decoration: chest }
+  "j": { tile: floor, decoration: rubble }

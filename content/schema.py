@@ -32,7 +32,7 @@ TileType = Literal[
 DecorationKind = Literal[
     "table", "chair", "bed", "chest", "bookshelf", "fireplace",
     "flowerbed_white", "flowerbed_blue", "bush", "tree", "fence", "herb_clump",
-    "tombstone", "tilled_soil", "archery_target", "barrel", "crate",
+    "tombstone", "tilled_soil", "archery_target", "barrel", "crate", "rubble",
 ]
 
 # One fixed Look-mode line per DecorationKind, reused at every placement of
@@ -57,6 +57,7 @@ DECORATION_NAMES: dict[str, str] = {
     "archery_target": "A practice target, more patched than not.",
     "barrel": "A water barrel, lid warped but sound.",
     "crate": "A plain storage crate.",
+    "rubble": "A heap of broken stone and ash - what's left of something that used to stand here.",
 }
 
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -

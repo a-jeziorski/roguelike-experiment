@@ -4,7 +4,7 @@ name: Wayford Crossing
 player_start_tile: plains
 
 map: |
-  #############################x############################
+  #############################a############################
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -13,44 +13,44 @@ map: |
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
   #,,,,,,,,,####,,####,,,,,,,,,.,,,,,,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,1,,,,,,.,,,,,,2,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,3,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,D,,,,,,E,,,b,,,,,,.,,,,,,c,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,d,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,4,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,e,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#######,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,d,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#::c::#,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#:::::#,,,,,,,,,,,,,#
-  #,,,,,5,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###:###,,,,,,,,6,,,,#
+  #,,,,,,,,,,,,,f,,,,,,,,,,,,,,.,,,,,,,#BFFFB#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FFFFF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FAgCF#,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,#FFFFF#,,,,,,,,,,,,,#
+  #,,,,,h,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,###F###,,,,,,,,i,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,###########,,,,#
-  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #.....#::R:::............T...+...T........:::::M::::#....#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,@,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#:::::#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
-  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#:::::::::#,,,,#
+  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#FHFAF#,,,,,,,,,,,,,,D,.,E,,,,,,,,,,#FIJFFIJFF#,,,,#
+  #,,,,,#FFFFF#,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #.....#FFjFFF............k...l...m........FFFFFnFFFF#....#
+  #,,,,,#FFFFF#,,,,,,,,,,,,,,,,@,,,,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#FBFCF#,,,,,,,,,,,,,G,,.,,G,,,,,,,,,#FFFFFFFFF#,,,,#
+  #,,,,,#######,,,,,,,,,,,,,,,,.,,,,,,,,,,,,#FFFFFFFFF#,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,###########,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,###,,,,,,#
-  #,,,,,,,7,,,,,,,,,,,,,,,,,,,,.,y,,,,,,,,,,,,,,,,,,,,8,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,i,,,,.,,,,,,,,,,,,,,n,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.######,,,,,,,,,,,,###,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.#FAFB#,,,,,,,,,,,,###,,,,,,#
+  #,,,,,,,o,,,,,,,,,,,,,,,,,,,,.FpFCF#,,,,,,,,,,,,,,,,q,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,r,,,,.#FFFF#,,,,,,,,t,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.######,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#####:#####,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#:::::::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#:::::::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,####,,####,,,,#::::P::::#,,,,,####,,####,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,9,,,,,,,a,#:::::::::#,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,e,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,f,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#####F#####,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#FKFFFFFKF#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFAFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFCFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,####,,####,,,,#FFFFuFFFF#,,,,,####,,####,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,#FFFFFFFFF#,,,,,,D,,,,,,E,,,,,,,,#
+  #,,,,,,,,,,,,,v,,,,,,,w,#FFFFFFFFF#,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,y,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,z,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   ##########################################################
@@ -59,28 +59,39 @@ legend:
   "#": wall
   ",": plains
   ".": road
-  ":": floor
   "@": player_start
-  "x": { stairs_up: null, description: "Wayford's north gate, where the high road passes through the wall into town.", announce: true }
-  "+": { tile: landmark, description: "Three roads still meet here, worn smooth by cart-wheels that mostly don't come anymore. A fourth used to run east, if the old paving under the grass is anything to go by.", announce: true }
-  "R": { entity: wayford_road_warden, flag_dialogue: [{ flag: stonebridge_raided, line: "Heard it from a cart that turned back early - Stonebridge held the wall, but not all of it. Been saying that road wasn't safe for weeks. Wish just once I'd been wrong." }] }
-  "c": { entity: wayford_clerk }
-  "M": { entity: wayford_caravan_master }
-  "P": { entity: wayford_provisioner }
-  "y": { entity: wayford_trainer, tile: plains, dialogue: "You've been out there, killed things, done what people asked of you - that's worth more than coin, if you know where to spend it. I know where." }
-  "T": { entity: town_guard, tile: road }
-  "d": { entity: villager, tile: plains, dialogue: "Can't stop, cart's half-loaded and losing light." }
-  "n": { entity: villager, tile: plains, dialogue: "Road Warden's been asking around for someone reckless enough to deal with Broken Watch. Might be worth a word, if you're that sort." }
-  "1": { entity: villager, tile: plains, dialogue: "Mind the cart tracks, they're deeper than they look. Wheel's already thrown twice this week." }
-  "2": { entity: villager, tile: plains, dialogue: "Wasn't always this quiet at the crossroads. My grandmother used to talk about carts backed up past the gate, waiting their turn. Different world." }
-  "3": { entity: villager, tile: plains, dialogue: "Busiest I've seen the square in months. Doesn't mean much - months aren't saying much these days." }
-  "4": { entity: villager, tile: plains, dialogue: "Clerk's been going through what's left of the old records for weeks now. Word is there's a gap in them nobody's been able to fill." }
-  "5": { entity: villager, tile: plains, dialogue: "Guards keep saying the roads are fine. Guards also haven't left town in a while." }
-  "6": { entity: villager, tile: plains, dialogue: "Caravan Master used to run a route to Millhaven, if the stories are true. Be curious to know why that stopped." }
-  "7": { entity: villager, tile: plains, dialogue: "Four roads, this town sits on. Only really use two of them anymore." }
-  "8": { entity: villager, tile: plains, dialogue: "Provisioner's stall is worth a look, if you've got coin. Best-stocked place in town, and it's not close." }
-  "9": { entity: villager, tile: plains, dialogue: "Season's turning. Means less light to get anything done, same as it does every year." }
-  "a": { entity: villager, tile: plains, dialogue: "If you're looking for excitement, you're a few roads too early. Try back when the caravans start running again." }
-  "e": { entity: villager, tile: plains, dialogue: "Don't get many new faces around here. Welcome, I suppose - or apologies, depending how your trip's going." }
-  "f": { entity: villager, tile: plains, dialogue: "Not much for talking, if it's all the same to you." }
-  "i": { item: healing_potion, tile: plains }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null, description: "Wayford's north gate, where the high road passes through the wall into town.", announce: true }
+  "b": { tile: plains, entity: villager, dialogue: "Mind the cart tracks, they're deeper than they look. Wheel's already thrown twice this week." }
+  "c": { tile: plains, entity: villager, dialogue: "Wasn't always this quiet at the crossroads. My grandmother used to talk about carts backed up past the gate, waiting their turn. Different world." }
+  "d": { tile: plains, entity: villager, dialogue: "Busiest I've seen the square in months. Doesn't mean much - months aren't saying much these days." }
+  "e": { tile: plains, entity: villager, dialogue: "Clerk's been going through what's left of the old records for weeks now. Word is there's a gap in them nobody's been able to fill." }
+  "f": { tile: plains, entity: villager, dialogue: "Can't stop, cart's half-loaded and losing light." }
+  "g": { tile: floor, entity: wayford_clerk }
+  "h": { tile: plains, entity: villager, dialogue: "Guards keep saying the roads are fine. Guards also haven't left town in a while." }
+  "i": { tile: plains, entity: villager, dialogue: "Caravan Master used to run a route to Millhaven, if the stories are true. Be curious to know why that stopped." }
+  "j": { tile: floor, entity: wayford_road_warden, flag_dialogue: [{ flag: stonebridge_raided, line: "Heard it from a cart that turned back early - Stonebridge held the wall, but not all of it. Been saying that road wasn't safe for weeks. Wish just once I'd been wrong." }] }
+  "k": { tile: road, entity: town_guard }
+  "m": { tile: road, entity: town_guard }
+  "n": { tile: floor, entity: wayford_caravan_master }
+  "o": { tile: plains, entity: villager, dialogue: "Four roads, this town sits on. Only really use two of them anymore." }
+  "p": { tile: floor, entity: wayford_trainer, dialogue: "You've been out there, killed things, done what people asked of you - that's worth more than coin, if you know where to spend it. I know where." }
+  "q": { tile: plains, entity: villager, dialogue: "Provisioner's stall is worth a look, if you've got coin. Best-stocked place in town, and it's not close." }
+  "t": { tile: plains, entity: villager, dialogue: "Road Warden's been asking around for someone reckless enough to deal with Broken Watch. Might be worth a word, if you're that sort." }
+  "u": { tile: floor, entity: wayford_provisioner }
+  "v": { tile: plains, entity: villager, dialogue: "Season's turning. Means less light to get anything done, same as it does every year." }
+  "w": { tile: plains, entity: villager, dialogue: "If you're looking for excitement, you're a few roads too early. Try back when the caravans start running again." }
+  "y": { tile: plains, entity: villager, dialogue: "Don't get many new faces around here. Welcome, I suppose - or apologies, depending how your trip's going." }
+  "z": { tile: plains, entity: villager, dialogue: "Not much for talking, if it's all the same to you." }
+  "l": { tile: landmark, description: "Three roads still meet here, worn smooth by cart-wheels that mostly don't come anymore. A fourth used to run east, if the old paving under the grass is anything to go by.", announce: true }
+  "A": { tile: floor, decoration: table }
+  "B": { tile: floor, decoration: bookshelf }
+  "C": { tile: floor, decoration: chair }
+  "D": { tile: plains, decoration: barrel }
+  "E": { tile: plains, decoration: crate }
+  "G": { tile: plains, decoration: fence }
+  "H": { tile: floor, decoration: fireplace }
+  "I": { tile: floor, decoration: barrel }
+  "J": { tile: floor, decoration: crate }
+  "K": { tile: floor, decoration: chest }
+  "r": { tile: plains, item: healing_potion }

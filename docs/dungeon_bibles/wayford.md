@@ -46,22 +46,40 @@ runs, a road to watch), not just chores.
 ## Structure overview
 
 Still one level - Wayford doesn't need multiple floors to earn its
-depth any more than Millhaven did, just room to hold four stationary
-NPCs (three questgivers plus the Provisioner) in real buildings, on top
-of the wandering cast. Resized larger than Millhaven's regenerated
-44x46 footprint - Wayford's own `dungeon.yaml` calls it "the largest
-settlement," and a bigger footprint than Millhaven's is what actually
-makes that true instead of asserted. Same technique as Millhaven's
-regeneration for the larger canvas: real building interiors only for
-the entities whose premise depends on being findable in one specific
-spot every time, decorative unentered wall clusters elsewhere so the
-larger footprint reads as a real town's worth of houses and storehouses
-(matching Wayford's own description) rather than a big empty field with
-dots in it.
+depth any more than Millhaven did, just room to hold five stationary
+NPCs (three questgivers, the Provisioner, and the Trainer - see set
+piece 8) in real buildings, on top of the wandering cast. Resized larger
+than Millhaven's regenerated 44x46 footprint - Wayford's own
+`dungeon.yaml` calls it "the largest settlement," and a bigger footprint
+than Millhaven's is what actually makes that true instead of asserted.
+Same technique as Millhaven's regeneration for the larger canvas: real
+building interiors only for the entities whose premise depends on being
+findable in one specific spot every time, decorative unentered wall
+clusters elsewhere so the larger footprint reads as a real town's worth
+of houses and storehouses (matching Wayford's own description) rather
+than a big empty field with dots in it.
+
+**Decoration pass, applying `content_design_process.md` §0af.** Unlike
+Millhaven/Grey Valley Monastery/Saltmarsh, Wayford's original authoring
+already had a real road network (a full crossroads plus a cross-street
+reaching most buildings) - so this pass didn't need §0af's road-network
+surgery, just its other two rules: every real building gets furniture
+(none had any before - all four original stationary NPCs stood in bare
+`floor` boxes), and the crossroads finally gets actual market dressing
+(barrel/crate goods, a couple of `fence` pieces marking stall
+boundaries) - the first real evidence of "a market square," which
+`dungeon.yaml` had been asserting with nothing behind it. Two of the
+eight storehouse `wall_block` clusters get a barrel/crate accent just
+outside, making "storehouse" legible rather than only asserted in this
+document; the other six stay pure unentered scenery, same technique as
+before. No footprint or boundary change - at ~111 tiles per entity/
+building (58x50 / 26), Wayford was already inside the range the other
+three settlements landed in after their own resizing, unlike their
+original "60x60 for a dozen NPCs" problem.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Wayford Crossing | The Crossroads, The Road Warden's Post, The Clerk's Record House, The Caravan Yard, The Provisioner, The Watch, two named villagers |
+| `level_01` | Wayford Crossing | The Crossroads, The Road Warden's Post, The Clerk's Record House, The Caravan Yard, The Provisioner, The Watch, two named villagers, The Trainer |
 
 ## The named set pieces
 
@@ -205,10 +223,39 @@ greetings. All fourteen lines (twelve plain villagers plus the
 dismissive and one nudge from this set piece) are distinct; none repeat
 the catalog default.
 
+### 8. The Trainer
+
+**A gap in this bible, caught late.** `wayford_trainer` (catalog id;
+"Retired Sellsword" on screen) has been `stationary: true` since it
+shipped, but was never actually named as a set piece here - the only
+place this document mentioned them at all was the razing section,
+describing them as a survivor of an event this document never otherwise
+introduced them for. Same class of oversight Millhaven's Trainer/Debtor
+and Saltmarsh's Witch turned out to be: a stationary NPC standing in
+open plains with no building and no real introduction, found only by
+reading the level file directly. Closed this pass with a small building
+of their own near the crossroads' vertical road - modest furnishing
+(table, bookshelf, chair), matching someone who trains out of necessity
+rather than runs a dedicated hall the way Millhaven's Old Drillmaster
+does. Different character, so it gets a different room, not a copy of
+that precedent.
+
+*Dialogue direction*: already authored, unchanged - "You've been out
+there, killed things, done what people asked of you..." reads as
+someone sizing the player up practically, consistent with "Retired
+Sellsword" rather than a career instructor.
+
+*Why it's here*: no quest ties to this NPC, same as Millhaven's Trainer
+- purely the `trainer_perks` mechanic. Its real significance only shows
+up later: this is the one NPC whose established character (someone who's
+actually held a blade) is what makes them a plausible razing survivor -
+see "After: the Razing" below.
+
 ## Roster
 
-Four new stationary `villager`-AI entities (`wayford_road_warden`,
-`wayford_clerk`, `wayford_caravan_master`, `wayford_provisioner`), each
+Five new stationary `villager`-AI entities (`wayford_road_warden`,
+`wayford_clerk`, `wayford_caravan_master`, `wayford_provisioner`,
+`wayford_trainer` - see set piece 8), each
 with a **unique catalog id, never reusing any Millhaven id** - this
 isn't just a naming preference, it's load-bearing: `entity_id` is the
 global key `QuestLog.check_questgiver`/`check_delivery` match against,
@@ -318,6 +365,30 @@ consistent with (not a repeat of) their absent occupants'
 `failure_message` text - each should feel like a distinct beat, not three
 copies of "burned." The healing potion item is gone (looted or spent, not
 left lying in a town three questgivers' worth of people used to live in).
+
+**Razed decoration, added alongside the base town's own first decoration
+pass (`content_design_process.md` §0af).** Once `level_01` actually had
+furniture and market dressing to lose, the ruins needed their own
+version of losing it - a copy-pasted decoration set would have
+undercut "real loss" as badly as carrying the villagers over would have.
+The Road Warden's Post, the Clerk's Record House, and the Caravan Yard
+lose their pristine furniture/goods entirely and gain a `scoured_ground`
+patch (a new `TileType`, already shipped for the Northern Steppe - ash-
+grey ground with no hazard damage, exactly right for a peaceful ruin)
+plus one or two `rubble` placements (a new `DecorationKind` added this
+pass - no cart/wagon or burnt-furniture sprite exists in either source
+sheet, so this leans on a generic broken-stone icon rather than forcing
+a bad fit). The market square gets the same `scoured_ground` treatment
+around the Crossroads and loses its fresh barrel/crate/stall dressing -
+answering "ash where the cart-wheels used to wear the stone smooth"
+with an actual tile, not just the line itself. The Provisioner's and
+Trainer's buildings keep their decorated interiors completely
+unchanged, matching "life goes on" and "survived by fighting" - a
+survivor's own space has no narrative reason to be gutted. The two
+storehouse barrel/crate accents from the base town are removed rather
+than re-dressed as picturesque rubble - kept deliberately sparse outside
+the three named ruins, so the loss reads as real rather than
+decorative.
 
 **No hostile encounter.** This pass is survivors plus environmental
 storytelling, not a combat set piece - deliberately out of scope, not an

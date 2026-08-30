@@ -212,6 +212,12 @@ decorations:
   archery_target:   {sheet: kenney_tiny_town, col: 11, row: 7}
   barrel:           {sheet: kenney_tiny_town, col: 11, row: 10}
   crate:            {sheet: kenney_tiny_town, col: 10, row: 10}
+  # Added for Wayford's razed variant - rltiles for the one thing neither
+  # Kenney sheet has any equivalent of (a generic rubble/debris pile); no
+  # cart/wagon or burnt-furniture art exists in either sheet at all, so
+  # the razed pass leans on this plus scoured_ground (TileType) rather
+  # than forcing a bad-fit sprite. Only ever placed in *_ruins levels.
+  rubble:           {sheet: rltiles, name: misc_stone}
 
 # Per-coordinate sprite overrides - see content/schema.py's
 # LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any
