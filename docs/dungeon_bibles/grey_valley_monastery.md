@@ -57,10 +57,33 @@ hospitality.
 
 One level, matching every other Settler town's precedent - a small,
 standard settlement doesn't need more than that to earn a proper cast.
+Regenerated at 40x34 (up from the original 22x12, which had the Elder
+and Weaver both standing in open plains) so both stationary residents
+get a real building - the same `stationary: true` -> real-interior rule
+Millhaven's own regeneration established, applied here for the first
+time to this settlement. Deliberately smaller than Millhaven's own
+60x60: a four-person cast doesn't need a town-sized footprint, only room
+enough for two buildings, a landmark, and decoration that reads as
+composed rather than a field with dots in it.
+
+**Decoration stays specific to this place, not copied from Millhaven's
+kit wholesale.** No `tilled_soil` anywhere - the pitch is explicit that
+this settlement doesn't farm. No cemetery either; nothing in this
+bible's own history calls for one, and inventing one just to match
+Millhaven would be exactly the kind of unearned detail the process this
+followed argues against. What's here instead: a heavy treeline along
+both side walls (the valley's own forest, the reason this place is hard
+to find), a stone cistern (a monastery's own water source, reusing the
+`well` `tile_sprite_override` rather than authoring new art), and a
+small storage nook of barrels/crates outside the Weaver's workshop
+(goods and hunting gear, not farm produce). Two small unentered wall
+clusters read as the parts of the monastery nobody got around to
+rebuilding - same "purely decorative, no new mechanics" technique every
+other settlement pass uses, framed as ruin rather than storehouse.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Grey Valley Monastery | The Elder, The Weaver, The Settlers |
+| `level_01` | Grey Valley Monastery | The Elder, The Weaver, The Settlers, The Cistern |
 
 ## The named set pieces
 
@@ -68,8 +91,12 @@ standard settlement doesn't need more than that to earn a proper cast.
 
 **`grey_valley_elder`** (new entity, `ai: villager`, `stationary: true`,
 title only) - leads this community the same way every other Settler
-town's Elder/Chief figure does. Positioned centrally, near whatever
-passes for the old monastery's main hall.
+town's Elder/Chief figure does. Positioned centrally, in a real one-room
+hall now - the old monastery's own main hall, furnished plainly
+(hearth, table, a shelf of what records this place still keeps, a
+couple of chairs) - matching the "administrative-adjacent institution"
+register `world_history.md` calls for. A cistern sits just outside the
+door (see set piece 4).
 
 *Questgiver*: gives the goblin-cull quest (see
 `docs/dungeon_bibles/silver_mountain_caves.md` for the dungeon itself),
@@ -98,9 +125,12 @@ one named questgiver.
 A shopkeeper NPC, **`grey_valley_weaver`** (new entity, `ai: villager`,
 `stationary: true`, `shop_inventory` set), tying directly into the
 pitch's own silk detail - this is who actually turns hunted cave spiders
-into the community's one real export. Positioned near a spot that reads
-as a working area (looms, drying frames, whatever's left of a scriptorium
-repurposed for it) rather than the Elder's own hall.
+into the community's one real export. Has a real workshop now, distinct
+from the Elder's hall - two chests (the silk itself, stored rather than
+displayed) and a table doing duty as a workbench, a small barrel-and-
+crate nook just outside standing in for hunting gear and goods rather
+than farm produce (this settlement doesn't grow anything - see the
+decoration note above).
 
 *Dialogue direction*: practical and a little proud - silk is this
 settlement's whole claim to being worth the trip out, and the Weaver
@@ -110,13 +140,30 @@ should sound like someone who knows it.
 
 One to two plain `villager` spawns, ordinary texture rather than named
 set pieces of their own - people going about the business of a small,
-isolated community (mending, tending whatever this monastery grows or
-keeps, general upkeep of a building never built to be lived in). Their
-job is to clear the 75% unique-dialogue floor
+isolated community (mending, general upkeep of a building never built
+to be lived in). Their job is to clear the 75% unique-dialogue floor
 `content_design_process.md` §1 requires comfortably at this small a
 roster (four talkable NPCs: the Elder, the Weaver, plus one or two
 villagers, all with distinct lines), not to carry plot weight of their
 own.
+
+### 4. The Cistern
+
+A `landmark` tile just outside the Elder's hall, using the `well`
+`tile_sprite_override` (`data/sprites.yaml`) rather than the shared
+generic landmark icon - the same mechanism and the same sprite Millhaven's
+own well uses, reused rather than re-sourced, since a monastery's stone
+cistern and a town's well are close enough in kind that inventing a
+second icon for the same idea wouldn't buy anything.
+
+*Landmark description*: *"A stone cistern, still catching what rain gets
+through what's left of the roof - the one part of the old monastery
+nobody had to rebuild."*
+
+*Why it's here*: this settlement's own water source, and a small,
+concrete way to make the "repurposed ruin" framing visible rather than
+only stated - some of what's here was never rebuilt because it never
+needed to be.
 
 ## Roster
 
