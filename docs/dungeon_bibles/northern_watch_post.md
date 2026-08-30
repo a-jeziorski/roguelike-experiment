@@ -50,7 +50,39 @@ already made a harder call than the one being asked of the player today.
 
 ## Structure overview
 
-One level, matching every other Settler outpost's precedent.
+One level, matching every other Settler outpost's precedent. Regenerated
+at 26x16 (up from the original 20x11, which had the Sentry standing in
+open plains with no shelter at all) so the Sentry gets a real structure -
+the same `stationary: true` -> real-interior rule Millhaven's own
+regeneration established. Kept deliberately small even at the larger
+footprint: this is the sparsest of the four settlements this rule has
+now been applied to, on purpose.
+
+**The Sentry's shelter is a lean-to, not a house.** Three walls (west,
+south, east) open on the north face, toward the entrance the player
+arrives through - matching both `dungeon.yaml`'s own `inspect_text` ("A
+lean-to roof, still standing") and the Sentry's own dialogue direction
+("facing the entrance the player arrives through makes sense - they're
+watching for exactly this"). Using the same wall-built-box technique
+every other settlement's `house()` helper uses, just missing its fourth
+wall - the right shape for someone keeping watch, not settling in.
+
+**Decoration stays deliberately sparse, not composed like a living
+town.** Millhaven, Grey Valley Monastery, and Saltmarsh all earn dense,
+composed decoration because they're places people actively keep up; the
+Watch Post's whole pitch is the opposite - most of its people are gone,
+and nobody left has the numbers to spare for upkeep. What's here: a
+fireplace and a bed under the lean-to (the one thing that's actually
+maintained), a low picket line a few paces out marking the real watch
+line, a collapsed structure (the same "purely decorative, no new
+mechanics" `wall_block` technique every other pass uses, here reframed
+as an abandoned building rather than a ruin nobody built) with a barrel
+and crate sitting forgotten beside it, and a handful of `herb_clump`/
+`bush` placements thin enough to read as wind-scoured ground that mostly
+grows nothing, not a green space. No `tilled_soil`, no cemetery, no
+treeline - nothing here calls for any of them, and a fuller composition
+would undercut the "tired, barely holding on" mood this bible's own Mood
+section asks for.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
@@ -62,9 +94,9 @@ One level, matching every other Settler outpost's precedent.
 
 **`watch_post_sentry`** (new entity, `ai: villager`, `stationary: true`,
 title only, per this project's no-proper-names convention) - keeps the
-actual watch this post is named for. Positioned near whatever passes for
-a lookout point (facing the entrance the player arrives through makes
-sense - they're watching for exactly this).
+actual watch this post is named for. Now has a real lean-to (see
+Structure overview above) at the north-facing lookout point, fireplace
+and bed the only furnishing - the one shelter still being maintained.
 
 *Role*: carries `word_from_the_north`'s `target_visited_description`
 weight (the player meeting them IS the proof of a completed recon,

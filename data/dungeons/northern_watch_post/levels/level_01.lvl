@@ -4,23 +4,37 @@ name: The Watch Post
 player_start_tile: plains
 
 map: |
-  ####################
-  #,x@,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,S,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,1,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,2,,,#
-  ####################
+  ##########################
+  #,,a@,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,j,,,,,,,,####,,,#
+  #,,,,,,,,,,,e,e,,,####,,,#
+  #,,,,,h,,,,,,,,,,,####,,,#
+  #,,,,,,,,,,#FFF#,,####,,,#
+  #,,,,,,,,,,#FFF#,,,,,,,,,#
+  #,,,,,,,,,,#bcd#,,,fg,,,,#
+  #,,,,,,,,,,#####,,,,,,,,,#
+  #,,,,jj,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,k,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,i,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,#
+  ##########################
 
 legend:
   "#": wall
   ",": plains
+  ".": road
   "@": player_start
-  "x": { stairs_up: null, description: "Back out onto open, wind-scoured ground - the road south is still there, for now.", announce: true }
-  "S": { entity: watch_post_sentry, tile: plains, dialogue: "Someone should tell Millhaven before they hear it from whoever runs next. Word's easier carried by choice than dragged in after." }
-  "1": { entity: villager, tile: plains, dialogue: "Wasn't much of a choice, staying. Nowhere south felt like it'd have us, not with what we'd seen behind us." }
-  "2": { entity: villager, tile: plains, dialogue: "No cart's come through since before the leaves turned. Didn't used to go a whole season without one." }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null, description: "Back out onto open, wind-scoured ground - the road south is still there, for now.", announce: true }
+  "c": { tile: floor, entity: watch_post_sentry, dialogue: "Someone should tell Millhaven before they hear it from whoever runs next. Word's easier carried by choice than dragged in after." }
+  "h": { tile: plains, entity: villager, dialogue: "Wasn't much of a choice, staying. Nowhere south felt like it'd have us, not with what we'd seen behind us." }
+  "i": { tile: plains, entity: villager, dialogue: "No cart's come through since before the leaves turned. Didn't used to go a whole season without one." }
+  "b": { tile: floor, decoration: fireplace }
+  "d": { tile: floor, decoration: bed }
+  "e": { tile: plains, decoration: fence }
+  "f": { tile: plains, decoration: barrel }
+  "g": { tile: plains, decoration: crate }
+  "j": { tile: plains, decoration: herb_clump }
+  "k": { tile: plains, decoration: bush }
