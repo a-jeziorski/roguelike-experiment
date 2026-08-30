@@ -4,40 +4,34 @@ name: Grey Valley Monastery
 player_start_tile: plains
 
 map: |
-  ########################################
-  #,,,a@,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,,,,,,####,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,####,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,####,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,####,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,n,,,,,,o,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,g######g,,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,,#bcFd#,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#FFeF#,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,#FfFf#,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,##F###,h,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,g,######,,,,,,,#
-  #,o,,,,,,,m,,,,,,,,,,,,,,,#iFFi#,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,FFjcF#kl,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,#FfFF#,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,g,######,,,,,,,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,####,,o,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,####,,o,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,####,,o,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  ########################################
+  ##################################
+  #,,,a@,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,.,,,,,####,,,,,,#
+  #o,,,,,,,,,,,,,,,.,,,,,####,,,,,o#
+  #o,,,,,,,,,,,,,,,.,,,,,####,,,,,o#
+  #o,,,,,,,,######,.,,,,,####,,,,,o#
+  #o,,,,,,,g#bcFd#,.,,,,,,,,,,,,,,o#
+  #o,,,,,,,,#FFeFF,.,,,,,,,,,,,,,,o#
+  #o,,,,,,,g#FfFf#,.,,,,,,,,,,,,,,o#
+  #o,,,,,,,,######....,,,,,,,,,,,,o#
+  #o,,,,,,,,,,,,,..h..i,,,,,,,,,,,o#
+  #o,,,,,,,,,,,,,.....,,,,,,,,,,,,o#
+  #o,,,,######,,,,,.,,,,,,,,,,,,,,o#
+  #o,,,g#kFFk#,,,,,.,,,,,,,,,,,,,,o#
+  #o,,,,#FlcFF......,,,,,,,,,,,,,,o#
+  #o,,,g#FfFF#,,,,,,,,,,,,,,,,,,,,o#
+  #o,,,,######,,,,,,,,,,,,,,,,,,,,o#
+  #o,,,,,mn,,,,,,,,,,,,,,####,j,,,o#
+  #o,,,,,,,,,,,,,,,,,,,,,####,,,,,o#
+  #o,,,,,,,,,,,,,,,,,,,,,####,,,,,o#
+  #o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o#
+  #o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,o#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  ##################################
 
 legend:
   "#": wall
@@ -47,16 +41,16 @@ legend:
   "F": floor
   "a": { tile: stairs_up, next_level: null, description: "The path back out of the valley, forest closing in on either side within a few steps.", announce: true }
   "e": { tile: floor, entity: grey_valley_elder, dialogue: "The caves have fed this place longer than I've been alive. Lately I find myself watching that treeline more than I used to, waiting on word from the hunters." }
-  "j": { tile: floor, entity: grey_valley_weaver, dialogue: "Spider silk's the only thing we make that anyone out there would actually want. Every thread of it comes out of those caves, one hunt at a time." }
-  "m": { tile: plains, entity: villager, dialogue: "Half this courtyard was a cloister once, or so the Elder tells it. Doesn't much matter what it used to be, so long as the roof holds." }
-  "n": { tile: plains, entity: villager, dialogue: "Nobody finds this place by accident. Suits us fine - fewer people, more caves to ourselves. Used to, anyway." }
+  "i": { tile: plains, entity: villager, dialogue: "Half this courtyard was a cloister once, or so the Elder tells it. Doesn't much matter what it used to be, so long as the roof holds." }
+  "j": { tile: plains, entity: villager, dialogue: "Nobody finds this place by accident. Suits us fine - fewer people, more caves to ourselves. Used to, anyway." }
+  "l": { tile: floor, entity: grey_valley_weaver, dialogue: "Spider silk's the only thing we make that anyone out there would actually want. Every thread of it comes out of those caves, one hunt at a time." }
   "h": { tile: landmark, tile_sprite: well, description: "A stone cistern, still catching what rain gets through what's left of the roof - the one part of the old monastery nobody had to rebuild.", announce: true }
   "b": { tile: floor, decoration: fireplace }
   "c": { tile: floor, decoration: table }
   "d": { tile: floor, decoration: bookshelf }
   "f": { tile: floor, decoration: chair }
   "g": { tile: plains, decoration: bush }
-  "i": { tile: floor, decoration: chest }
-  "k": { tile: plains, decoration: barrel }
-  "l": { tile: plains, decoration: crate }
+  "k": { tile: floor, decoration: chest }
+  "m": { tile: plains, decoration: barrel }
+  "n": { tile: plains, decoration: crate }
   "o": { tile: plains, decoration: tree }

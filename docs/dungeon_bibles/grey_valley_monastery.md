@@ -81,6 +81,20 @@ clusters read as the parts of the monastery nobody got around to
 rebuilding - same "purely decorative, no new mechanics" technique every
 other settlement pass uses, framed as ruin rather than storehouse.
 
+**Second regeneration, applying `content_design_process.md` §0af.** The
+first regeneration gave both stationary residents real buildings but
+never gave the settlement a real road - the Elder's Hall, the Weaver's
+Workshop, and the Cistern all stood independently in open plains with
+nothing connecting them, the same structureless-layout problem
+Millhaven's own fourth pass diagnosed and fixed. This pass draws a main
+street from the gate to a plaza anchored on the Cistern first, then
+places both buildings against it (the Elder's Hall touching the plaza
+directly, the Weaver's Workshop reached by a short connected branch),
+and shrinks the footprint again, from 40x34 to 34x28 - the same
+4-entity cast and 2 buildings, sized to what that cast actually
+justifies rather than the round number the first regeneration picked.
+Nothing else about the cast, dialogue, or named set pieces changed.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | Grey Valley Monastery | The Elder, The Weaver, The Settlers, The Cistern |
