@@ -199,7 +199,7 @@ decorations:
   flowerbed_blue:   {sheet: kenney_roguelike, col: 0,  row: 12}
   bush:             {sheet: kenney_roguelike, col: 19, row: 9}
   tree:             {sheet: kenney_roguelike, col: 16, row: 9}
-  fence:            {sheet: kenney_roguelike, col: 47, row: 23}
+  fence:            {sheet: kenney_roguelike, col: 47, row: 24}
   herb_clump:       {sheet: kenney_roguelike, col: 44, row: 23}
   # Added for Millhaven's third pass (a burying ground, a tilled plot, the
   # Trainer's practice range) - kenney_roguelike again for the tombstone

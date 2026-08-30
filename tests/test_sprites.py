@@ -18,6 +18,7 @@ from engine.sprites import (
     apply_sprites,
     build_sprite_codepoints,
     composite_sprite_over_terrain,
+    hard_alpha_cutout,
     recolor_sprite,
 )
 
@@ -115,6 +116,37 @@ def test_composite_sprite_over_terrain_partial_alpha_blends_between_the_two():
     assert 10 < r < 200  # strictly between the two source colors
     assert 5 < g < 20
     assert 5 < b < 30
+
+
+def test_hard_alpha_cutout_snaps_below_threshold_to_fully_transparent():
+    rgba = np.array([[[220, 220, 220, 127]]], dtype=np.uint8)  # a light edge-fringe pixel
+    out = hard_alpha_cutout(rgba, threshold=128)
+    assert out[0, 0, 3] == 0
+
+
+def test_hard_alpha_cutout_snaps_at_or_above_threshold_to_fully_opaque():
+    rgba = np.array([[[200, 5, 5, 128]]], dtype=np.uint8)
+    out = hard_alpha_cutout(rgba, threshold=128)
+    assert out[0, 0, 3] == 255
+
+
+def test_hard_alpha_cutout_leaves_fully_opaque_and_fully_transparent_pixels_alone():
+    rgba = np.array([[[200, 5, 5, 255], [0, 0, 0, 0]]], dtype=np.uint8)
+    out = hard_alpha_cutout(rgba)
+    assert out[0, 0, 3] == 255
+    assert out[0, 1, 3] == 0
+
+
+def test_hard_alpha_cutout_leaves_rgb_untouched():
+    rgba = np.array([[[220, 150, 90, 127]]], dtype=np.uint8)
+    out = hard_alpha_cutout(rgba)
+    assert tuple(out[0, 0, :3]) == (220, 150, 90)
+
+
+def test_hard_alpha_cutout_does_not_mutate_the_input():
+    rgba = np.array([[[220, 220, 220, 127]]], dtype=np.uint8)
+    hard_alpha_cutout(rgba)
+    assert rgba[0, 0, 3] == 127
 
 
 def _solid_sheet(colors: list[tuple[int, int, int, int]], tile_size: int, columns: int) -> Image.Image:
@@ -364,6 +396,86 @@ def test_build_sprite_codepoints_registers_a_decoration_codepoint():
     assert "table" in result.decorations
     tile = tileset.get_tile(result.decorations["table"])
     assert tuple(tile[0, 0]) == (200, 150, 100, 255)
+
+
+def test_build_sprite_codepoints_decoration_gets_hard_cutout_alpha():
+    """The bug this exists to fix: a decoration's own semi-transparent edge
+    pixels (anti-aliasing, LANCZOS resize ringing) blend into a visible
+    light halo once composited over a darker tile, making ordinary
+    furniture/plants read as interactive the same way an entity correctly
+    does. Registering the decoration should leave no partial alpha behind."""
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        decorations={"table": SpriteRef(sheet="test", col=0, row=0)},
+    )
+    # A uniformly semi-transparent, light-colored tile - the exact shape of
+    # a soft edge-fringe pixel, just filling the whole tile for a simple assertion.
+    sheet_images = {"test": _solid_sheet([(220, 220, 220, 127)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    tile = tileset.get_tile(result.decorations["table"])
+    assert tile[0, 0, 3] in (0, 255)  # never partial
+
+
+def test_build_sprite_codepoints_decoration_composite_uses_hard_cutout_pixels():
+    """The composited-over-terrain codepoint should also show no soft
+    blending - the terrain shows through cleanly or is fully replaced,
+    never a partial mix, since the underlying decoration pixels were
+    already hard-cut before this composite was built."""
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={"floor": SpriteRef(sheet="test", col=0, row=0)},
+        decorations={"table": SpriteRef(sheet="test", col=1, row=0)},
+    )
+    sheet_images = {
+        "test": _solid_sheet([(10, 20, 30, 255), (220, 220, 220, 127)], 16, 2)
+    }
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    composite_tile = tileset.get_tile(result.decorations_on_tile[("table", "floor")])
+    r, g, b, a = composite_tile[0, 0]
+    assert a == 255
+    # Either the terrain's own color (decoration pixel snapped transparent)
+    # or the decoration's own color (snapped opaque) - never a blend of both.
+    assert (r, g, b) in {(10, 20, 30), (220, 220, 220)}
+
+
+def test_build_sprite_codepoints_entity_keeps_soft_alpha_unlike_a_decoration():
+    """Regression guard: the hard cutout is decoration-specific. An entity
+    with the exact same semi-transparent pixel keeps its soft blend - the
+    "pop" against the background is wanted there, per the user's own report
+    that prompted the decoration-only fix."""
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={"rat": SpriteRef(sheet="test", col=0, row=0)},
+        items={},
+        tile_kinds={"floor": SpriteRef(sheet="test", col=1, row=0)},
+    )
+    sheet_images = {
+        "test": _solid_sheet([(220, 220, 220, 127), (10, 20, 30, 255)], 16, 2)
+    }
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    composite_tile = tileset.get_tile(result.entities_on_tile[("rat", "floor")])
+    r, g, b, a = composite_tile[0, 0]
+    assert a == 255
+    assert 10 < r < 220  # a genuine blend, not snapped to either source color
+    assert 20 < g < 220
+    assert 30 < b < 220
 
 
 def test_build_sprite_codepoints_registers_a_composite_for_every_decoration_tile_kind_pair():

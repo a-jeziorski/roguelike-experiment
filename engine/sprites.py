@@ -143,6 +143,26 @@ def recolor_sprite(rgba: np.ndarray, target_color: "Color") -> np.ndarray:
     return out
 
 
+def hard_alpha_cutout(rgba: np.ndarray, threshold: int = 128) -> np.ndarray:
+    """Snaps every pixel's alpha to fully opaque or fully transparent - no
+    partial blending at the edges. Applied to decorations only (see
+    build_sprite_codepoints), never entities/items/tile_kinds: those sheets'
+    edge pixels are genuinely semi-transparent (anti-aliasing, plus ringing
+    LANCZOS resizing a small hard-edged icon introduces on its own), and
+    Image.alpha_composite blends that partial alpha's *color* in too - which
+    for pixel art whose edge pixels skew light (the tone of whatever background
+    they were drawn against) shows up as a soft light halo once composited
+    over a darker tile. Wanted for an entity (it's part of what makes it
+    read as interactive); wrong for a decoration (it makes ordinary
+    furniture/plants read as interactive too, indistinguishable from an
+    entity at a glance - see the user report that prompted this). Pure
+    alpha-channel op; RGB is left untouched (irrelevant wherever alpha lands
+    at 0). Returns a new array; input is not mutated."""
+    out = rgba.copy()
+    out[:, :, 3] = np.where(out[:, :, 3] >= threshold, 255, 0)
+    return out
+
+
 def composite_sprite_over_terrain(actor_rgba: np.ndarray, terrain_rgba: np.ndarray) -> np.ndarray:
     """Alpha-composites an already-recolored/resized entity or item sprite
     over a tile-kind's own sprite, using the actor's own per-pixel alpha as
@@ -222,10 +242,14 @@ def build_sprite_codepoints(
     tile_sprite_overrides is registered identically (a named, one-off icon
     with its own optional backdrop bake, same as dungeon_entrances - see
     content.schema.LegendEntry.tile_sprite). decorations is registered the
-    same way too (no
-    color/recolor - a decoration has no EntityDef/ItemDef.color to tint
-    toward), but composites like an entity/item, not like tile_kinds - see
-    the second pass below.
+    same way too (no color/recolor - a decoration has no EntityDef/
+    ItemDef.color to tint toward), but composites like an entity/item, not
+    like tile_kinds - see the second pass below - and additionally gets its
+    alpha hard-cut (see hard_alpha_cutout) right after registration, unlike
+    every other section here: a decoration's soft, semi-transparent edge
+    pixels otherwise blend into a visible light halo against a darker tile,
+    which reads as "this is interactive" the same way it correctly does for
+    an entity - wrong for ordinary furniture/plants.
 
     A second pass then registers every (entity/item/decoration, tile_kind)
     composite (see composite_sprite_over_terrain) for every actor,
@@ -287,6 +311,12 @@ def build_sprite_codepoints(
     decoration_pixels: dict[str, np.ndarray] = {}
     for kind in sorted(manifest.decorations):
         codepoint, rgba = _register(manifest.decorations[kind], None)
+        # Hard-cutout alpha, not the soft edges every other registration
+        # keeps - see hard_alpha_cutout's own docstring. Overwrites the
+        # codepoint _register just registered, and decoration_pixels holds
+        # the cutout version so the composite pass below builds on it too.
+        rgba = hard_alpha_cutout(rgba)
+        tileset[codepoint] = rgba
         result.decorations[kind] = codepoint
         decoration_pixels[kind] = rgba
     tile_sprite_override_pixels: dict[str, np.ndarray] = {}
