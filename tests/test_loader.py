@@ -1369,7 +1369,6 @@ SHIPPED_DUNGEON_IDS = {
     "goblin_ambush",
     "grey_valley_monastery",
     "silver_mountain_caves",
-    "windbreak_hold",
     "the_windrest",
     "farrows_stake",
     "sunless_hollow",
@@ -1378,7 +1377,7 @@ SHIPPED_DUNGEON_IDS = {
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow"]
-SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "windbreak_hold", "farrows_stake", "northern_watch_post"]
+SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "farrows_stake", "northern_watch_post"]
 
 
 def test_load_dungeon_registry_finds_all_shipped_dungeons():
@@ -1854,7 +1853,7 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.height == 180
     assert overworld.player_start == (29, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 17  # heartlands' 16 + Northern Steppe's first, the Watch Post
+    assert len(overworld.dungeon_entrances) == 16  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's first, the Watch Post
     assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(

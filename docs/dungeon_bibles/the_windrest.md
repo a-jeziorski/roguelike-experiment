@@ -6,8 +6,10 @@ player is meant to feel room to room. See `docs/world_history.md` for
 the realm-level facts this dungeon has to agree with,
 `docs/content_design_process.md` (particularly §0p, the `dunes` hazard
 this dungeon's whole premise depends on), and
-`docs/dungeon_bibles/windbreak_hold.md` for the settlement whose quest
-targets this dungeon's `windrest_captain`. This document is the specific
+`docs/dungeon_bibles/farrows_stake.md` (set piece "The Captain") for the
+settlement whose quest targets this dungeon's `windrest_captain` -
+originally Windbreak Hold's own questgiver, before that settlement was
+folded into Farrow's Stake. This document is the specific
 story of *this* place, decided before any ASCII is drawn.*
 
 ## The pitch
@@ -94,14 +96,15 @@ even the wind can't reach, claimed by whoever's currently in charge the
 same "won an argument, most recently" logic `broken_watch.md` already
 establishes for its own captain. `windrest_captain` is centered here, and
 here only - **this must remain the dungeon's single spawn of that
-entity**, since `windbreak_hold.md`'s `reclaiming_the_windrest` quest
-targets it specifically. Its own display `name` is plain "Bandit
-Captain" (matching `bandit_captain`'s at Broken Watch), deliberately not
-"Windrest Captain" - both this dungeon and its neighboring settlement
-already carry "wind"/"Windrest"/"Windbreak" in their own names, and
-`windbreak_captain`'s own display name is simply "Captain"; a second
-"Windrest Captain" title would read as confusingly similar to a player
-being sent by one to kill the other. The terminal exit (a `stairs_down`
+entity**, since `farrows_stake.md`'s `reclaiming_the_windrest` quest
+(originally Windbreak Hold's, before that settlement folded into
+Farrow's Stake) targets it specifically. Its own display `name` is plain
+"Bandit Captain" (matching `bandit_captain`'s at Broken Watch),
+deliberately not "Windrest Captain" - this dungeon's own name and
+`windbreak_captain`'s catalog id both still carry "Wind"/"Windrest"/
+"Windbreak," and `windbreak_captain`'s own display name is simply
+"Captain"; a second "Windrest Captain" title would read as confusingly
+similar to a player being sent by one to kill the other. The terminal exit (a `stairs_down`
 tile at the Storm Door itself, `stairs_down: null` per `elder_cairn.md`'s own
 precedent for a terminal exit regardless of literal up/down flavor) sits
 near the entrance, not past this corner - leaving after the fight means

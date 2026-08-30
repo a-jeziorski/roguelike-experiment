@@ -49,7 +49,7 @@ map: |
   TTTTTT,T,,,,,,,,,,,,^,..,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,sssssssssssssssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
   TTTTT,,,,,,,,,,,,,,,^^,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,ssssssssssssssssssssssssss,s,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
   TTTT,,,,,,,,,,,,,,,,^^,,,..,,,,,,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,sssssssssssssssss,,ssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-  ,TT,,,,,,,,,,,,,,,,,^^^,,,,.,,,,,,,,TTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,ssssssssssssssss,K,,ssssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+  ,TT,,,,,,,,,,,,,,,,,^^^,,,,.,,,,,,,,TTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,ssssssssssssssss,s,,ssssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,,,
   ,,,,,,,,,,,,,,,,,,,,^^^,,,,.P@,,,,,,,TT,TT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,sssssssssssssss,,,,,,sssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,,
   ,,,,,,,,,^^^^,,,,,,,^^^^,..,1,,,,,,,TTTTT,,,,,,,,,,,,,,,^,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,ssssssssssssss,,,,,,sssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,,
   ,,,,,,,,,^^^^^,,,,,,,^...^,,.,,,,,,TTTTTTTTT,,,,,,,,,,^^^^,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,sssssssssssss,,,,L,,,sssssssssssss,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -116,7 +116,6 @@ legend:
   "H": { dungeon_entrance: saltmarsh }
   "J": { dungeon_entrance: grey_valley_monastery }
   "V": { dungeon_entrance: silver_mountain_caves }
-  "K": { dungeon_entrance: windbreak_hold }
   "L": { dungeon_entrance: the_windrest }
   "R": { dungeon_entrance: farrows_stake }
   "U": { dungeon_entrance: sunless_hollow }

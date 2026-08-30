@@ -4,24 +4,44 @@ name: Farrow's Stake
 player_start_tile: plains
 
 map: |
-  ####################
-  #,x@,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,##,,,#
-  #,,,,,,,,,,,,,#,2,,#
-  #,,,,,,,,S,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,1,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,#
-  ####################
+  ############################
+  #,,,a@,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,.,,,,,,,,,,,,,,###,,,,#
+  #,,,,.,,,,,,#####,,,###,,,,#
+  #,,,,.,,,,,,#cFd#,,,###,,,,#
+  #,,,,.......FFgf#,,,,,,,,,,#
+  #,,l,.,,,,,,#####,,,,,,,,,,#
+  #,,,.....,,,,,,,,kk,,,l,,,,#
+  #,,,..b..,i,,,,,,,,,,,,,,,,#
+  #,,,.....,,,,,,,,,,,,,,,,,,#
+  #,,,##F##,,,,,,,,,,,,,,,,,,#
+  #,,,#cFd#,,,,,,,,,,,###,,,,#
+  #,,,#Fef#,h,,,,,,,,,###,,,,#
+  #,,,#####,h,,,,,,,,,###,,,,#
+  #,,,,,,,,,hj,,,,,,,,,,,,,,,#
+  #,,,,,,,,,h,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  ############################
 
 legend:
   "#": wall
   ",": plains
+  ".": road
   "@": player_start
-  "x": { stairs_up: null, description: "Back out onto open plains - the surveyed route runs south from here.", announce: true }
-  "S": { entity: farrows_scout, tile: plains, dialogue: "Good land doesn't clear itself. Route's surveyed clean all the way through, except for one den that isn't going anywhere on its own." }
-  "1": { entity: villager, tile: plains, dialogue: "Never seen ground this good sit unclaimed so long. Makes you wonder what kept everyone else off it." }
-  "2": { entity: villager, tile: plains, dialogue: "Stakes are in the ground from here clear to the hollow. First real spur anyone's tried laying since I don't know when." }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null, description: "Back out onto open plains - the surveyed route runs south from here.", announce: true }
+  "e": { tile: floor, entity: farrows_scout, dialogue: "Good land doesn't clear itself. Route's surveyed clean all the way through, except for one den that isn't going anywhere on its own." }
+  "g": { tile: floor, entity: windbreak_captain, dialogue: "The Windrest still stands - real walls, a real roof. Whoever's holed up in there isn't doing anything with it. Just sitting on the one dry room for a hundred miles." }
+  "i": { tile: plains, entity: villager, dialogue: "Never seen ground this good sit unclaimed so long. Makes you wonder what kept everyone else off it." }
+  "j": { tile: plains, entity: villager, dialogue: "Stakes are in the ground from here clear to the hollow. First real spur anyone's tried laying since I don't know when." }
+  "b": { tile: landmark, description: "A surveyor's table, weighted down with stones against the wind - the route runs clean on it, all the way to the hollow.", announce: true }
+  "c": { tile: floor, decoration: bed }
+  "d": { tile: floor, decoration: chest }
+  "f": { tile: floor, decoration: chair }
+  "h": { tile: plains, decoration: fence }
+  "k": { tile: plains, decoration: herb_clump }
+  "l": { tile: plains, decoration: bush }

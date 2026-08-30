@@ -177,12 +177,11 @@ are shipped. Each is placed here for quick cross-reference - see
   `stonebridge` (fortified, near `broken_watch`), `saltmarsh` (coastal,
   near `drowned_waystation`), `grey_valley_monastery` (settlers occupying
   the ruins of an Old Kingdom monastery, isolated in the forested Grey
-  Valley, reliant on hunting the neighboring caves), `windbreak_hold` (a
-  season-old camp on the Scoured Reach, sheltering behind a salvaged
-  windbreak wall since the real shelter, `the_windrest`, is occupied),
-  `farrows_stake` (a fledgling camp staking open plains south of the
-  mountains, surveying a new trade spur off the road already proven safe
-  to Millhaven).
+  Valley, reliant on hunting the neighboring caves), `farrows_stake` (a
+  fledgling camp staking open plains south of the mountains, surveying a
+  new trade spur off the road already proven safe to Millhaven - also
+  home to a Captain whose own camp on the Scoured Reach couldn't hold on
+  alone, still owed a reckoning at `the_windrest`).
 - **Natural, no era or faction**: `silver_mountain_caves` (a cave system
   that predates the Kingdom entirely - never built, just always there.
   Home to its own wildlife, cave spiders that Grey Valley Monastery hunts

@@ -47,9 +47,41 @@ closing in on the camp itself.
 
 One level, matching every other Settler town's precedent.
 
+**The Captain folds in, Windbreak Hold retires.** Windbreak Hold and
+Farrow's Stake were both a single stationary questgiver plus two plain
+villagers, with no `content_design_process.md` §0af treatment yet -
+genuinely thin on their own. Rather than apply the road-network/
+decoration pass to both separately, the two are consolidated: the
+Captain (`windbreak_captain`, previously Windbreak Hold's own
+questgiver) and their `reclaiming_the_windrest` quest move here, and
+`windbreak_hold` retires as a dungeon-registry id entirely - its
+overworld entrance reverts to the dunes that surround it, its own two
+villagers (whose dialogue was specifically about wind and storms) don't
+carry over, and its bible is deleted rather than archived. **This is a
+deliberate, accepted loss, not an oversight**: Windbreak Hold's own
+bible was the sole justification for the `dunes` hazard tile and
+explicitly contrasted its "barely holding on" mood against this
+settlement's "optimistic, unhurried" one - see its own tone notes for
+what that contrast was protecting. The narrative bridge: the Captain's
+people couldn't hold that ground alone and joined this camp's expansion
+instead; the Captain personally hasn't let go of the debt at the
+Windrest (see set piece 2 below and `data/quests.yaml`'s
+`reclaiming_the_windrest`, rewritten this pass to drop every reference
+to a home camp that no longer exists).
+
+**First §0af pass otherwise**: a small road network (gate to a hub at
+the surveyor's table, branches to both shelters), both stationary NPCs
+get real, modest shelters ("new-built," per this settlement's own
+`inspect_text` - not permanent halls), the surveyor's table itself
+becomes a real `landmark` instead of just a line of flavor text, and the
+"stakes already driven in a line running south" become an actual line
+of `fence` decorations. Small footprint on purpose - 28x22, the
+smallest of any settlement redone so far bar the Watch Post - this is a
+fresh camp, not a padded canvas.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Farrow's Stake | The Scout, The Survey Line |
+| `level_01` | Farrow's Stake | The Scout, The Captain, The Survey Line |
 
 ## The named set pieces
 
@@ -74,29 +106,63 @@ threatening the Stake itself.
 *Dialogue direction*: practical and forward-looking - "good land doesn't
 clear itself" is the right register, not fear or urgency.
 
-### 2. The Survey Line
+### 2. The Captain
+
+**`windbreak_captain`** (existing entity, `ai: villager`,
+`stationary: true`, title only - "Captain," unchanged, matching
+Windbreak Hold's own titles-only convention) - folded in from the now-
+retired Windbreak Hold (see Structure overview above). Has a modest
+shelter of their own here, matching this camp's "new-built" register,
+not a rebuild of Windbreak Hold's own cruder, wind-battered one.
+
+*Questgiver*: still gives `reclaiming_the_windrest` (kill
+`windrest_captain` at `the_windrest`, then report back) - mechanically
+untouched by the move, only its text was rewritten to drop every
+reference to a home camp that no longer exists. No deadline, unchanged.
+
+*Dialogue direction*: their existing per-spawn line ("The Windrest still
+stands - real walls, a real roof...") never named Windbreak Hold and
+needed no rewrite - it reads exactly the same here. New content written
+for this move (the quest text itself) should sound like someone who's
+found steadier footing, not someone still barely holding on - the
+Captain settling an old debt from a position of relative stability, not
+carrying Windbreak Hold's desperation into this camp's own register.
+
+*Why it's here*: the fold-in's entire point - one settlement with two
+real questgivers instead of two thin ones with one apiece.
+
+### 3. The Survey Line
 
 A plain villager positioned near a line of surveyor's stakes already
 driven into the ground - physical evidence the route-planning is real,
-not just talk. Ordinary texture, not a named set piece of its own;
-exists mainly to help this small roster clear the 75% unique-dialogue
-floor comfortably (three talkable NPCs: the Scout plus two villagers).
+not just talk, now a literal line of `fence` decorations running south
+from the surveyor's table (see Structure overview). Ordinary texture,
+not a named set piece of its own; exists mainly to help this small
+roster clear the 75% unique-dialogue floor comfortably (four talkable
+NPCs: the Scout, the Captain, plus two villagers - still 100% unique).
 
 ## Roster
 
-One new stationary `villager`-AI entity (`farrows_scout`, unique catalog
-id). Two plain `villager` spawns, each with its own per-spawn `dialogue`.
-No `town_guard` - same reasoning as Windbreak Hold, nothing about this
-location's premise is defensive.
+Two stationary `villager`-AI entities: `farrows_scout` (unique catalog
+id, original to this settlement) and `windbreak_captain` (unique
+catalog id, folded in from the now-retired Windbreak Hold - see
+Structure overview). Two plain `villager` spawns, each with its own
+per-spawn `dialogue`. No `town_guard` - nothing about this location's
+premise is defensive, same as every other unguarded Settler outpost in
+the game.
 
 ## Tone notes for anyone (agent or human) revising this later
 
-- No proper names - `Scout`, matching every other named NPC's
+- No proper names - `Scout`/`Captain`, matching every other named NPC's
   titles-only discipline.
-- Keep the mood optimistic, not desperate. If a line of flavor text
-  reads like Windbreak Hold's "barely holding on" register, it's drifted
-  into the wrong location's tone - this camp chose to be here, it isn't
-  surviving despite itself.
+- Keep the mood optimistic, not desperate - including in how the
+  Captain reads here. Their old home's "barely holding on" register
+  doesn't belong in this camp; write them as someone who found steadier
+  footing by joining a settlement that's actually working, not someone
+  who dragged their old desperation along with them. If a line of new
+  flavor text reads uncertain or exhausted, it's drifted into the wrong
+  location's tone - this camp chose to be here, it isn't surviving
+  despite itself.
 - The wolves are wildlife with a den in the wrong place, not a menace
   with intent - same "practical obstacle" register the Sunless Hollow's
   own bible expands on.

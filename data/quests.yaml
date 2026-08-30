@@ -321,22 +321,21 @@ reclaiming_the_windrest:
   name: Reclaiming the Windrest
   description: >
     The Windrest, the one real shelter for miles, is held by Opportunists
-    who took it for its walls, nothing more. The Captain wants whoever's
-    running things there dealt with - not the whole band, just the one
-    holding the best-sealed room. Windbreak Hold can't spare anyone to do
-    it themselves.
+    who took it for its walls, nothing more. The Captain's own people
+    couldn't hold their ground out there alone and folded into Farrow's
+    Stake instead - but the Captain never let the debt go. Whoever's
+    running things at the Windrest, they want it settled.
   target_dead_description: >
     The captain's dead - you saw to that yourself, at the Windrest.
     Whatever's left of that shelter's occupants isn't your problem. Get
-    back to Windbreak Hold and let the Captain know.
+    back to Farrow's Stake and let the Captain know.
   completed_description: >
     The captain's dead, and you went back and told the Captain yourself.
-    They don't say much - just look toward the Windrest for a long
-    moment, like they're already picturing real walls instead of the
-    ones they built by hand.
+    They don't say much - just look north for a long moment, toward a
+    wall they're not going back to build.
   completion_message: The captain's dead. Whatever's left holding the Windrest, it isn't in charge of anything anymore.
-  given_message: "New quest: Reclaiming the Windrest - the Captain wants whoever's leading the Opportunists at the Windrest dealt with, so Windbreak Hold has a real shelter to move into."
-  questgiver_done_dialogue: Word's already reached me - the Windrest's leaderless. Won't be long before we've got real walls again, thanks to you.
+  given_message: "New quest: Reclaiming the Windrest - the Captain wants whoever's leading the Opportunists at the Windrest dealt with. Doesn't get the old camp back, but it settles something they couldn't leave sitting."
+  questgiver_done_dialogue: Word's already reached me - the Windrest's leaderless. Doesn't bring back what we lost holding that ground, but it settles it.
   questgiver_entity_id: windbreak_captain
   target_kill_entity_id: windrest_captain
   reward_gold_amount: 25
