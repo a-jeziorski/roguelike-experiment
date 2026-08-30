@@ -4,32 +4,32 @@ name: Saltmarsh Shore
 player_start_tile: plains
 
 map: |
-  ##################################
-  #,,,a@,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,f,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,#####,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,#bFc#,,,,,,,,qq,,,,,,sssss#
-  #,,,,..FFde#,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,#####,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,,,,,,f,,,,,,,,,o,,,,,sssss#
-  #,,,,.,,,,,,######,,,,,,,,,,sssss#
-  #,,,,.,,,,,,#gFFc#,,,,,,,,,,sssss#
-  #,,,,.......FFhiF#j,,,,,,,,,sssss#
-  #,,f,.,,,,,,######,,,,,,,,,,sssss#
-  #,,,,.,,,,,,,,,,,,,,,,,,f,,,sssss#
-  #,,,,.,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,.,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,.....,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,..k..l,,,,,,,,,,,,,,,,,,sssss#
-  #,,,.....m,,,,,,,,,,####,,,,sssss#
-  #,,,,,,,,n,,,,p,,,,,####,,,,sssss#
-  #,qq,,,,,,,,,,,,,,,,####,,,,sssss#
-  #,,,,,,,,,,,,,,,,,,,####,,,,sssss#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,sssss#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,sssss#
-  ##################################
+  ############################ssssss
+  #,,,a@,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,f,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,#####,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,#bFc#,,,,,,,,qq,,,,,,ssssss
+  #,,,,..FFde#,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,#####,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,,,,,,f,,,,,,,,,o,,,,,ssssss
+  #,,,,.,,,,,,######,,,,,,,,,,ssssss
+  #,,,,.,,,,,,#gFFc#,,,,,,,,,,ssssss
+  #,,,,.......FFhiF#j,,,,,,,,,ssssss
+  #,,f,.,,,,,,######,,,,,,,,,,ssssss
+  #,,,,.,,,,,,,,,,,,,,,,,,f,,,ssssss
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,.,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,.....,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,..k..l,,,,,,,,,,,,,,,,,,ssssss
+  #,,,.....m,,,,,,,,,,####,,,,ssssss
+  #,,,,,,,,n,,,,p,,,,,####,,,,ssssss
+  #,qq,,,,,,,,,,,,,,,,####,,,,ssssss
+  #,,,,,,,,,,,,,,,,,,,####,,,,ssssss
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,ssssss
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,ssssss
+  ############################ssssss
 
 legend:
   "#": wall
@@ -38,7 +38,7 @@ legend:
   "@": player_start
   "F": floor
   "s": sea
-  "a": { tile: stairs_up, next_level: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes.", announce: true }
+  "a": { tile: stairs_up, next_level: null, tile_sprite: town_gate, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes.", announce: true }
   "d": { tile: floor, entity: saltmarsh_elder, dialogue: "Boats used to stop at the old Waystation before the sea took it whole. Sometimes I wonder what they were even carrying, back then." }
   "h": { tile: floor, entity: saltmarsh_witch }
   "n": { tile: plains, entity: villager, dialogue: "Nets won't mend themselves. Neither will anything else out here, come to that." }

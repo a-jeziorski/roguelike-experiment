@@ -6,7 +6,7 @@ player_start_tile: plains
 map: |
   ##################################
   #,,,a@,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
+  #,,,,,............,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,.,,,,,####,,,,,,#
@@ -39,7 +39,7 @@ legend:
   ".": road
   "@": player_start
   "F": floor
-  "a": { tile: stairs_up, next_level: null, description: "The path back out of the valley, forest closing in on either side within a few steps.", announce: true }
+  "a": { tile: stairs_up, next_level: null, tile_sprite: town_gate, description: "The path back out of the valley, forest closing in on either side within a few steps.", announce: true }
   "e": { tile: floor, entity: grey_valley_elder, dialogue: "The caves have fed this place longer than I've been alive. Lately I find myself watching that treeline more than I used to, waiting on word from the hunters." }
   "i": { tile: plains, entity: villager, dialogue: "Half this courtyard was a cloister once, or so the Elder tells it. Doesn't much matter what it used to be, so long as the roof holds." }
   "j": { tile: plains, entity: villager, dialogue: "Nobody finds this place by accident. Suits us fine - fewer people, more caves to ourselves. Used to, anyway." }

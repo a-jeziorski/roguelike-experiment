@@ -27,7 +27,7 @@ legend:
   ".": road
   "@": player_start
   "F": floor
-  "a": { tile: stairs_up, next_level: null, description: "Back out onto open, wind-scoured ground - the road south is still there, for now.", announce: true }
+  "a": { tile: stairs_up, next_level: null, tile_sprite: town_gate, description: "Back out onto open, wind-scoured ground - the road south is still there, for now.", announce: true }
   "c": { tile: floor, entity: watch_post_sentry, dialogue: "Someone should tell Millhaven before they hear it from whoever runs next. Word's easier carried by choice than dragged in after." }
   "h": { tile: plains, entity: villager, dialogue: "Wasn't much of a choice, staying. Nowhere south felt like it'd have us, not with what we'd seen behind us." }
   "i": { tile: plains, entity: villager, dialogue: "No cart's come through since before the leaves turned. Didn't used to go a whole season without one." }
