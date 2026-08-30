@@ -55,4 +55,4 @@ legend:
   "c": { entity: cave_spider }
   "X": { entity: giant_spider }
   "!": { item: healing_potion }
-  "Z": { tile: landmark, description: "A rockfall old enough that nothing living has disturbed it in years, choking the passage down. Whatever's below it isn't part of this fight.", announce: true }
+  "Z": { stairs_down: level_03, description: "The old rockfall, finally shifted enough to slip through - cold air moving up through the gap from somewhere much deeper.", announce: true }

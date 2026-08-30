@@ -15,6 +15,7 @@ from content.loader import (
     load_sprite_manifest,
 )
 from content.schema import FlagDialogue
+from engine.game_map import build_game_map
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
@@ -1421,6 +1422,70 @@ def test_silver_mountain_caves_level_02_has_a_giant_spider():
 
     entity_names = [s.entity.name for s in level.entity_spawns]
     assert "Giant Spider" in entity_names
+
+
+def test_silver_mountain_caves_level_02_rockfall_now_leads_deeper():
+    """The Sealed Passage (docs/dungeon_bibles/silver_mountain_caves.md) is
+    a real stairs_down now, not a landmark - the long-flagged hook this
+    pass finally builds."""
+    catalog = load_catalog()
+    level = load_level(SILVER_MOUNTAIN_CAVES_LEVELS_DIR / "level_02.lvl", catalog)
+
+    assert any(s.kind == "stairs_down" and s.next_level == "level_03" for s in level.stairs)
+
+
+@pytest.mark.parametrize(
+    "level_id, up_target, down_target, roster",
+    [
+        ("level_03", "level_02", "level_04", {"Deep Spider", "Blind Stalker"}),
+        ("level_04", "level_03", "level_05", {"Deep Spider", "Cave Lurker", "Broodmother"}),
+        ("level_05", "level_04", None, {"Deep Spider", "Blind Stalker", "Cave Lurker", "Elder Widow"}),
+    ],
+)
+def test_silver_mountain_caves_depths_are_linked_and_populated(level_id, up_target, down_target, roster):
+    catalog = load_catalog()
+    level = load_level(SILVER_MOUNTAIN_CAVES_LEVELS_DIR / f"{level_id}.lvl", catalog)
+
+    assert any(s.kind == "stairs_up" and s.next_level == up_target for s in level.stairs)
+    assert any(s.kind == "stairs_down" and s.next_level == down_target for s in level.stairs)
+
+    entity_names = {s.entity.name for s in level.entity_spawns}
+    assert roster <= entity_names
+
+
+def test_silver_mountain_caves_depths_are_fully_reachable_from_player_start():
+    """Every monster/item/stairs tile on each new level must be reachable
+    from that level's own player_start via ordinary 8-directional
+    movement - the same discipline the overworld's own entrance-reachability
+    test holds every dungeon_entrance to, applied here since these levels
+    were generated (cellular-automata cave carving, see
+    docs/content_design_process.md §0ae) rather than hand-drawn."""
+    from collections import deque
+
+    catalog = load_catalog()
+    for level_id in ("level_03", "level_04", "level_05"):
+        level = load_level(SILVER_MOUNTAIN_CAVES_LEVELS_DIR / f"{level_id}.lvl", catalog)
+        game_map, _ = build_game_map(level, catalog)
+
+        seen = {level.player_start}
+        queue = deque([level.player_start])
+        while queue:
+            x, y = queue.popleft()
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    nx, ny = x + dx, y + dy
+                    if (nx, ny) not in seen and game_map.is_walkable(nx, ny):
+                        seen.add((nx, ny))
+                        queue.append((nx, ny))
+
+        for spawn in level.entity_spawns:
+            assert (spawn.x, spawn.y) in seen, f"{level_id}: {spawn.entity.name} at ({spawn.x},{spawn.y}) is unreachable"
+        for spawn in level.item_spawns:
+            assert (spawn.x, spawn.y) in seen, f"{level_id}: item at ({spawn.x},{spawn.y}) is unreachable"
+        for stairs in level.stairs:
+            assert (stairs.x, stairs.y) in seen, f"{level_id}: stairs at ({stairs.x},{stairs.y}) is unreachable"
 
 
 def test_forgotten_ruins_level_02b_has_a_hobgoblin_leading_the_warren():

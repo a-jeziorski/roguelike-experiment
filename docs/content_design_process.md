@@ -1823,8 +1823,11 @@ each time rather than just bigger numbers:
   is manageable, several aren't) and `bound_eye` (`ranged_basic` - a
   glass-cannon support threat, not a primary one).
 - Cinder Marches (very dangerous): `stitched_vanguard` (`regenerator`,
-  a genuinely sustained fight) and `hollow_chanter` (`ranged_basic` +
-  `weaken` - saps the player's own damage output mid-fight).
+  a genuinely sustained fight), `hollow_chanter` (`ranged_basic` +
+  `weaken` - saps the player's own damage output mid-fight), and
+  `bound_crawler` (`hostile_basic` + `poison` - added later, the
+  roster's first poisoner; every other entity here reuses
+  regenerator/weaken/pack_hunter/enrage/stun).
 - Hollow Reach (extremely dangerous, deliberately matching the
   eventual necroship's own difficulty - see the region bible):
   `charnel_colossus` (`enrage` - a burst-damage common patrol, worse
@@ -1847,7 +1850,11 @@ its native two-headed silhouette already reads as "more than one body's
 worth of parts" with zero recoloring needed), `mummy_priest` (Chanter),
 `abomination_large4` (Colossus), and `barrow_wight` (Warden - the most
 visually commanding option available, deliberately reserved for the
-roster's single toughest entity).
+roster's single toughest entity). `demonic_crawler` (Bound Crawler,
+added later) rounds out Cinder Marches - a genuinely alien insectoid
+silhouette, picked specifically for this roster rather than the cave
+bestiary it was first spotted alongside (see §0ae) precisely because it
+reads as *wrong* rather than merely animal.
 
 ## 0ad. Visitor band ambush encounters (`Engine._maybe_trigger_visitor_band_encounter`)
 
@@ -1922,6 +1929,64 @@ round-trips monster state through. Saving mid-ambush and reloading loses
 the band entirely. Same "conservative first pass, document the gap"
 precedent as monster status effects never persisting across a save/load
 (`0t`) - see the dungeon's own bible for the full note.
+
+## 0ae. A second endgame roster: Silversilk Caves' depths (`deep_spider` and four others)
+
+`silver_mountain_caves`'s own bible flagged, from the day it shipped,
+that "the genuinely dangerous creatures the settlers always avoided"
+were deliberately left unbuilt past its Sealed Passage - a real hook,
+noted rather than built, same discipline as every other "flag it, don't
+build it" deferral in this project. `0ac`'s Northern Steppe bestiary
+pass gave that hook something concrete to finally be built against: a
+reusable "~300 XP + mid-upper gear" reference build
+(~43 hp/12 melee attack/6-9 defense) for calibrating endgame-tier
+monsters independent of any one region's own theme.
+
+**A second, independent power band, not a shared roster.** Silversilk's
+five new monsters (`deep_spider`, `blind_stalker`, `broodmother`,
+`cave_lurker`, `elder_widow`) are calibrated against the exact same
+reference build and the same three-tier escalation shape `0ac` used
+(challenging -> very dangerous -> extremely dangerous/approaching Hollow
+Reach), spread across three new levels (`level_03`-`level_05`) rather
+than the Northern Steppe's random-encounter/dungeon-arrival split - but
+share zero monster ids with the Northern Steppe roster. Two dungeons,
+two thematically distinct rosters, one reusable difficulty ceiling.
+`docs/dungeon_bibles/silver_mountain_caves.md`'s new "The Depths" section
+has the full per-level breakdown and the hits-to-kill verification
+(one-on-one combat sims with `COMBAT_VARIANCE_ENABLED` off, at both ends
+of the reference build's defense range) - not repeated here.
+
+**Deliberately not Elder Age or Visitor content.** `world_history.md`
+already places this dungeon as "natural, no era or faction," and that
+holds all the way to the bottom - the depths are dangerous because
+they're ancient and undisturbed, not because anything corrupted or
+built them. Keep it that way in any future revision: no Visitor
+fingerprints, no Elder Age masonry, just something old that predates
+every faction with a name.
+
+**Sprites**: three of the five (`deep_spider`, `broodmother`,
+`elder_widow`) are `recolor: true` on `giant_spider` - this dungeon's
+own biggest available spider art, reused the same "one base sprite,
+several recolors" way `guard`/`human` already are elsewhere in the
+catalog, since Silversilk's whole identity is spiders and no third
+distinct spider sprite exists in `rltiles`. `blind_stalker`
+(`lurker_above`) and `cave_lurker` (`violet_fungus`) are the deliberate
+exceptions, keeping the roster from reading as "the same monster three
+times" despite the shared lineage.
+
+**Level generation**: `level_03`-`level_05` are cellular-automata-carved
+caves (the same organic-cave technique `0p` already names as this
+dungeon's own precedent, without detailing it there) - random noise,
+several wall/floor smoothing passes, largest-connected-component
+extraction to guarantee full reachability, then entry/exit chosen to
+maximize both graph distance and straight-line spread so each level is
+a genuine full traversal rather than a short loop. Each level's climactic
+chamber is a deliberately widened room (not left corridor-width) so the
+solo boss encounter reads as a destination. No hand-carved chokepoint
+before either boss - `0ab`'s/`0d`'s chokepoint reasoning is for
+protecting the player from being surrounded by *several* monsters at
+once, which doesn't apply to a solo encounter the way it did for
+`level_01`'s Outer Pickets or `goblin_ambush`'s narrows.
 
 ## 1. Narrative framing
 

@@ -85,6 +85,16 @@ the conflict, not a new story.
 | `level_01` | The Upper Reaches | The Territory Marker, The Outer Pickets, The Spider Dens |
 | `level_02` | The Warren | The Heart of the Tribe, The Sealed Passage |
 | `level_01_undisturbed` | The Upper Reaches (before) | Cave spider dens only - no goblins, no way down |
+| `level_03` | The Blind Reach | The Deep Population |
+| `level_04` | The Broodmother's Hall | The Broodmother |
+| `level_05` | The Elder's Den | The Elder Widow |
+
+**Round 2** (`level_03`-`level_05`, added once a difficulty baseline
+existed to build them against - see "The Depths" below): the goblins/
+spiders conflict stays entirely above the Sealed Passage. Past it, the
+mood, roster, and stakes all change completely - see below rather than
+the set-piece framing above, which doesn't fit a different kind of
+dungeon bolted onto the bottom of this one.
 
 ## The named set pieces
 
@@ -159,41 +169,41 @@ caverns letting more than one picket notice the player at once, not
 through tougher monsters. Matches the established "novelty is structural,
 not catalog growth" discipline wherever it applies cleanly.
 
-### 5. The Sealed Passage (`level_02`, climactic)
+### 5. The Sealed Passage (`level_02`) — **since reopened, see "The Depths" below**
 
 At the level's farthest, most convoluted point - reached only by
-threading nearly the whole warren - the caverns narrow and the way down
-is choked by a rockfall old enough that neither goblin nor spider
-sign shows any sign of having touched it recently. This is the dungeon's
-honest acknowledgment of what it isn't building yet: the "genuinely
-dangerous creatures" the settlers always avoided are down there
-somewhere, past this fall, and this pass doesn't go looking for them. A
-single goblin - the tribe's last, most committed guard - is posted right
-at the fall itself, the one placement in the dungeon that reads as
-deliberate rather than opportunistic: whatever's down there, this
-particular goblin isn't interested in finding out either, but it's
-standing between the player and the one part of its territory it hasn't
-given up on watching.
+threading nearly the whole warren - the caverns narrow at a rockfall old
+enough that neither goblin nor spider sign showed any sign of having
+touched it recently. A single goblin - the tribe's last, most committed
+guard - is posted right at the fall itself, the one placement in the
+dungeon that reads as deliberate rather than opportunistic: whatever's
+down there, this particular goblin isn't interested in finding out
+either, but it's standing between the player and the one part of its
+territory it hasn't given up on watching.
 
-*Why it's last, and why it's a wall instead of a door*: unlike Sunken
-Mine's locked doors (which gate optional rewards), this is a genuine
-dead end - no key opens a rockfall, no future content is implied to
-exist behind a specific unlockable barrier here. It exists purely to let
-`level_02` end on the dungeon's own terms rather than trailing off, and
-to leave an honest, visible hook for whatever eventually gets built
-underneath this pass without committing to when or what.
+*Why it was last, and why a wall instead of a door originally*: unlike
+Sunken Mine's locked doors (which gate optional rewards), this used to
+be written as a genuine dead end - no key opens a rockfall, no future
+content implied to exist behind a specific unlockable barrier. It
+existed purely to let `level_02` end on the dungeon's own terms rather
+than trailing off, and to leave an honest, visible hook for whatever
+eventually got built underneath. That "eventually" is now this pass -
+the fall (legend symbol `Z`) is a real `stairs_down` into `level_03`,
+with an updated description ("finally shifted enough to slip through")
+rather than a landmark. The goblin guard, the rest of `level_02`'s
+population, and everything above the fall are all unchanged - see "The
+Depths" below for what's actually past it now.
 
-The rockfall itself is a pure landmark, not a way out - every level in a
-real dungeon needs its own way to leave (`requires_stairs_down`'s actual
-enforcement is per-level, not merely "somewhere in the dungeon"), so
-`level_02` also has a second, narrow crack elsewhere in the warren, cold
-air bleeding through it from the surface: a way out that isn't the one
-the player came in by, distinct from the Sealed Passage and placed well
-clear of it. Two different ways this dungeon says "the caves keep
-going" - one sealed, one open - without either one contradicting the
-other.
+The rockfall was originally a pure landmark, not a way out (now a real
+`stairs_down`, per above) - every level in a real dungeon needs its own
+way to leave regardless (`requires_stairs_down`'s actual enforcement is
+per-level, not merely "somewhere in the dungeon"), so `level_02` also
+has a second, narrow crack elsewhere in the warren, cold air bleeding
+through it from the surface: a way out that isn't the one the player
+came in by, distinct from the fall and placed well clear of it. Two
+different ways down/out of this level, neither contradicting the other.
 
-## Roster and balance (no new monsters this pass)
+## Roster and balance, levels 1-2 (no new monsters here)
 
 Both `goblin` and `cave_spider` are pre-existing `data/entities.yaml`
 catalog entries - the latter's own "not yet placed in any level" comment
@@ -280,6 +290,137 @@ wants to stay optional.
   flavor text should lean toward "quick, easily missed, easy to leave
   alone" rather than "menacing" - the tension is entirely in the
   player's own restraint, not in the spiders being scary.
-- The Sealed Passage is a hook, not a cliffhanger demanding a sequel -
-  write it so it reads as complete and honest on its own, not as an
-  unresolved thread the player should feel cheated by.
+- The Sealed Passage was a hook, not a cliffhanger demanding a sequel -
+  written to read as complete and honest on its own at the time, not as
+  an unresolved thread the player should have felt cheated by. It's
+  reopened now (see "The Depths" below), which is the payoff that
+  approach was always meant to earn, not a retcon of it.
+- Past the fall, the tone changes on purpose (see "The Depths" below) -
+  don't backfill goblin/spider competition framing onto `level_03`
+  onward. It's a different, colder register: not two things fighting
+  over a den, just something old that was never anyone's to contest.
+
+## The Depths (`level_03`-`level_05`)
+
+Everything above this point in the document describes the dungeon as it
+shipped in Round 1. This section is Round 2 - built once
+`docs/content_design_process.md`'s Northern Steppe bestiary pass had
+established a concrete "~300 XP + mid-upper gear" reference build for
+endgame-tier monsters (§0ac), giving this dungeon's own long-flagged
+"genuinely dangerous creatures" hook something real to be calibrated
+against. Same reference build, same tiering discipline, an independent
+roster - Silversilk's depths are not the Northern Steppe's, just built
+to the same difficulty ceiling.
+
+### The pitch, past the fall
+
+Nothing here competes with anything else for territory. No goblins made
+it this far, no spider den claims this ground - whatever's down here
+has simply always been the last, oldest thing in this cave system,
+undisturbed since long before the Old Kingdom, let alone before a
+goblin tribe or a monastery's hunting parties existed to avoid it. The
+mood shifts from "competition" (Round 1) to something closer to
+dread-of-scale: every level down is colder, quieter, and less lit than
+the one before, and every creature in it reads as *older* rather than
+*stronger-for-its-own-sake*. This is deliberately **not** Elder Age or
+Visitor content - `world_history.md` already places Silversilk Caves as
+"natural, no era or faction," and that stays true all the way to the
+bottom. The depths are dangerous because they're ancient and
+undisturbed, not because anything built or corrupted them.
+
+**Escalation, matching the Northern Steppe's own three-tier shape**
+(`docs/content_design_process.md` §0ac) but reusing none of its roster:
+
+| Tier | Level | Danger | New entity(ies) |
+|---|---|---|---|
+| Challenging | `level_03`, The Blind Reach | First sign something bigger than cave spiders lives here | `deep_spider`, `blind_stalker` |
+| Very dangerous | `level_04`, The Broodmother's Hall | A named, solo climactic threat plus denser ambient population | `broodmother`, `cave_lurker` |
+| Extremely dangerous, approaching Hollow Reach | `level_05`, The Elder's Den | The dungeon's true apex, solo-placed | `elder_widow` |
+
+**Why spiders stay the throughline, mostly**: `deep_spider`/`broodmother`/
+`elder_widow` are all reskinned-and-recolored escalations of the same
+lineage `cave_spider`/`giant_spider` already established (all three
+share `giant_spider`'s sprite, recolored - the biggest spider art
+available, same "one base sprite, several recolors" precedent
+`guard`/`human` already use elsewhere in the catalog) - Silversilk's own
+name and identity are spiders, so the depths escalate that identity
+rather than replacing it. `blind_stalker` (`lurker_above`) and
+`cave_lurker` (`violet_fungus`) are the deliberate exceptions, keeping
+the roster from reading as "just bigger spiders three times over."
+
+### The Deep Population (`level_03`)
+
+Four `deep_spider` (hp 30/atk 13/def 2, poison - `giant_spider`'s own
+shape scaled up a tier) and three `blind_stalker` (hp 28/atk 13/def 2,
+`sleeping_guard` with a tight `alert_radius: 2` - no eyes, relies on the
+player getting close rather than a wide passive sense) spread through
+the level's long, winding route, never clustered - the same "scattered,
+not piled" discipline `level_01`'s Outer Pickets already established,
+just at a much higher stat tier. Two `healing_potion`s along the route.
+This is the player's first real sign the "genuinely dangerous creatures"
+warning wasn't idle - individually survivable, but nothing here is a
+formality the way a `level_01` goblin still is by this point in a real
+playthrough.
+
+### The Broodmother (`level_04`, climactic)
+
+A single `broodmother` (hp 42/atk 18/def 4, `regenerator`,
+`regen_amount: 4`) holds the level's one large chamber at its farthest
+point - deliberately mirroring the Northern Steppe's own
+`stitched_vanguard` numbers exactly (both are "sustained regenerating
+melee" tier-two threats; reusing the same figures wasn't an accident,
+it's the same design decision arrived at twice). Two `cave_lurker`
+(hp 28/atk 16/def 2, `ranged_basic` + `weaken`) are posted nearer her
+den, backing her up at range - the only place in the dungeon two
+different mechanics (sustained melee + ranged debuff) threaten the
+player in the same encounter, intentionally, since this is the level
+built to feel like the floor actually dropped. Three more `deep_spider`
+patrol the approach, denser than `level_03`'s. Two `healing_potion`s and
+one `banded_mail` (the strongest defense in the game, `defense_bonus: 6`) -
+a real, earned reward for whatever it cost to reach her.
+
+### The Elder Widow (`level_05`, the dungeon's end)
+
+The single hardest fight in Silversilk Caves, alone in the largest room
+in the dungeon: `elder_widow` (hp 55/atk 20/def 7, `enrage` +
+`inflicts_effect: poison` at potency 4/duration 4). Raw stats sit close
+to the Northern Steppe's own `charnel_colossus` (its nearest equivalent
+in danger), with poison layered on top as a distinct flavor neither
+Colossus nor `excavation_warden` carry - this is deliberately not a
+reskin of either, just built to the same ceiling. A thinned-out ambient
+population (two `deep_spider`, two `blind_stalker`, one `cave_lurker`)
+gives the approach real texture without ever competing with her for the
+player's attention - she is placed alone in her den on purpose, the
+same "solo, rare, nothing else drawing attention in the same encounter"
+discipline `excavation_warden`'s own stun-lock caution already
+established for a different reason. Two `healing_potion`s on the
+approach; nothing in the den itself - what's earned here is surviving
+her, not a pile of loot.
+
+**Verified**: one-on-one combat simulations (`COMBAT_VARIANCE_ENABLED`
+off, for determinism) against a "moderate" reference build
+(atk 12/def 6/hp 43) and an "optimistic" one (atk 14/def 9/hp 43, per
+`docs/content_design_process.md` §0ac's own two-point range) confirm
+`deep_spider`/`blind_stalker`/`cave_lurker` are clean, winnable 1v1s at
+both ends of that range; `broodmother` and `elder_widow` both kill an
+unmitigated reference build in a straight toe-to-toe slugfest with no
+retreat, potions, or dodge - by design, matching `stitched_vanguard`'s
+and `charnel_colossus`'s own already-accepted precedent at (near-)
+identical stats. Real play has dodge/crit variance, potions, and the
+established retreat-to-heal lever available; a bare stand-and-trade
+fight against either was never meant to be winnable on its own.
+
+### Terrain, levels 3-5
+
+Generated via the same cellular-automata cave-carving technique named
+(but not detailed) in §0p's own "second, separate problem" note -
+organic, fully-connected caverns, no hand-drawn right angles, matching
+`level_01`/`level_02`'s own "no named rooms" discipline exactly. Each
+level's exit chamber is deliberately widened into a real room (radius
+3/5/6 respectively, growing with the climax's importance) rather than
+staying corridor-width, so the Broodmother's hall and the Elder's den
+both read as a destination, not just the far end of a corridor. No
+chokepoint was hand-carved before either climactic fight, unlike
+`goblin_ambush`'s narrows - both are solo encounters, so the anti-swarm
+reasoning a chokepoint exists for doesn't apply the way it does to
+`level_01`'s Outer Pickets or `level_02`'s denser camp.

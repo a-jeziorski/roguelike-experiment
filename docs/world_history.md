@@ -188,7 +188,11 @@ are shipped. Each is placed here for quick cross-reference - see
   Home to its own wildlife, cave spiders that Grey Valley Monastery hunts
   for food and silk; presently also host to a goblin tribe that migrated
   in after the Goblin Horde broke apart near Wayford, cutting the
-  settlers off from their hunting grounds), `sunless_hollow` (a natural,
+  settlers off from their hunting grounds. Past the goblins' own reach,
+  the long-flagged rockfall now opens onto three deeper levels - older,
+  colder, undisturbed since before the tribe or the monastery existed,
+  see `docs/dungeon_bibles/silver_mountain_caves.md`'s "The Depths"),
+  `sunless_hollow` (a natural,
   sunlight-starved depression south of the mountains, denned by wolves
   since long before Farrow's Stake existed to care - the map's first use
   of the `dark` level flag, see `docs/content_design_process.md` §0q).

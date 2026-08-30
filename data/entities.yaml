@@ -668,6 +668,24 @@ hollow_chanter:
   xp_reward: 30
   description: Enough throat left to keep chanting whatever it was chanting when it died. The words don't mean anything anymore. They still work.
 
+bound_crawler:
+  name: Bound Crawler
+  glyph: c
+  color: [80, 75, 85]
+  hp: 30
+  attack: 16
+  defense: 3
+  ai: hostile_basic
+  # A third Cinder Marches option, and the roster's first poisoner - every
+  # other Visitor creation reuses regenerator/weaken/pack_hunter/enrage/
+  # stun; this one bites like giant_spider's own family instead, just
+  # scaled to this tier's numbers (docs/content_design_process.md §0t).
+  inflicts_effect: poison
+  inflicts_potency: 3
+  inflicts_duration: 3
+  xp_reward: 31
+  description: Too many legs for what's left of the body they're stitched to, moving in a rhythm nothing alive ever settled on. It doesn't slow down to bite - it just doesn't stop.
+
 charnel_colossus:
   name: Charnel Colossus
   glyph: L
@@ -721,3 +739,93 @@ watch_post_sentry:
   ai: villager
   stationary: true
   description: Keeps the watch this post is named for, same as whoever kept it before they left. Somebody has to.
+
+# Silversilk Caves' depths (data/dungeons/silver_mountain_caves/levels/level_03
+# through level_05) - the "genuinely dangerous creatures the settlers always
+# avoided" the dungeon's own bible flagged past the Sealed Passage. Same
+# reference-build calibration as the Northern Steppe bestiary above (see
+# that block's own comment for the full "~300 XP + mid-upper gear" math) -
+# a second, independent power band for a second dungeon, not a shared
+# roster. Escalates across the three new levels the same tiered way:
+# level_03 (challenging) -> level_04 (very dangerous) -> level_05
+# (extremely dangerous, approaching Hollow Reach - the same ceiling the
+# Northern Steppe's own deepest tier sets, per the user's explicit ask).
+
+deep_spider:
+  name: Deep Spider
+  glyph: u
+  color: [90, 30, 100]
+  hp: 30
+  attack: 13
+  defense: 2
+  ai: hostile_basic
+  # A bigger, nastier cousin of giant_spider (hp20/atk7/def1, potency2) -
+  # same poison shape, scaled to this dungeon's new depth tier.
+  inflicts_effect: poison
+  inflicts_potency: 3
+  inflicts_duration: 3
+  xp_reward: 20
+  description: Bigger and paler than anything that hunts nearer the surface - down here, size stopped being a disadvantage generations ago.
+
+blind_stalker:
+  name: Blind Stalker
+  glyph: l
+  color: [90, 90, 90]
+  hp: 28
+  attack: 13
+  defense: 2
+  ai: sleeping_guard
+  # Flat to the rock until the player's nearly on top of it - a much
+  # tighter alert_radius than wraith's (4), matching "no eyes, relies on
+  # you getting close" rather than a wide passive sense
+  # (docs/content_design_process.md §0t/§0u).
+  alert_radius: 2
+  xp_reward: 19
+  description: Flat against the rock until it isn't - no eyes worth the name, and none needed for how close it lets you get first.
+
+broodmother:
+  name: Broodmother
+  glyph: q
+  color: [195, 185, 145]
+  hp: 42
+  attack: 18
+  defense: 4
+  ai: regenerator
+  regen_amount: 4
+  xp_reward: 34
+  description: Old enough to have outlived whatever first denned here. Every spider on both reaches above traces back to her, one way or another.
+
+cave_lurker:
+  name: Cave Lurker
+  glyph: f
+  color: [140, 20, 70]
+  hp: 28
+  attack: 16
+  defense: 2
+  ai: ranged_basic
+  ranged_range: 5
+  inflicts_effect: weaken
+  inflicts_potency: 3
+  inflicts_duration: 3
+  xp_reward: 30
+  description: Barely moves, doesn't need to - whatever it puts in the air does the work of closing the distance for it.
+
+elder_widow:
+  name: Elder Widow
+  glyph: A
+  color: [20, 15, 20]
+  hp: 55
+  attack: 20
+  defense: 7
+  ai: enrage
+  # The dungeon's true apex, solo-placed at the very bottom of level_05 -
+  # raw stats approaching Charnel Colossus's own burst danger, plus a
+  # poison bite neither Colossus nor Excavation Warden carry, for a
+  # distinct flavor of endgame threat rather than a reskin of either.
+  enrage_hp_pct: 0.3
+  enrage_attack_bonus: 5
+  inflicts_effect: poison
+  inflicts_potency: 4
+  inflicts_duration: 4
+  xp_reward: 65
+  description: Whatever the settlers meant by "genuinely dangerous," this is almost certainly what they'd seen once and never gone looking for again.

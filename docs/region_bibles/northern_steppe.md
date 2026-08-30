@@ -147,6 +147,7 @@ three tiers matching this bible's corruption bands:
 | Frayed Edge (challenging) | `bound_eye` | Ranged support, dies fast once reached |
 | Cinder Marches (very dangerous) | `stitched_vanguard` | Melee, self-repairing (`regenerator`) |
 | Cinder Marches (very dangerous) | `hollow_chanter` | Ranged, saps the player's own attack (`weaken`) |
+| Cinder Marches (very dangerous) | `bound_crawler` | Melee, poisons on the bite - the roster's first poisoner |
 | Hollow Reach (extremely dangerous) | `charnel_colossus` | Common patrol, burst damage, worse enraged below 30% hp |
 | Hollow Reach (extremely dangerous) | `excavation_warden` | Reserved specifically for the Elder Age sites - the highest defense in the game and a stun on every landed hit; a long, attritional, genuinely-meant-to-deter-you fight |
 

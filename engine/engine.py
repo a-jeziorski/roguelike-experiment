@@ -122,7 +122,7 @@ CINDER_MARCHES_MAX_Y = 59
 # Northern Steppe's Elder Age excavation sites specifically, not a roaming
 # random encounter (see that same entities.yaml comment).
 FRAYED_EDGE_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("ash_bound_husk", "bound_eye"), (2, 3))
-CINDER_MARCHES_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("stitched_vanguard", "hollow_chanter"), (2, 3))
+CINDER_MARCHES_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("stitched_vanguard", "hollow_chanter", "bound_crawler"), (2, 3))
 HOLLOW_REACH_BAND: tuple[tuple[str, ...], tuple[int, int]] = (("charnel_colossus",), (1, 2))
 
 

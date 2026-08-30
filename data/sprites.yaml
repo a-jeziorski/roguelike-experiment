@@ -99,6 +99,17 @@ entities:
   grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
   windbreak_captain:       {sheet: rltiles, name: human, recolor: true}
   farrows_scout:           {sheet: rltiles, name: human, recolor: true}
+  # Silversilk Caves' depths (data/entities.yaml's own comment above these
+  # ids) - three recolors of giant_spider (this dungeon's own established
+  # "biggest available spider art" base, same shape as guard/human's own
+  # many-recolor precedent) plus two distinct non-spider sprites for
+  # variety. Not used anywhere in the Northern Steppe roster below, or
+  # vice versa - two independent power bands, two independent rosters.
+  deep_spider:             {sheet: rltiles, name: giant_spider, recolor: true}
+  blind_stalker:           {sheet: rltiles, name: lurker_above}
+  broodmother:             {sheet: rltiles, name: giant_spider, recolor: true}
+  cave_lurker:             {sheet: rltiles, name: violet_fungus}
+  elder_widow:             {sheet: rltiles, name: giant_spider, recolor: true}
   # The Visitor's creations (docs/content_design_process.md's Northern
   # Steppe bestiary entry in data/entities.yaml) - not yet placed in any
   # level, sprites picked ahead of placement like the rest of that batch.
@@ -106,6 +117,7 @@ entities:
   bound_eye:               {sheet: rltiles, name: unseen_horror}
   stitched_vanguard:       {sheet: rltiles, name: ettin_zombie}
   hollow_chanter:          {sheet: rltiles, name: mummy_priest}
+  bound_crawler:           {sheet: rltiles, name: demonic_crawler}
   charnel_colossus:        {sheet: rltiles, name: abomination_large4}
   excavation_warden:       {sheet: rltiles, name: barrow_wight}
 
