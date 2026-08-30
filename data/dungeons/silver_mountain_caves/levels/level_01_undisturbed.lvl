@@ -49,7 +49,7 @@ legend:
   "#": wall
   ".": floor
   "@": player_start
-  "<": { stairs_up: null, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley." , announce: true }
-  ">": { stairs_down: null, description: "The caverns narrow and drop away here, the air going colder - untouched as far as anyone's ever gone. Nothing about it seems worth the climb down.", announce: true }
+  "<": { stairs_up: level_01_undisturbed, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley." , announce: true }
+  ">": { stairs_down: level_02_undisturbed, description: "The caverns narrow and drop away here, the air going colder - untouched as far as anyone's ever gone. Nothing about it seems worth the climb down.", announce: true }
   "c": { entity: cave_spider }
   "!": { item: healing_potion }
