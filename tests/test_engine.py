@@ -3480,6 +3480,7 @@ def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
 def test_build_game_map_spawns_an_inert_decoration_entity():
     from content.loader import DecorationSpawn, ParsedLevel
     from content.schema import DECORATION_NAMES
+    from engine.game_map import DECORATION_FG
 
     catalog = load_catalog()
     level = ParsedLevel(
@@ -3502,6 +3503,13 @@ def test_build_game_map_spawns_an_inert_decoration_entity():
     assert decoration.item is None
     assert decoration.ai is None
     assert decoration.blocks_movement is False
+    # Regression guard: fg=(255,255,255) is an identity multiply in tcod's
+    # console.print (see engine/game_map.py's DECORATION_FG docstring) - a
+    # decoration rendered at full, undimmed brightness reads as a highlight/
+    # glow next to everything else in a scene, which does get dimmed by its
+    # own fg color. Must stay a real, non-white tint.
+    assert decoration.color == DECORATION_FG
+    assert decoration.color != (255, 255, 255)
     # A decoration never enters game_map.entities - nothing that iterates it
     # (combat, AI, blocking_entity_at, save/load) should ever see one.
     assert decoration not in game_map.entities
