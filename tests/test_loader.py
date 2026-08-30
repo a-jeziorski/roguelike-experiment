@@ -902,6 +902,20 @@ def test_millhaven_level_01_content():
     )
     assert desc.text == "The town gate, leading back out onto the road."
 
+    # third pass: the well, notice board, and mending yard each get their
+    # own icon alongside the gate - four tile_sprite overrides total.
+    assert len(level.tile_sprite_spawns) == 4
+    assert {s.sprite_id for s in level.tile_sprite_spawns} == {
+        "town_gate", "well", "notice_board", "mending_yard",
+    }
+
+    # regression guard: coverage, not just placement - a burying ground, a
+    # tilled plot, and a practice range were added specifically because the
+    # town felt mostly empty at this scale.
+    decoration_kinds = {s.kind for s in level.decoration_spawns}
+    assert {"tombstone", "tilled_soil", "archery_target"} <= decoration_kinds
+    assert len(level.decoration_spawns) > 60
+
 
 def test_load_level_collects_custom_tile_descriptions():
     catalog = load_catalog()
@@ -2089,6 +2103,33 @@ def test_load_sprite_manifest_accepts_a_valid_tile_sprite_override(tmp_path):
     manifest = load_sprite_manifest(path, catalog)
 
     assert manifest.tile_sprite_overrides["town_gate"].name == "dngn_stone_arch"
+
+
+def test_load_sprite_manifest_accepts_multiple_col_row_tile_sprite_overrides(tmp_path):
+    """Millhaven's third pass gives the well/notice board/mending yard each
+    their own icon alongside the gate - a col/row-addressed sheet (Kenney's
+    tiny_town), not the name-addressed rltiles the gate itself uses."""
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney_tiny_town:\n"
+        "    image: tiny_town_tilemap.png\n"
+        "    tile_size: 16\n"
+        "    columns: 12\n"
+        "    rows: 11\n"
+        "tile_sprite_overrides:\n"
+        "  well:         {sheet: kenney_tiny_town, col: 8,  row: 8}\n"
+        "  notice_board: {sheet: kenney_tiny_town, col: 11, row: 6}\n"
+        "  mending_yard: {sheet: kenney_tiny_town, col: 8,  row: 9}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)
+
+    assert manifest.tile_sprite_overrides["well"].col == 8
+    assert manifest.tile_sprite_overrides["notice_board"].row == 6
+    assert manifest.tile_sprite_overrides["mending_yard"].col == 8
 
 
 def test_load_sprite_manifest_rejects_an_unknown_sheet_on_a_tile_sprite_override(tmp_path):

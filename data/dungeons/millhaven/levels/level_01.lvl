@@ -32,32 +32,32 @@ map: |
   #,,,,,,,,,,,,,,,,,,,,,,qrs,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,td,d,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
+  #,,,J,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
+  #,,,K,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
   #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,uv,,,,,,,,,,,,,,####,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,m,m,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,######,,,,,,,,,,,,,,.,,###F##,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,#jFiF#m,,,,,,,,,,,,,.,,#wFFw#,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,m,m,,JK,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,######,d,,,,,,,,,,,,.,,###F##,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,#jFiF#m,,H,H,H,,,,,,.,,#wFFw#,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,#FzFlF,,,,,,,,,,,,,,.,,#FiyF#,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,#FFFF#m,,,,,,,,,,,,,.,,#FFlF#,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,######,,,,,,,,,,,,,,.,,######,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,######,d,,,,,,,,,,,,.,,######,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,####,,,,,,,,,,D,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,d,,,d,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,IIII,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,####,,,,,,IIIID,,,,,,,,,.,,,,,,,,,,,,,,G,G,,,####,,,,#
+  #,,,,,####,,,,,,IIII,,,,,,,,,,.,,,,,,,,,,,,,,,G,,,,####,,,,#
+  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,G,G,,,####,,,,#
   #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,C,,,,,,,,,,,,,,.,,,,,,,,,E,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,fff,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
   #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
@@ -86,10 +86,15 @@ legend:
   "v": { tile: plains, entity: villager, dialogue: "Trade's thinner than it used to be. A cart came through most weeks, once. Now we make do with what's already here." }
   "y": { tile: floor, entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }
   "z": { tile: floor, entity: millhaven_trainer, dialogue: "Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would." }
-  "n": { tile: landmark, description: "A notice board beside the door, more nail holes than notices left worth reading. Whoever's in charge here still expects people to check it.", announce: true }
-  "o": { tile: landmark, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it.", announce: true }
-  "u": { tile: landmark, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore.", announce: true }
+  "n": { tile: landmark, tile_sprite: notice_board, description: "A notice board beside the door, more nail holes than notices left worth reading. Whoever's in charge here still expects people to check it.", announce: true }
+  "o": { tile: landmark, tile_sprite: well, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it.", announce: true }
+  "u": { tile: landmark, tile_sprite: mending_yard, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore.", announce: true }
   "A": { tile: floor, decoration: bed }
+  "G": { tile: plains, decoration: tombstone }
+  "H": { tile: plains, decoration: archery_target }
+  "I": { tile: plains, decoration: tilled_soil }
+  "J": { tile: plains, decoration: barrel }
+  "K": { tile: plains, decoration: crate }
   "d": { tile: plains, decoration: fence }
   "f": { tile: plains, decoration: tree }
   "h": { tile: floor, decoration: fireplace }

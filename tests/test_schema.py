@@ -311,6 +311,14 @@ def test_legend_entry_rejects_an_unknown_decoration_kind():
         LegendEntry.from_raw({"tile": "floor", "decoration": "hot_tub"})
 
 
+@pytest.mark.parametrize(
+    "kind", ["tombstone", "tilled_soil", "archery_target", "barrel", "crate"],
+)
+def test_legend_entry_accepts_each_of_millhavens_third_pass_decoration_kinds(kind):
+    entry = LegendEntry.from_raw({"tile": "plains", "decoration": kind})
+    assert entry.decoration == kind
+
+
 def test_legend_entry_decoration_coexists_with_entity():
     entry = LegendEntry.from_raw({"entity": "villager", "tile": "plains", "decoration": "bush"})
     assert entry.entity == "villager"

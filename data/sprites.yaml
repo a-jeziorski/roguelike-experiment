@@ -201,6 +201,16 @@ decorations:
   tree:             {sheet: kenney_roguelike, col: 16, row: 9}
   fence:            {sheet: kenney_roguelike, col: 47, row: 23}
   herb_clump:       {sheet: kenney_roguelike, col: 44, row: 23}
+  # Added for Millhaven's third pass (a burying ground, a tilled plot, the
+  # Trainer's practice range) - kenney_roguelike again for the tombstone
+  # (no wheelbarrow found in either sheet despite a real search), kenney_
+  # tiny_town for the rest, matching that sheet's existing use for
+  # settlement/dungeon-entrance icons elsewhere in this file.
+  tombstone:        {sheet: kenney_roguelike, col: 44, row: 8}
+  tilled_soil:      {sheet: kenney_tiny_town, col: 1,  row: 2}
+  archery_target:   {sheet: kenney_tiny_town, col: 11, row: 7}
+  barrel:           {sheet: kenney_tiny_town, col: 11, row: 10}
+  crate:            {sheet: kenney_tiny_town, col: 10, row: 10}
 
 # Per-coordinate sprite overrides - see content/schema.py's
 # LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any
@@ -214,3 +224,8 @@ tile_sprite_overrides:
   # far is an outdoor town gate sitting on a road tile, not an indoor
   # staircase.
   town_gate: {sheet: rltiles, name: dngn_stone_arch, backdrop: road}
+  # Millhaven's landmarks, each on plains ground - same backdrop as the
+  # generic `landmark` tile_kinds entry they replace for this one placement.
+  well:         {sheet: kenney_tiny_town, col: 8,  row: 8, backdrop: plains}
+  notice_board: {sheet: kenney_tiny_town, col: 11, row: 6, backdrop: plains}
+  mending_yard: {sheet: kenney_tiny_town, col: 8,  row: 9, backdrop: plains}

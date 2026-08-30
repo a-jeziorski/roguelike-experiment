@@ -90,9 +90,25 @@ gate). A small new per-coordinate sprite-override mechanism
 section) lets this one placement use an actual gate/archway icon without
 touching any other dungeon's stairways.
 
+**A third pass, one revision later**: the second regeneration fixed
+*placement* (nothing scattered, everything composed) but not *coverage*
+- 60x60 of green with only a handful of clusters in it still reads
+mostly empty. The fix isn't to make Millhaven less ordinary; it's to
+make its ordinariness more specific. A small burying ground (set piece
+12), a tilled plot that gives the dismissive villager's own line
+something to stand next to (set piece 4), and a practice range behind
+the Trainer's hall (set piece 9) are all exactly as unremarkable as
+everything else here - that's what keeps them in tone, not what makes
+them worth skipping. The well, the notice board, and the mending yard
+also drop the one shared `landmark` sprite every point of interest in
+the game uses and get their own icon each, the same `tile_sprite`
+mechanism the gate uses above - a landmark is supposed to read as
+distinct from ordinary ground; sharing one glyph across three of them
+undercut that.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, A dismissive villager, A nudge villager, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper, The Trainer's Drill Hall, The Debtor's House, The Town Guard |
+| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, A dismissive villager, A nudge villager, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper, The Trainer's Drill Hall, The Debtor's House, The Town Guard, The Burying Ground |
 
 ## The named set pieces
 
@@ -157,13 +173,18 @@ between texture and infodump.
 
 Mid-chore, wants to be left to it. Not rude, just unavailable - the
 explicit reminder that not every NPC owes the player their attention.
+A tilled plot sits right beside her as of this pass - not a new set
+piece of its own, just the reason "this bread won't watch itself" was
+ever true to begin with, made visible instead of only stated.
 
 *Dialogue*: *"Can't talk. This bread won't watch itself."*
 
 *Why it's here*: per the brief - most villagers should be able to
 simply greet, dismiss, or make small talk, and a town where everyone
 stops what they're doing to chat with a stranger stops feeling like a
-real place.
+real place. The plot beside her is the same instinct applied to scenery
+- a line only costs the player nothing to skip if it was never asking
+to be taken on faith in the first place.
 
 ### 5. A nudge villager
 
@@ -326,6 +347,12 @@ sprite is wall-mounted art with an opaque background, wrong for this
 project's floor-standing decoration model. The room's plainness carries
 the idea instead.)
 
+A short practice range sits behind the hall as of this pass - a few
+standing targets and a low fence marking the firing line, nothing more
+built-out than that. "Used to drill Kingdom levies" reads differently
+once there's somewhere on the green that shows it rather than just
+saying it.
+
 ### 10. The Debtor's House
 
 The smallest, plainest interior in town, on purpose: a bed and a single
@@ -363,6 +390,22 @@ for good, for the rest of that visit. The line above is doing double
 duty: ordinary small talk on a first read, a plain statement of the
 mechanic on a second one. Placed centrally and visibly on purpose - a
 deterrent works by being seen, not discovered by accident in a corner.
+
+### 12. The Burying Ground
+
+A small, quiet cluster of grave markers tucked into a corner of the
+green, away from the road and the well's own traffic. No names, no
+epitaphs - consistent with the rest of this town, nobody here has an
+invented name to carve. People die of age and hard winters in the Long
+Quiet, same as anywhere; Millhaven having a place for that is exactly
+as unremarkable as everything else about it, not a reason to feel
+uneasy about the town.
+
+*Why it's here*: the clearest example of this pass's whole point - a
+concrete detail doesn't have to be dramatic to be worth naming. A
+burying ground is about as ordinary as a settlement gets, and naming it
+plainly is what keeps it in Millhaven's register rather than nudging
+toward Stonebridge's.
 
 ## Roster
 
