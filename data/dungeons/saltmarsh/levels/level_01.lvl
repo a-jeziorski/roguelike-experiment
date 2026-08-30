@@ -4,29 +4,56 @@ name: Saltmarsh Shore
 player_start_tile: plains
 
 map: |
-  ##################
-  #x@,,,,,,,,,,,,~~~
-  #,,##,,,,,##,,,~~~
-  #,,##,,,,,##,,,~~~
-  #,,,,,.,,,,,E,,~~~
-  #,,,1.,,##,,,,,~~~
-  #,,,,.,,##,2,,,~~~
-  #,,,#.#,,,,,,,.~~~
-  #,,,#W#,,,!,3,.~~~
-  #,,,###,,,,,,,.~~~
-  #,,,,,,,,,,,,,...~
-  ##################
+  ####################################
+  #,,a@,,,,,,,,,,,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,qq,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,f######,.,,,,,,,,,,o,,,,sssss#
+  #,,,,,,#bFcF#,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,#FdeF#,.,,,,,,,,,,,,,f,sssss#
+  #,,,,,f##F###,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,f,######,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,#gFFc#,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,FFhiF#j,,,,,sssss#
+  #,,,f,,,,,,,,,.,f,######,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,f,sssss#
+  #,,,,,,,,,n,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,,,,,,,,,,,sssss#
+  #,,,,,,,,,,,,,.,,,,,k,lm,,,,,,sssss#
+  #,,,,,,,,,,,,,................sssss#
+  #,,,,,,,,,,,,,,,,,p,,,,,,,,,,,sssss#
+  #,,,,,qqq,,,,,,,,,,,,,,,####,,sssss#
+  #,,,,,,,,,,,,,,,,,,,,,,,####,,sssss#
+  #,,,,,,,,,,,,,,,,,,,,,,,####,,sssss#
+  #,,,,,,,,,,,,,,,,,,,,,,,####,,sssss#
+  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,sssss#
+  ####################################
 
 legend:
   "#": wall
   ",": plains
   ".": road
-  "~": sea
   "@": player_start
-  "x": { stairs_up: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes.", announce: true }
-  "E": { entity: saltmarsh_elder, tile: plains, dialogue: "Boats used to stop at the old Waystation before the sea took it whole. Sometimes I wonder what they were even carrying, back then." }
-  "1": { entity: villager, tile: plains, dialogue: "Nets won't mend themselves. Neither will anything else out here, come to that." }
-  "2": { entity: villager, tile: plains, dialogue: "Tide's been strange this season. Nothing you'd call wrong, exactly - just strange.", flag_dialogue: [{ flag: wayford_razed, line: "Word came down the coast road with a trader - a whole town gone, inland. Makes this stretch of nowhere feel like the safer bet, some days." }] }
-  "3": { entity: villager, tile: plains, dialogue: "Drying racks fill faster than we can salt what's on them. Not the worst problem to have." }
-  "W": { entity: saltmarsh_witch, tile: road }
-  "!": { item: healing_potion, tile: plains }
+  "F": floor
+  "s": sea
+  "a": { tile: stairs_up, next_level: null, description: "The track back inland, salt wind at your back and the road waiting beyond the dunes.", announce: true }
+  "d": { tile: floor, entity: saltmarsh_elder, dialogue: "Boats used to stop at the old Waystation before the sea took it whole. Sometimes I wonder what they were even carrying, back then." }
+  "h": { tile: floor, entity: saltmarsh_witch }
+  "n": { tile: plains, entity: villager, dialogue: "Nets won't mend themselves. Neither will anything else out here, come to that." }
+  "o": { tile: plains, entity: villager, dialogue: "Tide's been strange this season. Nothing you'd call wrong, exactly - just strange.", flag_dialogue: [{ flag: wayford_razed, line: "Word came down the coast road with a trader - a whole town gone, inland. Makes this stretch of nowhere feel like the safer bet, some days." }] }
+  "p": { tile: plains, entity: villager, dialogue: "Drying racks fill faster than we can salt what's on them. Not the worst problem to have." }
+  "k": { tile: landmark, description: "Drying racks, hung with more nets than fish most days - salt-stiffened rope and driftwood frames, mended more often than replaced.", announce: true }
+  "b": { tile: floor, decoration: bed }
+  "c": { tile: floor, decoration: chest }
+  "e": { tile: floor, decoration: chair }
+  "f": { tile: plains, decoration: bush }
+  "g": { tile: floor, decoration: bookshelf }
+  "i": { tile: floor, decoration: table }
+  "j": { tile: plains, item: healing_potion }
+  "l": { tile: plains, decoration: barrel }
+  "m": { tile: plains, decoration: fence }
+  "q": { tile: plains, decoration: herb_clump }

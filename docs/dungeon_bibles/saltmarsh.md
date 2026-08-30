@@ -52,9 +52,29 @@ One level, matching every other Settler town's precedent - Saltmarsh
 doesn't need more than that to earn a proper cast, just a reason for at
 least one of its residents to be worth talking to twice.
 
+Regenerated at 36x28 (up from the original 18x11, which had both the
+Elder and the previously-undocumented `saltmarsh_witch` standing on bare
+ground with no building at all) so both stationary residents get a real
+interior - the same `stationary: true` -> real-interior rule Millhaven's
+own regeneration established, applied here for the first time. Kept
+deliberately modest even at the larger footprint: two small huts, a
+landmark, and coastal texture, never a townscape - Saltmarsh is "the
+smallest, plainest Settler town in the game" and should still read that
+way after the redo, just no longer *empty*.
+
+**Decoration stays specific to this place, not copied from Millhaven's
+kit wholesale.** No `tilled_soil` and no trees - Saltmarsh doesn't farm
+and isn't forested; it's coastal marsh. What's here instead: `herb_clump`
+standing in for marsh reeds along the shoreline and the wet ground behind
+the huts, `bush` for coastal scrub rather than a treeline, and the Drying
+Racks (see set piece 4) turned into an actual `landmark` tile instead of
+just a line in `dungeon.yaml`'s own `inspect_text`. One small unentered
+wall cluster reads as a collapsed, unusable shack - the same "purely
+decorative, no new mechanics" technique every other settlement pass uses.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Saltmarsh Shore | The Elder, The Tide-Watcher, The Netmender, The Drying Racks |
+| `level_01` | Saltmarsh Shore | The Elder, The Witch, The Tide-Watcher, The Netmender, The Drying Racks |
 
 ## The named set pieces
 
@@ -62,8 +82,9 @@ least one of its residents to be worth talking to twice.
 
 **`saltmarsh_elder`** (new entity, `ai: villager`, `stationary: true`,
 title only) - the one resident who remembers the Waystation as a working
-building, not a ruin. Positioned toward the shoreline side of the
-hamlet, facing the water the Waystation sits in.
+building, not a ruin. Has a real hut now (bed, chest, chair), small and
+plain, matching the "smallest, plainest" framing rather than contradicting
+it - a real building doesn't have to be a grand one.
 
 *Questgiver*: gives `what_the_tide_kept` (fetch `waystation_manifest`
 from the Drowned Waystation - see `docs/quest_bibles/` convention for a
@@ -85,7 +106,31 @@ as part of this same pass) somewhere to matter, the same way
 go - a small town's version of the same "someone still cares what the
 old infrastructure meant" throughline.
 
-### 2. The Tide-Watcher
+### 2. The Witch
+
+**`saltmarsh_witch`** (existing entity, `ai: villager`, `stationary: true`,
+`shop_inventory` set) - present in Saltmarsh since an earlier pass but
+never given a place to stand or a mention in this bible; found this pass
+standing on bare road with no building at all, the same kind of gap
+Millhaven's Trainer and Debtor turned out to have. Brews and sells
+potions to the rest of the hamlet (`healing_potion`,
+`teleportation_potion`, `shadow_cloak_pin` - catalog-default
+`shop_inventory`, untouched by this pass). Has a real hut now
+(bookshelf, chest, table), separate from the Elder's, with the loose
+`healing_potion` pickup that already sat in this level relocated just
+outside her door rather than removed.
+
+*Dialogue direction*: keeps the catalog's own default line ("Step right
+up deary. Have I got brews for you!") rather than a per-spawn override -
+nothing about her role needed a Saltmarsh-specific line the catalog
+default didn't already cover.
+
+*Why it's here*: closes a real gap - a shopkeeper with actual mechanical
+weight (`shop_inventory`) standing unhoused and undocumented is exactly
+the kind of oversight this settlement-redo pass exists to catch, not a
+new addition invented to pad the roster.
+
+### 3. The Tide-Watcher
 
 A plain villager positioned near the shoreline, carrying this pass's
 `wayford_razed` flag reaction (`content_design_process.md` §0k) -
@@ -99,26 +144,31 @@ line reading as a genuine interruption of an otherwise unremarkable day
 is the point - the news should land as incongruous with their usual
 small concerns, not as something they were already braced for.
 
-### 3. The Netmender and The Drying Racks
+### 4. The Netmender and The Drying Racks
 
 Two more plain villagers, ordinary texture rather than named set pieces
 of their own - the netmender doing upkeep, a second villager minding the
-drying racks (both physical details already present in `dungeon.yaml`'s
-own `inspect_text`: "nets strung out to dry"). Their job is to make
-Saltmarsh's cast land at 100% unique dialogue (four talkable NPCs: the
-Elder plus three villagers), comfortably clearing the 75% floor
+drying racks. The racks themselves are a real `landmark` tile now, not
+just a line in `dungeon.yaml`'s own `inspect_text` ("nets strung out to
+dry") - salt-stiffened rope and driftwood frames, described rather than
+only implied. A barrel and a length of fence sit beside it, reading as
+"kept by someone," the same "belongs to something" rule every other
+settlement pass's decoration follows. Their job is to make Saltmarsh's
+cast land at 100% unique dialogue (five talkable NPCs: the Elder, the
+Witch, plus three villagers), comfortably clearing the 75% floor
 `content_design_process.md` §1 requires, not to carry any plot weight.
 
 ## Roster
 
-One new stationary `villager`-AI entity (`saltmarsh_elder`, unique
-catalog id - load-bearing the same way every other named questgiver's id
-is, since `QuestLog.check_questgiver`/`check_delivery` match on it
-globally, not per-dungeon). Three plain `villager` spawns, every one with
-its own per-spawn `dialogue`. No `town_guard` - Saltmarsh is explicitly
-the un-fortified counterpart to Stonebridge; per `dungeon.yaml`, nothing
-about it is defensive, and it shouldn't gain a deterrent this pass just
-because its two Settler siblings have one.
+Two stationary `villager`-AI entities: `saltmarsh_elder` (new this pass,
+unique catalog id - load-bearing the same way every other named
+questgiver's id is, since `QuestLog.check_questgiver`/`check_delivery`
+match on it globally, not per-dungeon) and `saltmarsh_witch` (pre-existing,
+`shop_inventory` set - see set piece 2). Three plain `villager` spawns,
+every one with its own per-spawn `dialogue`. No `town_guard` - Saltmarsh
+is explicitly the un-fortified counterpart to Stonebridge; per
+`dungeon.yaml`, nothing about it is defensive, and it shouldn't gain a
+deterrent this pass just because its two Settler siblings have one.
 
 ## Tone notes for anyone (agent or human) revising this later
 
