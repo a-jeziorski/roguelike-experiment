@@ -4,67 +4,46 @@ name: Millhaven Green
 player_start_tile: plains
 
 map: |
-  ############################################################
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,a@,,,,,,,,,,,,,qrsqrs,,,,,,,,#
-  #,,,,,,,,fffff,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,qrsqrs,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,qrsqrs,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,b,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,dddd,c,dddd,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,f,,,,,,,,,,,,,,,,,,,,e,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,f,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,f,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,f,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,f,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#####,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#AFl#,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,#FBF#,,,,,,,,#
-  #,,,,g,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,##F##,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,######p,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#hiFj#m,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#FFkFFn,.,,,o,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,#FlFl#m,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,######,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,qrs,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,td,d,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,J,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,K,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,uv,,,,,,,,,,,,,,####,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,m,m,,JK,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,######dd,,,,,,,,,,,,.,,###F##,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,#jFiF#m,,H,H,H,,,,,,.,,#wFFw#,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,#FzFlF,,,,,,,,,,,,,,.,,#FiyF#,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,#FFFF#m,,,,,,,,,,,,,.,,#FFlF#,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,######dd,,,,,,,,,,,,.,,######,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,dddddd,,,,,,,,,.,,,,,,,,,,,,,dd,dd,,,,,,,,,,#
-  #,,,,,,,,,,,,,,dIIII,,,,,,,,,,.,,,,,,,,,,,,,d,,,d,,,,,,,,,,#
-  #,,,,,####,,,,,dIIIID,,,,,,,,,.,,,,,,,,,,,,,dG,Gd,,####,,,,#
-  #,,,,,####,,,,,dIIII,,,,,,,,,,.,,,,,,,,,,,,,d,G,d,,####,,,,#
-  #,,,,,####,,,,,d,,,,,,,,,,,,,,.,,,,,,,,,,,,,dG,Gd,,####,,,,#
-  #,,,,,####,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,ddddd,,####,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,C,,,,,,,,,,,,,,.,,,,,,,,,E,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,fff,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,fff,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,fff,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  ############################################################
+  ##################################################
+  #####,,,,,,,,,,,,,,,,,,,a@,,,,####################
+  #####,,,,,,,,,,,,,,,,,,,,.,,,,####################
+  #####,,,,,,,,,,,,,,,,,,,d.,,,,####################
+  #####,,,,,,,,,,,,,,,d,b,,.,,c,####################
+  #####,,,,,,,,,,,,,,,,,,,,.,,,,####################
+  #####,,,,,,,,#####,,,,,,,.,,,,####################
+  #####,,,,,,,,#qFFF,,,,,,,.,,,,####################
+  #,,,,,,,,,,,,#Fri#,,,,,,,.,,,,####################
+  #,,,,,,,,,,,,#####,,,,,,,.,,,,####################
+  #,,,,,,,,,,,,,,,,,######,.,,,,####################
+  #,,,,,,,,,,,,,,,,,#efFg#j.,,,,####################
+  #,,,,,,,,,,,,,,,,,#FFhFFk.,,,,####################
+  #,,,,,,,,,,,,,,,,,#FiFi#j.l,,,####################
+  #,,,,######,,,,,,,######,.,,,,####################
+  #,,,,#uFFuFw,,,,,,,,,,,.....,,,,,,,,,,,,,,,,,,,,G#
+  #,,,,#FvfF#.,y,,,,,,,,,.....,,,,,,,,,D,,,,,,,,,,G#
+  #,,,,#FiFF#..............m...............,,,,,,,G#
+  #,,,,######,,,,,,,,,,,,.....,,,,,.,,,,,,,,,,,H,,G#
+  #,,,,,,,,,,,,,,,,,,,,noo,.,,p,,,BBB,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,,.,,,,,CBBBE,,,,,,,,,,,,G#
+  #,,####,z,,,,,,,,,,,,,,,,.,,,,,,BBB,,,,,,,,,,,,,G#
+  #,,####,A,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,t,,,,,,,G#
+  #,,,,,,,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,,.,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,..,,,,,,,,,,,,,,,,,,,,,,G#
+  #,,####,,,,,,,,,,,,,,,,,..,,,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,##F###,,,,,,,,,,,,,,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,,,#fFFg#,,,,,,,,,,,,,III,,,,,#
+  ##########,,,,,,,,,,,,#FJiF#,,,,,,,,,,,,d,,,d,,,,#
+  ##########,,,,,,,,,,,,#FFFF#,,,,,,,,,,,,,I,I,,,,,#
+  ##########,,,,,,,,,,,,######,,,,,,,,,,,,,,,,,,,,,#
+  ##########,,,,,,,,,,,,,KKK,,,,,,,,,,,,,,,,,,,,,,,#
+  ##########,,,,,,,,,,,,d,,,d,,,,###################
+  ##########,,,,,,,,,,,,,,,,,,,,,###################
+  ##########,,,,,,,,,,,,,,,,,,,,,###################
+  ##################################################
 
 legend:
   "#": wall
@@ -73,37 +52,36 @@ legend:
   "@": player_start
   "F": floor
   "a": { tile: stairs_up, next_level: null, tile_sprite: town_gate, description: "The town gate, leading back out onto the road.", announce: true }
-  "B": { tile: floor, entity: millhaven_debtor, dialogue: "I know what I owe, and I know who to. Tell them I'm good for it - just not yet." }
-  "C": { tile: plains, entity: escaped_prisoner, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }
-  "D": { tile: plains, entity: villager, dialogue: "Can't talk. This bread won't watch itself." }
-  "E": { tile: plains, entity: villager, dialogue: "Green's bigger than it used to be. More mouths too, not that anyone's counting out loud." }
-  "b": { tile: road, entity: villager, dialogue: "Don't get many strangers through that gate. Mind you're not still on the road come dark." }
-  "c": { tile: road, entity: town_guard, dialogue: "Keep the peace and we've got no trouble between us." }
-  "e": { tile: plains, entity: villager, dialogue: "Chief's been asking after any travelers. You'd best go say hello." }
-  "g": { tile: plains, entity: villager, dialogue: "Wind cuts less along this stretch, with the trees there. Somebody's doing planned right, for once." }
-  "k": { tile: floor, entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it.", flag_dialogue: [{ flag: wayford_razed, line: "Wayford's gone quiet - the kind of quiet that isn't peace. We were bracing for a horde to reach them. Looks like something else did." }] }
-  "p": { tile: plains, entity: villager, dialogue: "Well's held up better than most things built before the Sundering. Can't say the same for my back, hauling from it every morning." }
-  "t": { tile: plains, entity: villager, dialogue: "Somebody still turns that bed over every spring. Can't say who, exactly - it just happens, same as the well getting fixed." }
-  "v": { tile: plains, entity: villager, dialogue: "Trade's thinner than it used to be. A cart came through most weeks, once. Now we make do with what's already here." }
-  "y": { tile: floor, entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }
-  "z": { tile: floor, entity: millhaven_trainer, dialogue: "Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would." }
-  "n": { tile: landmark, tile_sprite: notice_board, description: "A notice board beside the door, more nail holes than notices left worth reading. Whoever's in charge here still expects people to check it.", announce: true }
-  "o": { tile: landmark, tile_sprite: well, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it.", announce: true }
-  "u": { tile: landmark, tile_sprite: mending_yard, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore.", announce: true }
-  "A": { tile: floor, decoration: bed }
-  "G": { tile: plains, decoration: tombstone }
-  "H": { tile: plains, decoration: archery_target }
-  "I": { tile: plains, decoration: tilled_soil }
-  "J": { tile: plains, decoration: barrel }
-  "K": { tile: plains, decoration: crate }
+  "C": { tile: plains, entity: villager, dialogue: "Can't talk. This bread won't watch itself." }
+  "D": { tile: plains, entity: villager, dialogue: "Green's bigger than it used to be. More mouths too, not that anyone's counting out loud." }
+  "E": { tile: plains, entity: villager, dialogue: "Somebody still turns that bed over every spring. Can't say who, exactly - it just happens, same as the well getting fixed." }
+  "H": { tile: plains, entity: villager, dialogue: "Wind cuts less along this stretch, with the trees there. Somebody's doing planned right, for once." }
+  "J": { tile: floor, entity: millhaven_trainer, dialogue: "Killing things and surviving quests teaches a body plenty, if it's paying attention. I can put what you've picked up to better use than instinct alone would." }
+  "b": { tile: road, entity: town_guard, dialogue: "Keep the peace and we've got no trouble between us." }
+  "c": { tile: road, entity: villager, dialogue: "Don't get many strangers through that gate. Mind you're not still on the road come dark." }
+  "h": { tile: floor, entity: village_chief, dialogue: "So you made it after all. I was starting to think that warning was never coming - let's hear it, all of it.", flag_dialogue: [{ flag: wayford_razed, line: "Wayford's gone quiet - the kind of quiet that isn't peace. We were bracing for a horde to reach them. Looks like something else did." }] }
+  "l": { tile: plains, entity: villager, dialogue: "Chief's been asking after any travelers. You'd best go say hello." }
+  "n": { tile: plains, entity: villager, dialogue: "Well's held up better than most things built before the Sundering. Can't say the same for my back, hauling from it every morning." }
+  "r": { tile: floor, entity: millhaven_debtor, dialogue: "I know what I owe, and I know who to. Tell them I'm good for it - just not yet." }
+  "t": { tile: plains, entity: escaped_prisoner, dialogue: "Made it out of that tower same as you, more or less. Warden ever come looking for me, or is he still up there thinking he runs the place?" }
+  "v": { tile: floor, entity: shopkeeper, dialogue: "Coin still spends here, same as it always did. Rare enough these days that I don't ask where it came from." }
+  "y": { tile: plains, entity: villager, dialogue: "Trade's thinner than it used to be. A cart came through most weeks, once. Now we make do with what's already here." }
+  "k": { tile: landmark, tile_sprite: notice_board, description: "A notice board beside the door, more nail holes than notices left worth reading. Whoever's in charge here still expects people to check it.", announce: true }
+  "m": { tile: landmark, tile_sprite: well, description: "The town well, its rope re-tied more times than anyone remembers whose turn it was to fix it.", announce: true }
+  "w": { tile: landmark, tile_sprite: mending_yard, description: "A mending yard - a cobbler's last, a whetstone, tools laid out for whoever needs them next. Nobody's charging for the use, not anymore.", announce: true }
+  "A": { tile: plains, decoration: crate }
+  "B": { tile: plains, decoration: tilled_soil }
+  "G": { tile: plains, decoration: tree }
+  "I": { tile: plains, decoration: tombstone }
+  "K": { tile: plains, decoration: archery_target }
   "d": { tile: plains, decoration: fence }
-  "f": { tile: plains, decoration: tree }
-  "h": { tile: floor, decoration: fireplace }
-  "i": { tile: floor, decoration: table }
-  "j": { tile: floor, decoration: bookshelf }
-  "l": { tile: floor, decoration: chair }
-  "m": { tile: plains, decoration: bush }
-  "q": { tile: plains, decoration: flowerbed_white }
-  "r": { tile: plains, decoration: flowerbed_blue }
-  "s": { tile: plains, decoration: herb_clump }
-  "w": { tile: floor, decoration: chest }
+  "e": { tile: floor, decoration: fireplace }
+  "f": { tile: floor, decoration: table }
+  "g": { tile: floor, decoration: bookshelf }
+  "i": { tile: floor, decoration: chair }
+  "j": { tile: plains, decoration: bush }
+  "o": { tile: plains, decoration: flowerbed_white }
+  "p": { tile: plains, decoration: flowerbed_blue }
+  "q": { tile: floor, decoration: bed }
+  "u": { tile: floor, decoration: chest }
+  "z": { tile: plains, decoration: barrel }

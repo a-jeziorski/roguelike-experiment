@@ -77,10 +77,15 @@ of these it belongs to, it doesn't go in.
 
 A handful of purely decorative, unentered wall clusters (matching
 Wayford's own "several distinct clusters of houses and storehouses")
-are scattered through the residential stretches so the larger footprint
-reads as a real town, not a big empty field with dots in it - six now
-(three symmetric pairs, up from two), pure scenery, no new mechanics,
-same technique already shipped in Wayford.
+give the footprint texture beyond its four real buildings - pure
+scenery, no new mechanics, same technique already shipped in Wayford.
+The fourth pass cut these from six down to two and gave both an actual
+identity instead of leaving them as unlabeled rectangles (per
+`content_design_process.md` §0af's tightened rule: a wall cluster needs
+a one-line reason named in the bible, same as any other decoration) -
+two storehouses sitting just off the commerce district, a barrel and
+crate outside the nearer one making the "this is where things get kept"
+reading visible rather than only implied.
 
 The gate itself also gets its own icon this pass - previously the same
 shared staircase sprite every `stairs_up` tile in the game uses (a cave
@@ -105,6 +110,40 @@ the game uses and get their own icon each, the same `tile_sprite`
 mechanism the gate uses above - a landmark is supposed to read as
 distinct from ordinary ground; sharing one glyph across three of them
 undercut that.
+
+**A fourth pass, after the user played both prior regenerations and
+still wasn't satisfied.** Neither the interior-per-stationary-NPC fix
+nor the coverage fix had actually addressed what was wrong: the *layout
+itself* had no structure - one road bisecting the green top to bottom,
+touching almost nothing, buildings placed independently wherever there
+was room. This is the pass that wrote `content_design_process.md` §0af
+("Settlement layout") and rebuilt Millhaven against it: a real road
+network drawn first (one main street widening into a plaza at the well,
+branching to the shop district and the garden district), every building
+placed with its door facing the path that serves it, and the footprint
+cut from 60x60 to 50x40 - the same 14-entity cast and 4 buildings, sized
+to what that cast actually justifies rather than a round, generous
+number. Six unexplained `wall_block` clusters became two, each now
+named as an actual storehouse (see Roster) rather than a mystery
+rectangle. Verified this time with a real rendered screenshot (§0af's
+new visual-QA step), not just an ASCII readout - the previous two passes
+were both validated exactly this way and still didn't look right to a
+human looking at them.
+
+The user's own follow-up, applied directly to the `.lvl` file: even at
+50x40, the network didn't reach the far northeast quadrant, the far
+southwest corner, or the strip along the south wall, leaving three
+stretches of green with nothing in them and no road passing through.
+Rather than filling those with more decoration (exactly the instinct
+`0af` warns against - decorating space the road network never justified
+reaching), the user walled them off directly, carving an irregular,
+non-rectangular boundary into the perimeter wall instead of the
+original clean rectangle. A handful of the east-wall treeline's
+northernmost cells fell inside the new northeast notch and were removed
+along with the space they were edging - correctly, since that ground is
+no longer part of the town. The result reads as a town that stops where
+its road network stops, not a rectangle stretched to a round number and
+partly filled in.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|

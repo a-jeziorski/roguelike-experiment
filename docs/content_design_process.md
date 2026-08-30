@@ -1988,6 +1988,109 @@ protecting the player from being surrounded by *several* monsters at
 once, which doesn't apply to a solo encounter the way it did for
 `level_01`'s Outer Pickets or `goblin_ambush`'s narrows.
 
+## 0af. Settlement layout: designing a town that reads as a real place
+
+Written after the user played three settlement regenerations (Millhaven,
+twice, plus manual corrections of their own) and was still unsatisfied -
+the previous fix (§0c's building-interior rule, plus a first and second
+decoration pass on Millhaven) addressed *whether NPCs had houses* and
+*whether decoration was composed rather than scattered*, but never
+addressed the thing actually making these towns look wrong: the layout
+itself has no structure. Research into real game-town design (urban
+planning writers Konstantinos Dimopoulos and others, tabletop-RPG town
+design) converged on a small set of principles this project's
+settlement-authoring process never enforced. **This section governs any
+settlement layout going forward - existing settlements should be brought
+in line with it opportunistically, not all at once.**
+
+**Draw the road network before placing a single building.** Every
+settlement authored before this pass placed buildings first, wherever
+there was open room, then decorated afterward - the road, if any, was an
+afterthought connecting the gate to nothing in particular. Reverse the
+order: draw a road network first - one main street from the gate, a hub
+(the town square, below) it leads to, and branch paths reaching *every
+building's actual door* - then place buildings against that network,
+door facing the path that serves them. A building with no path to its
+door reads as placed by an editor, not lived in.
+
+**One town square, one real focal point.** Start from a single hub - a
+well, a green, a landmark - and place civic buildings (the chief's
+house, a notice board) touching it directly, the way "start from the
+community center and work outward" describes. Everything else radiates
+from that hub via the road network above, not scattered independently
+across the map. A settlement with no identifiable "this is the middle of
+town" moment has no square, no matter how much decoration surrounds it.
+
+**Vary road width and give the network real branches, not one corridor.**
+A single road bisecting the map top-to-bottom, touching nothing, is the
+single biggest tell of an unplanned layout - it was Millhaven's actual
+problem, not its decoration density. A main street can be a single
+tile wide approaching the gate and widen into the square itself; side
+streets branching off it to reach a commerce cluster, a residential
+stretch, a training ground read as an actual network. Perfect
+right-angle branches are an accepted limitation of this project's
+rectilinear tile grid, not something to fight - the win here is
+*branching and width variation*, not literal curves.
+
+**Functional clustering, not even scattering.** Buildings and NPCs that
+belong together (a shop and the mending yard beside it; several villagers
+near the garden they tend) should sit near each other, forming a
+legible district a player would describe in one phrase ("that's the
+commerce corner"), rather than being spaced evenly across the whole
+footprint so every quadrant has "some stuff" in it. A named set piece
+that's meant to be tucked away or hard to stumble onto (Millhaven's
+Debtor's House is the reference example) earns that by being *off* the
+road network on purpose, not by being randomly far from everything else.
+
+**Scale the footprint to the cast, not the other way around.** The
+oversized-map, sparse-decoration failure mode from Millhaven's second
+regeneration wasn't a decoration problem - the map was bigger than its
+population justified, so no plausible amount of decoration would have
+filled it without reading as clutter. Size a settlement's footprint
+against its actual NPC/building count: compare against shipped
+reference points (`farrows_stake` 20x11 for 3 NPCs and no real
+buildings, `saltmarsh` 36x28 for 5 NPCs and 2 buildings, `northern_watch_post`
+26x16 for 3 NPCs and one lean-to, `grey_valley_monastery` 40x34 for 4
+NPCs and 2 buildings) and size up from there proportionally rather than
+defaulting to a round, generous number. A settlement that's "still a bit
+small" once every district has a real reason to exist is a better
+outcome than one padded out to feel appropriately large.
+
+**Every decorative structure needs a one-line reason, named in the
+bible - not just "scenery."** An unentered `wall_block` cluster with no
+description anywhere is exactly the "no function = believability
+breaks" failure the research above calls out - it reads as an
+unexplained rectangle, not a building. If a wall cluster is worth
+placing at all, name what it is in the dungeon bible (a storehouse, an
+unrebuilt ruin, a collapsed shed) even if the player can never enter it -
+one sentence is enough, and it's the difference between "a place" and "a
+map artifact." This tightens §0c's existing decoration-philosophy
+instinct (every decoration belongs to something) to cover plain
+`wall_block` geometry too, which had been getting a pass on it.
+
+**Edge definition, where the setting supports it.** A treeline, a fence
+line, or a change in ground texture marking where the settlement
+actually ends (as opposed to the map's own border wall, which is a
+rendering boundary, not a narrative one) helps a town read as a place
+that stops somewhere on purpose. Not every settlement needs this - it
+should follow from the bible's own pitch (a forested settlement earns a
+treeline; an open plain doesn't need one invented) - but when the
+setting supports it, use it.
+
+**Visual QA needs an actual screenshot, not just an ASCII readout.**
+Every settlement pass before this one was verified via `tools/preview.py`
+(an ASCII dump) and the loader's spawn counts - both catch structural
+errors (bad references, ragged rows) but neither one shows what the
+*rendered sprite art* actually looks like, which is what "aesthetically
+pleasing" is actually a claim about. Before calling a settlement
+layout finished, capture a real screenshot: build a minimal headless
+harness (`tcod.context.new` + `render_all` + `context.save_screenshot`,
+following `main.py`'s own render setup) that loads the dungeon, marks
+the whole map explored/visible (bypassing fog-of-war, since this is a
+design-review render, not gameplay), and saves an image - two or more
+screenshots, camera repositioned per shot, if the map is taller than
+`VIEWPORT_HEIGHT`. Look at it before declaring the layout done.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
@@ -2351,7 +2454,11 @@ lever first.
    authoring `prison_tower`, faster than hand-counting characters). Default
    to multi-room/corridor composition (per the geometry-variety note above);
    reach for a single open room only when the level specifically wants an
-   "arena" beat, not as the easy default.
+   "arena" beat, not as the easy default. **For a settlement specifically,
+   follow §0af**: road network drawn first, one town square, buildings
+   placed against the network with doors facing their path, footprint
+   scaled to the actual cast size - not the combat-dungeon geometry advice
+   above, which is about room/corridor variety, not settlement structure.
 2. **Placements**: exactly one `player_start`, at least one `stairs_down`,
    monsters (with AI chosen deliberately per the pacing guidance above),
    items (checked against the balance methodology above).

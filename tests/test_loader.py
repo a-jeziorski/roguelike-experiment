@@ -887,7 +887,10 @@ def test_millhaven_level_01_content():
 
     # regression guard: the town was regenerated at a much larger scale
     # (from 22x15) specifically so it wouldn't feel crowded again - keep it
-    # from silently shrinking back down.
+    # from silently shrinking back down. Fourth pass deliberately walked
+    # the footprint back down from an oversized 60x60 (see
+    # content_design_process.md §0af - population-scaled footprint, not a
+    # round generous number) to 50x40, still comfortably above this floor.
     assert level.width >= 30 and level.height >= 44 or level.width >= 44 and level.height >= 30
 
     assert [s.kind for s in level.stairs] == ["stairs_up"]
@@ -911,10 +914,16 @@ def test_millhaven_level_01_content():
 
     # regression guard: coverage, not just placement - a burying ground, a
     # tilled plot, and a practice range were added specifically because the
-    # town felt mostly empty at this scale.
+    # town felt mostly empty at this scale. Fourth pass walled off the
+    # large empty NE quadrant and two other dead corners with an irregular
+    # (non-rectangular) boundary rather than decorating space the road
+    # network never reached - a handful of treeline cells inside the new
+    # notch went with it, dropping the count from the third pass's 65 to
+    # 58; the floor below reflects that as the new baseline, not a
+    # loosening of the guard itself.
     decoration_kinds = {s.kind for s in level.decoration_spawns}
     assert {"tombstone", "tilled_soil", "archery_target"} <= decoration_kinds
-    assert len(level.decoration_spawns) > 60
+    assert len(level.decoration_spawns) > 55
 
 
 def test_load_level_collects_custom_tile_descriptions():

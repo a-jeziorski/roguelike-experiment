@@ -77,7 +77,7 @@ entities:
   saltmarsh_elder:         {sheet: rltiles, name: human, recolor: true}
   stonebridge_lookout:     {sheet: rltiles, name: human, recolor: true}
   wayford_trainer:         {sheet: rltiles, name: human, recolor: true}
-  millhaven_trainer:       {sheet: rltiles, name: human, recolor: true}
+  millhaven_trainer:       {sheet: rltiles, name: captain, recolor: true}
   millhaven_debtor:        {sheet: rltiles, name: human, recolor: true}
   bandit:                  {sheet: rltiles, name: rogue, recolor: true}
   bandit_captain:          {sheet: rltiles, name: captain}
@@ -99,6 +99,7 @@ entities:
   grey_valley_weaver:      {sheet: rltiles, name: human, recolor: true}
   windbreak_captain:       {sheet: rltiles, name: human, recolor: true}
   farrows_scout:           {sheet: rltiles, name: human, recolor: true}
+  watch_post_sentry:       {sheet: rltiles, name: guard, recolor: true}
   # Silversilk Caves' depths (data/entities.yaml's own comment above these
   # ids) - three recolors of giant_spider (this dungeon's own established
   # "biggest available spider art" base, same shape as guard/human's own
