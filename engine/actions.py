@@ -97,6 +97,17 @@ class MuteAction(Action):
         pass
 
 
+class ToggleDecorationsAction(Action):
+    """Toggles display of purely cosmetic map decorations (furniture,
+    plants - see content.schema.DecorationKind) - free, costs no turn.
+    Same shape as MuteAction: main.py flips its own local
+    show_decorations bool directly, since Engine has no notion of display
+    preferences at all."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class ScrollLogAction(Action):
     """Scrolls the message log panel by `lines` (positive = further back
     into history, negative = toward the latest message) - free, costs no

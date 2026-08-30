@@ -36,6 +36,7 @@ from engine.actions import (
     ScrollLogAction,
     ShopAction,
     TalkAction,
+    ToggleDecorationsAction,
     TrainerAction,
 )
 from engine.audio import SoundManager
@@ -202,7 +203,10 @@ def handle_save_game_action(
     engine.message_log.add("Game saved.")
 
 
-def run_target_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> tuple[int, int] | None:
+def run_target_mode(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine,
+    show_decorations: bool = True,
+) -> tuple[int, int] | None:
     """Nested event loop for targeting: aims a cursor (starting on the
     nearest valid target) and re-renders until the player fires or cancels.
     Never touches Engine.process_turn - aiming costs no turn, only a
@@ -214,7 +218,7 @@ def run_target_mode(console: tcod.console.Console, context: tcod.context.Context
     cursor_x, cursor_y = (nearest.x, nearest.y) if nearest else (engine.player.x, engine.player.y)
 
     while True:
-        render_target_frame(console, engine, cursor_x, cursor_y, max_range)
+        render_target_frame(console, engine, cursor_x, cursor_y, max_range, show_decorations)
         context.present(console)
 
         for event in tcod.event.wait():
@@ -231,13 +235,16 @@ def run_target_mode(console: tcod.console.Console, context: tcod.context.Context
                 cursor_y = max(0, min(engine.game_map.height - 1, cursor_y + dy))
 
 
-def run_look_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+def run_look_mode(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine,
+    show_decorations: bool = True,
+) -> None:
     """Nested event loop for look mode: moves a cursor and re-renders until the
     player exits. Never touches Engine.process_turn, so it costs no game turn."""
     cursor_x, cursor_y = engine.player.x, engine.player.y
 
     while True:
-        render_look_frame(console, engine, cursor_x, cursor_y)
+        render_look_frame(console, engine, cursor_x, cursor_y, show_decorations)
         context.present(console)
 
         for event in tcod.event.wait():
@@ -958,6 +965,7 @@ def main() -> int:
         )
         engine = active_engines[active_key]
         log_scroll_offset = 0
+        show_decorations = True
         sync_music(engine, sound_manager)
 
         def _on_player_turn_resolved() -> None:
@@ -965,7 +973,7 @@ def main() -> int:
             play_queued_sounds(engine, sound_manager)
 
         while True:
-            render_all(console, engine, log_scroll_offset)
+            render_all(console, engine, log_scroll_offset, show_decorations)
             context.present(console)
 
             # A scrolled-back log snaps to the latest message only when
@@ -996,7 +1004,7 @@ def main() -> int:
 
                 if isinstance(action, LookAction):
                     if engine.game_state == "playing":
-                        run_look_mode(console, context, engine)
+                        run_look_mode(console, context, engine, show_decorations)
                     continue
 
                 if isinstance(action, TalkAction):
@@ -1026,6 +1034,10 @@ def main() -> int:
 
                 if isinstance(action, MuteAction):
                     sound_manager.set_muted(not sound_manager.muted)
+                    continue
+
+                if isinstance(action, ToggleDecorationsAction):
+                    show_decorations = not show_decorations
                     continue
 
                 if isinstance(action, ScrollLogAction):
@@ -1058,7 +1070,7 @@ def main() -> int:
                         if error:
                             engine.message_log.add(error)
                         else:
-                            target = run_target_mode(console, context, engine)
+                            target = run_target_mode(console, context, engine, show_decorations)
                             if target is not None:
                                 dispatch_action(
                                     engine, FireAction(*target),

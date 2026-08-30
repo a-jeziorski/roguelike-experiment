@@ -20,6 +20,7 @@ from engine.actions import (
     ScrollLogAction,
     ShopAction,
     TalkAction,
+    ToggleDecorationsAction,
     TrainerAction,
     UseItemAction,
     UseSkillAction,
@@ -96,6 +97,9 @@ def handle_event(event: tcod.event.Event) -> Action | None:
 
         if sym == tcod.event.KeySym.M:
             return MuteAction()
+
+        if sym == tcod.event.KeySym.D:
+            return ToggleDecorationsAction()
 
         # Fixed 1:1 key bindings for the two shipped active-skill perks
         # (see content/schema.py's PerkDef.skill_effect, Engine.use_skill)

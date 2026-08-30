@@ -99,6 +99,12 @@ class SpriteCodepoints:
     entities_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
     items_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
     dungeon_entrances: dict[str, int] = field(default_factory=dict)
+    # Purely cosmetic map dressing (see content.schema.DecorationKind) - same
+    # plain-codepoint / composited-over-tile-kind shape as entities/
+    # entities_on_tile above, just keyed by decoration kind instead of
+    # entity_id. See engine/render.py's _resolved_decoration_glyph.
+    decorations: dict[str, int] = field(default_factory=dict)
+    decorations_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
 
 
 def _is_skin_tone(h: float, s: float) -> bool:
@@ -200,18 +206,23 @@ def build_sprite_codepoints(
     EntityDef/ItemDef in catalog - no new authoring), registers it into
     `tileset` at a fresh sequential PUA codepoint, and returns the lookup
     render.py needs. Deterministic assignment order (entities, then items,
-    then tile_kinds, then dungeon_entrances, each sorted by key) so
-    re-running with the same manifest always assigns the same codepoints.
-    dungeon_entrances is registered the same way as tile_kinds (no color/
-    recolor, a complete standalone tile image) - it's keyed by dungeon id
-    rather than tile kind, but is otherwise just another base-pass entry.
+    then tile_kinds, then dungeon_entrances, then decorations, each sorted
+    by key) so re-running with the same manifest always assigns the same
+    codepoints. dungeon_entrances is registered the same way as tile_kinds
+    (no color/recolor, a complete standalone tile image) - it's keyed by
+    dungeon id rather than tile kind, but is otherwise just another
+    base-pass entry. decorations is registered the same way too (no
+    color/recolor - a decoration has no EntityDef/ItemDef.color to tint
+    toward), but composites like an entity/item, not like tile_kinds - see
+    the second pass below.
 
-    A second pass then registers every (entity/item, tile_kind) composite
-    (see composite_sprite_over_terrain) for every actor and tile kind that
-    both have a sprite mapped - eagerly, once, here at startup rather than
-    lazily during play, since the full set is small and bounded
-    ((entities + items) x tile_kinds - a few hundred tiny composites at
-    most) and this keeps engine/render.py free of any live Tileset access.
+    A second pass then registers every (entity/item/decoration, tile_kind)
+    composite (see composite_sprite_over_terrain) for every actor,
+    decoration, and tile kind that both have a sprite mapped - eagerly,
+    once, here at startup rather than lazily during play, since the full
+    set is small and bounded ((entities + items + decorations) x tile_kinds
+    - a few hundred tiny composites at most) and this keeps engine/render.py
+    free of any live Tileset access.
     This pass is strictly appended after the base one above, so the base
     codepoints stay exactly where existing callers already expect them."""
     result = SpriteCodepoints()
@@ -262,6 +273,11 @@ def build_sprite_codepoints(
         codepoint, rgba = _register(manifest.dungeon_entrances[dungeon_id], None)
         result.dungeon_entrances[dungeon_id] = codepoint
         dungeon_entrance_pixels[dungeon_id] = rgba
+    decoration_pixels: dict[str, np.ndarray] = {}
+    for kind in sorted(manifest.decorations):
+        codepoint, rgba = _register(manifest.decorations[kind], None)
+        result.decorations[kind] = codepoint
+        decoration_pixels[kind] = rgba
 
     # Backdrop pass: an icon-style tile_kinds/dungeon_entrances sprite (a
     # single tree/peak/tower silhouette, unlike a full-bleed texture like
@@ -296,6 +312,12 @@ def build_sprite_codepoints(
             composite = composite_sprite_over_terrain(item_pixels[item_id], tile_pixels[kind])
             tileset[next_codepoint] = composite
             result.items_on_tile[(item_id, kind)] = next_codepoint
+            next_codepoint += 1
+    for decoration_kind in sorted(decoration_pixels):
+        for tile_kind in sorted(tile_pixels):
+            composite = composite_sprite_over_terrain(decoration_pixels[decoration_kind], tile_pixels[tile_kind])
+            tileset[next_codepoint] = composite
+            result.decorations_on_tile[(decoration_kind, tile_kind)] = next_codepoint
             next_codepoint += 1
 
     return result

@@ -264,6 +264,47 @@ def render_entities(
             console.print(sx, sy, glyph, fg=entity.color)
 
 
+def _resolved_decoration_glyph(
+    decoration: "Entity", tile_kind: str, sprite_codepoints: "SpriteCodepoints | None"
+) -> str:
+    """_resolved_entity_glyph's shape, minus the item/entity split - a
+    decoration is always looked up the same single way, keyed by
+    decoration.entity_id (set to its DecorationKind by build_game_map):
+    plain sprite if mapped, composited over tile_kind if both are mapped,
+    else the ASCII fallback glyph."""
+    if not decoration.entity_id or sprite_codepoints is None:
+        return decoration.glyph
+    if decoration.entity_id not in sprite_codepoints.decorations:
+        return decoration.glyph
+    composited = sprite_codepoints.decorations_on_tile.get((decoration.entity_id, tile_kind))
+    if composited is not None:
+        return chr(composited)
+    return chr(sprite_codepoints.decorations[decoration.entity_id])
+
+
+def render_decorations(
+    console: "Console",
+    game_map: "GameMap",
+    cam_x: int,
+    cam_y: int,
+    sprite_codepoints: "SpriteCodepoints | None" = None,
+) -> None:
+    """Purely cosmetic map dressing (see content.schema.DecorationKind) -
+    drawn between render_map and render_entities so an item/actor standing
+    on a decorated tile still draws over it. Callers skip this call
+    entirely when the player has toggled decorations off (see main.py's
+    show_decorations/ToggleDecorationsAction) - a display preference, not
+    something threaded down into this function itself."""
+    for decoration in game_map.decorations:
+        if not game_map.visible[decoration.x, decoration.y]:
+            continue
+        sx, sy = decoration.x - cam_x, decoration.y - cam_y
+        if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
+            tile_kind = game_map.kinds[decoration.x, decoration.y]
+            glyph = _resolved_decoration_glyph(decoration, tile_kind, sprite_codepoints)
+            console.print(sx, sy, glyph, fg=decoration.color)
+
+
 def projectile_glyph(fx: int, fy: int, tx: int, ty: int) -> str:
     """Picks a glyph matching a shot's line of travel, so a flying arrow/bolt
     reads as a directional streak rather than a generic marker."""
@@ -466,13 +507,17 @@ def render_message_log(
             console.print(x, row, line, fg=LOG_COLORS.get(category, LOG_COLORS["info"]), width=width)
 
 
-def render_all(console: "Console", engine: "Engine", log_scroll_offset: int = 0) -> None:
+def render_all(
+    console: "Console", engine: "Engine", log_scroll_offset: int = 0, show_decorations: bool = True,
+) -> None:
     console.clear()
     cam_x, cam_y = compute_camera(
         engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
         engine.player.x, engine.player.y,
     )
     render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    if show_decorations:
+        render_decorations(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     hud_y = VIEWPORT_HEIGHT + 1
@@ -527,6 +572,15 @@ def describe_tile(
         if entity.fighter is not None:
             line += f" (HP: {entity.fighter.hp}/{entity.fighter.max_hp})"
         lines.append(line)
+
+    # Decorations always show in Look mode, regardless of the player's
+    # display toggle (main.py's show_decorations) - unlike the passive map
+    # view, a deliberate one-tile Look has no clutter cost, and reporting
+    # them is the entire point of the feature (unwritten environmental
+    # storytelling only works if the player can stop and read it).
+    for decoration in game_map.decorations:
+        if decoration.x == x and decoration.y == y:
+            lines.append(decoration.name)
 
     return lines
 
@@ -613,7 +667,9 @@ def _print_highlighted_cell(
     console.rgb[sx, sy]["bg"] = bg_color
 
 
-def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, cursor_y: int) -> None:
+def render_look_frame(
+    console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, show_decorations: bool = True,
+) -> None:
     """Centers the camera on the cursor rather than the player: look mode's
     cursor can roam anywhere on the map, unlike targeting's range-limited one,
     so it - not the player - is what must stay in view here."""
@@ -623,6 +679,8 @@ def render_look_frame(console: "Console", engine: "Engine", cursor_x: int, curso
         cursor_x, cursor_y,
     )
     render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    if show_decorations:
+        render_decorations(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     _print_highlighted_cell(
         console, engine.game_map, cursor_x - cam_x, cursor_y - cam_y, cursor_x, cursor_y, CURSOR_BG
@@ -668,7 +726,8 @@ def render_target_hud(
 
 
 def render_target_frame(
-    console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, max_range: int
+    console: "Console", engine: "Engine", cursor_x: int, cursor_y: int, max_range: int,
+    show_decorations: bool = True,
 ) -> None:
     console.clear()
     cam_x, cam_y = compute_camera(
@@ -676,6 +735,8 @@ def render_target_frame(
         cursor_x, cursor_y,
     )
     render_map(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
+    if show_decorations:
+        render_decorations(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
     render_entities(console, engine.game_map, cam_x, cam_y, engine.sprite_codepoints)
 
     valid = is_valid_target(engine.game_map, engine.player, cursor_x, cursor_y, max_range)
@@ -789,6 +850,7 @@ def render_help(console: "Console") -> None:
     binding("s", "Save the game")
     binding("h", "This help screen")
     binding("m", "Mute/unmute sound")
+    binding("d", "Toggle decorative map details")
     y += 1
 
     section("Other")

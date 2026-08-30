@@ -1022,6 +1022,65 @@ def test_load_level_collects_per_spawn_entity_dialogue(tmp_path):
     assert level.tile_descriptions == []
 
 
+def test_load_level_collects_decoration_spawns(tmp_path):
+    level_path = tmp_path / "with_decoration.lvl"
+    level_path.write_text(
+        "id: with_decoration\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #t#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "t": { tile: floor, decoration: table }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.decoration_spawns) == 1
+    assert level.decoration_spawns[0].kind == "table"
+    assert (level.decoration_spawns[0].x, level.decoration_spawns[0].y) == (1, 2)
+    # a decoration spawn is not an entity/item spawn - the three are independent
+    assert level.entity_spawns == []
+    assert level.item_spawns == []
+
+
+def test_load_level_decoration_coexists_with_entity_spawn(tmp_path):
+    level_path = tmp_path / "with_both.lvl"
+    level_path.write_text(
+        "id: with_both\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ###\n"
+        "  #@#\n"
+        "  #v#\n"
+        "  #>#\n"
+        "  ###\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "v": { entity: villager, tile: plains, decoration: bush }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.entity_spawns) == 1
+    assert len(level.decoration_spawns) == 1
+    assert level.decoration_spawns[0].kind == "bush"
+
+
 def test_load_level_entity_spawn_without_dialogue_leaves_it_none(tmp_path):
     level_path = tmp_path / "no_dialogue.lvl"
     level_path.write_text(
@@ -1904,6 +1963,85 @@ def test_load_sprite_manifest_rejects_unrecognized_tile_kind(tmp_path):
     )
 
     with pytest.raises(ContentValidationError, match="not a recognized tile kind"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_accepts_a_valid_decoration(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "decorations:\n"
+        "  table: {sheet: kenney, col: 18, row: 5}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)
+
+    assert manifest.decorations["table"].col == 18
+
+
+def test_load_sprite_manifest_rejects_unrecognized_decoration_kind(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "decorations:\n"
+        "  hot_tub: {sheet: kenney, col: 0, row: 0}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="not a recognized decoration kind"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_backdrop_on_a_decoration(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "tile_kinds:\n"
+        "  plains: {sheet: kenney, col: 5, row: 0}\n"
+        "decorations:\n"
+        "  table: {sheet: kenney, col: 18, row: 5, backdrop: plains}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="backdrop is only meaningful"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_recolor_on_a_decoration(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  kenney:\n"
+        "    image: roguelikeSheet_transparent.png\n"
+        "    tile_size: 16\n"
+        "    columns: 57\n"
+        "    rows: 31\n"
+        "decorations:\n"
+        "  table: {sheet: kenney, col: 18, row: 5, recolor: true}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="recolor is only meaningful"):
         load_sprite_manifest(path, catalog)
 
 

@@ -10,7 +10,7 @@ import numpy as np
 import tcod.map
 
 from content.loader import PLAYER_ENTITY_ID, Catalog, EntityDef, ItemDef, ParsedLevel
-from content.schema import TILE_PASSABILITY
+from content.schema import DECORATION_NAMES, TILE_PASSABILITY
 from engine.clock import GameClock
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -89,6 +89,18 @@ class GameMap:
         # re-announces a tile the player already saw announced.
         self.announced_tiles: set[tuple[int, int]] = set()
         self.entities: list[Entity] = []
+        # Purely cosmetic map dressing (furniture, plants - see
+        # content.schema.DecorationKind), spawned by build_game_map from
+        # ParsedLevel.decoration_spawns. Deliberately a *separate* list from
+        # entities above, not merged into it: nothing that iterates
+        # entities (combat, AI, blocking_entity_at, save/load
+        # reconciliation, quest triggers) needs to know decorations exist,
+        # and the player's display toggle (main.py's show_decorations,
+        # engine/render.py's render_decorations) becomes a one-line skip in
+        # rendering instead of a filter threaded through unrelated systems.
+        # Every entry is an inert Entity (fighter=None, item=None, ai=None,
+        # blocks_movement=False, always) - see build_game_map below.
+        self.decorations: list[Entity] = []
         # Set by GameMap.trigger_guard_hostility (called from
         # engine/combat.py the moment the player attacks any
         # PEACEFUL_AI_TYPES entity on this map) - True for the rest of this
@@ -409,6 +421,14 @@ def build_game_map(
         entity = item_entity_from_def(spawn.item, spawn.x, spawn.y)
         game_map.entities.append(entity)
         game_map.item_spawn_index[index] = entity
+
+    for spawn in level.decoration_spawns:
+        game_map.decorations.append(
+            Entity(
+                spawn.x, spawn.y, "?", (255, 255, 255), DECORATION_NAMES[spawn.kind],
+                entity_id=spawn.kind,
+            )
+        )
 
     px, py = level.player_start
     if player is None:

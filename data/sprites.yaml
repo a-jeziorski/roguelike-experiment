@@ -181,3 +181,23 @@ dungeon_entrances:
   # worth forcing (same principle as mountain, above, before it was
   # hand-picked). Falls back to the generic archway. Add a line here
   # whenever a fitting one is found - zero code change required.
+
+# Purely cosmetic map dressing - see content/schema.py's DecorationKind.
+# Composited per-instance over whatever tile it's standing on, same as
+# entities/items above (never a fixed `backdrop`, which is only meaningful
+# for tile_kinds/dungeon_entrances' single-global-icon shape). All twelve
+# coordinates below were located and visually verified against the real
+# roguelikeSheet_transparent.png this session, not guessed.
+decorations:
+  table:            {sheet: kenney_roguelike, col: 18, row: 5}
+  chair:            {sheet: kenney_roguelike, col: 21, row: 5}
+  bed:              {sheet: kenney_roguelike, col: 14, row: 1}
+  chest:            {sheet: kenney_roguelike, col: 33, row: 10}
+  bookshelf:        {sheet: kenney_roguelike, col: 41, row: 12}
+  fireplace:        {sheet: kenney_roguelike, col: 15, row: 8}
+  flowerbed_white:  {sheet: kenney_roguelike, col: 0,  row: 9}
+  flowerbed_blue:   {sheet: kenney_roguelike, col: 0,  row: 12}
+  bush:             {sheet: kenney_roguelike, col: 19, row: 9}
+  tree:             {sheet: kenney_roguelike, col: 16, row: 9}
+  fence:            {sheet: kenney_roguelike, col: 47, row: 23}
+  herb_clump:       {sheet: kenney_roguelike, col: 44, row: 23}

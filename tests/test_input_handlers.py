@@ -17,6 +17,7 @@ from engine.actions import (
     SaveGameAction,
     ScrollLogAction,
     ShopAction,
+    ToggleDecorationsAction,
     TrainerAction,
     WaitAction,
 )
@@ -102,6 +103,10 @@ def test_handle_event_h_returns_help_action():
 
 def test_handle_event_m_returns_mute_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.M)), MuteAction)
+
+
+def test_handle_event_d_returns_toggle_decorations_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.D)), ToggleDecorationsAction)
 
 
 def test_handle_event_pageup_returns_scroll_log_action_back_into_history():

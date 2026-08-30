@@ -348,6 +348,67 @@ def test_build_sprite_codepoints_no_composite_for_an_unmapped_tile_kind():
     assert "rat" in result.entities  # the plain sprite still registers
 
 
+def test_build_sprite_codepoints_registers_a_decoration_codepoint():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        decorations={"table": SpriteRef(sheet="test", col=0, row=0)},
+    )
+    sheet_images = {"test": _solid_sheet([(200, 150, 100, 255)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert "table" in result.decorations
+    tile = tileset.get_tile(result.decorations["table"])
+    assert tuple(tile[0, 0]) == (200, 150, 100, 255)
+
+
+def test_build_sprite_codepoints_registers_a_composite_for_every_decoration_tile_kind_pair():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=3, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={
+            "floor": SpriteRef(sheet="test", col=0, row=0),
+            "plains": SpriteRef(sheet="test", col=1, row=0),
+        },
+        decorations={"table": SpriteRef(sheet="test", col=2, row=0)},
+    )
+    sheet_images = {
+        "test": _solid_sheet(
+            [(10, 20, 30, 255), (40, 50, 60, 255), (200, 5, 5, 255)], 16, 3,
+        )
+    }
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert set(result.decorations_on_tile) == {("table", "floor"), ("table", "plains")}
+    composite_tile = tileset.get_tile(result.decorations_on_tile[("table", "floor")])
+    assert tuple(composite_tile[0, 0]) == (200, 5, 5, 255)  # opaque decoration fully replaces terrain
+
+
+def test_build_sprite_codepoints_no_decoration_composite_for_an_unmapped_tile_kind():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        decorations={"table": SpriteRef(sheet="test", col=0, row=0)},
+    )
+    sheet_images = {"test": _solid_sheet([(255, 0, 0, 255)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert result.decorations_on_tile == {}
+    assert "table" in result.decorations  # the plain sprite still registers
+
+
 def test_build_sprite_codepoints_registers_a_codepoint_per_dungeon_entrance():
     tileset = tcod.tileset.Tileset(16, 16)
     catalog = make_catalog()

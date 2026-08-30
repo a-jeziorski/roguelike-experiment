@@ -18,6 +18,41 @@ TileType = Literal[
     "landmark", "dunes", "ashen_plains", "blighted_forest", "scoured_ground",
 ]
 
+# Purely cosmetic map dressing (furniture indoors, plants outdoors) - a
+# closed, code-defined set like TileType, not an open catalog-validated id
+# like an entity/item, since decorations carry no stats to cross-check and
+# are just a small fixed vocabulary. This is what LegendEntry.decoration
+# is typed against (content-authoring typos fail loudly at schema-validation
+# time for free) and what data/sprites.yaml's decorations section keys are
+# validated against (see content/loader.py's load_sprite_manifest). Never
+# affects walkability/transparency/combat/AI in any way - see
+# engine/game_map.py's GameMap.decorations, a list kept deliberately
+# separate from GameMap.entities so nothing that iterates entities is even
+# aware decorations exist.
+DecorationKind = Literal[
+    "table", "chair", "bed", "chest", "bookshelf", "fireplace",
+    "flowerbed_white", "flowerbed_blue", "bush", "tree", "fence", "herb_clump",
+]
+
+# One fixed Look-mode line per DecorationKind, reused at every placement of
+# that kind - unlike a landmark (a named set piece with its own authored
+# description), a decoration is a small repeated touch, so one line per kind
+# keeps authoring a new placement as cheap as picking a legend symbol.
+DECORATION_NAMES: dict[str, str] = {
+    "table": "A plain wooden table.",
+    "chair": "A wooden chair, seat worn smooth.",
+    "bed": "A narrow bed, blankets never quite straightened.",
+    "chest": "A storage chest, its lock long since given up on.",
+    "bookshelf": "A shelf of ledgers and half-remembered titles.",
+    "fireplace": "A hearth, banked low but never quite cold.",
+    "flowerbed_white": "White flowers, growing wherever no one's gotten around to weeding.",
+    "flowerbed_blue": "A patch of blue flowers, tucked against a wall.",
+    "bush": "An ordinary green bush.",
+    "tree": "A tree, planted long before anyone here remembers.",
+    "fence": "A low wooden fence, more habit than barrier.",
+    "herb_clump": "A clump of herbs, growing wild.",
+}
+
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
 # ordinary open ground - which is why every walkable kind (floor, stairs,
 # dungeon_entrance, road/plains/town/sea's line-of-sight, landmark...) needs no
@@ -1004,6 +1039,14 @@ class LegendEntry(BaseModel):
     hp/attack/xp, a flat defense bonus, a guaranteed drop if one was
     already configured, and an "Elite " name prefix so it reads as
     distinct at a glance. {entity: orc, elite: true}.
+
+    A mapping may also carry `decoration` - purely cosmetic map dressing
+    (see DecorationKind) with no gameplay effect whatsoever, independent
+    of everything else on this entry: {tile: floor, decoration: table}
+    for a bare piece of furniture, or {entity: villager, tile: plains,
+    decoration: bush, dialogue: "..."} to place an NPC and a decoration
+    on the same cell. Unlike `entity`'s per-placement `dialogue`, a
+    decoration has no per-placement text - see DECORATION_NAMES.
     """
 
     tile: TileType
@@ -1017,6 +1060,11 @@ class LegendEntry(BaseModel):
     announce: bool = False
     flag_dialogue: list[FlagDialogue] = Field(default_factory=list)
     elite: bool = False
+    # Purely cosmetic map dressing - see DecorationKind above. Independent of
+    # entity/item (a cell can carry a decoration alongside either, or alone),
+    # never mutually exclusive with them the way the stairs/door/
+    # dungeon_entrance shorthands are.
+    decoration: DecorationKind | None = None
 
     @model_validator(mode="after")
     def announce_requires_description(self) -> "LegendEntry":
@@ -1042,11 +1090,12 @@ class LegendEntry(BaseModel):
                     tile=raw.get("tile", "floor"), entity=raw["entity"], description=description,
                     dialogue=raw.get("dialogue"), announce=announce,
                     flag_dialogue=raw.get("flag_dialogue") or [],
-                    elite=raw.get("elite", False),
+                    elite=raw.get("elite", False), decoration=raw.get("decoration"),
                 )
             if "item" in raw:
                 return cls(
                     tile=raw.get("tile", "floor"), item=raw["item"], description=description, announce=announce,
+                    decoration=raw.get("decoration"),
                 )
             if "stairs_down" in raw:
                 return cls(
@@ -1076,6 +1125,7 @@ class LegendEntry(BaseModel):
                 announce=announce,
                 flag_dialogue=raw.get("flag_dialogue") or [],
                 elite=raw.get("elite", False),
+                decoration=raw.get("decoration"),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 
@@ -1364,6 +1414,12 @@ class SpriteManifestDef(BaseModel):
     items: dict[str, SpriteRef] = Field(default_factory=dict)
     tile_kinds: dict[str, SpriteRef] = Field(default_factory=dict)
     dungeon_entrances: dict[str, SpriteRef] = Field(default_factory=dict)
+    # Purely cosmetic map dressing (see DecorationKind) - composited
+    # per-instance over whatever tile it's standing on, same mechanism as
+    # entities/items (never a single fixed backdrop like tile_kinds/
+    # dungeon_entrances), so a `backdrop` on one of these is meaningless -
+    # see content/loader.py's load_sprite_manifest.
+    decorations: dict[str, SpriteRef] = Field(default_factory=dict)
 
 
 class AudioManifestDef(BaseModel):

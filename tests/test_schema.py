@@ -294,6 +294,33 @@ def test_legend_entry_from_entity_mapping_with_a_tile_override():
 def test_legend_entry_from_item_mapping_with_a_tile_override():
     entry = LegendEntry.from_raw({"item": "healing_potion", "tile": "road"})
     assert entry.tile == "road"
+
+
+def test_legend_entry_decoration_defaults_none():
+    entry = LegendEntry.from_raw({"tile": "floor"})
+    assert entry.decoration is None
+
+
+def test_legend_entry_accepts_a_valid_decoration_kind():
+    entry = LegendEntry.from_raw({"tile": "floor", "decoration": "table"})
+    assert entry.decoration == "table"
+
+
+def test_legend_entry_rejects_an_unknown_decoration_kind():
+    with pytest.raises(ValidationError):
+        LegendEntry.from_raw({"tile": "floor", "decoration": "hot_tub"})
+
+
+def test_legend_entry_decoration_coexists_with_entity():
+    entry = LegendEntry.from_raw({"entity": "villager", "tile": "plains", "decoration": "bush"})
+    assert entry.entity == "villager"
+    assert entry.decoration == "bush"
+
+
+def test_legend_entry_decoration_coexists_with_item():
+    entry = LegendEntry.from_raw({"item": "healing_potion", "decoration": "table"})
+    assert entry.item == "healing_potion"
+    assert entry.decoration == "table"
     assert entry.item == "healing_potion"
 
 

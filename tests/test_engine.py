@@ -3477,6 +3477,38 @@ def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
     assert "wayford" in engine.quest_log.destroyed_dungeon_ids
 
 
+def test_build_game_map_spawns_an_inert_decoration_entity():
+    from content.loader import DecorationSpawn, ParsedLevel
+    from content.schema import DECORATION_NAMES
+
+    catalog = load_catalog()
+    level = ParsedLevel(
+        id="level_01", name="Test", width=3, height=3, tiles=[["floor"] * 3] * 3,
+        player_start=(1, 1), player_start_tile="floor",
+        entity_spawns=[], item_spawns=[], stairs=[], doors=[],
+        dungeon_entrances=[], tile_descriptions=[],
+        open_boundary=False, open_boundary_message="", dark=False,
+        decoration_spawns=[DecorationSpawn(x=0, y=0, kind="table")],
+    )
+
+    game_map, player = build_game_map(level, catalog)
+
+    assert len(game_map.decorations) == 1
+    decoration = game_map.decorations[0]
+    assert (decoration.x, decoration.y) == (0, 0)
+    assert decoration.entity_id == "table"
+    assert decoration.name == DECORATION_NAMES["table"]
+    assert decoration.fighter is None
+    assert decoration.item is None
+    assert decoration.ai is None
+    assert decoration.blocks_movement is False
+    # A decoration never enters game_map.entities - nothing that iterates it
+    # (combat, AI, blocking_entity_at, save/load) should ever see one.
+    assert decoration not in game_map.entities
+    assert game_map.blocking_entity_at(0, 0) is None
+    assert game_map.is_walkable(0, 0) is True
+
+
 def test_engine_current_level_id_defaults_to_starting_level():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)

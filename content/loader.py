@@ -20,6 +20,7 @@ from content.schema import (
     TILE_PASSABILITY,
     AudioManifestDef,
     CellsManifestDef,
+    DecorationKind,
     DungeonDef,
     EncounterDef,
     EntityDef,
@@ -40,6 +41,10 @@ from content.schema import (
 # exists as a live kind for a sprite to apply to. This is the valid key set
 # for sprites.yaml's tile_kinds section.
 _VALID_SPRITE_TILE_KINDS = set(get_args(TileType)) - {"player_start"}
+
+# The valid key set for sprites.yaml's decorations section - see
+# content/schema.py's DecorationKind.
+_VALID_DECORATION_KINDS = set(get_args(DecorationKind))
 
 # The player Entity's entity_id (see engine/game_map.py's build_game_map) -
 # reserved rather than a real catalog entry, since the player is hardcoded
@@ -87,6 +92,13 @@ class ItemSpawn:
     x: int
     y: int
     item: ItemDef
+
+
+@dataclass
+class DecorationSpawn:
+    x: int
+    y: int
+    kind: str  # a DecorationKind value - already validated by LegendEntry's pydantic type
 
 
 @dataclass
@@ -152,6 +164,10 @@ class ParsedLevel:
     open_boundary: bool
     open_boundary_message: str
     dark: bool
+    # Purely cosmetic map dressing (see DecorationKind) - defaulted so every
+    # other ParsedLevel construction site (overworld cells, which don't
+    # author decorations today) keeps working unchanged.
+    decoration_spawns: list[DecorationSpawn] = field(default_factory=list)
 
 
 def _load_yaml(path: Path) -> dict:
@@ -507,6 +523,7 @@ class SpriteManifest:
     items: dict[str, SpriteRef]
     tile_kinds: dict[str, SpriteRef]
     dungeon_entrances: dict[str, SpriteRef] = field(default_factory=dict)
+    decorations: dict[str, SpriteRef] = field(default_factory=dict)
 
 
 def load_sprite_manifest(
@@ -614,6 +631,23 @@ def load_sprite_manifest(
         _check_sheet("dungeon_entrances", dungeon_id, ref)
         _check_backdrop("dungeon_entrances", dungeon_id, ref)
 
+    for kind, ref in parsed.decorations.items():
+        if kind not in _VALID_DECORATION_KINDS:
+            errors.append(f"decorations['{kind}']: not a recognized decoration kind")
+        if ref.recolor:
+            errors.append(
+                f"decorations['{kind}']: recolor is only meaningful for "
+                "entities/items (a decoration has no .color field to tint toward)"
+            )
+        if ref.backdrop is not None:
+            errors.append(
+                f"decorations['{kind}']: backdrop is only meaningful for "
+                "tile_kinds/dungeon_entrances - a decoration already gets this "
+                "dynamically, composited over whatever tile it's actually "
+                "standing on (see _resolved_decoration_glyph)"
+            )
+        _check_sheet("decorations", kind, ref)
+
     if errors:
         raise ContentValidationError(str(path), errors)
 
@@ -621,6 +655,7 @@ def load_sprite_manifest(
         sheets=parsed.sheets, entities=parsed.entities,
         items=parsed.items, tile_kinds=parsed.tile_kinds,
         dungeon_entrances=parsed.dungeon_entrances,
+        decorations=parsed.decorations,
     )
 
 
@@ -788,6 +823,7 @@ def load_level(
     stairs: list[StairsSpawn] = []
     doors: list[DoorSpawn] = []
     tile_descriptions: list[TileDescriptionSpawn] = []
+    decoration_spawns: list[DecorationSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -884,6 +920,9 @@ def load_level(
                     item_spawns.append(
                         ItemSpawn(x=x, y=y, item=catalog.items[entry.item])
                     )
+
+            if entry.decoration is not None:
+                decoration_spawns.append(DecorationSpawn(x=x, y=y, kind=entry.decoration))
         tiles.append(tile_row)
 
     if len(player_starts) != 1:
@@ -949,6 +988,7 @@ def load_level(
         open_boundary=level.open_boundary,
         open_boundary_message=level.open_boundary_message,
         dark=level.dark,
+        decoration_spawns=decoration_spawns,
     )
 
 

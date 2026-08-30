@@ -39,6 +39,7 @@ from engine.render import (
     render_all,
     render_confirm_attack_prompt,
     render_continue_prompt,
+    render_decorations,
     render_entities,
     render_help,
     render_look_frame,
@@ -1122,6 +1123,134 @@ def test_render_entities_hides_entities_scrolled_outside_the_viewport():
 
     text = console_text(console)
     assert "@" not in text
+
+
+def test_render_decorations_translates_by_camera_offset():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    table = Entity(5, 5, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=2, cam_y=3)
+
+    assert chr(console.rgb[3, 2]["ch"]) == "?"
+
+
+def test_render_decorations_hides_a_decoration_scrolled_outside_the_viewport():
+    game_map = make_game_map(10, 10)
+    game_map.visible[9, 9] = True
+    table = Entity(9, 9, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=50, cam_y=50)  # camera far from (9,9)
+
+    assert "?" not in console_text(console)
+
+
+def test_render_decorations_hides_an_unexplored_decoration():
+    game_map = make_game_map(10, 10)  # visible defaults to False everywhere
+    table = Entity(5, 5, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=0, cam_y=0)
+
+    assert "?" not in console_text(console)
+
+
+def test_render_decorations_uses_a_sprite_codepoint_when_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    table = Entity(5, 5, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+    sprite_codepoints = SpriteCodepoints(decorations={"table": 0xE000})
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE000
+
+
+def test_render_decorations_uses_the_composited_codepoint_when_the_tile_kind_is_also_mapped():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "plains"
+    game_map.visible[5, 5] = True
+    bush = Entity(5, 5, "?", (255, 255, 255), "An ordinary green bush.", entity_id="bush")
+    game_map.decorations.append(bush)
+    sprite_codepoints = SpriteCodepoints(
+        decorations={"bush": 0xE000}, tile_kinds={"plains": 0xE001},
+        decorations_on_tile={("bush", "plains"): 0xE002},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE002
+
+
+def test_render_all_with_show_decorations_false_draws_no_decorations():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    # Deliberately not on the player's own tile - render_entities draws the
+    # player over anything at the same coordinate, which would make this
+    # test pass for the wrong reason (glyph overwritten, not toggle-hidden).
+    dx, dy = (1, 0) if game_map.in_bounds(player.x + 1, player.y) else (-1, 0)
+    table = Entity(
+        player.x + dx, player.y + dy, "?", (255, 255, 255), "A plain wooden table.", entity_id="table",
+    )
+    game_map.decorations.append(table)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    engine.game_map.visible[table.x, table.y] = True
+
+    console = tcod.console.Console(200, 100, order="F")
+    render_all(console, engine, show_decorations=False)
+
+    assert "?" not in console_text(console)
+
+
+def test_render_all_with_show_decorations_true_draws_decorations():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    dx, dy = (1, 0) if game_map.in_bounds(player.x + 1, player.y) else (-1, 0)
+    table = Entity(
+        player.x + dx, player.y + dy, "?", (255, 255, 255), "A plain wooden table.", entity_id="table",
+    )
+    game_map.decorations.append(table)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    engine.game_map.visible[table.x, table.y] = True
+
+    console = tcod.console.Console(200, 100, order="F")
+    render_all(console, engine, show_decorations=True)
+
+    assert "?" in console_text(console)
+
+
+def test_describe_tile_includes_a_decoration_at_the_same_coordinate():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.visible[1, 1] = True
+    table = Entity(1, 1, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+    catalog = load_catalog()
+
+    lines = describe_tile(game_map, catalog, 1, 1)
+    assert lines == ["Bare floor.", "A plain wooden table."]
+
+
+def test_describe_tile_omits_a_decoration_at_a_different_coordinate():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.visible[1, 1] = True
+    table = Entity(0, 0, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+    catalog = load_catalog()
+
+    lines = describe_tile(game_map, catalog, 1, 1)
+    assert lines == ["Bare floor."]
 
 
 def test_render_map_uses_a_sprite_codepoint_when_the_tile_kind_is_mapped():
