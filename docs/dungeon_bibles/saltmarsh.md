@@ -72,6 +72,17 @@ just a line in `dungeon.yaml`'s own `inspect_text`. One small unentered
 wall cluster reads as a collapsed, unusable shack - the same "purely
 decorative, no new mechanics" technique every other settlement pass uses.
 
+**Second regeneration, applying `content_design_process.md` §0af.** The
+first regeneration housed both stationary residents but left the road
+half-finished - a single track down from the gate that never clearly
+reached either hut's door and gave the town no real hub. This pass
+redraws the network with the Drying Racks as the plaza it converges on
+(a fishing hamlet's natural gathering point, and the one landmark this
+bible already names), the Elder's hut touching the main street directly
+near the gate, and the Witch's hut reached by a short connected branch.
+Footprint trimmed again, 36x28 to 34x26 - same 5-entity cast, same 2
+buildings.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | Saltmarsh Shore | The Elder, The Witch, The Tide-Watcher, The Netmender, The Drying Racks |
