@@ -141,6 +141,13 @@ class TileDescriptionSpawn:
 
 
 @dataclass
+class TileSpriteSpawn:
+    x: int
+    y: int
+    sprite_id: str  # a data/sprites.yaml tile_sprite_overrides key - see LegendEntry.tile_sprite
+
+
+@dataclass
 class ParsedLevel:
     """A validated level, decoupled from any engine/rendering data structures.
     tiles[y][x] gives the TileType string for that cell. A level may have multiple
@@ -168,6 +175,9 @@ class ParsedLevel:
     # other ParsedLevel construction site (overworld cells, which don't
     # author decorations today) keeps working unchanged.
     decoration_spawns: list[DecorationSpawn] = field(default_factory=list)
+    # Per-coordinate sprite overrides (see LegendEntry.tile_sprite) -
+    # defaulted for the same reason as decoration_spawns above.
+    tile_sprite_spawns: list[TileSpriteSpawn] = field(default_factory=list)
 
 
 def _load_yaml(path: Path) -> dict:
@@ -524,6 +534,7 @@ class SpriteManifest:
     tile_kinds: dict[str, SpriteRef]
     dungeon_entrances: dict[str, SpriteRef] = field(default_factory=dict)
     decorations: dict[str, SpriteRef] = field(default_factory=dict)
+    tile_sprite_overrides: dict[str, SpriteRef] = field(default_factory=dict)
 
 
 def load_sprite_manifest(
@@ -648,6 +659,15 @@ def load_sprite_manifest(
             )
         _check_sheet("decorations", kind, ref)
 
+    for override_id, ref in parsed.tile_sprite_overrides.items():
+        if ref.recolor:
+            errors.append(
+                f"tile_sprite_overrides['{override_id}']: recolor is only "
+                "meaningful for entities/items (no .color field to tint toward)"
+            )
+        _check_sheet("tile_sprite_overrides", override_id, ref)
+        _check_backdrop("tile_sprite_overrides", override_id, ref)
+
     if errors:
         raise ContentValidationError(str(path), errors)
 
@@ -656,6 +676,7 @@ def load_sprite_manifest(
         items=parsed.items, tile_kinds=parsed.tile_kinds,
         dungeon_entrances=parsed.dungeon_entrances,
         decorations=parsed.decorations,
+        tile_sprite_overrides=parsed.tile_sprite_overrides,
     )
 
 
@@ -824,6 +845,7 @@ def load_level(
     doors: list[DoorSpawn] = []
     tile_descriptions: list[TileDescriptionSpawn] = []
     decoration_spawns: list[DecorationSpawn] = []
+    tile_sprite_spawns: list[TileSpriteSpawn] = []
 
     for y, row in enumerate(rows):
         tile_row: list[str] = []
@@ -923,6 +945,9 @@ def load_level(
 
             if entry.decoration is not None:
                 decoration_spawns.append(DecorationSpawn(x=x, y=y, kind=entry.decoration))
+
+            if entry.tile_sprite is not None:
+                tile_sprite_spawns.append(TileSpriteSpawn(x=x, y=y, sprite_id=entry.tile_sprite))
         tiles.append(tile_row)
 
     if len(player_starts) != 1:
@@ -989,6 +1014,7 @@ def load_level(
         open_boundary_message=level.open_boundary_message,
         dark=level.dark,
         decoration_spawns=decoration_spawns,
+        tile_sprite_spawns=tile_sprite_spawns,
     )
 
 

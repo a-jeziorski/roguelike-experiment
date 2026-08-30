@@ -76,6 +76,14 @@ class GameMap:
         # auto-announcing (LegendEntry.announce) - a filtered view of
         # tile_descriptions above, populated in lockstep by build_game_map.
         self.auto_announce_tiles: dict[tuple[int, int], str] = {}
+        # Coordinate -> data/sprites.yaml tile_sprite_overrides key (see
+        # content.schema.LegendEntry.tile_sprite) - a one-off per-placement
+        # sprite override for an otherwise-ordinary tile (e.g. giving one
+        # specific stairs_up tile a gate icon instead of the shared
+        # tile_kinds sprite). Checked first in
+        # engine/render.py's _resolved_tile_glyph, falling back to the
+        # normal kind-based sprite when this coordinate has no entry.
+        self.tile_sprite_overrides: dict[tuple[int, int], str] = {}
         # Subset of auto_announce_tiles' coordinates whose legend entry's
         # tile kind is specifically "landmark" - lets
         # newly_seen_tile_announcements report which newly-announced tiles
@@ -391,6 +399,9 @@ def build_game_map(
 
     for entrance_spawn in level.dungeon_entrances:
         game_map.dungeon_entrances[(entrance_spawn.x, entrance_spawn.y)] = entrance_spawn.dungeon_id
+
+    for sprite_spawn in level.tile_sprite_spawns:
+        game_map.tile_sprite_overrides[(sprite_spawn.x, sprite_spawn.y)] = sprite_spawn.sprite_id
 
     for desc_spawn in level.tile_descriptions:
         game_map.tile_descriptions[(desc_spawn.x, desc_spawn.y)] = desc_spawn.text

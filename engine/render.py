@@ -186,11 +186,21 @@ def _resolved_tile_glyph(
     kind: str, x: int, y: int, game_map: "GameMap", sprite_codepoints: "SpriteCodepoints | None"
 ) -> str:
     """The tile-kind counterpart to _resolved_entity_glyph: every kind
-    behaves exactly like _resolved_glyph, except a dungeon_entrance cell
-    prefers a sprite specific to the dungeon it leads to
-    (game_map.dungeon_entrances[(x,y)]) over the generic dungeon_entrance
-    tile-kind sprite - falling back to that generic sprite, then to ASCII,
-    exactly like every other per-cell resolution in this file."""
+    behaves exactly like _resolved_glyph, except (1) a coordinate with a
+    LegendEntry.tile_sprite override (game_map.tile_sprite_overrides)
+    prefers that named sprite over anything kind-based - checked first,
+    since it's a deliberate per-placement author choice, not a fallback -
+    and (2) absent that, a dungeon_entrance cell prefers a sprite specific
+    to the dungeon it leads to (game_map.dungeon_entrances[(x,y)]) over
+    the generic dungeon_entrance tile-kind sprite - falling back to that
+    generic sprite, then to ASCII, exactly like every other per-cell
+    resolution in this file."""
+    if sprite_codepoints is not None:
+        override_id = game_map.tile_sprite_overrides.get((x, y))
+        if override_id is not None:
+            codepoint = sprite_codepoints.tile_sprite_overrides.get(override_id)
+            if codepoint is not None:
+                return chr(codepoint)
     if kind == "dungeon_entrance" and sprite_codepoints is not None:
         dungeon_id = game_map.dungeon_entrances.get((x, y))
         codepoint = sprite_codepoints.dungeon_entrances.get(dungeon_id) if dungeon_id else None

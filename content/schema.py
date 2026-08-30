@@ -1065,6 +1065,15 @@ class LegendEntry(BaseModel):
     # never mutually exclusive with them the way the stairs/door/
     # dungeon_entrance shorthands are.
     decoration: DecorationKind | None = None
+    # A per-coordinate sprite override, keyed into data/sprites.yaml's
+    # tile_sprite_overrides section (an author-chosen id, not a TileType or
+    # catalog id) - e.g. giving one specific stairs_up tile its own gate/
+    # archway icon instead of the shared tile_kinds sprite every other
+    # placement of that kind uses. Only reachable via the general mapping
+    # form (not the stairs_up/stairs_down/door/dungeon_entrance shorthands)
+    # - write those out longhand to combine them with this. See
+    # engine/render.py's _resolved_tile_glyph and GameMap.tile_sprite_overrides.
+    tile_sprite: str | None = None
 
     @model_validator(mode="after")
     def announce_requires_description(self) -> "LegendEntry":
@@ -1126,6 +1135,7 @@ class LegendEntry(BaseModel):
                 flag_dialogue=raw.get("flag_dialogue") or [],
                 elite=raw.get("elite", False),
                 decoration=raw.get("decoration"),
+                tile_sprite=raw.get("tile_sprite"),
             )
         raise ValueError(f"legend entry must be a string or mapping, got {raw!r}")
 
@@ -1420,6 +1430,12 @@ class SpriteManifestDef(BaseModel):
     # dungeon_entrances), so a `backdrop` on one of these is meaningless -
     # see content/loader.py's load_sprite_manifest.
     decorations: dict[str, SpriteRef] = Field(default_factory=dict)
+    # Per-coordinate tile sprite overrides (see LegendEntry.tile_sprite) -
+    # author-chosen ids, not tied to TileType or any catalog. Registered
+    # and backdrop-baked the same way as dungeon_entrances (a named,
+    # one-off icon, not a repeated per-instance composite like decorations
+    # above).
+    tile_sprite_overrides: dict[str, SpriteRef] = Field(default_factory=dict)
 
 
 class AudioManifestDef(BaseModel):

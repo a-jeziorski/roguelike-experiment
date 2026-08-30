@@ -201,3 +201,16 @@ decorations:
   tree:             {sheet: kenney_roguelike, col: 16, row: 9}
   fence:            {sheet: kenney_roguelike, col: 47, row: 23}
   herb_clump:       {sheet: kenney_roguelike, col: 44, row: 23}
+
+# Per-coordinate sprite overrides - see content/schema.py's
+# LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any
+# catalog; registered/backdrop-baked the same way as dungeon_entrances
+# above (a named, one-off icon), not composited per-instance like
+# decorations above.
+tile_sprite_overrides:
+  # A real, unused, name-indexed rltiles sprite - same sheet/style already
+  # used for every stairs_up/stairs_down tile in the game. backdrop: road,
+  # not floor (unlike stairs_up's own entry), since every use of this so
+  # far is an outdoor town gate sitting on a road tile, not an indoor
+  # staircase.
+  town_gate: {sheet: rltiles, name: dngn_stone_arch, backdrop: road}

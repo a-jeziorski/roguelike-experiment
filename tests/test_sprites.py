@@ -409,6 +409,49 @@ def test_build_sprite_codepoints_no_decoration_composite_for_an_unmapped_tile_ki
     assert "table" in result.decorations  # the plain sprite still registers
 
 
+def test_build_sprite_codepoints_registers_a_tile_sprite_override_codepoint():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=1, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={}, tile_kinds={},
+        tile_sprite_overrides={"town_gate": SpriteRef(sheet="test", col=0, row=0)},
+    )
+    sheet_images = {"test": _solid_sheet([(90, 80, 70, 255)], 16, 1)}
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    assert "town_gate" in result.tile_sprite_overrides
+    tile = tileset.get_tile(result.tile_sprite_overrides["town_gate"])
+    assert tuple(tile[0, 0]) == (90, 80, 70, 255)
+
+
+def test_build_sprite_codepoints_applies_backdrop_to_a_tile_sprite_override():
+    tileset = tcod.tileset.Tileset(16, 16)
+    catalog = make_catalog()
+    sheet_def = SpriteSheetDef(image="test.png", tile_size=16, columns=2, rows=1)
+    manifest = SpriteManifest(
+        sheets={"test": sheet_def},
+        entities={}, items={},
+        tile_kinds={"road": SpriteRef(sheet="test", col=1, row=0)},
+        tile_sprite_overrides={
+            "town_gate": SpriteRef(sheet="test", col=0, row=0, backdrop="road"),
+        },
+    )
+    # Transparent override sprite, opaque backdrop - result should equal
+    # the backdrop's own color everywhere, same contract as
+    # composite_sprite_over_terrain / the existing tile_kinds backdrop test.
+    sheet_images = {
+        "test": _solid_sheet([(0, 0, 0, 0), (40, 90, 60, 255)], 16, 2)
+    }
+
+    result = build_sprite_codepoints(tileset, manifest, catalog, sheet_images, {"test": None})
+
+    gate_tile = tileset.get_tile(result.tile_sprite_overrides["town_gate"])
+    assert tuple(gate_tile[0, 0]) == (40, 90, 60, 255)
+
+
 def test_build_sprite_codepoints_registers_a_codepoint_per_dungeon_entrance():
     tileset = tcod.tileset.Tileset(16, 16)
     catalog = make_catalog()

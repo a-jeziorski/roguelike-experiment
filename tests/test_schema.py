@@ -321,7 +321,19 @@ def test_legend_entry_decoration_coexists_with_item():
     entry = LegendEntry.from_raw({"item": "healing_potion", "decoration": "table"})
     assert entry.item == "healing_potion"
     assert entry.decoration == "table"
-    assert entry.item == "healing_potion"
+
+
+def test_legend_entry_tile_sprite_defaults_none():
+    entry = LegendEntry.from_raw({"tile": "floor"})
+    assert entry.tile_sprite is None
+
+
+def test_legend_entry_accepts_a_tile_sprite_via_the_general_mapping_form():
+    entry = LegendEntry.from_raw(
+        {"tile": "stairs_up", "next_level": None, "tile_sprite": "town_gate"}
+    )
+    assert entry.tile == "stairs_up"
+    assert entry.tile_sprite == "town_gate"
 
 
 def test_legend_entry_announce_defaults_false():

@@ -45,24 +45,54 @@ ever turning into a briefing.
 ## Structure overview
 
 Still one level - Millhaven doesn't need multiple floors or branching
-paths to earn its depth, just room to breathe. This pass regenerates
-that one level at 44x46 (up from the original 22x15), after nine NPCs
-and two landmarks had accumulated in a footprint that was never sized
-for more than five. Nothing about the town's *identity* changes -
-same gate, same well, same cast, same errand - only its scale and,
-for the first time, real building interiors for the two NPCs who
-should plausibly be found in the same spot every time: the chief and
-the shopkeeper (see set pieces 6 and 8, and the Roster section's
-`stationary` note). A handful of purely decorative, unentered wall
-clusters (matching Wayford's own "several distinct clusters of houses
-and storehouses") are scattered through the residential stretches so
-the larger footprint reads as a real town, not a big empty field with
-nine dots in it - pure scenery, no new mechanics, same technique
-already shipped in Wayford.
+paths to earn its depth, just room to breathe. This is the green's
+second regeneration: 22x15 to 44x46 gave the Chief and Shopkeeper their
+first real houses; this pass regenerates it again, larger still
+(60x60), because two more residents were always overdue for the same
+treatment. `millhaven_trainer` (Old Drillmaster) and `millhaven_debtor`
+have been `stationary: true` since they were first authored - the same
+"always findable in one exact spot" premise the Chief's and
+Shopkeeper's houses were built to answer - but stood in the open on
+bare plains the whole time, a gap that only became obvious once
+decorations made every *other* building's interior feel lived-in by
+comparison. This pass closes it: four real building interiors now, one
+per stationary resident, plus room for outdoor decoration to actually
+read as composed - a tended garden, a treeline, doorstep landscaping -
+rather than whatever happened to fit on the nearest open plains tile.
+Nothing about the town's identity changes - same gate, same well, same
+cast, same errand - only its scale, its building count, and how
+deliberately its dressing reads.
+
+**A decoration philosophy**, stated plainly since it wasn't followed
+carefully enough the first time: an outdoor decoration is never placed
+alone. It belongs to something - a garden bed someone actually tends, a
+treeline breaking the wind along one wall, bushes landscaping a
+building's own doorstep - and it says something about whoever it's
+near. The Chief's doorstep gets bushes; the Debtor's doesn't, on
+purpose (see set piece 10) - a garden nobody's kept up is a truer tell
+than another line of dialogue about owing coin. A `fence` marks
+something it's actually fencing (a garden edge, the guard's post),
+never sitting by itself in open plains. If a placement can't say which
+of these it belongs to, it doesn't go in.
+
+A handful of purely decorative, unentered wall clusters (matching
+Wayford's own "several distinct clusters of houses and storehouses")
+are scattered through the residential stretches so the larger footprint
+reads as a real town, not a big empty field with dots in it - six now
+(three symmetric pairs, up from two), pure scenery, no new mechanics,
+same technique already shipped in Wayford.
+
+The gate itself also gets its own icon this pass - previously the same
+shared staircase sprite every `stairs_up` tile in the game uses (a cave
+fissure in Silver Mountain Caves looked identical to Millhaven's town
+gate). A small new per-coordinate sprite-override mechanism
+(`LegendEntry.tile_sprite`, `data/sprites.yaml`'s `tile_sprite_overrides`
+section) lets this one placement use an actual gate/archway icon without
+touching any other dungeon's stairways.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper, The Town Guard |
+| `level_01` | Millhaven Green | The Gate-watch, The Well, The Mending Yard, A dismissive villager, A nudge villager, The Chief's Doorstep, The Escaped Prisoner, The Shopkeeper, The Trainer's Drill Hall, The Debtor's House, The Town Guard |
 
 ## The named set pieces
 
@@ -84,7 +114,10 @@ unordinary thing (a stranger) and saying so plainly.
 
 A `landmark` tile (matching Stonebridge's well precedent) with a
 villager posted beside it - the town's actual, unglamorous
-infrastructure, still working.
+infrastructure, still working. The new communal garden patch (see the
+decoration philosophy above) sits near enough to the well to read as
+the same "someone still tends this" idiom, without crowding the
+landmark itself.
 
 *Landmark description*: *"The town well, its rope re-tied more times
 than anyone remembers whose turn it was to fix it."*
@@ -102,12 +135,11 @@ bible's voice model calls for.
 
 A second `landmark` tile - tools laid out, nothing fancy. An informal
 exchange of favors and borrowed tools, not a transaction - nobody's
-charging, nobody's paying. (A literal shop now sits nearby - see set
-piece 8 - and the two are meant to coexist rather than compete: the
-Mending Yard is what people still do for each other without coin
-changing hands; the shop is the one place coin still works at all.)
-This villager is the *one plain villager* allowed slightly more
-informative dialogue.
+charging, nobody's paying. The shop sits nearby (see set piece 8), and
+the two are meant to coexist rather than compete: the Mending Yard is
+what people still do for each other without coin changing hands; the
+shop is the one place coin still works at all. This villager is the
+*one plain villager* allowed slightly more informative dialogue.
 
 *Landmark description*: *"A mending yard - a cobbler's last, a
 whetstone, tools laid out for whoever needs them next. Nobody's
@@ -149,24 +181,23 @@ from `content_design_process.md`.
 
 ### 6. The Chief's Doorstep
 
-Now a real one-room house, for the first time - but positioned so the
-"doorstep" framing still holds: right on the crossroads, door facing
-the road, impossible to miss walking the green end to end. Not a
-hidden office behind a formality (a locked door, a waiting room) -
-Settlers don't have that kind of authority structure left, or want
-one. Four walls change where the chief stands, not how reachable they
-are. This is where `Talk` completes the starting quest.
+A real one-room house, positioned so the "doorstep" framing still
+holds: right at the green's center, beside the well, door facing the
+road - impossible to miss walking the green end to end. Not a hidden
+office behind a formality (a locked door, a waiting room) - Settlers
+don't have that kind of authority structure left, or want one. Four
+walls change where the chief stands, not how reachable they are. This
+is where `Talk` completes the starting quest. Furnished plainly - a
+hearth, a table, a shelf, a chair or two - a room someone actually
+receives visitors in, not a monument to the office.
 
-*Update - a physical marker*: the doorstep now also carries an actual
-`landmark` tile (the `"9"` legend entry), one tile outside the doorway -
-a notice board, the same "ordinary communal fixture" idiom as the
-Well/Mending Yard (set pieces 2/3), *not* a quest marker or waypoint
-icon. It doesn't replace the nudge villager's spoken hint (set piece 5)
-as the primary way a player learns to look for the chief - it's a
-second, redundant cue for a player who's exploring on foot rather than
-talking to everyone, closing the same navigational gap the overworld's
-new road signposts (also plain `landmark` tiles, `data/overworld.lvl`)
-close at the map scale.
+The doorstep also carries an actual `landmark` tile (the notice board),
+one tile outside the doorway - the same "ordinary communal fixture"
+idiom as the Well/Mending Yard (set pieces 2/3), *not* a quest marker
+or waypoint icon. It doesn't replace the nudge villager's spoken hint
+(set piece 5) as the primary way a player learns to look for the chief
+- it's a second, redundant cue for a player who's exploring on foot
+rather than talking to everyone.
 
 *Dialogue* (triggers completion): *"So you made it after all. I was
 starting to think that warning was never coming - let's hear it, all
@@ -174,21 +205,19 @@ of it."*
 
 *Why it's positioned this way*: being reachable *is* the job, house or
 no house - see the Roster section for why the chief now holds that one
-spot (`stationary`) instead of wandering off it, which matters more
-now that "the chief's spot" is a specific room rather than wherever
-they happened to wander. The message itself is spoken, not written
-(`data/quests.yaml`'s own framing: word of a goblin horde migrating
-into the region, carried by the player, "no letter, no proof") -
-deliberately verbal from the start, so `Talk` completing it is the
-natural mechanism rather than a retrofit. An earlier draft of this
-quest had the player carrying a *sealed* letter that was somehow lost
-during capture, then "delivering" it by talking - a real inconsistency
-(see this document's Tone notes below) fixed by making the message
-verbal from the start.
+spot (`stationary`) instead of wandering off it. The message itself is
+spoken, not written (`data/quests.yaml`'s own framing: word of a goblin
+horde migrating into the region, carried by the player, "no letter, no
+proof") - deliberately verbal from the start, so `Talk` completing it
+is the natural mechanism rather than a retrofit. An earlier draft of
+this quest had the player carrying a *sealed* letter that was somehow
+lost during capture, then "delivering" it by talking - a real
+inconsistency (see this document's Tone notes below) fixed by making
+the message verbal from the start.
 
-*Update - a follow-up quest*: once `goblin_warning` is completed, the
-Chief has a second ask (`spreading_the_warning`, `data/quests.yaml`) -
-carry the same warning on to Wayford, gated on the first quest via
+*Follow-up quest*: once `goblin_warning` is completed, the Chief has a
+second ask (`spreading_the_warning`, `data/quests.yaml`) - carry the
+same warning on to Wayford, gated on the first quest via
 `requires_quest_id` so it's only ever offered after the player has
 actually delivered here. Same verbal framing, no letter this time
 either. Granting it needs a Talk *after* the one that completes
@@ -224,13 +253,17 @@ so explicitly rather than pretending the favor is still owed.
 
 ### 8. The Shopkeeper
 
-Now has a real house of their own, built right beside the Mending
-Yard with its door facing that landmark directly - walk from one to
-the other in a couple of steps, keeping the two set pieces literally
-as well as narratively "read together" (see set piece 3). Doesn't sell
-much: one Healing Potion, priced at what coin is actually still worth
-here - 25 gold is a real ask, not a formality, given how little of it
-exists to find.
+Has a real house of their own, built right beside the Mending Yard with
+its door facing that landmark directly - walk from one to the other in
+a couple of steps, keeping the two set pieces literally as well as
+narratively "read together" (see set piece 3). Furnished like an actual
+place of business, not a home: two chests of stock behind the counter,
+a table serving as the counter itself, one chair for whoever's waiting
+on a slow day - no bed here. If the shopkeeper sleeps elsewhere, that's
+someone else's business, not this one's to explain. Doesn't sell much:
+one Healing Potion, priced at what coin is actually still worth here -
+25 gold is a real ask, not a formality, given how little of it exists
+to find.
 
 *Dialogue*: *"Coin still spends here, same as it always did. Rare
 enough these days that I don't ask where it came from."*
@@ -268,12 +301,57 @@ retroactive "already had it" detection, unlike the Warden's kill-quest
 it sitting in inventory as an inert curio, a deliberately unhandled
 edge case rather than one this pass needed to solve.
 
-### 9. The Town Guard
+### 9. The Trainer's Drill Hall
 
-Stands on the main road running down from the gate toward the well -
-not tucked into a doorway or off to one side, just planted on the road
-itself, visible from most of the green. Doesn't look for trouble,
-doesn't need to: Millhaven hasn't had any.
+A one-room hall - table, chair, a shelf of old drill records - not
+fancy, just functional, matching a man who spent his working life
+running other people through the same routines until they stuck.
+`millhaven_trainer` (catalog id; "Old Drillmaster" on screen) has been
+`stationary: true` since the perk-training system shipped, the same
+"always findable here" premise the Chief's and Shopkeeper's houses
+exist to answer - it just never got a building to match. This pass
+gives it one.
+
+*Dialogue*: *"Killing things and surviving quests teaches a body
+plenty, if it's paying attention. I can put what you've picked up to
+better use than instinct alone would."*
+
+*Why it's here*: no quest ties to this NPC at all - purely a
+gameplay-mechanic resident (teaches perks via `data/entities.yaml`'s
+`trainer_perks`), so the hall exists to answer "where would a retired
+drillmaster actually be," not to gate anything. Deliberately spare - a
+working room, not a monument to a career that's mostly over. (A
+weapon-rack decoration was considered and rejected - the only available
+sprite is wall-mounted art with an opaque background, wrong for this
+project's floor-standing decoration model. The room's plainness carries
+the idea instead.)
+
+### 10. The Debtor's House
+
+The smallest, plainest interior in town, on purpose: a bed and a single
+chair, nothing else - no hearth, no shelf, no landscaping outside the
+door (see the decoration philosophy above). `millhaven_debtor` has also
+been `stationary: true` since it was authored, and is the intimidate-
+target of Wayford's `a_debt_worth_collecting` - the debtor needs to
+stay findable and alive, not necessarily comfortable. Tucked off to the
+side of the green, away from the well and the road's main traffic, the
+way someone avoiding a conversation about money would actually place
+themselves.
+
+*Dialogue*: *"I know what I owe, and I know who to. Tell them I'm good
+for it - just not yet."*
+
+*Why it's here*: the bare interior is doing narrative work the
+dialogue alone doesn't - "hoping the debt would be forgotten" reads
+very differently once the player can see the room it's happening in.
+
+### 11. The Town Guard
+
+Stands near the gate and the main road running down from it toward the
+well - not tucked into a doorway or off to one side, just planted
+where it's visible from most of the green. Doesn't look for trouble,
+doesn't need to: Millhaven hasn't had any. A short fence marks the post
+without enclosing it - it's a watch spot, not a building.
 
 *Dialogue*: *"Keep the peace and we've got no trouble between us."*
 
@@ -288,36 +366,47 @@ deterrent works by being seen, not discovered by accident in a corner.
 
 ## Roster
 
-Nine peaceful-by-default entities total on this green: eight
-`villager`-AI (five plain `villager` spawns each with its own per-spawn
-`dialogue`, one `village_chief` spawn, one `escaped_prisoner` spawn, and
-one `shopkeeper` spawn) plus one `town_guard`-AI (`AI_TOWN_GUARD`, a
-distinct AI type from `villager` - see set piece 9). No combat *unless
-the player starts it*: every `villager`-AI entity here still wanders at
-full health and flees permanently the instant it's personally hurt,
-same as everywhere else in the game, and the `town_guard` wanders too
-until the player attacks any peaceful NPC on this map, at which point it
-fights back permanently for that visit. Five mechanics beyond plain
-dialogue live on this roster: the questgiver (a quest that starts
-hidden until granted via `Talk` - `escaped_prisoner` uses this for a
-kill-quest, `shopkeeper` uses the same mechanism for a fetch-quest, see
-set piece 8), the shopkeeper's buy screen (a nested UI, opened with a
-separate key while adjacent, entirely independent of `Talk` - talking
-to the shopkeeper gets ordinary dialogue like any other villager), the
-shopkeeper's permanent discount pricing (unlocked by completing "A
-Standing Request" - `Engine.shop_price` reads this off the quest log
-live, so every future visit to the shop reflects it automatically), the
-town guard's map-wide hostility trigger (see set piece 9 - this is the
-one entity on this roster that is *not* mechanically identical to
-`villager`, since "identity, not a different kind of creature" only
-holds for NPCs that share `villager`'s actual behavior, and this one
-deliberately doesn't), and `stationary` (`village_chief`/`shopkeeper`
-only): holds position instead of wandering while undamaged, still
-flees normally once hurt. Used for exactly these two and no one else,
-on purpose - they're the only two NPCs whose whole premise depends on
-being findable in one specific spot (now a specific *room*) every
-time, where every plain villager and the escaped prisoner are fine
-wandering their own patch of green.
+Fourteen peaceful-by-default entities total on this green: thirteen
+`villager`-AI (eight plain `villager` spawns each with its own
+per-spawn `dialogue`, one `village_chief` spawn, one `escaped_prisoner`
+spawn, one `shopkeeper` spawn, one `millhaven_trainer` spawn, and one
+`millhaven_debtor` spawn) plus one `town_guard`-AI (`AI_TOWN_GUARD`, a
+distinct AI type from `villager` - see set piece 11). Three of the
+eight plain villagers are new this pass, added for the larger footprint
+- matching Wayford's own lesson that a bigger town needs more than its
+old cast to avoid reading as thinner, not richer. Each has its own
+unique dialogue (one near the new garden patch, one along the
+treeline, one general presence in the green's southern stretch),
+keeping the whole roster at 100% unique villager lines - comfortably
+clear of `content_design_process.md` §1's 75% floor.
+
+No combat *unless the player starts it*: every `villager`-AI entity
+here still wanders at full health and flees permanently the instant
+it's personally hurt, same as everywhere else in the game, and the
+`town_guard` wanders too until the player attacks any peaceful NPC on
+this map, at which point it fights back permanently for that visit.
+Five mechanics beyond plain dialogue live on this roster: the
+questgiver (a quest that starts hidden until granted via `Talk` -
+`escaped_prisoner` uses this for a kill-quest, `shopkeeper` uses the
+same mechanism for a fetch-quest, see set piece 8), the shopkeeper's
+buy screen (a nested UI, opened with a separate key while adjacent,
+entirely independent of `Talk` - talking to the shopkeeper gets
+ordinary dialogue like any other villager), the shopkeeper's permanent
+discount pricing (unlocked by completing "A Standing Request" -
+`Engine.shop_price` reads this off the quest log live, so every future
+visit to the shop reflects it automatically), the town guard's
+map-wide hostility trigger (see set piece 11 - this is the one entity
+on this roster that is *not* mechanically identical to `villager`,
+since "identity, not a different kind of creature" only holds for NPCs
+that share `villager`'s actual behavior, and this one deliberately
+doesn't), and `stationary` (`village_chief`/`shopkeeper`/
+`millhaven_trainer`/`millhaven_debtor` only): holds position instead of
+wandering while undamaged, still flees normally once hurt. Used for
+exactly these four and no one else, on purpose - they're the only four
+NPCs whose whole premise depends on being findable in one specific spot
+(now a specific *room*, for all four) every time, where every plain
+villager and the escaped prisoner are fine wandering their own patch
+of green.
 
 ## Tone notes for anyone (agent or human) revising this later
 
@@ -332,7 +421,10 @@ wandering their own patch of green.
   resembling information content.
 - Keep the tension entirely in the player's own errand, never in the
   town itself. Millhaven should never need a reason to feel uneasy -
-  that instinct belongs to Stonebridge, not here.
+  that instinct belongs to Stonebridge, not here. A bigger footprint is
+  not license to converge toward Wayford's more established tone -
+  Wayford's own bible calls that contrast (Millhaven humbler, "just
+  getting by," even at a larger size) deliberate.
 - **A quest's premise has to actually grant the player character access
   to whatever they're meant to convey.** The original version of this
   quest had the player carrying a *sealed letter* - meaning, by

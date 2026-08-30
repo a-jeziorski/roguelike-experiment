@@ -105,6 +105,13 @@ class SpriteCodepoints:
     # entity_id. See engine/render.py's _resolved_decoration_glyph.
     decorations: dict[str, int] = field(default_factory=dict)
     decorations_on_tile: dict[tuple[str, str], int] = field(default_factory=dict)
+    # A per-coordinate sprite override (see content.schema.LegendEntry.
+    # tile_sprite) - author-chosen id -> codepoint, registered and
+    # backdrop-baked the same way as dungeon_entrances above (a named,
+    # one-off icon, not a repeated composite). engine/render.py's
+    # _resolved_tile_glyph checks GameMap.tile_sprite_overrides for this
+    # coordinate first, before falling back to the normal kind-based sprite.
+    tile_sprite_overrides: dict[str, int] = field(default_factory=dict)
 
 
 def _is_skin_tone(h: float, s: float) -> bool:
@@ -206,12 +213,16 @@ def build_sprite_codepoints(
     EntityDef/ItemDef in catalog - no new authoring), registers it into
     `tileset` at a fresh sequential PUA codepoint, and returns the lookup
     render.py needs. Deterministic assignment order (entities, then items,
-    then tile_kinds, then dungeon_entrances, then decorations, each sorted
-    by key) so re-running with the same manifest always assigns the same
-    codepoints. dungeon_entrances is registered the same way as tile_kinds
-    (no color/recolor, a complete standalone tile image) - it's keyed by
-    dungeon id rather than tile kind, but is otherwise just another
-    base-pass entry. decorations is registered the same way too (no
+    then tile_kinds, then dungeon_entrances, then decorations, then
+    tile_sprite_overrides, each sorted by key) so re-running with the same
+    manifest always assigns the same codepoints. dungeon_entrances is
+    registered the same way as tile_kinds (no color/recolor, a complete
+    standalone tile image) - it's keyed by dungeon id rather than tile
+    kind, but is otherwise just another base-pass entry.
+    tile_sprite_overrides is registered identically (a named, one-off icon
+    with its own optional backdrop bake, same as dungeon_entrances - see
+    content.schema.LegendEntry.tile_sprite). decorations is registered the
+    same way too (no
     color/recolor - a decoration has no EntityDef/ItemDef.color to tint
     toward), but composites like an entity/item, not like tile_kinds - see
     the second pass below.
@@ -278,6 +289,11 @@ def build_sprite_codepoints(
         codepoint, rgba = _register(manifest.decorations[kind], None)
         result.decorations[kind] = codepoint
         decoration_pixels[kind] = rgba
+    tile_sprite_override_pixels: dict[str, np.ndarray] = {}
+    for override_id in sorted(manifest.tile_sprite_overrides):
+        codepoint, rgba = _register(manifest.tile_sprite_overrides[override_id], None)
+        result.tile_sprite_overrides[override_id] = codepoint
+        tile_sprite_override_pixels[override_id] = rgba
 
     # Backdrop pass: an icon-style tile_kinds/dungeon_entrances sprite (a
     # single tree/peak/tower silhouette, unlike a full-bleed texture like
@@ -300,6 +316,12 @@ def build_sprite_codepoints(
             continue
         fixed = composite_sprite_over_terrain(dungeon_entrance_pixels[dungeon_id], tile_pixels[backdrop])
         tileset[result.dungeon_entrances[dungeon_id]] = fixed
+    for override_id in sorted(manifest.tile_sprite_overrides):
+        backdrop = manifest.tile_sprite_overrides[override_id].backdrop
+        if backdrop is None:
+            continue
+        fixed = composite_sprite_over_terrain(tile_sprite_override_pixels[override_id], tile_pixels[backdrop])
+        tileset[result.tile_sprite_overrides[override_id]] = fixed
 
     for entity_id in sorted(entity_pixels):
         for kind in sorted(tile_pixels):

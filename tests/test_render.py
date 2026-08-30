@@ -1279,6 +1279,49 @@ def test_render_map_falls_back_to_the_ascii_glyph_when_the_tile_kind_is_unmapped
     assert chr(console.rgb[5, 5]["ch"]) == ">"
 
 
+def test_render_map_uses_a_tile_sprite_override_for_its_coordinate():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_up"
+    game_map.visible[5, 5] = True
+    game_map.tile_sprite_overrides[(5, 5)] = "town_gate"
+    sprite_codepoints = SpriteCodepoints(
+        tile_kinds={"stairs_up": 0xE000}, tile_sprite_overrides={"town_gate": 0xE001},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE001  # the override, not the plain stairs_up sprite
+
+
+def test_render_map_falls_back_to_the_plain_tile_kind_sprite_at_an_unoverridden_coordinate():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_up"
+    game_map.visible[5, 5] = True
+    game_map.tile_sprite_overrides[(9, 9)] = "town_gate"  # a different coordinate
+    sprite_codepoints = SpriteCodepoints(
+        tile_kinds={"stairs_up": 0xE000}, tile_sprite_overrides={"town_gate": 0xE001},
+    )
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE000
+
+
+def test_render_map_falls_back_when_the_override_id_has_no_registered_sprite():
+    game_map = make_game_map(10, 10)
+    game_map.kinds[5, 5] = "stairs_up"
+    game_map.visible[5, 5] = True
+    game_map.tile_sprite_overrides[(5, 5)] = "town_gate"
+    sprite_codepoints = SpriteCodepoints(tile_kinds={"stairs_up": 0xE000})  # town_gate not registered
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_map(console, game_map, cam_x=0, cam_y=0, sprite_codepoints=sprite_codepoints)
+
+    assert console.rgb[5, 5]["ch"] == 0xE000
+
+
 def test_render_map_uses_the_per_dungeon_sprite_for_a_mapped_dungeon_entrance():
     game_map = make_game_map(10, 10)
     game_map.kinds[5, 5] = "dungeon_entrance"

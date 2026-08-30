@@ -878,7 +878,7 @@ def test_millhaven_level_01_content():
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
     assert entity_names == (
         ["Debtor", "Escaped Prisoner", "Old Drillmaster", "Shopkeeper", "Town Guard", "Village Chief"]
-        + ["Villager"] * 5
+        + ["Villager"] * 8
     )
 
     # every entity spawn carries its own per-spawn dialogue - no un-authored
@@ -1079,6 +1079,33 @@ def test_load_level_decoration_coexists_with_entity_spawn(tmp_path):
     assert len(level.entity_spawns) == 1
     assert len(level.decoration_spawns) == 1
     assert level.decoration_spawns[0].kind == "bush"
+
+
+def test_load_level_collects_tile_sprite_spawns(tmp_path):
+    level_path = tmp_path / "with_tile_sprite.lvl"
+    level_path.write_text(
+        "id: with_tile_sprite\n"
+        "name: Test Level\n"
+        "map: |\n"
+        "  ####\n"
+        "  #@.#\n"
+        "  #g>#\n"
+        "  ####\n"
+        "legend:\n"
+        '  "#": wall\n'
+        '  ".": floor\n'
+        '  "@": player_start\n'
+        '  ">": stairs_down\n'
+        '  "g": { tile: stairs_up, next_level: null, tile_sprite: town_gate }\n',
+        encoding="utf-8",
+    )
+    catalog = load_catalog()
+
+    level = load_level(level_path, catalog)
+
+    assert len(level.tile_sprite_spawns) == 1
+    assert level.tile_sprite_spawns[0].sprite_id == "town_gate"
+    assert (level.tile_sprite_spawns[0].x, level.tile_sprite_spawns[0].y) == (1, 2)
 
 
 def test_load_level_entity_spawn_without_dialogue_leaves_it_none(tmp_path):
@@ -2038,6 +2065,75 @@ def test_load_sprite_manifest_rejects_recolor_on_a_decoration(tmp_path):
         "    rows: 31\n"
         "decorations:\n"
         "  table: {sheet: kenney, col: 18, row: 5, recolor: true}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="recolor is only meaningful"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_accepts_a_valid_tile_sprite_override(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "tile_sprite_overrides:\n"
+        "  town_gate: {sheet: rltiles, name: dngn_stone_arch}\n",
+        encoding="utf-8",
+    )
+
+    manifest = load_sprite_manifest(path, catalog)
+
+    assert manifest.tile_sprite_overrides["town_gate"].name == "dngn_stone_arch"
+
+
+def test_load_sprite_manifest_rejects_an_unknown_sheet_on_a_tile_sprite_override(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets: {}\n"
+        "tile_sprite_overrides:\n"
+        "  town_gate: {sheet: nonexistent, name: dngn_stone_arch}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="unknown sheet"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_a_tile_sprite_override_backdrop_not_in_tile_kinds(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "tile_sprite_overrides:\n"
+        "  town_gate: {sheet: rltiles, name: dngn_stone_arch, backdrop: nonexistent_kind}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ContentValidationError, match="not a tile_kinds entry"):
+        load_sprite_manifest(path, catalog)
+
+
+def test_load_sprite_manifest_rejects_recolor_on_a_tile_sprite_override(tmp_path):
+    catalog = load_catalog()
+    path = tmp_path / "sprites.yaml"
+    path.write_text(
+        "sheets:\n"
+        "  rltiles:\n"
+        "    image: rltiles-2d.png\n"
+        "    index: rltiles-2d.json\n"
+        "    tile_size: 32\n"
+        "tile_sprite_overrides:\n"
+        "  town_gate: {sheet: rltiles, name: dngn_stone_arch, recolor: true}\n",
         encoding="utf-8",
     )
 
