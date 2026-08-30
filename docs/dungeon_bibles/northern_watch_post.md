@@ -84,6 +84,18 @@ treeline - nothing here calls for any of them, and a fuller composition
 would undercut the "tired, barely holding on" mood this bible's own Mood
 section asks for.
 
+**Second regeneration, applying `content_design_process.md` §0af - at
+the scale this settlement's own pitch calls for.** The first
+regeneration gave the Sentry a real lean-to but connected it to nothing;
+§0af's road-network-first rule still applies here, just not as a network
+- a bustling set of branching streets would contradict the "fewer hands
+than needed" pitch as badly as an oversized footprint would. What's here
+instead: one single worn track from the gate straight to the lean-to,
+the one path someone still keeps clear because it's the one thing that
+still matters. No plaza, no branches - the absence of a fuller network
+is itself in tone. Footprint unchanged at 26x16; it was already sized
+correctly for a 3-entity cast and one small structure.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | The Watch Post | The Sentry, The Ones Who Stayed |
