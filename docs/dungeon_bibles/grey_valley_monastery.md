@@ -93,6 +93,17 @@ directly, the Weaver's Workshop reached by a short connected branch),
 and shrinks the footprint again, from 40x34 to 34x28 - the same
 4-entity cast and 2 buildings, sized to what that cast actually
 justifies rather than the round number the first regeneration picked.
+The user caught the main street not actually touching the gate (a real
+connectivity gap, not a style choice) and fixed it directly; the gate
+also picked up the `town_gate` `tile_sprite` Millhaven's own gate uses,
+instead of the shared generic staircase icon.
+
+The east boundary is deliberately irregular, not a clean rectangle -
+the margin between both ruin clusters and the old treeline at the map's
+edge was genuinely empty (nothing placed there, no path reaching it),
+the same dead-space problem Millhaven's own wall carve fixed. Pulled in
+to just past the ruins everywhere except a bulge around the south ruin
+and its nearby villager, where the treeline still reaches the edge.
 Nothing else about the cast, dialogue, or named set pieces changed.
 
 | Level | Name | Set pieces it holds |

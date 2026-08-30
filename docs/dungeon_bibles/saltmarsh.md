@@ -81,7 +81,19 @@ redraws the network with the Drying Racks as the plaza it converges on
 bible already names), the Elder's hut touching the main street directly
 near the gate, and the Witch's hut reached by a short connected branch.
 Footprint trimmed again, 36x28 to 34x26 - same 5-entity cast, same 2
-buildings.
+buildings. The gate also picked up the `town_gate` `tile_sprite`
+Millhaven's own gate uses.
+
+The user caught a real bug in the same pass: the perimeter wall on the
+east edge was drawn *outside* the sea strip, meaning a stretch of open
+water sat needlessly boxed in behind masonry it had no business needing
+- the sea is already impassable and is the natural boundary here, the
+same way `open_boundary` lets a level's own edge stand in for a wall
+elsewhere. Fixed by dropping that wall column and extending the sea to
+the map's actual edge instead - Saltmarsh's coastline is now bounded by
+water, not a stone wall pretending to hold the tide back, which also
+happens to be the one settlement in this batch where the boundary was
+never meant to be a rectangle in the first place.
 
 | Level | Name | Set pieces it holds |
 |---|---|---|

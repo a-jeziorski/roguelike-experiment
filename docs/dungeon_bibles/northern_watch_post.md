@@ -96,6 +96,17 @@ still matters. No plaza, no branches - the absence of a fuller network
 is itself in tone. Footprint unchanged at 26x16; it was already sized
 correctly for a 3-entity cast and one small structure.
 
+**A modest, irregular southern boundary**, added once the previous
+rectangle left an empty band along most of the south wall with nothing
+in it. Unlike Millhaven or Grey Valley Monastery's own wall carves (both
+framed as deliberate shaping), this one reads as decline rather than
+design - part of the post's old perimeter that simply gave out and
+nobody left has the hands to rebuild, the same logic already covering
+the collapsed structure near the ruin (see the decoration paragraph
+above). Kept modest on purpose: an elaborately reshaped boundary would
+read as more upkeep than three people barely holding on could plausibly
+manage, even as a ruin.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | The Watch Post | The Sentry, The Ones Who Stayed |
