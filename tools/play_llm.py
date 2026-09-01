@@ -272,7 +272,7 @@ def _render_map_region(
 
     legend: dict[str, str] = {}
     for entity in sorted(game_map.entities, key=lambda e: e.render_priority):
-        if not game_map.visible[entity.x, entity.y]:
+        if not game_map.visible[entity.x, entity.y] or entity.hidden:
             continue
         sx, sy = entity.x - cam_x, entity.y - cam_y
         if 0 <= sx < w and 0 <= sy < h:
@@ -471,7 +471,8 @@ def _resolve_goto_target(engine, target_tokens: list[str]) -> tuple[tuple[int, i
     name_query = " ".join(target_tokens).lower()
     game_map = engine.game_map
     candidates = [
-        e for e in game_map.entities if e is not engine.player and name_query in e.name.lower()
+        e for e in game_map.entities
+        if e is not engine.player and not e.hidden and name_query in e.name.lower()
     ]
     if not candidates:
         return None, f"no entity matching '{name_query}'"
@@ -667,7 +668,12 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
         return
 
     if args.command == "entities":
-        entities = [e for e in engine.game_map.entities if e is not engine.player]
+        # Deliberately still excludes a hidden AI_AMBUSHER even though this
+        # command otherwise uses full map knowledge (goto's own docstring) -
+        # that omniscience is about geography/exploration, not X-ray vision
+        # into a concealed monster; listing it here would trivially spoil
+        # the one mechanic that depends on the player not knowing it's there.
+        entities = [e for e in engine.game_map.entities if e is not engine.player and not e.hidden]
         if not entities:
             print("(no other entities on this map)")
             return

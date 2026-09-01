@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from content.schema import AI_ENRAGE, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
+from content.schema import AI_AMBUSHER, AI_ENRAGE, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
 
 Color = tuple[int, int, int]
 
@@ -174,6 +174,7 @@ class Entity:
         charge_range: int | None = None,
         charge_attack_bonus: int | None = None,
         territory_radius: int | None = None,
+        ambush_bonus: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -208,6 +209,15 @@ class Entity:
         self.fighter = fighter
         self.item = item
         self.ai = ai
+        # AI_AMBUSHER's whole "invisible until adjacent" mechanic - derived
+        # purely from ai, not a separate EntityDef field, since "starts
+        # hidden" is exactly what being an ambusher already means. Checked
+        # by engine/render.py's render_entities/describe_tile and
+        # engine/targeting.py's is_valid_target/find_nearest_target (never
+        # drawn, listed, or targetable while True); cleared for good by
+        # Engine._perform_ai's own AI_AMBUSHER branch the instant the
+        # player gets adjacent. Always False for anything else.
+        self.hidden = ai == AI_AMBUSHER
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
@@ -267,6 +277,9 @@ class Entity:
         # AI_TERRITORIAL's static config, same "omit-friendly, engine-level
         # default" shape as alert_radius/flee_hp_pct above.
         self.territory_radius = territory_radius
+        # AI_AMBUSHER's static config, same "omit-friendly, engine-level
+        # default" shape as charge_attack_bonus above.
+        self.ambush_bonus = ambush_bonus
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

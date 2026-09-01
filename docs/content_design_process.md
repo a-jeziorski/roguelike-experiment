@@ -2316,6 +2316,70 @@ territory, still fights back when already adjacent even after being
 dragged far from home, and correctly turns back the instant it reaches
 exactly `territory_radius` tiles out rather than taking one more step.
 
+## 0ak. Ambusher - invisible until adjacent, then a guaranteed reveal-strike (`lurker`)
+
+The fifth AI behavior in this round, and the first that's about
+*concealment* rather than movement or damage timing: `AI_AMBUSHER` is
+completely invisible - not drawn, not listed, not targetable by ranged
+attacks - until the player steps adjacent to it, at which point it
+reveals itself for good and lands one bonus-damage strike before
+settling into ordinary `hostile_basic` behavior for the rest of the
+fight.
+
+**`Entity.hidden` needs no `EntityDef` field of its own** - it's derived
+purely from `self.hidden = ai == AI_AMBUSHER` at construction, right
+next to where `self.ai` is set. Every `lurker` (and any future ambusher)
+starts hidden automatically; there's no way to author one that forgets
+to hide, and no separate boolean to keep in sync with the AI type across
+level files or the catalog.
+
+**Being hidden had to mean hidden everywhere information could leak, not
+just "not drawn on the map"** - a monster the player can't see but can
+still shoot, or that still shows up in a debug listing, isn't actually
+concealed. Six call sites got the same one-line exclusion:
+`render.py`'s `render_entities` (skipped during the map draw) and
+`describe_tile` (skipped when the player examines its tile);
+`targeting.py`'s `is_valid_target` and `find_nearest_target` (a hidden
+ambusher can't be hit by a ranged attack, nor auto-targeted at all, even
+by something standing right next to it); and `tools/play_llm.py`'s own
+three parallel surfaces - its map-draw loop (mirrors `render_entities`
+exactly, since it doesn't call into `render.py` directly), the
+`entities` debug command, and `goto <name>`'s candidate search. The
+`entities` command is a deliberate judgment call: its whole premise
+elsewhere is full map knowledge for debugging convenience, but letting
+it print a hidden ambusher's name and position would make the concealment
+untestable through the CLI tool this project actually plays through -
+concealment needs to stay real even for the tool built to cheat with, or
+"invisible" isn't really being verified at all.
+
+**Stays motionless while hidden, not just invisible** - `_perform_ai`'s
+`AI_AMBUSHER` branch takes no action whatsoever while `distance > 1`,
+not even a step toward the player. A lurker that crept closer while
+unseen would still be defeating "lying in wait" even though the render
+layer hid it; true stillness is part of what an ambush actually is; only
+once the player is adjacent does anything happen at all.
+
+**The reveal replaces the turn's action, it doesn't add to it** - the
+same "special action instead of a normal attack" principle Summoner's
+`_maybe_summon` already established (§0ah): the instant `distance <= 1`,
+`entity.hidden` clears permanently and the strike resolves via
+`resolve_skill_damage(self, entity, self.player, entity.effective_attack
++ ambush_bonus, "ambushes")` - the same public, flat-damage-value entry
+point Charger's landed lunge already uses (§0ai), so dodge/crit/weapon-
+affix procs apply to an ambush strike exactly as they would to any other
+hit. There's no separate "attack" call afterward for that turn; the
+reveal *is* the attack.
+
+Ships one real example, `lurker` (`data/entities.yaml`, `ambush_bonus:
+6` against its own `attack: 5`, for an 11-damage opening strike) - not
+yet placed into a level, same reasoning as the other four behaviors in
+this round. Verified end-to-end via direct `Engine`/`Entity`/`GameMap`
+construction: stays undrawn and untargetable while the player is two or
+more tiles away and takes no action across several such turns, reveals
+itself and lands the boosted hit the instant the player becomes
+adjacent, and behaves like an ordinary visible `hostile_basic` monster
+in every turn afterward.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

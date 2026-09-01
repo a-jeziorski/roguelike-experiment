@@ -1044,6 +1044,24 @@ def test_describe_tile_visible_monster_shows_name_description_and_hp():
     assert lines == ["Bare floor.", "Rat: A mangy sewer rat. (HP: 3/5)"]
 
 
+def test_describe_tile_omits_a_hidden_ambusher():
+    game_map = make_game_map()
+    game_map.explored[1, 1] = True
+    game_map.visible[1, 1] = True
+    lurker = Entity(
+        1, 1, "t", (80, 60, 70), "Lurker",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=14, hp=14, attack=5, defense=1),
+        ai="ambusher", description="You won't see this coming.",
+    )
+    game_map.entities.append(lurker)
+    catalog = load_catalog()
+
+    lines = describe_tile(game_map, catalog, 1, 1)
+
+    assert lines == ["Bare floor."]  # the lurker itself never shows up
+
+
 def test_describe_tile_visible_item_shows_name_and_description_without_hp():
     game_map = make_game_map()
     game_map.explored[1, 1] = True
@@ -1106,6 +1124,42 @@ def test_render_entities_translates_by_camera_offset():
     render_entities(console, game_map, cam_x=2, cam_y=3)
 
     assert chr(console.rgb[3, 2]["ch"]) == "@"
+
+
+def test_render_entities_never_draws_a_hidden_ambusher():
+    game_map = make_game_map(3, 3)
+    game_map.visible[1, 1] = True
+    lurker = Entity(
+        1, 1, "t", (80, 60, 70), "Lurker",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=14, hp=14, attack=5, defense=1),
+        ai="ambusher",
+    )
+    assert lurker.hidden is True
+    game_map.entities.append(lurker)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0)
+
+    assert chr(console.rgb[1, 1]["ch"]) != "t"
+
+
+def test_render_entities_draws_an_ambusher_once_revealed():
+    game_map = make_game_map(3, 3)
+    game_map.visible[1, 1] = True
+    lurker = Entity(
+        1, 1, "t", (80, 60, 70), "Lurker",
+        render_priority=RENDER_PRIORITY_ACTOR,
+        fighter=Fighter(max_hp=14, hp=14, attack=5, defense=1),
+        ai="ambusher",
+    )
+    lurker.hidden = False  # already revealed
+    game_map.entities.append(lurker)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_entities(console, game_map, cam_x=0, cam_y=0)
+
+    assert chr(console.rgb[1, 1]["ch"]) == "t"
 
 
 def test_render_entities_hides_entities_scrolled_outside_the_viewport():

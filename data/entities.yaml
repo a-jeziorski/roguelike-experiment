@@ -652,6 +652,23 @@ cave_bear:
   xp_reward: 8
   description: Doesn't come looking for trouble, and doesn't chase it far either - past a certain point, whatever's out there stops being its problem.
 
+lurker:
+  name: Lurker
+  glyph: "t"
+  color: [80, 60, 70]
+  hp: 14
+  attack: 5
+  defense: 1
+  ai: ambusher
+  # Invisible - not drawn, not listed, not targetable - until the player
+  # is adjacent. The instant that happens it strikes once for attack+bonus
+  # (5+6=11) and reveals itself for good; every turn after that it's an
+  # ordinary hostile_basic monster. See docs/content_design_process.md's
+  # ambusher write-up.
+  ambush_bonus: 6
+  xp_reward: 7
+  description: You won't see this coming. That's rather the point.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the

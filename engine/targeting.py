@@ -26,7 +26,12 @@ def is_valid_target(game_map: "GameMap", shooter: "Entity", x: int, y: int, max_
     if not game_map.visible[x, y]:
         return False
     target = game_map.blocking_entity_at(x, y)
-    return target is not None and target is not shooter and target.fighter is not None
+    return (
+        target is not None
+        and target is not shooter
+        and target.fighter is not None
+        and not target.hidden
+    )
 
 
 def find_nearest_target(game_map: "GameMap", shooter: "Entity", max_range: int) -> "Entity | None":
@@ -38,6 +43,7 @@ def find_nearest_target(game_map: "GameMap", shooter: "Entity", max_range: int) 
         if e is not shooter
         and e.fighter is not None
         and e.blocks_movement
+        and not e.hidden
         and game_map.visible[e.x, e.y]
         and in_range(shooter, e.x, e.y, max_range)
     ]

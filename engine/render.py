@@ -265,7 +265,7 @@ def render_entities(
     sprite_codepoints: "SpriteCodepoints | None" = None,
 ) -> None:
     for entity in sorted(game_map.entities, key=lambda e: e.render_priority):
-        if not game_map.visible[entity.x, entity.y]:
+        if not game_map.visible[entity.x, entity.y] or entity.hidden:
             continue
         sx, sy = entity.x - cam_x, entity.y - cam_y
         if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
@@ -574,7 +574,7 @@ def describe_tile(
         return lines
 
     for entity in game_map.entities:
-        if entity.x != x or entity.y != y:
+        if entity.x != x or entity.y != y or entity.hidden:
             continue
         line = entity.name
         if entity.description:

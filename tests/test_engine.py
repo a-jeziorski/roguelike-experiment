@@ -78,6 +78,7 @@ def make_monster(
     split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
     summon_entity_id=None, summon_interval=None, summon_max_active=None,
     charge_range=None, charge_attack_bonus=None, territory_radius=None,
+    ambush_bonus=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -115,6 +116,7 @@ def make_monster(
         charge_range=charge_range,
         charge_attack_bonus=charge_attack_bonus,
         territory_radius=territory_radius,
+        ambush_bonus=ambush_bonus,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1457,6 +1459,74 @@ def test_territorial_uses_default_radius_when_unset():
     engine.process_turn(WaitAction())
 
     assert (bear.x, bear.y) == (6, 1)  # broke off at the default radius, not a configured one
+
+
+# --- ambusher (invisible until adjacent, then a guaranteed reveal-strike) ---
+
+
+def test_ambusher_entity_starts_hidden():
+    lurker = make_monster(1, 1, ai="ambusher")
+    assert lurker.hidden is True
+
+
+def test_non_ambusher_entity_is_never_hidden():
+    rat = make_monster(1, 1, ai="hostile_basic")
+    assert rat.hidden is False
+
+
+def test_ambusher_stays_hidden_and_motionless_when_not_adjacent():
+    game_map = make_open_map(5, 3)
+    player = make_player(3, 1, hp=30, defense=0)
+    lurker = make_monster(1, 1, hp=14, attack=5, defense=1, ai="ambusher", ambush_bonus=6)
+    game_map.entities.extend([player, lurker])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (lurker.x, lurker.y) == (1, 1)  # didn't move at all
+    assert lurker.hidden is True
+    assert player.fighter.hp == 30
+
+
+def test_ambusher_reveals_and_strikes_the_instant_the_player_is_adjacent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    lurker = make_monster(2, 1, hp=14, attack=5, defense=1, ai="ambusher", ambush_bonus=6)
+    game_map.entities.extend([player, lurker])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert lurker.hidden is False
+    assert player.fighter.hp == 30 - (5 + 6)  # attack + ambush_bonus
+    assert any("bursts from hiding" in m for m in engine.message_log.messages)
+    assert any("ambushes" in m for m in engine.message_log.messages)
+
+
+def test_ambusher_behaves_like_an_ordinary_monster_once_revealed():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    lurker = make_monster(3, 1, hp=14, attack=5, defense=1, ai="ambusher", ambush_bonus=6)
+    lurker.hidden = False  # already revealed, e.g. from an earlier turn
+    game_map.entities.extend([player, lurker])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (lurker.x, lurker.y) == (2, 1)  # ordinary single-step chase, not another ambush
+    assert player.fighter.hp == 30  # not adjacent yet, so no attack this turn either
+
+
+def test_ambusher_uses_default_bonus_when_unset():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    lurker = make_monster(2, 1, hp=14, attack=5, defense=1, ai="ambusher")
+    game_map.entities.extend([player, lurker])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - (5 + 5)  # DEFAULT_AMBUSH_BONUS=5
 
 
 # --- monster drops (on-death loot) ---

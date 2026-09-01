@@ -8,6 +8,7 @@ import random
 from typing import TYPE_CHECKING
 
 from content.schema import (
+    AI_AMBUSHER,
     AI_CHARGER,
     AI_ENRAGE,
     AI_HOSTILE_BASIC,
@@ -66,6 +67,10 @@ DEFAULT_CHARGE_RANGE = 4
 DEFAULT_CHARGE_ATTACK_BONUS = 3
 # AI_TERRITORIAL's own fallback - same "omit-friendly" convention as above.
 DEFAULT_TERRITORY_RADIUS = 6
+# AI_AMBUSHER's own fallback - resolved entirely inside _perform_ai's own
+# branch, so (like AI_CHARGER's) this can live here rather than in
+# engine/entity.py.
+DEFAULT_AMBUSH_BONUS = 5
 
 # Flat XP awarded for discovering a landmark (see
 # Engine._log_newly_seen_tile_announcements) - deliberately small relative
@@ -791,6 +796,22 @@ class Engine:
                 self._chase_and_attack(entity, dx, dy, distance)
             else:
                 self._return_home(entity)
+
+        elif entity.ai == AI_AMBUSHER:
+            if not entity.hidden:
+                self._chase_and_attack(entity, dx, dy, distance)
+            elif distance <= 1:
+                # The reveal moment - cleared for good, never re-hides.
+                # entity.hidden being checked by render.py/targeting.py is
+                # the entire "invisible until now" illusion; from here on
+                # it's an ordinary visible monster.
+                entity.hidden = False
+                bonus = entity.ambush_bonus or DEFAULT_AMBUSH_BONUS
+                self.message_log.add(f"{entity.name} bursts from hiding!", category="combat")
+                resolve_skill_damage(self, entity, self.player, entity.effective_attack + bonus, "ambushes")
+            # else: stays hidden and motionless - an ambusher that hasn't
+            # been reached yet takes no action at all, not even a single
+            # step toward the player, which would defeat "lying in wait."
 
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:

@@ -371,6 +371,27 @@ def test_entity_def_rejects_nonpositive_territory_radius():
         )
 
 
+def test_entity_def_ambush_bonus_defaults_none():
+    e = EntityDef(id="lurker", name="Lurker", glyph="t", color=(1, 2, 3), hp=14, attack=5, defense=1)
+    assert e.ambush_bonus is None
+
+
+def test_entity_def_accepts_ambush_bonus():
+    e = EntityDef(
+        id="lurker", name="Lurker", glyph="t", color=(1, 2, 3), hp=14, attack=5, defense=1,
+        ai="ambusher", ambush_bonus=6,
+    )
+    assert e.ambush_bonus == 6
+
+
+def test_entity_def_rejects_nonpositive_ambush_bonus():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="lurker", name="Lurker", glyph="t", color=(1, 2, 3), hp=14, attack=5, defense=1,
+            ai="ambusher", ambush_bonus=0,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

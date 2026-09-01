@@ -93,6 +93,16 @@ def test_is_valid_target_true_for_a_real_target():
     assert is_valid_target(game_map, shooter, 3, 1, max_range=5) is True
 
 
+def test_is_valid_target_false_for_a_hidden_ambusher():
+    game_map = make_open_map(5, 3)
+    shooter = make_shooter(0, 1)
+    lurker = make_monster(3, 1)
+    lurker.ai = "ambusher"
+    lurker.hidden = True
+    game_map.entities.append(lurker)
+    assert is_valid_target(game_map, shooter, 3, 1, max_range=5) is False
+
+
 def test_find_nearest_target_picks_closest_of_several():
     game_map = make_open_map(10, 3)
     shooter = make_shooter(0, 1)
@@ -122,3 +132,17 @@ def test_find_nearest_target_none_when_nothing_qualifies():
     game_map = make_open_map(5, 3)
     shooter = make_shooter(0, 1)
     assert find_nearest_target(game_map, shooter, max_range=5) is None
+
+
+def test_find_nearest_target_skips_a_hidden_ambusher_for_a_farther_visible_one():
+    game_map = make_open_map(10, 3)
+    shooter = make_shooter(0, 1)
+    lurker = make_monster(2, 1)  # closer, but hidden - should never be picked
+    lurker.ai = "ambusher"
+    lurker.hidden = True
+    visible_monster = make_monster(5, 1)
+    game_map.entities.extend([lurker, visible_monster])
+
+    nearest = find_nearest_target(game_map, shooter, max_range=9)
+
+    assert nearest is visible_monster
