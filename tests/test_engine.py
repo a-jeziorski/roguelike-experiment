@@ -77,7 +77,7 @@ def make_monster(
     drop_item_id=None, drop_chance=None,
     split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
     summon_entity_id=None, summon_interval=None, summon_max_active=None,
-    charge_range=None, charge_attack_bonus=None,
+    charge_range=None, charge_attack_bonus=None, territory_radius=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -114,6 +114,7 @@ def make_monster(
         summon_max_active=summon_max_active,
         charge_range=charge_range,
         charge_attack_bonus=charge_attack_bonus,
+        territory_radius=territory_radius,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1386,6 +1387,76 @@ def test_charger_uses_default_range_and_bonus_when_unset():
 
     assert (boar.x, boar.y) == (4, 1)  # DEFAULT_CHARGE_RANGE=4 covers the gap
     assert player.fighter.hp == 30 - (4 + 3)  # DEFAULT_CHARGE_ATTACK_BONUS=3
+
+
+# --- territorial (won't chase past a radius from home) ---
+
+
+def test_territorial_chases_within_its_territory():
+    game_map = make_open_map(10, 3)
+    player = make_player(3, 1, hp=30, defense=0)
+    bear = make_monster(1, 1, hp=22, attack=6, defense=1, ai="territorial", territory_radius=5)
+    game_map.entities.extend([player, bear])
+    engine = Engine(game_map, player, "Test Level")
+
+    assert (bear.home_x, bear.home_y) == (1, 1)  # captured automatically at spawn
+
+    engine.process_turn(WaitAction())
+
+    assert (bear.x, bear.y) == (2, 1)  # ordinary chase step - still well within territory
+
+
+def test_territorial_attacks_normally_when_adjacent_even_far_from_home():
+    game_map = make_open_map(12, 3)
+    player = make_player(11, 1, hp=30, defense=0)
+    bear = make_monster(1, 1, hp=22, attack=6, defense=1, ai="territorial", territory_radius=5)
+    bear.x, bear.y = 10, 1  # already dragged far outside its own territory
+    game_map.entities.extend([player, bear])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 6  # still fights back when already adjacent
+    assert (bear.x, bear.y) == (10, 1)  # didn't retreat mid-attack
+
+
+def test_territorial_breaks_off_once_at_the_edge_of_its_territory():
+    game_map = make_open_map(10, 3)
+    player = make_player(9, 1, hp=30, defense=0)
+    bear = make_monster(1, 1, hp=22, attack=6, defense=1, ai="territorial", territory_radius=5)
+    bear.x, bear.y = 6, 1  # exactly territory_radius=5 from home (1,1) - the edge
+    game_map.entities.extend([player, bear])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (bear.x, bear.y) == (5, 1)  # stepped back toward home instead of chasing further
+    assert player.fighter.hp == 30  # never got close enough to attack
+
+
+def test_territorial_holds_position_once_home():
+    game_map = make_open_map(5, 3)
+    player = make_player(0, 0)
+    bear = make_monster(2, 1, hp=22, attack=6, defense=1, ai="territorial", territory_radius=5)
+    game_map.entities.extend([player, bear])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine._return_home(bear)
+
+    assert (bear.x, bear.y) == (2, 1)  # already home - holds position, doesn't jitter
+
+
+def test_territorial_uses_default_radius_when_unset():
+    game_map = make_open_map(10, 3)
+    player = make_player(10 - 1, 1, hp=30, defense=0)
+    bear = make_monster(1, 1, hp=22, attack=6, defense=1, ai="territorial")
+    bear.x, bear.y = 7, 1  # exactly DEFAULT_TERRITORY_RADIUS=6 from home (1,1)
+    game_map.entities.extend([player, bear])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (bear.x, bear.y) == (6, 1)  # broke off at the default radius, not a configured one
 
 
 # --- monster drops (on-death loot) ---

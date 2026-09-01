@@ -100,9 +100,10 @@ AI_REGENERATOR = "regenerator"
 AI_SPLITTER = "splitter"
 AI_SUMMONER = "summoner"
 AI_CHARGER = "charger"
+AI_TERRITORIAL = "territorial"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
-    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER, AI_CHARGER,
+    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER, AI_CHARGER, AI_TERRITORIAL,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -271,6 +272,13 @@ class EntityDef(BaseModel):
     # (see engine/engine.py's _charge).
     charge_range: int | None = Field(default=None, gt=0)
     charge_attack_bonus: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_TERRITORIAL - won't stray farther than
+    # territory_radius tiles from wherever it was originally placed
+    # (Entity.home_x/home_y, set once at spawn) - beyond that, it breaks
+    # off the chase and heads back instead, even if the player is still
+    # visible and running. Engine-level default when omitted, same
+    # convention as alert_radius/flee_hp_pct above.
+    territory_radius: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod

@@ -479,6 +479,7 @@ def test_load_catalog_accepts_a_valid_summoner(tmp_path):
         ("slime", 16, 3, 0, "splitter"),
         ("bone_caller", 14, 2, 0, "summoner"),
         ("boar", 12, 4, 0, "charger"),
+        ("cave_bear", 22, 6, 1, "territorial"),
     ],
 )
 def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):

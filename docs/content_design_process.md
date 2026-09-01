@@ -2263,6 +2263,59 @@ boosted hit, a wall placed partway correctly stops it short with no
 attack and no recovery penalty, and a recovering boar correctly sits out
 its very next turn before returning to normal behavior.
 
+## 0aj. Territorial - won't chase past a radius from home (`cave_bear`)
+
+The fourth AI behavior in this round, and the first that's about
+*disengaging* rather than anything offensive: `AI_TERRITORIAL` behaves
+exactly like `hostile_basic` while the player is within
+`territory_radius` tiles of wherever it started, and breaks off the chase
+to head back the instant it would step any farther out - even mid-pursuit,
+even if the player is still visible and still running.
+
+**"Home" is just "wherever this entity actually started existing," not a
+separate concept needing its own configuration** - `Entity.home_x`/
+`home_y` are captured once, directly from the `x`/`y` the constructor is
+already given, for *every* entity, not only territorial ones (harmless
+and unread for anything else). This is correct for every spawn path in
+the codebase without any extra wiring: a real level spawn's home is its
+authored position, and a runtime spawn (a Splitter's child, a Summoner's
+minion, per §0ag/§0ah) has its own home at wherever *it* happened to
+land - there's no special-casing needed for "what if this entity wasn't
+placed by a level file."
+
+**Checks the entity's own distance from home, not the player's distance
+from home** - `_perform_ai`'s `AI_TERRITORIAL` branch computes
+`home_distance = max(abs(entity.x - entity.home_x), abs(entity.y - entity.home_y))`
+and only keeps chasing while `home_distance < territory_radius`
+(`distance <= 1` always wins first, though - an adjacent attacker gets
+fought back regardless of how far from home that fight is happening,
+since refusing to defend itself mid-swing would read as broken, not
+territorial). This is deliberately different from checking whether the
+*player* is currently within radius of home: that would let a kiting
+player drag the creature arbitrarily far by always staying just inside
+the boundary from the creature's home, one step at a time. Measuring the
+entity's own position instead gives it a hard, self-enforced leash no
+kiting pattern can stretch.
+
+**Disengaging is a real action, not a freeze** - `Engine._return_home`
+steps one tile directly toward `(home_x, home_y)` per turn (the same
+`step_x`/`step_y` shape `_flee`/`_chase_and_attack` already use), so a
+bear dragged far out takes several turns to actually get back, same as
+it took several turns to get pulled there - not a teleport. Once
+actually home, it holds position rather than jittering in place; there's
+no separate "resume guarding" animation or state, it simply waits until
+`home_distance` drops back under `territory_radius` on its own (the
+player wandering back within range) and resumes chasing exactly like
+`hostile_basic` again.
+
+Ships one real example, `cave_bear` (`data/entities.yaml`,
+`territory_radius: 5`) - not yet placed into a level, same reasoning as
+the other three behaviors in this round. Verified end-to-end via direct
+`Engine`/`Entity` construction: chases normally well within its
+territory, still fights back when already adjacent even after being
+dragged far from home, and correctly turns back the instant it reaches
+exactly `territory_radius` tiles out rather than taking one more step.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

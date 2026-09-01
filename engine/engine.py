@@ -18,6 +18,7 @@ from content.schema import (
     AI_SLEEPING_GUARD,
     AI_SPLITTER,
     AI_SUMMONER,
+    AI_TERRITORIAL,
     AI_TOWN_GUARD,
     AI_VILLAGER,
     EFFECT_POISON,
@@ -63,6 +64,8 @@ DEFAULT_REGEN_AMOUNT = 2
 # unlike AI_ENRAGE's these can live here rather than in engine/entity.py.
 DEFAULT_CHARGE_RANGE = 4
 DEFAULT_CHARGE_ATTACK_BONUS = 3
+# AI_TERRITORIAL's own fallback - same "omit-friendly" convention as above.
+DEFAULT_TERRITORY_RADIUS = 6
 
 # Flat XP awarded for discovering a landmark (see
 # Engine._log_newly_seen_tile_announcements) - deliberately small relative
@@ -775,6 +778,20 @@ class Engine:
             else:
                 self._chase_and_attack(entity, dx, dy, distance)
 
+        elif entity.ai == AI_TERRITORIAL:
+            radius = entity.territory_radius or DEFAULT_TERRITORY_RADIUS
+            home_distance = max(abs(entity.x - entity.home_x), abs(entity.y - entity.home_y))
+            # Already adjacent always fights back, regardless of how far
+            # from home that is - a territorial creature doesn't refuse an
+            # attack already landing on it. Otherwise, once it's reached
+            # the edge of its own territory, it breaks off and heads back
+            # instead of taking one more step outward, even if the player
+            # is still visible and still running.
+            if distance <= 1 or home_distance < radius:
+                self._chase_and_attack(entity, dx, dy, distance)
+            else:
+                self._return_home(entity)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -789,6 +806,21 @@ class Engine:
         the entity holds position rather than being forced to fight."""
         step_x = -((dx > 0) - (dx < 0))
         step_y = -((dy > 0) - (dy < 0))
+        MovementAction(step_x, step_y).perform(self, entity)
+
+    def _return_home(self, entity: Entity) -> None:
+        """AI_TERRITORIAL's disengage step - walks one tile back toward
+        (home_x, home_y), the same direct step_x/step_y shape _flee/
+        _chase_and_attack already use. A no-op once actually home (holds
+        position rather than jittering in place) - there's no "resume
+        guarding" behavior beyond that; it simply waits there until the
+        player comes back within territory_radius."""
+        if (entity.x, entity.y) == (entity.home_x, entity.home_y):
+            return
+        dx = entity.home_x - entity.x
+        dy = entity.home_y - entity.y
+        step_x = (dx > 0) - (dx < 0)
+        step_y = (dy > 0) - (dy < 0)
         MovementAction(step_x, step_y).perform(self, entity)
 
     def _wander(self, entity: Entity) -> None:

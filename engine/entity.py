@@ -173,6 +173,7 @@ class Entity:
         summon_max_active: int | None = None,
         charge_range: int | None = None,
         charge_attack_bonus: int | None = None,
+        territory_radius: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -192,6 +193,13 @@ class Entity:
     ):
         self.x = x
         self.y = y
+        # AI_TERRITORIAL's anchor point - wherever this entity actually
+        # started existing, captured once here rather than a separate
+        # settable field, since "home" is exactly "where it was placed"
+        # for every entity, not a concept needing its own configuration.
+        # Harmless and unread for anything that isn't territorial.
+        self.home_x = x
+        self.home_y = y
         self.glyph = glyph
         self.color = color
         self.name = name
@@ -256,6 +264,9 @@ class Entity:
         # which this entity skips its action entirely instead of acting.
         # Harmless and unused for anything that isn't a charger.
         self.charge_recovering = False
+        # AI_TERRITORIAL's static config, same "omit-friendly, engine-level
+        # default" shape as alert_radius/flee_hp_pct above.
+        self.territory_radius = territory_radius
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

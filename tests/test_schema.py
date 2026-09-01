@@ -350,6 +350,27 @@ def test_entity_def_rejects_nonpositive_charge_attack_bonus():
         )
 
 
+def test_entity_def_territory_radius_defaults_none():
+    e = EntityDef(id="cave_bear", name="Cave Bear", glyph="Z", color=(1, 2, 3), hp=22, attack=6, defense=1)
+    assert e.territory_radius is None
+
+
+def test_entity_def_accepts_territory_radius():
+    e = EntityDef(
+        id="cave_bear", name="Cave Bear", glyph="Z", color=(1, 2, 3), hp=22, attack=6, defense=1,
+        ai="territorial", territory_radius=5,
+    )
+    assert e.territory_radius == 5
+
+
+def test_entity_def_rejects_nonpositive_territory_radius():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="cave_bear", name="Cave Bear", glyph="Z", color=(1, 2, 3), hp=22, attack=6, defense=1,
+            ai="territorial", territory_radius=0,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

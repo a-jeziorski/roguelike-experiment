@@ -636,6 +636,22 @@ boar:
   xp_reward: 5
   description: Low to the ground and built for exactly one thing - closing distance fast enough that stepping aside is the only real answer.
 
+cave_bear:
+  name: Cave Bear
+  glyph: "Z"
+  color: [90, 70, 55]
+  hp: 22
+  attack: 6
+  defense: 1
+  ai: territorial
+  # Won't leave its den for anything - break off far enough (5 tiles from
+  # wherever it started) and it turns back home instead of finishing the
+  # chase, even mid-pursuit. See docs/content_design_process.md's
+  # territorial write-up.
+  territory_radius: 5
+  xp_reward: 8
+  description: Doesn't come looking for trouble, and doesn't chase it far either - past a certain point, whatever's out there stops being its problem.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the
