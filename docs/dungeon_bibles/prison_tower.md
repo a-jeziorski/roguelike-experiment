@@ -205,6 +205,40 @@ a later return trip. The bar is: a player who plays reasonably carefully
 through `level_01`-`level_03` should be able to reach `level_04` with a
 real HP margin, not already gutted before the dungeon's actual climax.
 
+## Decoration pass (first content this dungeon has gained since gold)
+
+Zero decorations existed anywhere in this dungeon before this pass -
+every room was bare `floor` with entities/items and nothing else. Two
+new `DecorationKind`s were added specifically for it (`content/schema.py`/
+`data/sprites.yaml`): `cell_bars` (`rltiles` `iron_bars`) and `chains`
+(`rltiles` `iron_chain`) - nothing in the existing kit covered a literal
+prison cell, and this is the one dungeon in the game where that's the
+whole point. No cart/weapon-rack sprite exists in either Kenney sheet
+(checked, same conclusion Wayford's own razed-decoration pass reached
+for a cart) - the Armory reuses `chest` for stored gear instead of
+forcing a bad fit. Kept institutional, not gothic, per the Mood section
+above: no bones, no blood, no cobwebs - `cell_bars`/`chains` read as
+*maintained* fixtures of a still-functioning prison, not the ruin of
+one.
+
+- **`level_01`**: a `bed` and `cell_bars` in the player's own starting
+  cell (already broken open); `table`/`chair` at the guard's post past
+  the chokepoint; `barrel`/`crate` near the `thorned_plate` as a small
+  supply cache; a lone `chair` at the crossbow guard's watch pocket,
+  deliberately sparse - a post, not living quarters.
+- **`level_02`**: two `bed`s in the guards' shared room (plural,
+  matching "barracks"), plus a `table`/`chair`; `chest`/`barrel` in the
+  Armory; `cell_bars`/`chains` in the feral prisoner's own cell.
+- **`level_03`**: every one of the eight cell-alcoves gets `cell_bars` -
+  the floor's entire identity is "these were cells," so the decoration
+  says so in every one of them. Two of the still-empty alcoves also get
+  a `bed` or `chains` for texture, so it doesn't read as one decoration
+  repeated eight times.
+- **`level_04`**: `bookshelf`/`table`/`chair` at the Warden's own desk -
+  he's still keeping records that matter to nobody but him - plus a
+  `chest` beside the `gold_stash`, and `barrel`/`crate` near the
+  entrance as old gatehouse supplies.
+
 ## Tone notes for anyone (agent or human) revising this later
 
 - Everyone here still believes, on some level, that their old job still

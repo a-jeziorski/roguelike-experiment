@@ -1,33 +1,43 @@
 id: level_01
 name: The Solitary Cell
 
+player_start_tile: plains
+
 map: |
   ########################
-  #....x.#################
-  #.@....#################
-  #......#################
-  #......#################
-  ###.####################
-  ###.####################
-  ###.####################
-  #.!............###.....#
-  #./....G$......###.....#
-  #......................#
-  #..............###..C..#
-  #..............###..>..#
-  #......T.......###.}...#
+  #FFFFaF#################
+  #k@FFFF#################
+  #FFFjFF#################
+  #FFFFFF#################
+  ###F####################
+  ###F####################
+  ###F####################
+  #FbFFFFFFFFFFFF###FFFFF#
+  #FcFlmFdeFFFFFF###FmFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFF###FFfFF#
+  #FFFFFFFFFFFFFF###FFgFF#
+  #FFFFFFhFnoFFFF###FiFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": stairs_up
-  ">": { stairs_down: level_02 }
-  "G": { entity: guard }
-  "C": { entity: crossbow_guard }
-  "/": { item: rusty_dagger }
-  "}": { item: hunting_bow }
-  "!": { item: healing_potion, description: "A guard's basic kit, kept at the post for exactly the kind of trouble a post like this expects.", announce: true }
-  "$": { item: gold_pile, description: "A guard's own coin, still in the pouch he never got to spend it from.", announce: true }
-  "T": { item: thorned_plate }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null }
+  "g": { tile: stairs_down, next_level: level_02 }
+  "d": { tile: floor, entity: guard }
+  "f": { tile: floor, entity: crossbow_guard }
+  "b": { tile: floor, item: healing_potion, description: "A guard's basic kit, kept at the post for exactly the kind of trouble a post like this expects.", announce: true }
+  "c": { tile: floor, item: rusty_dagger }
+  "e": { tile: floor, item: gold_pile, description: "A guard's own coin, still in the pouch he never got to spend it from.", announce: true }
+  "h": { tile: floor, item: thorned_plate }
+  "i": { tile: floor, item: hunting_bow }
+  "j": { tile: floor, decoration: bed }
+  "k": { tile: floor, decoration: cell_bars }
+  "l": { tile: floor, decoration: table }
+  "m": { tile: floor, decoration: chair }
+  "n": { tile: floor, decoration: barrel }
+  "o": { tile: floor, decoration: crate }

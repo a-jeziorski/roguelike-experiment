@@ -218,6 +218,13 @@ decorations:
   # the razed pass leans on this plus scoured_ground (TileType) rather
   # than forcing a bad-fit sprite. Only ever placed in *_ruins levels.
   rubble:           {sheet: rltiles, name: misc_stone}
+  # Added for Prison Tower's decoration pass - rltiles again, nothing
+  # prison-specific exists in either Kenney sheet (both are settlement/
+  # overworld-furniture focused). Neither Kenney sheet has a weapon-rack
+  # sprite either, despite a real search - the Armory reuses `chest` for
+  # its stored gear instead of forcing a bad fit.
+  cell_bars:        {sheet: rltiles, name: iron_bars}
+  chains:           {sheet: rltiles, name: iron_chain}
 
 # Per-coordinate sprite overrides - see content/schema.py's
 # LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any

@@ -1,23 +1,30 @@
 id: level_03
 name: The Lower Cellblock
 
+player_start_tile: plains
+
 map: |
   ########################
-  #....##....##....##....#
-  #.@..##....##.p..##.!..#
-  #....##....##....##....#
-  #......................#
-  #....##....##....##....#
-  #.A..##.r..##....##..>.#
-  #....##....##....##....#
+  #fFFF##fFFF##fFFf##FFFF#
+  #F@gF##FhFF##FaFF##FbFF#
+  #FFFF##FFFF##FFFF##FFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#
+  #fFFF##fFFF##fFFf##FFFF#
+  #FcFF##FdFF##FgFF##hFeF#
+  #FFFF##FFFF##FFFF##FFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": { stairs_down: level_04 }
-  "p": { entity: feral_prisoner }
-  "r": { entity: rat }
-  "!": { item: healing_potion }
-  "A": { item: arrows }
+  "F": floor
+  "e": { tile: stairs_down, next_level: level_04 }
+  "a": { tile: floor, entity: feral_prisoner }
+  "d": { tile: floor, entity: rat }
+  "b": { tile: floor, item: healing_potion }
+  "c": { tile: floor, item: arrows }
+  "f": { tile: floor, decoration: cell_bars }
+  "g": { tile: floor, decoration: bed }
+  "h": { tile: floor, decoration: chains }

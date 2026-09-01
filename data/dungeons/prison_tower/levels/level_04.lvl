@@ -1,25 +1,35 @@
 id: level_04
 name: The Gatehouse
 
+player_start_tile: plains
+
 map: |
   ########################
-  #......................#
-  #@.....................#
-  #......................#
-  #......##....##........#
-  #......##....##...C....#
-  #......##....##........#
-  #......................#
-  #.........W............#
-  #...........*..........#
-  #...................>..#
+  #FFFFFFFFFFFFFFFFFFFFFF#
+  #@iFjFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFF##FFFF##FFFFFFFF#
+  #FFFFFF##FFFF##FFFaFFFF#
+  #FFFFFF##FFFF##FFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFeFfFbFFFFFFFFFFFF#
+  #FFFFFFFgFFhcFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFdFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": stairs_down
-  "W": { entity: warden }
-  "C": { entity: crossbow_guard }
-  "*": { item: gold_stash, description: "The Warden's own hoard - coin taken off every prisoner and guard who never asked for it back.", announce: true }
+  "F": floor
+  "d": { tile: stairs_down, next_level: null }
+  "a": { tile: floor, entity: crossbow_guard }
+  "b": { tile: floor, entity: warden }
+  "c": { tile: floor, item: gold_stash, description: "The Warden's own hoard - coin taken off every prisoner and guard who never asked for it back.", announce: true }
+  "e": { tile: floor, decoration: bookshelf }
+  "f": { tile: floor, decoration: table }
+  "g": { tile: floor, decoration: chair }
+  "h": { tile: floor, decoration: chest }
+  "i": { tile: floor, decoration: barrel }
+  "j": { tile: floor, decoration: crate }

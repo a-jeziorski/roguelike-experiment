@@ -1,29 +1,40 @@
 id: level_02
 name: The Guard Barracks
 
+player_start_tile: plains
+
 map: |
   ########################
-  #.........####.......###
-  #....G....####..)....###
-  #.........####.......###
-  #......$..####.......###
-  #####.###########D######
-  #@<....................#
-  #####.###########.######
-  #....k....####.......###
-  #.........####...>...###
-  #....p....####.......###
+  #FFFFFFFFF####FFFFFFF###
+  #FiFFaFFiF####FFbFlFF###
+  #FFjkFFFFF####FFFFFmF###
+  #FFFFFFcFF####FFFFFFF###
+  #####F###########d######
+  #@eFFFFFFFFFFFFFFFFFFFF#
+  #####F###########F######
+  #FFFFfFFFF####FFFFFFF###
+  #FnFFFFoFF####FFFgFFF###
+  #FFFFhFFFF####FFFFFFF###
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01 }
-  ">": { stairs_down: level_03 }
-  "D": { door: rusty_key }
-  "G": { entity: guard }
-  "p": { entity: feral_prisoner }
-  "k": { item: rusty_key }
-  ")": { item: iron_sword }
-  "$": { item: gold_pile, description: "A guard's wages, kept close instead of banked - there was nowhere left to bank it.", announce: true }
+  "F": floor
+  "e": { tile: stairs_up, next_level: level_01 }
+  "g": { tile: stairs_down, next_level: level_03 }
+  "a": { tile: floor, entity: guard }
+  "h": { tile: floor, entity: feral_prisoner }
+  "b": { tile: floor, item: iron_sword }
+  "c": { tile: floor, item: gold_pile, description: "A guard's wages, kept close instead of banked - there was nowhere left to bank it.", announce: true }
+  "d": { tile: floor, door: rusty_key }
+  "f": { tile: floor, item: rusty_key }
+  "i": { tile: floor, decoration: bed }
+  "j": { tile: floor, decoration: table }
+  "k": { tile: floor, decoration: chair }
+  "l": { tile: floor, decoration: chest }
+  "m": { tile: floor, decoration: barrel }
+  "n": { tile: floor, decoration: cell_bars }
+  "o": { tile: floor, decoration: chains }

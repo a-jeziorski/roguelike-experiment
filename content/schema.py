@@ -33,6 +33,7 @@ DecorationKind = Literal[
     "table", "chair", "bed", "chest", "bookshelf", "fireplace",
     "flowerbed_white", "flowerbed_blue", "bush", "tree", "fence", "herb_clump",
     "tombstone", "tilled_soil", "archery_target", "barrel", "crate", "rubble",
+    "cell_bars", "chains",
 ]
 
 # One fixed Look-mode line per DecorationKind, reused at every placement of
@@ -58,6 +59,8 @@ DECORATION_NAMES: dict[str, str] = {
     "barrel": "A water barrel, lid warped but sound.",
     "crate": "A plain storage crate.",
     "rubble": "A heap of broken stone and ash - what's left of something that used to stand here.",
+    "cell_bars": "Iron bars, cold to the touch. Whatever used to be locked behind them isn't anymore.",
+    "chains": "A length of iron chain, one end bolted to the wall, the other end just lying there.",
 }
 
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -
