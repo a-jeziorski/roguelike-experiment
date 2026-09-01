@@ -121,8 +121,8 @@ to point at when it wants to reference this specific place.
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `drowned_wretch` (hp 11/atk 4/def 0, hostile_basic) | `level_01` x1, `level_02` x3 | The waystation's own leftover posting - Old Kingdom remnant, not an intruder. Deals 4/hit unarmored, dies in 3 hits - a straightforward fight, matching a place with no tactical intent behind it. |
-| `gray_ooze` (hp 16/atk 4/def 1, hostile_basic) | `level_02` only, new this pass | See set piece 4 - the one thing here that isn't a leftover person. |
+| `drowned_wretch` (hp 11/atk 4/def 0, hostile_basic) | `level_01` x2, `level_02` x3 | The waystation's own leftover posting - Old Kingdom remnant, not an intruder. Deals 4/hit unarmored, dies in 3 hits - a straightforward fight, matching a place with no tactical intent behind it. |
+| `gray_ooze` (hp 16/atk 4/def 1, hostile_basic) | `level_02` only | See set piece 4 - the one thing here that isn't a leftover person. |
 
 ## Tone notes for anyone (agent or human) revising this later
 
@@ -140,3 +140,56 @@ to point at when it wants to reference this specific place.
 - Don't invent a reason the sea "should" recede or a fix "in progress" -
   per `world_history.md`, the Sundering's damage stays permanent scenery,
   not a problem anyone in-world is working on.
+
+## Decoration and content-variety pass
+
+Before this pass, both levels were bare `floor`/`sea` with zero
+decorations anywhere. One new `DecorationKind` was added, `kelp`
+(`rltiles` name `kelp_frond`) - a dried kelp strand for floor near the
+sea tiles, reinforcing "the water's been here a while" without a
+bespoke flood-debris sprite. Three other candidates
+(`green_mold`/`brown_mold`/`fungus`) were visually inspected and
+rejected as too creature-like (blob/mushroom silhouettes, easily
+mistaken for a monster at a glance); `coral` was rejected as too
+vividly tropical for this dungeon's washed-out mood.
+
+No new monster type - the roster stays exactly `drowned_wretch` +
+`gray_ooze`. This dungeon's own tone notes are unusually explicit that
+its entire population is "leftover people" plus one deliberate
+exception, and a third creature type would blur that restraint rather
+than serve it. In the same audit, `level_01`'s actual `drowned_wretch`
+count turned out to be two, not the one the roster table previously
+claimed - corrected above; the shipped level file was already right,
+only the documentation was stale.
+
+- **`level_01` (The Flooded Common Room)**: a `table`+`chair` near the
+  entrance (what this room was actually for - a traveler's waiting
+  spot), `kelp` at four points along the sea's edge, `rubble` further
+  in, a `chest` and more `rubble` in the Watch-Keeper's Locker. Content:
+  one `gold_pile` - a traveler's dropped coin, left exactly where it
+  fell the day the water won, fitting "everything here is exactly where
+  it was" better than looted treasure would (nobody's been back to take
+  it).
+- **`level_02` (The Sunken Cellar)**: `kelp` at six points along the
+  flood channel's dry edges, a `chest` at the entrance and another by
+  the `waystation_manifest`, `table`+`chair` in the dry side room,
+  `rubble` in its corner. No item or roster changes - this level is
+  already the dungeon's most populated and its structural climax; more
+  content here would crowd a level whose whole design is "narrow dry
+  ground, most of it taken by water."
+
+The scratchpad's shared `render_millhaven.py` helper was also fixed
+this pass: it previously gave every `tile`+`description` cell (a sea
+pool, most commonly) its own unique legend symbol instead of reusing
+one per identical spec, which ran the symbol pool dry on `level_02`'s
+~80-cell flood before a single decoration could be added. It now reuses
+a symbol for any extras entry without an `entity`/`item`/`door` key,
+the same way it already reused symbols for decoration-only cells.
+
+Verification: both levels re-validated via the real content loader
+(entity/item/decoration/door/stairs/tile-description counts - 25 sea
+descriptions on `level_01`, 82 on `level_02`, both preserved intact),
+full `pytest -q` (1373 passed, no existing test asserted this dungeon's
+exact counts), `tools/preview.py data/dungeons` full registry, `main.py`
+smoke-launch, and a screenshot of each level via the scratchpad's
+`screenshot_dungeon.py` harness.

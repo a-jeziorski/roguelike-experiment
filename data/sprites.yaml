@@ -234,6 +234,14 @@ decorations:
   # on the shared generic `landmark` glyph rather than forcing a bad fit.
   bones:            {sheet: rltiles, name: bone}
   cobwebs:          {sheet: rltiles, name: web}
+  # Added for the Drowned Waystation's decoration pass - a dried kelp
+  # strand (rltiles) for floor near the sea tiles, reinforcing "the
+  # water's been here a while" without needing a bespoke flood-debris
+  # sprite. green_mold/brown_mold/fungus were considered and rejected -
+  # all three read as creature sprites (blob/mushroom silhouettes), too
+  # easily mistaken for a monster at a glance; coral was rejected as too
+  # vividly tropical for this dungeon's washed-out mood.
+  kelp:             {sheet: rltiles, name: kelp_frond}
 
 # Per-coordinate sprite overrides - see content/schema.py's
 # LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any

@@ -3,26 +3,35 @@ name: The Sunken Cellar
 
 map: |
   ##########################
-  #...<.#.~~~~~~~~~~~.#....#
-  #.@.....~~~~~~~~~~~.#....#
-  #######.~~~~~~~~~~~.#..>.#
-  #######.~~~~].~~~~~.#....#
-  #######.~~~~.d~~~~~.#....#
-  #######.~~~~.~~~~~~.#.=..#
-  #######.~~~~j~~~~~~.#....#
-  #######.~~~~.~~~~~~.#..d.#
-  #######..!......d........#
+  #kFFaF#FbbbbbbbbbbbF#FFFF#
+  #F@FFFlFbbbbbbbbbbbF#FkFF#
+  #######lbbbbbbbbbbbl#FFcF#
+  #######FbbbbdFbbbbbF#mnFF#
+  #######FbbbbFebbbbbF#FFFF#
+  #######lbbbbFbbbbbbl#FfFF#
+  #######FbbbbgbbbbbbF#FFFo#
+  #######FbbbbFbbbbbbF#FFhF#
+  #######FliFFFFFFjFFFlFFFF#
   ##########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01 }
-  ">": stairs_down
-  "~": { tile: sea, description: "Black water fills the cellar wall to wall - deep enough that the floor beneath it is only a guess." }
-  "d": { entity: drowned_wretch }
-  "j": { entity: gray_ooze }
-  "!": { item: healing_potion }
-  "]": { item: bone_plate }
-  "=": { item: waystation_manifest, description: "A stack of paper gone to pulp in most places, but the topmost pages somehow held - pinned flat by the same water that ruined the rest." }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_01 }
+  "c": { tile: stairs_down, next_level: null }
+  "e": { tile: floor, entity: drowned_wretch }
+  "g": { tile: floor, entity: gray_ooze }
+  "h": { tile: floor, entity: drowned_wretch }
+  "j": { tile: floor, entity: drowned_wretch }
+  "b": { tile: sea, description: "Black water fills the cellar wall to wall - deep enough that the floor beneath it is only a guess." }
+  "d": { tile: floor, item: bone_plate }
+  "f": { tile: floor, item: waystation_manifest, description: "A stack of paper gone to pulp in most places, but the topmost pages somehow held - pinned flat by the same water that ruined the rest." }
+  "i": { tile: floor, item: healing_potion }
+  "k": { tile: floor, decoration: chest }
+  "l": { tile: floor, decoration: kelp }
+  "m": { tile: floor, decoration: table }
+  "n": { tile: floor, decoration: chair }
+  "o": { tile: floor, decoration: rubble }

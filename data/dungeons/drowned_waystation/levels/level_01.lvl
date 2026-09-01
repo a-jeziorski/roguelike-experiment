@@ -3,30 +3,39 @@ name: The Flooded Common Room
 
 map: |
   ##########################
-  #.....x#...........#.....#
-  #.@......................#
-  #..../......~~~~~..#.....#
-  #......#....~~~~~..#..d..#
-  ########....~~~~~..#.....#
-  ########....~~~~~..#...>.#
-  ########....~~~~~..#.....#
-  ########......d....#.....#
-  ########..k........#.....#
-  #############D############
-  ##########.......#########
-  ##########...[...#########
-  ##########.......#########
+  #FFFFFa#FFFFFFFFFFF#FFFFF#
+  #F@klFFFFjFFFFFFFFFFFFFFF#
+  #FFFFbFFFFFmcccccFF#FFFFF#
+  #FFFFFF#FFFFcccccmF#FFdFF#
+  ########FFFmcccccFF#FFFFF#
+  ########FFFFcccccmF#FFFeF#
+  ########FFFFcccccFF#FFFFF#
+  ########FnFFFFfFFFF#FFFFF#
+  ########FFgFFFFFFFF#FFFFF#
+  #############h############
+  ##########FFFFFFF#########
+  ##########FoFiFFF#########
+  ##########FFFFFnF#########
   ##########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": stairs_up
-  "~": { tile: sea, description: "Standing water, deep enough to swallow the old floor. Better to go around than through." }
-  ">": { stairs_down: level_02 }
-  "D": { door: rusty_key }
-  "d": { entity: drowned_wretch }
-  "/": { item: rusty_dagger }
-  "k": { item: rusty_key }
-  "[": { item: leather_armor }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null }
+  "e": { tile: stairs_down, next_level: level_02 }
+  "d": { tile: floor, entity: drowned_wretch }
+  "f": { tile: floor, entity: drowned_wretch }
+  "b": { tile: floor, item: rusty_dagger }
+  "c": { tile: sea, description: "Standing water, deep enough to swallow the old floor. Better to go around than through." }
+  "g": { tile: floor, item: rusty_key }
+  "h": { tile: floor, door: rusty_key }
+  "i": { tile: floor, item: leather_armor }
+  "j": { tile: floor, item: gold_pile }
+  "k": { tile: floor, decoration: table }
+  "l": { tile: floor, decoration: chair }
+  "m": { tile: floor, decoration: kelp }
+  "n": { tile: floor, decoration: rubble }
+  "o": { tile: floor, decoration: chest }
