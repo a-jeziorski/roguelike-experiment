@@ -1,8 +1,6 @@
 id: level_01
 name: The Solitary Cell
 
-player_start_tile: plains
-
 map: |
   ########################
   #FFFFaF#################

@@ -1,8 +1,6 @@
 id: level_04
 name: The Gatehouse
 
-player_start_tile: plains
-
 map: |
   ########################
   #FFFFFFFFFFFFFFFFFFFFFF#

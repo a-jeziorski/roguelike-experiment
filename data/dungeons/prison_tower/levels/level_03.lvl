@@ -1,8 +1,6 @@
 id: level_03
 name: The Lower Cellblock
 
-player_start_tile: plains
-
 map: |
   ########################
   #fFFF##fFFF##fFFf##FFFF#

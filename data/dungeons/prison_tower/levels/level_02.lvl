@@ -1,8 +1,6 @@
 id: level_02
 name: The Guard Barracks
 
-player_start_tile: plains
-
 map: |
   ########################
   #FFFFFFFFF####FFFFFFF###
