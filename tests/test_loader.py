@@ -522,11 +522,12 @@ def test_level_01_content():
     assert sum(1 for s in level.stairs if s.kind == "stairs_up" and s.next_level is None) == 1
 
     entity_names = sorted(s.entity.name for s in level.entity_spawns)
-    assert entity_names == ["Goblin", "Rat", "Rat"]
+    assert entity_names == ["Giant Rat", "Goblin", "Rat", "Rat"]
 
     item_names = sorted(s.item.name for s in level.item_spawns)
     assert item_names == [
-        "Arrows", "Healing Potion", "Healing Potion", "Hunting Bow", "Lucky Charm", "Rusty Dagger", "Rusty Key",
+        "Arrows", "Gold Pile", "Healing Potion", "Healing Potion", "Hunting Bow", "Lucky Charm", "Rusty Dagger",
+        "Rusty Key",
     ]
 
     door_keys = sorted(d.requires_key for d in level.doors)

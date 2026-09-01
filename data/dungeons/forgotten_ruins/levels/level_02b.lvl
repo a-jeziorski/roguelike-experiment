@@ -3,23 +3,30 @@ name: The Goblin Warren
 
 map: |
   ########################
-  #..........#...........#
-  #..g.......#...........#
-  #..........#....)......#
-  #..........#......H....#
-  #..........#####.#######
-  #....@.................#
-  #..........#....g......#
-  #..........#...........#
-  #..........#.....y.....#
-  #..........#...........#
+  #FFFFFFFFFF#FFFFFFFFFFF#
+  #FFaFFFFFFF#FghFFFFFFFF#
+  #FFFFFFFfFF#FFFFbFFFFfF#
+  #FFFFFFFFFF#FFFFFFcFFFF#
+  #FgFFFFFFFF#####F#######
+  #FFhF@FFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFF#FFFFdFFFFFF#
+  #FFFFFFFFiF#FFFFFFFFiFF#
+  #FFFFFFFFFF#FFFFFeFFFFF#
+  #FFFFFFFFFF#FFFFFFFFFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "y": { stairs_down: level_03 }
-  "g": { entity: goblin }
-  "H": { entity: hobgoblin }
-  ")": { item: iron_sword }
+  "F": floor
+  "e": { tile: stairs_down, next_level: level_03 }
+  "a": { tile: floor, entity: goblin }
+  "c": { tile: floor, entity: hobgoblin }
+  "d": { tile: floor, entity: goblin }
+  "b": { tile: floor, item: iron_sword }
+  "f": { tile: floor, decoration: tombstone }
+  "g": { tile: floor, decoration: barrel }
+  "h": { tile: floor, decoration: crate }
+  "i": { tile: floor, decoration: rubble }

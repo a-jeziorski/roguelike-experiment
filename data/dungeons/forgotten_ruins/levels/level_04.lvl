@@ -3,33 +3,37 @@ name: The Elder Ossuary
 
 map: |
   ########################
-  #..........#...........#
-  #..s.......#...........#
-  #..........#....r......#
-  #..........#.....S.....#
-  #..........#.....!.....#
-  #....@.................#
-  #..........#.....s.....#
-  #....k.....#...........#
-  #..........#.....z.....#
-  #..........#...........#
-  #####D##################
-  ###.....################
-  ###B.)..################
-  ###..|..################
+  #FFFFFFFFFF#FFFFFFFFFFF#
+  #FFaFFFlFFF#FFlFFFFFFFF#
+  #FlFFFFFFFF#FFFFbFFFFFF#
+  #FFFFFFFFFF#FFFFFcFFlFF#
+  #FFFFFFFFFF#FFFFFdFFFFF#
+  #FFFF@FFFlFFFFFFFFFFFFF#
+  #FFFFFFFFFF#FlFFFeFFFFF#
+  #FFFlfFFFFF#FFFFFFFFFFF#
+  #FFFFFFFFFF#FFFFFgFlFFF#
+  #FFFFFFFFFF#FFFFFFFFFFF#
+  #####h##################
+  ###FlFFF################
+  ###iFjFl################
+  ###FFkFF################
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "z": { stairs_down: level_05 }
-  "D": { door: rusty_key }
-  "s": { entity: skeleton }
-  "r": { entity: rat }
-  "S": { entity: skeleton_archer }
-  "!": { item: healing_potion }
-  "k": { item: rusty_key }
-  ")": { item: iron_sword }
-  "B": { item: bone_plate }
-  "|": { item: arrows }
+  "F": floor
+  "g": { tile: stairs_down, next_level: level_05 }
+  "a": { tile: floor, entity: skeleton }
+  "b": { tile: floor, entity: rat }
+  "c": { tile: floor, entity: skeleton_archer }
+  "e": { tile: floor, entity: skeleton }
+  "d": { tile: floor, item: healing_potion }
+  "f": { tile: floor, item: rusty_key }
+  "h": { tile: floor, door: rusty_key }
+  "i": { tile: floor, item: bone_plate }
+  "j": { tile: floor, item: iron_sword }
+  "k": { tile: floor, item: arrows }
+  "l": { tile: floor, decoration: bones }

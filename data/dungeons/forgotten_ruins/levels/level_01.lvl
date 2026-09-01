@@ -3,35 +3,46 @@ name: The Rotting Cellar
 
 map: |
   ########################
-  #..........#...........#
-  #..r.......#.....g.....#
-  #..........#.....'.....#
-  #......#####...........#
-  #..........#......./...#
-  #....@x................#
-  #..........#.....r.....#
-  #....!..b..#...........#
-  #....k.....#.....a.....#
-  #..........#...........#
-  #####D##################
-  ###}....################
-  ###..!..################
-  ###..|..################
+  #qFFFFFFFFF#FFFFFFFFFFF#
+  #FFaFFFFFFF#FFFFFbFFuvF#
+  #FFFFFFFoFF#FFFFFcFFFFF#
+  #FFFFFF#####FFFFFFFFFFF#
+  #FFrtFFFFFF#FFFFFFFdFFF#
+  #FFFF@eFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFF#FFFFFfFFFFF#
+  #FFFFgFFhFF#FFFFFFFFFFF#
+  #FpFFiFFFFF#FFFFFjFFFqF#
+  #FFFFFFFFFq#FFFFFFFFFFF#
+  #####k##################
+  ###lFFuF################
+  ###FFmFv################
+  ###FFnFF################
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": stairs_up
-  "a": { stairs_down: level_02a }
-  "b": { stairs_down: level_02b }
-  "D": { door: rusty_key }
-  "r": { entity: rat }
-  "g": { entity: goblin }
-  "!": { item: healing_potion }
-  "/": { item: rusty_dagger }
-  "k": { item: rusty_key }
-  "}": { item: hunting_bow }
-  "|": { item: arrows }
-  "'": { item: lucky_charm }
+  "F": floor
+  "e": { tile: stairs_up, next_level: null }
+  "h": { tile: stairs_down, next_level: level_02b }
+  "j": { tile: stairs_down, next_level: level_02a }
+  "a": { tile: floor, entity: rat }
+  "b": { tile: floor, entity: goblin }
+  "f": { tile: floor, entity: rat }
+  "o": { tile: floor, entity: giant_rat }
+  "c": { tile: floor, item: lucky_charm }
+  "d": { tile: floor, item: rusty_dagger }
+  "g": { tile: floor, item: healing_potion }
+  "i": { tile: floor, item: rusty_key }
+  "k": { tile: floor, door: rusty_key }
+  "l": { tile: floor, item: hunting_bow }
+  "m": { tile: floor, item: healing_potion }
+  "n": { tile: floor, item: arrows }
+  "p": { tile: floor, item: gold_pile }
+  "q": { tile: floor, decoration: cobwebs }
+  "r": { tile: floor, decoration: table }
+  "t": { tile: floor, decoration: chair }
+  "u": { tile: floor, decoration: barrel }
+  "v": { tile: floor, decoration: crate }

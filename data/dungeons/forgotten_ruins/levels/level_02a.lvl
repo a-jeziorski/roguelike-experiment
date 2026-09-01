@@ -3,24 +3,29 @@ name: The Flooded Crypt
 
 map: |
   ########################
-  #..........#...........#
-  #..s.......#...........#
-  #..........#....!......#
-  #......L...#...........#
-  #..........#....V......#
-  #....@.................#
-  #..........#....s......#
-  #..........#...........#
-  #..........#.....x.....#
-  #..........#...........#
+  #FFFFFFFFhF#FFFFFFFFFFF#
+  #FFaFFFFgFF#FFFFFFFFFhF#
+  #FFFFFFFFFF#FgFFbFFFFFF#
+  #FFFhFFcFFF#FFFFFFFFFFF#
+  #FFFFFFFFFF#FFFFdFFFFFF#
+  #FgFF@FFFFFFFFFFFFFFgFF#
+  #FFFFFFFFgF#FFFFeFFFFFF#
+  #FFFFFFFFFF#FFhFFFFFFFF#
+  #FFFFFFFFFF#FFFFFfFFFFF#
+  #FFFFFFFFFF#FFFFFFFFFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": { stairs_down: level_03 }
-  "s": { entity: skeleton }
-  "!": { item: healing_potion }
-  "L": { item: leather_armor }
-  "V": { item: venomous_dagger }
+  "F": floor
+  "f": { tile: stairs_down, next_level: level_03 }
+  "a": { tile: floor, entity: skeleton }
+  "e": { tile: floor, entity: skeleton }
+  "b": { tile: floor, item: healing_potion }
+  "c": { tile: floor, item: leather_armor }
+  "d": { tile: floor, item: venomous_dagger }
+  "g": { tile: floor, decoration: tombstone }
+  "h": { tile: floor, decoration: rubble }

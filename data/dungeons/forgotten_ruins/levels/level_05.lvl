@@ -3,28 +3,32 @@ name: The First Ruin
 
 map: |
   ########################
-  ##.......###############
-  #.........##############
-  #..@.........###########
-  #.........##.###########
-  ##.......###!###########
-  ############.###########
-  ############.....#######
-  #############....#######
-  #############.s..#######
-  #############..#......##
-  ###############.....F..#
-  ###############...!O...#
-  ###############......>.#
-  ################.......#
+  ##FFFFFFF###############
+  #FFgFFFFFF##############
+  #FF@FFFFFFFFF###########
+  #FFFFFFgFF##F###########
+  ##FFFFFFF###a###########
+  ############F###########
+  ############FFFFF#######
+  #############FFFF#######
+  #############FbFF#######
+  #############FF#FFFFFF##
+  ###############FFFFFcFF#
+  ###############FFFdeFFF#
+  ###############FFFFFFfF#
+  ################FFFFFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": stairs_down
-  "O": { entity: ogre, elite: true }
-  "s": { entity: skeleton }
-  "!": { item: healing_potion }
-  "F": { tile: landmark, description: "A seam in the stone where construction stops looking built and starts looking grown - no join, no mortar, no edge the eye can find. It's warm, faintly, though nothing here should be." }
+  "F": floor
+  "f": { tile: stairs_down, next_level: null }
+  "b": { tile: floor, entity: skeleton }
+  "e": { tile: floor, entity: ogre, elite: true }
+  "c": { tile: landmark, description: "A seam in the stone where construction stops looking built and starts looking grown - no join, no mortar, no edge the eye can find. It's warm, faintly, though nothing here should be." }
+  "a": { tile: floor, item: healing_potion }
+  "d": { tile: floor, item: healing_potion }
+  "g": { tile: floor, decoration: rubble }

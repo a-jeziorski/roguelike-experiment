@@ -33,7 +33,7 @@ DecorationKind = Literal[
     "table", "chair", "bed", "chest", "bookshelf", "fireplace",
     "flowerbed_white", "flowerbed_blue", "bush", "tree", "fence", "herb_clump",
     "tombstone", "tilled_soil", "archery_target", "barrel", "crate", "rubble",
-    "cell_bars", "chains",
+    "cell_bars", "chains", "bones", "cobwebs",
 ]
 
 # One fixed Look-mode line per DecorationKind, reused at every placement of
@@ -61,6 +61,8 @@ DECORATION_NAMES: dict[str, str] = {
     "rubble": "A heap of broken stone and ash - what's left of something that used to stand here.",
     "cell_bars": "Iron bars, cold to the touch. Whatever used to be locked behind them isn't anymore.",
     "chains": "A length of iron chain, one end bolted to the wall, the other end just lying there.",
+    "bones": "A scatter of old bones. Whoever - or whatever - they belonged to isn't in a position to mind.",
+    "cobwebs": "Cobwebs, thick enough that whatever spun them left a long time ago.",
 }
 
 # kind -> (walkable, transparent). Anything not listed defaults to (True, True) -

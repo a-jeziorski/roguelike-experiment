@@ -225,6 +225,15 @@ decorations:
   # its stored gear instead of forcing a bad fit.
   cell_bars:        {sheet: rltiles, name: iron_bars}
   chains:           {sheet: rltiles, name: iron_chain}
+  # Added for Forgotten Ruins' decoration pass - a scattered-bone pile
+  # (rltiles) for the Ossuary/crypt levels, and cobwebs for the mundane,
+  # long-neglected Rotting Cellar. A literal throne/altar sprite exists
+  # in rltiles (`opulent_throne`, `altar`) but both read as gilded and
+  # cross-adorned - wrong register entirely for "a stone seat, too large
+  # for anything that still walks upright" - so the throne landmark stays
+  # on the shared generic `landmark` glyph rather than forcing a bad fit.
+  bones:            {sheet: rltiles, name: bone}
+  cobwebs:          {sheet: rltiles, name: web}
 
 # Per-coordinate sprite overrides - see content/schema.py's
 # LegendEntry.tile_sprite. Author-chosen ids, not tied to TileType or any

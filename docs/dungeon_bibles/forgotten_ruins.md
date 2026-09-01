@@ -224,16 +224,16 @@ shape and the addition of the `landmark` tile changed. `tests/test_loader.py`'s
 needed no update, since the intentional content it describes didn't
 change, only the room around it.
 
-## Roster and balance (unchanged - existing roster, documented here for
-## the first time)
+## Roster and balance (as of the decoration + content-variety pass below)
 
 | Monster | Where | Why here specifically |
 |---|---|---|
 | `rat` (hp 6/atk 2/def 0, skittish) | `level_01`, `level_04` | Background vermin, present from the mundane top of the dungeon to the bone-filled depths - the one creature unbothered by which era's stonework it's standing in. |
+| `giant_rat` (hp 12/atk 3/def 0, hostile_basic) | `level_01` | Added this pass, paired with the plain `rat` the same way `broken_watch` already established that pairing - a squatted cellar has had time to breed something bigger than ordinary vermin. Placed away from the plain `rat`, not stacked with it. |
 | `goblin` (hp 12/atk 4/def 1, hostile_basic) | `level_01`, `level_02b` | Present-day squatters, claiming space in both the cellar above and the crypt below it the same unceremonious way. |
 | `hobgoblin` (hp 18/atk 6/def 2, hostile_basic) | `level_02b` | Guards the Goblin Warren's `iron_sword` alongside the goblin there - a real step up in stats, matching the "stronger path" framing set piece 3 gives this branch. |
 | `skeleton` (hp 16/atk 5/def 2, sleeping_guard) | `level_02a` (x2), `level_03`, `level_04` (x2 with `skeleton_archer`) | This dungeon's most-used guardian type - "old, grim magic," per its own catalog description, doing the same thing at every depth. Its `sleeping_guard` AI is exactly why it reads as "guarding" a crypt or a throne without needing a motive spelled out. |
-| `skeleton_archer` (hp 12/atk 4/def 1, ranged_basic) | `level_04` | Keeps distance in the ossuary's more open bone-hall, a ranged counterpoint to the melee skeletons stationed nearby. |
+| `skeleton_archer` (hp 12/atk 4/def 1, ranged_basic) | `level_03` (added this pass), `level_04` | Keeps distance in a more open hall, a ranged counterpoint to the melee skeletons stationed nearby. The `level_03` addition is staged past the pillar chokepoint but well before the throne/ogre encounter - a second threat to manage on the approach, not stacked onto the room's hardest fight. |
 | `ogre` (hp 28/atk 8/def 3, hostile_basic) | `level_03`, `level_05` (`elite: true`) | The dungeon's heaviest single fight, used twice - once at the convergence (`level_03`), once, boosted, at the true bottom (`level_05`) - the `level_05` spawn's `elite: true` flag (`content_design_process.md` §0w) bumps its hp/attack/xp and guarantees its drop, matching "the true bottom" being meant to hit harder than the mid-dungeon version of the same fight. Both placements come late enough that a player has had a real chance at `iron_sword`/`leather_armor` first (see the branch fairness note above), consistent with `content_design_process.md` §2's warning that the ogre "should never be the first fight a player can reach without a weapon upgrade already in hand." |
 
 Hits-to-kill against player baseline (30 hp / 5 atk / 1 def), unchanged
@@ -279,10 +279,76 @@ dungeon, unaffected by this revision.
   what the seam in the stone actually is or was, that's the wrong
   instinct for this dungeon specifically - under-explaining is the
   point here in a way it isn't anywhere else in the game.
-- Both revised levels keep the exact entity/item roster they shipped
-  with before this pass. If a future pass wants to add a new monster
-  (e.g. `giant_spider` from the entities.yaml bestiary expansion) to
-  either level, that's a legitimate future option the process doc
-  explicitly allows for - but it wasn't needed this pass, since the
-  existing skeleton/ogre pairing already told both rooms' stories once
-  they had real geometry to do it in.
+- Both revised levels kept the exact entity/item roster they shipped
+  with through the geometry-revision pass. A later pass (documented
+  below) did add a `giant_rat` to `level_01` and a `skeleton_archer` to
+  `level_03` - both reuses of pairings already established elsewhere in
+  this dungeon, not new bestiary entries.
+
+## Decoration and content-variety pass
+
+Before this pass, all six levels were bare `floor` boxes - zero
+decorations anywhere, despite the dungeon's own prose doing a lot of
+work to describe rot, bones, and abandonment that no tile backed up.
+Two new `DecorationKind`s were added (`content/schema.py`,
+`data/sprites.yaml`), both from the `rltiles` sheet:
+
+- **`bones`** (`rltiles` name `bone`) - a scatter of old bones. Used
+  heavily in `level_04` (The Elder Ossuary, ten placements - the room is
+  literally named for this) and sparingly in `level_03` (flanking the
+  pillars and near the throne, consistent with that level's restrained
+  Elder Age tone - see below).
+- **`cobwebs`** (`rltiles` name `web`) - thick, long-undisturbed
+  cobwebs. Used only in `level_01` (The Rotting Cellar), the one level
+  where "mundane, ordinary neglect" is the actual intended read.
+
+Two sprite candidates were researched and rejected for the Sunless
+Throne's landmark: `opulent_throne` and `altar`/`misc_altar` (both
+`rltiles`) - visually inspected and both read as gilded and
+cross-adorned, implying organized religion/heraldry that contradicts
+the bible's own "a stone seat, too large for anything that still walks
+upright... whatever that was left no other trace" framing. The throne
+stays on the shared generic `landmark` glyph, no `tile_sprite`
+override - consistent with this project's standing discipline of not
+forcing a bad-fit sprite onto a landmark (see Wayford's cart-less
+Caravan Yard, Prison Tower's rack-less Armory).
+
+Per-level treatment, decoration and roster together:
+
+- **`level_01` (The Rotting Cellar)**: `cobwebs` x3, a `table`+`chair`
+  pair, two `barrel`+`crate` pairs. Content: a `giant_rat` (paired with
+  the existing `rat`, matching `broken_watch`'s established
+  rat/giant_rat convention) and a `gold_pile` (the manor family's own
+  leftover coin - inert, already-possessed, same framing established
+  for Prison Tower's economy) placed in the mundane upper cellar.
+- **`level_02a` (The Flooded Crypt)**: `tombstone` x4, `rubble` x4. No
+  roster change - see the branch-fairness note above; adding a monster
+  to the deliberately weaker-reward path would compound risk without
+  compounding reward.
+- **`level_02b` (The Goblin Warren)**: `tombstone` x2, `barrel`+`crate`
+  x2 pairs (the goblins' own claimed clutter, over the same crypt
+  furniture level_02a has underneath), `rubble` x2. No roster change -
+  already varied (goblin/goblin/hobgoblin).
+- **`level_03` (The Sunless Throne)**: `rubble` x2 in the antechamber
+  (the last recognizably "built" space), `bones` x4 flanking the
+  pillars and near the throne, one `cobwebs` in a far corner. Content:
+  a `skeleton_archer` added past the pillar chokepoint, before the
+  ogre - see the roster table above.
+- **`level_04` (The Elder Ossuary)**: `bones` x10, spread liberally
+  through both rooms and the cellar below. No roster change - already
+  varied (rat, 2x skeleton, skeleton_archer).
+- **`level_05` (The First Ruin)**: `rubble` x2, in the Vestibule only.
+  No roster change, and decoration deliberately kept to the bare
+  minimum - the Watching Dark nook and the Nameless Chamber proper stay
+  undecorated, matching this level's own explicit "under-explaining is
+  the point" tone note above.
+
+Verification: all six levels re-validated via the real content loader
+(entity/item/decoration/door/stairs counts, including the `elite: true`
+flag on `level_05`'s ogre), full `pytest -q` (two pre-existing
+content-count tests updated for `level_01`'s new `giant_rat`/`gold_pile`
+- `tests/test_loader.py::test_level_01_content` and
+`tests/test_engine.py::test_restart_after_death_gives_a_fresh_run`),
+`tools/preview.py data/dungeons` full registry, `main.py` smoke-launch,
+and a screenshot of each level via the scratchpad's
+`screenshot_dungeon.py` harness.

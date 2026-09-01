@@ -3181,7 +3181,7 @@ def test_restart_after_death_gives_a_fresh_run():
     assert len(engine.message_log.messages) == 1  # log cleared to just the entry message
 
     monster_names = sorted(e.name for e in engine.game_map.entities if e.ai is not None)
-    assert monster_names == ["Goblin", "Rat", "Rat"]  # killed monster is back
+    assert monster_names == ["Giant Rat", "Goblin", "Rat", "Rat"]  # killed monster is back
 
 
 def test_locked_door_blocks_movement_without_key():

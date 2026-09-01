@@ -3,26 +3,32 @@ name: The Sunless Throne
 
 map: |
   ########################
-  #......#...............#
-  #......#...............#
-  #..@...................#
-  #......#...............#
-  #......#.s##..##.......#
-  ########..##..##.......#
-  ########...............#
-  ########..........TO...#
-  ########....!..........#
-  ########...............#
-  ########..............>#
-  ########...............#
+  #FFFFFF#FFFFFFFFFFFFFFF#
+  #FgFFFF#FFFFFFFFFFFFFiF#
+  #FF@FFFFFFFFFFFFFFFFFFF#
+  #FFFFgF#FFFFFFFFFFFFFFF#
+  #FFFFFF#Fa##FF##FFFFFFF#
+  ########FF##hF##hFFFFFF#
+  ########FFFfFFFFFFFFFFF#
+  ########FFFFFFFFFFbcFFF#
+  ########FFFFdhFFFFFFFhF#
+  ########FFFFFFFFFFFFFFF#
+  ########FFFFFFFFFFFFFFe#
+  ########FFFFFFFFFFFFFFF#
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": { stairs_down: level_04 }
-  "O": { entity: ogre }
-  "s": { entity: skeleton }
-  "!": { item: healing_potion }
-  "T": { tile: landmark, description: "A stone seat, too large for anything that still walks upright, worn smooth along the arms by whatever last sat in it. Whatever that was left no other trace." }
+  "F": floor
+  "e": { tile: stairs_down, next_level: level_04 }
+  "a": { tile: floor, entity: skeleton }
+  "c": { tile: floor, entity: ogre }
+  "f": { tile: floor, entity: skeleton_archer }
+  "b": { tile: landmark, description: "A stone seat, too large for anything that still walks upright, worn smooth along the arms by whatever last sat in it. Whatever that was left no other trace." }
+  "d": { tile: floor, item: healing_potion }
+  "g": { tile: floor, decoration: rubble }
+  "h": { tile: floor, decoration: bones }
+  "i": { tile: floor, decoration: cobwebs }
