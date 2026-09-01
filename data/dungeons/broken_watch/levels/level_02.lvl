@@ -3,26 +3,36 @@ name: The Barracks
 
 map: |
   ############################
-  #.............#............#
-  #.............#............#
-  #....b.................)...#
-  #...........#.#.#..........#
-  #.............#............#
-  #..........................#
-  #<@...........#...........>#
-  #...........#.#.#..........#
-  #..........................#
-  #....b........#........!...#
-  #.............#............#
-  #.............#............#
+  #FFFFFFFFFFFFF#FFFFFFFFFFFF#
+  #FFiFFFFFFFFFF#FFlmFFFFFiFF#
+  #FFFFaFFFFFFFFFFFFFFFFFbFFF#
+  #FFFFFFFFFFF#F#F#FFFFFFFFFF#
+  #FFFFFFjFFFFFF#FFFFghFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #c@FFFFFFFFFFF#FFFFFFFFFFFd#
+  #FFFFFFFFFFF#F#F#FFFFFFFFFF#
+  #FFFFFFFFFiFFFFFFFFFFFFFFFF#
+  #FkFFeFFFFFFFF#FFFFFFFFfFFF#
+  #FFFFFFFFFFFFF#FFFFFFFFFFFF#
+  #FFFFFFFFFFFFF#FFFFFFFFFFFF#
   ############################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01 }
-  ">": { stairs_down: level_03 }
-  "b": { entity: bandit }
-  ")": { item: iron_sword }
-  "!": { item: healing_potion }
+  "F": floor
+  "c": { tile: stairs_up, next_level: level_01 }
+  "d": { tile: stairs_down, next_level: level_03 }
+  "a": { tile: floor, entity: bandit }
+  "e": { tile: floor, entity: bandit }
+  "b": { tile: floor, item: iron_sword }
+  "f": { tile: floor, item: healing_potion }
+  "g": { tile: floor, item: hunting_bow }
+  "h": { tile: floor, item: arrows }
+  "i": { tile: floor, decoration: bed }
+  "j": { tile: floor, decoration: fireplace }
+  "k": { tile: floor, decoration: chest }
+  "l": { tile: floor, decoration: barrel }
+  "m": { tile: floor, decoration: crate }

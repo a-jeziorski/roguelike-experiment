@@ -3,32 +3,42 @@ name: The Outer Yard
 
 map: |
   ##############################
-  #............................#
-  #.######..............######.#
-  #.#....#..............#....#.#
-  #.#.[..#.................=.#.#
-  #.#....#..............#....#.#
-  #.##D###..............######.#
-  #........k...................#
-  #..............N.............#
-  #..........b.................#
-  #.......................b....#
-  #.....r......................#
-  #..........................>.#
-  #x@..........................#
-  #............................#
+  #FFFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #F######FFFFFFFFFFFFFF######F#
+  #F#FFFo#FFFFFFFFFFFFFF#qFFF#F#
+  #F#FaFF#FFFFFFFFFFFFFpFFFbF#F#
+  #F#FFpF#FFFFFFFFFFFFFF#FFmF#F#
+  #F##c###FFFFFFFFFFFFFF######F#
+  #FFFFFFFFdFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFFeFFFFFFFFFFFFF#
+  #FFFFFFFFFFfFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFknFnFFgFFFF#
+  #FFFFFhFFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFlFFFFFFFFFFFFFFFFFFFiF#
+  #j@FmFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FFmFFFFFFFFFFFFFFFFFFFFFFFFF#
   ##############################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": { stairs_up: null, description: "A gap where the outer wall gave way - the quickest way back out to open country.", announce: true }
-  ">": { stairs_down: level_02, description: "A stair down into the watchtower proper, torchlight flickering at the bottom.", announce: true }
-  "D": { door: rusty_key }
-  "k": { item: rusty_key }
-  "[": { item: leather_armor }
-  "=": { item: road_ledger, description: "An old duty room, half its shelving collapsed. This ledger's just been sitting on top of the wreckage - nobody here ever had a reason to move it.", announce: true }
-  "b": { entity: bandit }
-  "r": { entity: rat }
-  "N": { entity: giant_rat }
+  "F": floor
+  "i": { tile: stairs_down, next_level: level_02, description: "A stair down into the watchtower proper, torchlight flickering at the bottom.", announce: true }
+  "j": { tile: stairs_up, next_level: null, description: "A gap where the outer wall gave way - the quickest way back out to open country.", announce: true }
+  "e": { tile: floor, entity: giant_rat }
+  "f": { tile: floor, entity: bandit }
+  "g": { tile: floor, entity: bandit }
+  "h": { tile: floor, entity: rat }
+  "k": { tile: floor, entity: vulture }
+  "a": { tile: floor, item: leather_armor }
+  "b": { tile: floor, item: road_ledger, description: "An old duty room, half its shelving collapsed. This ledger's just been sitting on top of the wreckage - nobody here ever had a reason to move it.", announce: true }
+  "c": { tile: floor, door: rusty_key }
+  "d": { tile: floor, item: rusty_key }
+  "l": { tile: floor, item: gold_pile }
+  "m": { tile: floor, decoration: rubble }
+  "n": { tile: floor, decoration: bones }
+  "o": { tile: floor, decoration: chest }
+  "p": { tile: floor, decoration: crate }
+  "q": { tile: floor, decoration: bookshelf }

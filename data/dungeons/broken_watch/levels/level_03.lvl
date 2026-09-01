@@ -3,24 +3,32 @@ name: The Captain's Watch
 
 map: |
   ##########################
-  #................#.......#
-  #....!...........#.......#
-  #................#.......#
-  #................#.......#
-  #................#.......#
-  #<@...................B..#
-  #................#.......#
-  #................#.......#
-  #....b...........#......>#
-  #................#.......#
+  #FFFFFFFFFFFFFFFF#FFFFFFF#
+  #FFFFaFFFFFFFFFFF#FFFFFFF#
+  #FFFFFFfFFFFFFFFF#FFijFFF#
+  #FFFFFFFFFFFFFFFF#FFFFFkF#
+  #FFFFFFFFFFFFFFFF#FFFFFFF#
+  #b@FFFFFFFFFFFFFFFFFFFcFF#
+  #FFFFFFFFFFFhFFFF#FgFFFFF#
+  #FFgFFFFFFFFFFFFF#FFFFFFF#
+  #FFFFdFFFFFFFFFFF#FFFFFFe#
+  #FFFFFFFFFFFFFFFF#FFFFFFF#
   ##########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_02 }
-  ">": { stairs_down: null, description: "A stair up into open air - the last stretch of wall before the road outside.", announce: true }
-  "!": { item: healing_potion }
-  "b": { entity: bandit }
-  "B": { entity: bandit_captain }
+  "F": floor
+  "b": { tile: stairs_up, next_level: level_02 }
+  "e": { tile: stairs_down, next_level: null, description: "A stair up into open air - the last stretch of wall before the road outside.", announce: true }
+  "c": { tile: floor, entity: bandit_captain }
+  "d": { tile: floor, entity: bandit }
+  "a": { tile: floor, item: healing_potion }
+  "f": { tile: floor, item: lucky_charm }
+  "g": { tile: floor, decoration: bed }
+  "h": { tile: floor, decoration: rubble }
+  "i": { tile: floor, decoration: table }
+  "j": { tile: floor, decoration: chair }
+  "k": { tile: floor, decoration: chest }

@@ -146,21 +146,24 @@ quest constraint. The terminal stairs down sit past him, same
 the same beat on purpose - clearing this room isn't just finishing the
 dungeon, it's completing "Clearing the Watch Road" at the same moment.
 
-## Roster and balance (unchanged - existing roster, documented here for
-## the first time)
+## Roster and balance (as of the decoration + content-variety pass below)
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `bandit` (hp 13/atk 5/def 1, hostile_basic) | `level_01`, `level_02` | The Watch's actual population - straightforward fights, no gimmick, matching people who took this place for its walls, not for any tactical cleverness. |
+| `bandit` (hp 13/atk 5/def 1, hostile_basic) | `level_01`, `level_02`, `level_03` | The Watch's actual population - straightforward fights, no gimmick, matching people who took this place for its walls, not for any tactical cleverness. |
 | `rat` (hp 6/atk 2/def 0, skittish) | `level_01` | Ordinary vermin - a garrison this informally kept has them same as anywhere else abandoned-then-reoccupied. |
 | `giant_rat` (hp 10/atk 3/def 0, regenerator) | `level_01` | A step up from the plain rat sharing this level - vermin that's been thriving here a while, not just passing through. |
+| `vulture` (hp 12/atk 3/def 0, scavenger) | `level_01` | Added this pass. "Gets stronger for every fight that isn't its own" - a scavenger circling an occupied, actively violent site is exactly right for the exterior Yard, without contradicting the "no gimmick" rule that's specifically about the bandits' own fighting style, not the yard's wildlife. Kept out of `level_02`/`level_03` - the interior stays human-only, per the Prison Tower contrast. |
 | `bandit_captain` (hp 20/atk 7/def 2, hostile_basic) | `level_03` only | The dungeon's climax and the arc's kill-quest target - see set piece 5. Never placed anywhere else; **this constraint is load-bearing for `docs/quest_bibles/wayford_arc.md`'s kill-quest, not just pacing.** |
 
 Hits-to-kill against player baseline (30 hp / 5 atk / 1 def), unchanged
 stats: `bandit` deals 4/hit, dies in 4 hits; `bandit_captain` deals
 6/hit, dies in 7 hits - the hardest single fight in the dungeon,
 consistent with being both the structural climax and the quest's actual
-target. No stat changes this pass - reused exactly as shipped.
+target; `vulture` deals 3/hit, dies in 4 hits, and only actually gets
+dangerous if left alive near other fights (its heal is off *other*
+kills, not its own). No stat changes this pass - all reused exactly as
+already balanced elsewhere.
 
 ## Tone notes for anyone (agent or human) revising this later
 
@@ -183,3 +186,41 @@ target. No stat changes this pass - reused exactly as shipped.
   flavor text (a lookout position toward "the fortified town further
   on," say) but Stonebridge itself is out of scope for this pass, per
   the arc bible.
+
+## Decoration and content-variety pass
+
+Before this pass, all three levels were bare `floor` boxes - zero
+decorations anywhere, despite named set pieces (bedrolls, half-collapsed
+shelving, a nightly fire) that no tile backed up. No new
+`DecorationKind`s were needed - the existing kit
+(`bed`/`fireplace`/`chest`/`table`/`chair`/`bookshelf`/`barrel`/`crate`/
+`rubble`/`bones`) already covered everything this dungeon's set pieces
+call for.
+
+- **`level_01` (The Outer Yard)**: `rubble` x2 near the propped gate,
+  `bones` x2 where the new `vulture`'s own carrion has piled up, a
+  `chest`+`crate` in the Locked Armory, a `bookshelf`+`rubble` in the
+  Watch Room (the intact half of the shelving next to the collapsed
+  half) plus a `crate` of unsorted paperwork by its entrance. Content: a
+  `vulture` and a `gold_pile` - see the roster table above.
+- **`level_02` (The Barracks)**: `bed` x3 (bedrolls), one `fireplace`
+  ("a fire that's clearly lit every night" is singular in the bible's
+  own prose, so only one), a `chest` (a personal stash), `barrel`+
+  `crate` next to the new `hunting_bow`+`arrows` - stored the way a
+  bandit would actually keep road-toll gear, next to what it's for. No
+  roster change - the bible's contrast with Prison Tower wants this
+  level's fights to stay straightforward and human-only.
+- **`level_03` (The Captain's Watch)**: the approach stays sparse (one
+  `bed`, one `rubble` patch for an old skirmish) so the Captain's own
+  perch reads as a step up - `table`+`chair` (his command post), `bed`
+  (his own quarters), `chest` (his stash). Content: a `lucky_charm` on
+  the approach, worn smooth by a bandit who didn't live to keep carrying
+  it. No roster change - `bandit_captain` must remain this level's only
+  spawn of that entity (arc-bible kill-quest constraint).
+
+Verification: all three levels re-validated via the real content loader
+(entity/item/decoration/door/stairs counts), full `pytest -q` (1373
+passed, no existing test asserted this dungeon's exact monster/item
+counts so none needed updating), `tools/preview.py data/dungeons` full
+registry, `main.py` smoke-launch, and a screenshot of each level via the
+scratchpad's `screenshot_dungeon.py` harness.
