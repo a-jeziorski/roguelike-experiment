@@ -82,10 +82,14 @@ habit, same as any institution; nobody's come back for the key since.
 
 Worse than upstairs, not better - the deeper level is the more flooded
 one, a long channel of standing floor threading through a much larger
-`sea` pool than `level_01`'s. `bone_plate` sits mid-channel, and a second
-`drowned_wretch` holds the room past it. This is the dungeon's structural
-climax: the most water, the most dangerous crossing, before the terminal
-stairs.
+`sea` pool than `level_01`'s. `bone_plate` sits mid-channel, guarded by
+a `drowned_wretch` right beside it; two more hold separate ground -
+one in the side room past the flood with the `waystation_manifest`, one
+on the dry southern corridor closer to the stairs down. Three on this
+level alone, not the single "second" wretch an earlier draft of this
+document implied - this is the dungeon's structural climax, and the
+population reflects it: the most water, the most guarded crossing,
+before the terminal stairs.
 
 ### 4. The Silt-Choked Corner (`level_02`, new this pass)
 
@@ -95,7 +99,7 @@ formless that found standing water it liked. `gray_ooze` (from the
 bestiary expansion in `data/entities.yaml` - "formless, patient, and
 indifferent to the difference between stone and flesh") sits further
 down the same floor channel as the Cellar Flood's `bone_plate`, past the
-first `drowned_wretch`. Placed here specifically because the flooded-crypt
+channel's own `drowned_wretch`. Placed here specifically because the flooded-crypt
 aesthetic already fits it better than any other shipped dungeon - this
 isn't Old Kingdom and isn't a person at all, just the water having sat
 long enough for something else to claim a corner of it.
@@ -117,7 +121,7 @@ to point at when it wants to reference this specific place.
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `drowned_wretch` (hp 11/atk 4/def 0, hostile_basic) | `level_01` x1, `level_02` x1 | The waystation's own leftover posting - Old Kingdom remnant, not an intruder. Deals 4/hit unarmored, dies in 3 hits - a straightforward fight, matching a place with no tactical intent behind it. |
+| `drowned_wretch` (hp 11/atk 4/def 0, hostile_basic) | `level_01` x1, `level_02` x3 | The waystation's own leftover posting - Old Kingdom remnant, not an intruder. Deals 4/hit unarmored, dies in 3 hits - a straightforward fight, matching a place with no tactical intent behind it. |
 | `gray_ooze` (hp 16/atk 4/def 1, hostile_basic) | `level_02` only, new this pass | See set piece 4 - the one thing here that isn't a leftover person. |
 
 ## Tone notes for anyone (agent or human) revising this later

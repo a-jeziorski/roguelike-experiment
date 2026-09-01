@@ -189,10 +189,17 @@ same "a deterrent works by being seen" logic Millhaven's own Town Guard
 set piece already established. Wayford being bigger and more trafficked
 than Millhaven is the justification for more than one.
 
-*Dialogue direction*: per-spawn override, distinct from Millhaven's
-guard's line but landing the same mechanical point (attacking any
-peaceful NPC here turns every guard on this map hostile, for the rest
-of the visit).
+*Dialogue direction*: **correction - neither of Wayford's two guards
+actually has a per-spawn `dialogue` override.** Both fall back to
+`town_guard`'s own catalog default ("Keep the peace and we've got no
+trouble between us."), the same line Millhaven's guard uses (Millhaven's
+own spawn sets it explicitly, redundantly, as a per-spawn line matching
+the default verbatim - so the *text* is identical either way, an
+earlier draft of this document's "distinct" claim was simply wrong). The
+shared catalog default lands the same mechanical point regardless
+(attacking any peaceful NPC here turns every guard on this map hostile,
+for the rest of the visit) - a real per-spawn line for at least one of
+Wayford's two guards would still be worth adding, but isn't there today.
 
 ### 7. The wandering villagers
 
@@ -261,13 +268,17 @@ isn't just a naming preference, it's load-bearing: `entity_id` is the
 global key `QuestLog.check_questgiver`/`check_delivery` match against,
 not scoped per-dungeon, so reusing `"shopkeeper"` or `"village_chief"`
 here would make talking to *Wayford's* NPC also grant or complete
-*Millhaven's* quests. One or two reused `town_guard` spawns (safe to
-reuse - no quest ever targets it by id) plus twelve plain `villager`
-spawns, all fourteen (twelve villagers plus the two named-with-dialogue
-spawns from set piece 7) given their own per-spawn `dialogue` - Wayford
-comfortably clears the 75% floor `docs/content_design_process.md` §1
-requires of a settlement's cast, though that floor no longer demands
-literally every spawn.
+*Millhaven's* quests. Two reused `town_guard` spawns (safe to
+reuse - no quest ever targets it by id) plus fourteen plain `villager`
+spawns (**correction - an earlier draft of this document said twelve**;
+the level file has always shipped fourteen distinct dialogued
+villagers), all fourteen given their own per-spawn `dialogue` (the
+dismissive villager, the three questgiver nudges, and the rest from set
+piece 7 are all the same generic `villager` catalog id, distinguished
+only by their per-spawn lines - not a separate subset of "named"
+spawns) - Wayford comfortably clears the 75% floor
+`docs/content_design_process.md` §1 requires of a settlement's cast,
+though that floor no longer demands literally every spawn.
 
 **`town_guard`'s existing catalog `description`** ("Keeps the peace on
 Millhaven's green, mostly by not needing to.") is Millhaven-specific

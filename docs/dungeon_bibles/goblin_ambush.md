@@ -38,50 +38,51 @@ travel.
 
 ## The one set piece: The Narrows
 
-A stand of trees just off the road, felled and dragged into a single
-choke - not a fortification, just enough deadwood piled between two thicker
-trunks to force anyone coming through into single file. The goblins picked
-the spot for exactly that reason: whoever's carrying word to Wayford has to
-funnel through it, and three goblins holding the clearing on the far side
-outnumber whatever gets through one at a time.
+**Corrected description - an earlier draft of this document described a
+felled-log chokepoint that was never actually built.** What ships today,
+and what this section now describes, is a single open clearing: no
+internal walls, no forced single-file gap, nothing separating
+`player_start` from the goblins but open ground. The level keeps the
+name "The Narrows" (`data/dungeons/goblin_ambush/levels/level_01.lvl`'s
+own `name` field) even though nothing in the level is narrow - read that
+as the goblins' own name for the spot (maybe there used to be a felled-
+log choke here and it's since rotted or been cleared), not as a
+description this document should keep asserting is still true.
 
-- **The road-side clearing** (south, around `player_start`): where the
-  player lands. `player_start` sits a couple tiles inboard of the open
-  south edge rather than right against it, so arriving doesn't put the
-  player one accidental step from immediately leaving again - but the
-  whole south tree line is walkable forest, so retreating never means
-  backtracking to one specific spot. Open ground, nothing else here; this
-  is "still safe," the moment before the choke.
-- **The narrows** (the single-tile gap in the felled-log wall, row 6):
-  the entire mechanical point of this map. `docs/content_design_process.md`
-  §2 is explicit that a first multi-monster fight needs a chokepoint so the
-  player doesn't get surrounded - this *is* that chokepoint, made
-  diegetic (felled trees, not a game-y invisible wall) rather than just a
-  corridor shape for its own sake.
-- **The goblin clearing** (north): where all 3 `goblin` spawns (hp
-  12/atk 4/def 1, unmodified - no reason to reinvent the stat block for a
-  first appearance) wait, spread across the clearing rather than clustered
-  on the gap - so even a goblin that hears the player coming has to cross
-  open ground to reach the narrows, giving the player at most one, maybe
-  two attackers at the choke itself rather than three at once. Per the
-  balance math (`docs/content_design_process.md` §2): the player kills one
-  goblin in 3 hits (`5 - 1 = 4` dmg/hit, `12 / 4 = 3`) and takes 3 dmg/hit
-  taken (`4 - 1 = 3`) - a real fight at the choke, not a formality, but
-  never a 3-on-1 pile-on if the player holds the gap rather than pushing
-  into the clearing.
+- **The clearing**: a 17x13 rectangle of `plains`, ringed by `forest` on
+  every side (see Terrain below), with no interior geometry of any kind.
+  `player_start` sits roughly in the lower third; all 3 `goblin` spawns
+  (hp 12/atk 4/def 1, unmodified) sit clustered near the top, 7-8 tiles
+  away - the player has open ground to close, or to retreat across, in
+  every direction.
+- **What this means for the fight `docs/content_design_process.md` §2
+  actually describes**: that section's chokepoint guidance ("a first
+  multi-monster fight needs a chokepoint so the player doesn't get
+  surrounded") does not apply to this level as shipped - there is no
+  chokepoint here to hold. A player who closes the distance risks
+  meeting some or all of the 3 goblins at once rather than one or two at
+  the choke, which the hits-to-kill math below was originally written
+  assuming wouldn't happen. This is worth revisiting as an actual level
+  change (adding the felled-log partition this document used to
+  describe) rather than something this bible can fix by description
+  alone - flagged here, not silently corrected into "working as
+  intended."
+- Per the unchanged balance math: the player kills one goblin in 3 hits
+  (`5 - 1 = 4` dmg/hit, `12 / 4 = 3`) and takes 3 dmg/hit taken
+  (`4 - 1 = 3`) per goblin actually landing hits - multiply by however
+  many of the 3 actually reach the player at once, since nothing in the
+  level's own geometry limits that number.
 
 ## Terrain
 
-Outdoor (`plains` interior + `forest` perimeter + `wall` only for the
-internal chokepoint partition, no dungeon `floor`/interior) - same tile
-vocabulary Millhaven/Wayford already established is valid on any dungeon
-level, not exclusive to settlements (`docs/content_design_process.md` §0c).
-`forest` (walkable, blocks line of sight per `TILE_PASSABILITY`) rings the
-whole map rather than a wall - it both reads as "the trees keep going
-past what's mapped" and is the actual walkable ring `open_boundary` needs
-to let the player reach an edge at all. The felled-log "wall" tiles (the
-internal partition only, not the border) get a `description` override
-rather than reading as a generic dungeon wall in look mode.
+Outdoor (`plains` interior + `forest` perimeter, no dungeon `floor`/
+interior, no interior `wall` of any kind) - same tile vocabulary
+Millhaven/Wayford already established is valid on any dungeon level, not
+exclusive to settlements (`docs/content_design_process.md` §0c). `forest`
+(walkable, blocks line of sight per `TILE_PASSABILITY`) rings the whole
+map rather than a wall - it both reads as "the trees keep going past
+what's mapped" and is the actual walkable ring `open_boundary` needs to
+let the player reach an edge at all.
 
 ## Explicitly out of scope
 

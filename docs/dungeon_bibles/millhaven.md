@@ -321,9 +321,9 @@ place of business, not a home: two chests of stock behind the counter,
 a table serving as the counter itself, one chair for whoever's waiting
 on a slow day - no bed here. If the shopkeeper sleeps elsewhere, that's
 someone else's business, not this one's to explain. Doesn't sell much:
-one Healing Potion, priced at what coin is actually still worth here -
-25 gold is a real ask, not a formality, given how little of it exists
-to find.
+a Healing Potion and a Teleportation Potion, priced at what coin is
+actually still worth here - 25 and 50 gold respectively are a real ask,
+not a formality, given how little of it exists to find.
 
 *Dialogue*: *"Coin still spends here, same as it always did. Rare
 enough these days that I don't ask where it came from."*

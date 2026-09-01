@@ -79,17 +79,27 @@ better than a single-target kill would have.
 
 ## Roster and balance (one existing, previously unplaced monster)
 
-`wolf` (hp 14/atk 5/def 1, `hostile_basic`, xp 5) - already in
-`data/entities.yaml`, not yet placed in any level before this pass. No
-new monster type, no stat changes.
+`wolf` (hp 14/atk 5/def 1, `pack_hunter` - `pack_radius: 3`,
+`pack_attack_bonus: 2`, xp 5) - already in `data/entities.yaml`, not yet
+placed in any level before this pass. No new monster type, no stat
+changes. **Correction: an earlier draft of this section called this
+`hostile_basic`, "no gimmick" - wrong.** Wolves are `pack_hunter`, and
+that mechanic is the actual reason the den reads as dangerous, not
+incidental: any wolf within `pack_radius` of another live wolf hits for
+`atk + pack_attack_bonus` (7, not the base 5) instead of its plain stat
+line, so the den's real bite scales with how many wolves are still alive
+and close together, not just their base attack.
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `wolf` | Throughout The Den (6, after a balance pass - see below) | The pack itself - straightforward `hostile_basic` fights, no gimmick. The `dark: true` flag (not a monster stat) is what makes this level distinct from an ordinary wolf encounter elsewhere. |
+| `wolf` | Throughout The Den (6, after a balance pass - see below) | The pack itself - `pack_hunter` is exactly the mechanic this set piece needs: a den reads as a *pack*, not six identical solo fights, because wolves near each other actually hit harder together. The `dark: true` flag (not a monster stat) is what makes this level distinct from an ordinary wolf encounter elsewhere. |
 
 Hits-to-kill against player baseline (30 hp/5 atk/1 def): wolf dies in 4
-hits and deals 4 damage per hit landed. **This dungeon's earlier framing
-- "no rebalancing needed" at player baseline - was wrong**: the only
+hits; a lone wolf deals 4 damage per hit landed, rising to 6/hit
+(`atk 7 - def 1`) once another wolf is within `pack_radius` - which the
+den's own layout makes the common case, not the exception. **This
+dungeon's earlier framing - "no rebalancing needed" at player baseline -
+was wrong**: the only
 in-fiction route to `clearing_the_sunless_hollow` runs through
 Farrow's Stake well after the game's start, by which point
 `balance_reference_xp: 40` is the actual expected investment, not 0.

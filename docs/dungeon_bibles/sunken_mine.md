@@ -71,9 +71,12 @@ day's quota.
 *Why it's first*: this is the dungeon's thesis statement, shown before
 it's told. A player who reads the counter and the tally board should
 already understand the whole dungeon's tragedy before meeting a single
-named threat. Nothing dangerous should be staged directly in this room -
-let it breathe. Rats are fine skittering at its edges; nothing should
-be fighting here.
+named threat - even with a `kobold`/`kobold_shaman` trio actually staged
+in this same room (see the Populating the Bestiary note below; an
+earlier draft of this document said nothing should be fighting here, but
+that was written before this pass added them), the landmarks themselves
+still read first, since the fight is what's *in* the room, not what the
+room's own two set pieces are about.
 
 ### 2. The Foreman's Office (`level_02`)
 
@@ -168,9 +171,16 @@ means walking away from that answer, not past it.
 
 ## Roster and balance (unchanged constraint: reuse the existing catalog)
 
-Per the original brief, this dungeon introduces **no new monsters** -
-its novelty is structural and narrative, not catalog growth. That held
-for monsters through this pass too; it no longer holds for items. A
+Per the original brief, this dungeon introduced **no new monsters** at
+the time this document was first written - its novelty was meant to be
+structural and narrative, not catalog growth. **That claim no longer
+holds**: a later pass added a `kobold`/`kobold_shaman` trio to the
+Weighhouse (see set piece 1 above) and an `orc` to the
+Blocked Face (see set piece 5 below), neither reconciled into this
+section until now. It still holds for items only in the narrower sense
+below - the item *types* this section documents were the only ones
+added on top of the original three-monster roster; monsters were a
+separate, later addition. A
 later pass added `gold_pile`/`gold_stash` (a new collectible-currency
 item type, not specific to this dungeon) in three places, each reusing
 lore already written into this document rather than inventing new
@@ -193,28 +203,33 @@ than scattering the same three monster types evenly:
 
 | Monster | Where | Why here specifically |
 |---|---|---|
-| `rat` (hp 6/atk 2/def 0, skittish) | Weighhouse edges, Vermin Warren | Background vermin; the "arrived first" half of the warren's story. |
-| `goblin` (hp 12/atk 4/def 1, hostile_basic) | Gallery approaches, Sump crossing, Vermin Warren | The mine's actual squatters; the one guarding the sump ledge is the dungeon's only "ambush" beat. |
-| `skeleton` (hp 16/atk 5/def 2, sleeping_guard) | The Blocked Face only | Used exactly once, as the climax - see set piece 5. Every other skeleton in the game is a generic guard; this is the one place its `sleeping_guard` behavior is load-bearing to the story, not just to pacing. |
+| `rat` (hp 6/atk 2/def 0, skittish) | level_01 x2 (Weighhouse door approach, near the stairs down), level_02 x1 (Foreman's Gallery entrance), level_03 x2 (Vermin Warren) | Background vermin; the "arrived first" half of the warren's story, seeded early on every level before it. |
+| `goblin` (hp 12/atk 4/def 1, hostile_basic) | level_01 x2 (guarding the locked-door key), level_02 x3 (gallery approaches, the sump ledge), level_03 x2 (Vermin Warren) | The mine's actual squatters; the one guarding the sump ledge is the dungeon's only "ambush" beat. |
+| `kobold` (hp 8/atk 3/def 0, hostile_basic) x2, `kobold_shaman` (hp 9/atk 3/def 0, `ranged_basic`, range 4) x1 | level_01, the Weighhouse itself | Added in a later pass, staged directly in the set piece 1 room (see the note there) - a real fight in the same room as the dungeon's own "thesis statement" landmarks, not staged at its edges the way the rats are. |
+| `skeleton` (hp 16/atk 5/def 2, sleeping_guard) | The Blocked Face only (`level_03`) | Used exactly once - see set piece 5. Every other skeleton in the game is a generic guard; this is the one place its `sleeping_guard` behavior is load-bearing to the story, not just to pacing. |
+| `orc` (hp 15/atk 5/def 1, `enrage`) | The Blocked Face, alongside the skeleton (`level_03`) | Also added in a later pass, unreconciled into this document until now - the actual hardest single fight at the Blocked Face is now this pairing, not the skeleton alone (see below). |
 
-Hits-to-kill against player baseline (30 hp / 5 atk / 1 def) are
-unchanged from every other use of these three monsters elsewhere in the
-game (no stats are being touched): rat dies in 3 hits and deals 1/hit;
-goblin dies in 4 hits and deals 3/hit; skeleton dies in 6 hits and deals
-4/hit. The skeleton at the Blocked Face is the hardest single fight in
-the dungeon by simple virtue of being fought alone and at full health
-after two levels of attrition - no stat changes needed to make it feel
-like the climax.
+Hits-to-kill against player baseline (30 hp / 5 atk / 1 def), no stats
+touched: rat dies in 3 hits and deals 1/hit; goblin dies in 4 hits and
+deals 3/hit; kobold dies in 2 hits and deals 2/hit (its shaman variant
+the same, from range); skeleton dies in 6 hits and deals 4/hit; orc
+dies in 4 hits and deals 4/hit, tougher once `enrage` kicks in under
+30% hp. **The Blocked Face's actual difficulty is the skeleton and the
+orc fought together**, not the skeleton alone as an earlier draft of
+this document claimed - the room's toughest-single-fight framing still
+holds, it just needs both monsters' math, not one.
 
 Items stay close to the original placement, reframed with intent: a
 `rusty_dagger` early (level_01, unguarded - a spare pick-hook nobody
-thought worth locking up), a `rusty_key` unlocking `leather_armor` in a
-weighhouse locker (level_01), a second `rusty_key` unlocking the
-Foreman's Office and its `iron_sword` (level_02, see set piece 2),
-`hunting_bow`+`arrows` found loose in the gallery (level_02), and a
-`healing_potion` each on level_02 (near the sump) and level_03 (before
-the Vermin Warren) - the second one specifically positioned as a "brace
-yourself" beat ahead of the warren and the climax beyond it.
+thought worth locking up), a `teleportation_potion` in the Weighhouse
+itself (level_01, unreconciled into this document until now), a
+`rusty_key` unlocking `leather_armor` in a weighhouse locker (level_01),
+a second `rusty_key` unlocking the Foreman's Office and its `iron_sword`
+(level_02, see set piece 2), `hunting_bow`+`arrows` found loose in the
+gallery (level_02), and a `healing_potion` each on level_02 (near the
+sump) and level_03 (before the Vermin Warren) - the second one
+specifically positioned as a "brace yourself" beat ahead of the warren
+and the climax beyond it.
 
 ## Tone notes for anyone (agent or human) revising this later
 

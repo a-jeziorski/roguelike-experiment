@@ -88,8 +88,10 @@ place is still doing something, not just old.
 
 ### 2. The Fallen Travelers' Gear (`level_01`)
 
-Scattered at the compass points of the outer ring: a sword, a stitch of
-armor, a stoppered potion. None of it belongs to the Cairn or to
+Scattered around the outer ring: a stitch of armor and a stoppered
+potion sitting at the ring's west and east compass points, a sword at
+the south-corridor junction closer to the centerline. None of it belongs
+to the Cairn or to
 whatever the Cairn belongs to - it's ordinary traveler's gear, the kind
 someone in the Long Quiet would carry on any dangerous road. Nobody
 explains why it's here instead of with whoever carried it. Nobody

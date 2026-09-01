@@ -91,10 +91,11 @@ through, now occupied by people who don't intend to leave.
 
 ### 3. The Captain's Corner (climactic)
 
-Not a separate room - the Common Room's best-sealed corner, the one spot
-even the wind can't reach, claimed by whoever's currently in charge the
-same "won an argument, most recently" logic `broken_watch.md` already
-establishes for its own captain. `windrest_captain` is centered here, and
+A genuinely separate, walled-off room in the Common Room's far corner -
+one doorway gap, no other way in - the one spot even the wind can't
+reach, claimed by whoever's currently in charge the same "won an
+argument, most recently" logic `broken_watch.md` already establishes for
+its own captain. `windrest_captain` is centered here, and
 here only - **this must remain the dungeon's single spawn of that
 entity**, since `farrows_stake.md`'s `reclaiming_the_windrest` quest
 (originally Windbreak Hold's, before that settlement folded into

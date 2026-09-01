@@ -63,7 +63,7 @@ geometry and named set pieces from scratch rather than restructuring:
 
 | Level | Name | Set pieces it holds |
 |---|---|---|
-| `level_01` | The Outer Yard | The Broken Gate, The Watch Room |
+| `level_01` | The Outer Yard | The Broken Gate, The Watch Room, The Locked Armory |
 | `level_02` | The Barracks | The Barracks Floor, a fortified chokepoint |
 | `level_03` | The Captain's Watch | The Captain's Perch |
 
@@ -95,6 +95,20 @@ Old Kingdom institutional decay elsewhere in the world.
 *Why it's here*: gives `road_ledger` a placement that explains itself -
 the bandits don't value records, so of course it's just sitting here,
 unguarded, exactly as the arc bible requires.
+
+### 2b. The Locked Armory (`level_01`)
+
+The Watch Room's mirror on the other side of the entrance - a second
+small room, this one locked (`door: rusty_key`), holding a single
+`leather_armor`. The matching `rusty_key` sits loose in the open yard,
+guarded by nothing - a reward gate off the critical path, same
+"bonus, never required" convention every locked door in this project
+follows (`content_design_process.md` §3).
+
+*Why it's here*: the Watch Room's unguarded record-keeping shows what
+the bandits don't value; this room, locked even though nothing living
+guards it, shows the one thing they do - whatever gear was worth
+carrying off the road gets kept behind a door, records don't.
 
 ### 3. The Barracks Floor (`level_02`)
 
@@ -139,6 +153,7 @@ dungeon, it's completing "Clearing the Watch Road" at the same moment.
 |---|---|---|
 | `bandit` (hp 13/atk 5/def 1, hostile_basic) | `level_01`, `level_02` | The Watch's actual population - straightforward fights, no gimmick, matching people who took this place for its walls, not for any tactical cleverness. |
 | `rat` (hp 6/atk 2/def 0, skittish) | `level_01` | Ordinary vermin - a garrison this informally kept has them same as anywhere else abandoned-then-reoccupied. |
+| `giant_rat` (hp 10/atk 3/def 0, regenerator) | `level_01` | A step up from the plain rat sharing this level - vermin that's been thriving here a while, not just passing through. |
 | `bandit_captain` (hp 20/atk 7/def 2, hostile_basic) | `level_03` only | The dungeon's climax and the arc's kill-quest target - see set piece 5. Never placed anywhere else; **this constraint is load-bearing for `docs/quest_bibles/wayford_arc.md`'s kill-quest, not just pacing.** |
 
 Hits-to-kill against player baseline (30 hp / 5 atk / 1 def), unchanged

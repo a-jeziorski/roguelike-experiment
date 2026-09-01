@@ -85,8 +85,8 @@ departure from.
 
 *Why it's first*: establishes the mundane Long Quiet register before
 the dungeon starts getting older underfoot. The locked side-cellar (a
-`hunting_bow`/`arrows` cache) is the dungeon's first reward gate, off
-the critical path per convention.
+`hunting_bow`/`arrows`/`healing_potion` cache) is the dungeon's first
+reward gate, off the critical path per convention.
 
 ### 2. The Standing Water (`level_02a`)
 
@@ -108,9 +108,10 @@ lives at the convergence and past it, not here.
 The Goblin Warren: the same tier of burial ruin as `level_02a`, but
 occupied rather than merely flooded - goblins have moved into an older
 crypt the same unceremonious way they moved into the cellar above,
-claiming space rather than understanding what it originally was. The
-mine's... rather, the crypt's actual find here is an `iron_sword`,
-sitting where whoever built this crypt would recognize it least.
+claiming space rather than understanding what it originally was. A
+`hobgoblin` stands with them, guarding the crypt's actual find - an
+`iron_sword`, sitting where whoever built this crypt would recognize it
+least.
 
 *Why it's the stronger path*: the branch's other half - a real choice
 between two distinct tones (a quiet, damp, guarded crypt vs. an occupied
@@ -230,9 +231,10 @@ change, only the room around it.
 |---|---|---|
 | `rat` (hp 6/atk 2/def 0, skittish) | `level_01`, `level_04` | Background vermin, present from the mundane top of the dungeon to the bone-filled depths - the one creature unbothered by which era's stonework it's standing in. |
 | `goblin` (hp 12/atk 4/def 1, hostile_basic) | `level_01`, `level_02b` | Present-day squatters, claiming space in both the cellar above and the crypt below it the same unceremonious way. |
+| `hobgoblin` (hp 18/atk 6/def 2, hostile_basic) | `level_02b` | Guards the Goblin Warren's `iron_sword` alongside the goblin there - a real step up in stats, matching the "stronger path" framing set piece 3 gives this branch. |
 | `skeleton` (hp 16/atk 5/def 2, sleeping_guard) | `level_02a` (x2), `level_03`, `level_04` (x2 with `skeleton_archer`) | This dungeon's most-used guardian type - "old, grim magic," per its own catalog description, doing the same thing at every depth. Its `sleeping_guard` AI is exactly why it reads as "guarding" a crypt or a throne without needing a motive spelled out. |
 | `skeleton_archer` (hp 12/atk 4/def 1, ranged_basic) | `level_04` | Keeps distance in the ossuary's more open bone-hall, a ranged counterpoint to the melee skeletons stationed nearby. |
-| `ogre` (hp 28/atk 8/def 3, hostile_basic) | `level_03`, `level_05` | The dungeon's heaviest single fight, used twice - once at the convergence (`level_03`), once at the true bottom (`level_05`). Both placements come late enough that a player has had a real chance at `iron_sword`/`leather_armor` first (see the branch fairness note above), consistent with `content_design_process.md` §2's warning that the ogre "should never be the first fight a player can reach without a weapon upgrade already in hand." |
+| `ogre` (hp 28/atk 8/def 3, hostile_basic) | `level_03`, `level_05` (`elite: true`) | The dungeon's heaviest single fight, used twice - once at the convergence (`level_03`), once, boosted, at the true bottom (`level_05`) - the `level_05` spawn's `elite: true` flag (`content_design_process.md` §0w) bumps its hp/attack/xp and guarantees its drop, matching "the true bottom" being meant to hit harder than the mid-dungeon version of the same fight. Both placements come late enough that a player has had a real chance at `iron_sword`/`leather_armor` first (see the branch fairness note above), consistent with `content_design_process.md` §2's warning that the ogre "should never be the first fight a player can reach without a weapon upgrade already in hand." |
 
 Hits-to-kill against player baseline (30 hp / 5 atk / 1 def), unchanged
 stats (no rebalancing this pass - the revision is geometry only): rat

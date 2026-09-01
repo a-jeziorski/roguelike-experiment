@@ -113,9 +113,9 @@ chance to hand it out.
 
 ### 4. The Cellblock (`level_03`)
 
-Four small cell-alcoves off a shared corridor - a `feral_prisoner`, a
-`rat`, and a resupply beat (`healing_potion`, `arrows`) before the final
-level. This is the dungeon's "vermin and the broken" floor - what's left
+Eight small cell-alcoves off a shared corridor (four to a side) - a
+`feral_prisoner`, a `rat`, and a resupply beat (`healing_potion`,
+`arrows`) spread across them before the final level. This is the dungeon's "vermin and the broken" floor - what's left
 of the people this prison actually held, alongside what's moved in since
 nobody's been exterminating pests either.
 
@@ -177,11 +177,14 @@ note directly below, isn't expected to be winnable on a first pass.
 
 **Escape-route feasibility (verified this pass via an actual playthrough,
 not just arithmetic on paper)**: `guard` and `crossbow_guard` are both
-effectively mandatory on `level_01` - the room is one open space with no
-interior walls to break line of sight, and neither `hostile_basic` nor
-`ranged_basic` has any stealth/alert-radius gate (see
-`content_design_process.md`), so both monsters close in or open fire the
-moment they're anywhere in the player's own FOV. Fighting both back to
+effectively mandatory on `level_01`. `crossbow_guard` sits in a small
+pocket set off from the rest of the room by a short wall, but that
+pocket connects back to the open floor through a single unwalled row -
+enough of a sightline that neither `hostile_basic` nor `ranged_basic`
+(neither of which has any stealth/alert-radius gate, see
+`content_design_process.md`) needs the player to walk past the wall to
+notice them; both monsters close in or open fire the moment they're
+anywhere in the player's own FOV. Fighting both back to
 back, bare-handed, against player baseline costs roughly 28-34 damage -
 more than the entire starting HP pool, and the `rusty_dagger` alone
 (reachable first, right at the room's entrance) only brings that down to

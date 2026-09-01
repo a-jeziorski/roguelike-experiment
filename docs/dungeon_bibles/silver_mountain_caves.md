@@ -80,11 +80,27 @@ supposed to be here yet on day 1, and for a while it was anyway. Not a
 set piece of its own, no separate write-up below - it's `level_01` minus
 the conflict, not a new story.
 
+**Correction: this "before" state isn't a dead end.**
+`level_01_undisturbed`'s own `stairs_down` leads to a real, fully-built
+`level_02_undisturbed.lvl` ("The Warren," before) - a denser, more
+heavily-populated version of the Warren (roughly nine `cave_spider` and
+three `giant_spider` spawns, no goblins) that its own `stairs_down` in
+turn rejoins the main path at `level_03`. An earlier draft of this
+document said the pre-conflict Upper Reaches had "no way down" and never
+mentioned this level's existence at all - both wrong. The undisturbed
+branch is a genuine, if unremarked-on, parallel path through the first
+two floors: cave spiders at full population instead of a goblin-thinned
+one, with no separate write-up of its own for the same reason
+`level_01_undisturbed` doesn't get one - it's `level_02` minus the
+conflict, not a new story, just one this document failed to actually
+account for until now.
+
 | Level | Name | Set pieces it holds |
 |---|---|---|
 | `level_01` | The Upper Reaches | The Territory Marker, The Outer Pickets, The Spider Dens |
 | `level_02` | The Warren | The Heart of the Tribe, The Sealed Passage |
-| `level_01_undisturbed` | The Upper Reaches (before) | Cave spider dens only - no goblins, no way down |
+| `level_01_undisturbed` | The Upper Reaches (before) | Cave spider dens only - no goblins |
+| `level_02_undisturbed` | The Warren (before) | **Undocumented until now** - see the correction note below |
 | `level_03` | The Blind Reach | The Deep Population |
 | `level_04` | The Broodmother's Hall | The Broodmother |
 | `level_05` | The Elder's Den | The Elder Widow |
@@ -161,7 +177,11 @@ materials, the visible bulk of the migration that broke off from the
 larger horde. Cave spider dens persist here too - five of them, scattered
 through side-pockets the same way `level_01`'s were, proof the spiders
 never fully abandoned the caves even as the goblins spread through them,
-just retreated to whatever corners hadn't been claimed yet.
+just retreated to whatever corners hadn't been claimed yet. One
+`giant_spider` also holds a den here - unmentioned in an earlier draft
+of this document, the same "bigger, further in" escalation the
+Silversilk-depths bestiary uses deliberately elsewhere in this dungeon
+(see "The Depths" below), just one early instance of it.
 
 *Why denser, not harder*: no stat changes from `level_01`'s goblins - the
 challenge scales through encounter frequency and the wider, more open
@@ -195,13 +215,14 @@ population, and everything above the fall are all unchanged - see "The
 Depths" below for what's actually past it now.
 
 The rockfall was originally a pure landmark, not a way out (now a real
-`stairs_down`, per above) - every level in a real dungeon needs its own
-way to leave regardless (`requires_stairs_down`'s actual enforcement is
-per-level, not merely "somewhere in the dungeon"), so `level_02` also
-has a second, narrow crack elsewhere in the warren, cold air bleeding
-through it from the surface: a way out that isn't the one the player
-came in by, distinct from the fall and placed well clear of it. Two
-different ways down/out of this level, neither contradicting the other.
+`stairs_down`, per above). **Correction: there is no second exit.** An
+earlier draft of this document described a second, narrow crack
+elsewhere in the warren as an independent way out, distinct from the
+fall - no such tile exists in the shipped level, which has exactly one
+`stairs_up` (back to `level_01`) and the fall's own `stairs_down`
+(`Z`, to `level_03`), same as every other level in this dungeon. That
+pair already satisfies `requires_stairs_down`'s per-level enforcement on
+its own; the second crack was never actually needed.
 
 ## Roster and balance, levels 1-2 (no new monsters here)
 
