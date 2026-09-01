@@ -15,6 +15,7 @@ from content.schema import (
     AI_REGENERATOR,
     AI_SKITTISH,
     AI_SLEEPING_GUARD,
+    AI_SPLITTER,
     AI_TOWN_GUARD,
     AI_VILLAGER,
     EFFECT_POISON,
@@ -29,7 +30,14 @@ from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import POTION_KINDS, Entity, apply_perk_stat_bonus
-from engine.game_map import GameMap, apply_dungeon_destruction, build_game_map, item_entity_from_def
+from engine.game_map import (
+    GameMap,
+    apply_dungeon_destruction,
+    build_game_map,
+    entity_from_def,
+    item_entity_from_def,
+    nearby_walkable_tiles,
+)
 from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
@@ -390,6 +398,40 @@ class Engine:
             if entity.xp_reward:
                 self._award_xp(entity.xp_reward, "kill")
             self._maybe_drop_loot(entity)
+            self._maybe_split(entity)
+
+    def _maybe_split(self, entity: Entity) -> None:
+        """AI_SPLITTER's whole hook - on death, spawns entity.split_count
+        copies of itself at free adjacent tiles (nearby_walkable_tiles,
+        radius=1), built fresh from the same EntityDef via entity_from_def
+        so a copy carries every field a real spawn would, not a
+        hand-maintained duplicate field list. Each copy's max_hp is
+        ceil(this entity's own *current* max_hp * split_hp_fraction) -
+        this entity's own max_hp, not the catalog base, so an
+        elite-scaled splitter (§0w) splits into elite-sized-fraction
+        copies too. Spawned copies carry can_split=False so a chain can't
+        cascade forever. No-ops if this entity isn't a splitter, can't
+        split (a copy of a copy), has nowhere to put a copy (surrounded),
+        or self.catalog/its own catalog entry is missing."""
+        if (
+            entity.split_count is None
+            or entity.split_hp_fraction is None
+            or not entity.can_split
+            or self.catalog is None
+            or entity.entity_id not in self.catalog.entities
+        ):
+            return
+        edef = self.catalog.entities[entity.entity_id]
+        child_max_hp = max(1, math.ceil(entity.fighter.max_hp * entity.split_hp_fraction))
+        spawn_tiles = nearby_walkable_tiles(self.game_map, entity.x, entity.y, entity.split_count, radius=1)
+        for x, y in spawn_tiles:
+            child = entity_from_def(edef, x, y)
+            child.fighter.max_hp = child_max_hp
+            child.fighter.hp = child_max_hp
+            child.can_split = False
+            self.game_map.entities.append(child)
+        if spawn_tiles:
+            self.message_log.add(f"The {entity.name} splits into {len(spawn_tiles)} more!", category="combat")
 
     def _maybe_drop_loot(self, entity: Entity) -> None:
         """Rolls entity's own drop_chance (if any) and, on success, places
@@ -692,6 +734,13 @@ class Engine:
 
         elif entity.ai == AI_REGENERATOR:
             self._regenerate(entity)
+            self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_SPLITTER:
+            # Chases and attacks exactly like hostile_basic - splitting
+            # itself is a death trigger (_maybe_split, on_entity_death),
+            # not a turn-by-turn behavior, so there's nothing extra to do
+            # on an ordinary turn.
             self._chase_and_attack(entity, dx, dy, distance)
 
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:

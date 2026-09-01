@@ -165,6 +165,9 @@ class Entity:
         regen_amount: int | None = None,
         drop_item_id: str | None = None,
         drop_chance: float | None = None,
+        split_count: int | None = None,
+        split_hp_fraction: float | None = None,
+        can_split: bool = True,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -218,6 +221,15 @@ class Entity:
         # mutated - same shape as inflicts_effect above.
         self.drop_item_id = drop_item_id
         self.drop_chance = drop_chance
+        # AI_SPLITTER's static config, same shape as drop_item_id/drop_chance
+        # above - split_count/split_hp_fraction set once at spawn, never
+        # mutated. can_split is different: still set once at spawn, but
+        # explicitly False on a spawned copy (see Engine._maybe_split) so a
+        # split chain can't cascade forever - true for everything else,
+        # harmless for a non-splitter, which never reads it.
+        self.split_count = split_count
+        self.split_hp_fraction = split_hp_fraction
+        self.can_split = can_split
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

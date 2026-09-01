@@ -2091,6 +2091,64 @@ design-review render, not gameplay), and saves an image - two or more
 screenshots, camera repositioned per shot, if the map is taller than
 `VIEWPORT_HEIGHT`. Look at it before declaring the layout done.
 
+## 0ag. Splitter - a death-triggered AI behavior (`slime`)
+
+The first of a new round of AI behaviors, and the first one whose whole
+effect happens at *death* rather than on the entity's own turn -
+`AI_SPLITTER`'s turn-by-turn behavior is just `hostile_basic`'s
+chase-and-attack; `Engine._maybe_split`, called from `on_entity_death`
+right alongside `_maybe_drop_loot`, is the entire mechanic.
+`EntityDef.split_count`/`split_hp_fraction` are "both or neither," same
+shape as `drop_item_id`/`drop_chance`.
+
+**Built entirely from two helpers that already existed** -
+`engine/game_map.py`'s `entity_from_def` (already used by
+`Engine._maybe_spawn_visitor_band`'s runtime encounter spawns, per §0ad)
+and `nearby_walkable_tiles` (already used by the same feature to place a
+band without landing on top of the player). `_maybe_split` calls
+`entity_from_def(edef, x, y)` for each child instead of hand-listing every
+field a monster spawn needs - a copy is built the same way a *real* spawn
+would be, so it can never silently drift out of sync with what
+`build_game_map`'s own spawn loop sets. This is the same "don't
+re-implement, reuse the extraction" instinct `item_entity_from_def`
+already established for items.
+
+**Scales off the entity's own current `max_hp`, not the catalog base** -
+`child_max_hp = ceil(entity.fighter.max_hp * split_hp_fraction)` reads
+`entity.fighter.max_hp`, which already reflects any elite scaling (§0w)
+applied at spawn time. An elite-scaled slime therefore splits into
+elite-sized-fraction children automatically, with no elite-awareness
+needed inside `_maybe_split` itself - the same "read the live value, not
+the definition" principle `is_enraged`/`effective_attack` already follow.
+
+**Splits exactly once, never cascades.** A spawned child carries
+`can_split=False` (an `Entity`-level flag, defaulting `True`, set once at
+spawn and never mutated except here) - without it, each child would
+itself be `AI_SPLITTER` with its own `split_count`/`split_hp_fraction`
+still set, and could split again on its own death, and so on, potentially
+without bound. One level of splitting is the intended shape (kill the
+slime, kill up to two smaller slimes, done) - a hits-to-kill accounting
+for a splitter has to count every subsequent child's own hp too, not just
+the original's, which is genuinely more total HP than the original alone
+(here: 16 + 2×ceil(16×0.4) ≈ 16 + 14 = 30 hp worth of hits across the
+whole encounter, not 16).
+
+**Placement is opportunistic, not guaranteed** -
+`nearby_walkable_tiles(self.game_map, entity.x, entity.y, entity.split_count, radius=1)`
+returns however many free adjacent tiles actually exist (down to zero if
+the slime died somewhere fully boxed in), and `_maybe_split` spawns
+exactly that many, never more than requested and never erroring on fewer.
+A slime killed in a cramped corridor might only produce one child, or
+none at all, instead of the two `split_count` asks for - accepted as
+correct, not a bug to guard against, since "however much room there
+happens to be" is the honest answer to "where do the children go."
+
+Ships one real example, `slime` (`data/entities.yaml`) - deliberately
+*not* placed into a level yet, matching the original "define now, place
+later" pattern the very first bestiary-expansion pass used (§0t), since
+this round of AI behaviors is being built and reviewed one at a time
+before any of them get placed into real dungeons.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

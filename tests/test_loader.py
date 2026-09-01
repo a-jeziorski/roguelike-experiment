@@ -386,6 +386,7 @@ def test_load_catalog_rejects_drop_item_id_on_a_peaceful_entity(tmp_path):
         ("bandit_captain", 20, 7, 2, "hostile_basic"),
         ("drowned_wretch", 11, 4, 0, "hostile_basic"),
         ("stone_sentinel", 30, 5, 3, "hostile_basic"),
+        ("slime", 16, 3, 0, "splitter"),
     ],
 )
 def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):

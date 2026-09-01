@@ -75,6 +75,7 @@ def make_monster(
     enrage_hp_pct=None, enrage_attack_bonus=None,
     pack_radius=None, pack_attack_bonus=None, regen_amount=None,
     drop_item_id=None, drop_chance=None,
+    split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -103,7 +104,11 @@ def make_monster(
         regen_amount=regen_amount,
         drop_item_id=drop_item_id,
         drop_chance=drop_chance,
+        split_count=split_count,
+        split_hp_fraction=split_hp_fraction,
+        can_split=can_split,
         stationary=stationary,
+        entity_id=entity_id,
     )
 
 
@@ -1014,6 +1019,143 @@ def test_regenerator_uses_default_regen_amount_when_unset():
     engine.process_turn(WaitAction())
 
     assert monster.fighter.hp == 12  # DEFAULT_REGEN_AMOUNT = 2
+
+
+# --- splitter (spawns weaker copies on death) ---
+
+
+def test_splitter_spawns_copies_on_death_at_adjacent_tiles():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0)
+    slime = make_monster(
+        2, 2, hp=10, attack=3, defense=0, ai="splitter",
+        split_count=2, split_hp_fraction=0.4, entity_id="slime",
+    )
+    game_map.entities.extend([player, slime])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(slime)
+
+    children = [e for e in game_map.entities if e.entity_id == "slime"]
+    assert len(children) == 2
+    for child in children:
+        assert child.fighter.max_hp == 4  # ceil(10 * 0.4)
+        assert child.fighter.hp == 4
+        assert child.name == "Slime"
+        assert child.can_split is False  # can't cascade
+        assert max(abs(child.x - 2), abs(child.y - 2)) == 1  # adjacent to where the parent died
+    assert any("splits into 2 more" in m for m in engine.message_log.messages)
+
+
+def test_splitter_copies_cannot_split_again():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0)
+    slime = make_monster(
+        2, 2, hp=10, attack=3, defense=0, ai="splitter",
+        split_count=2, split_hp_fraction=0.4, entity_id="slime", can_split=False,
+    )
+    game_map.entities.extend([player, slime])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(slime)
+
+    assert [e for e in game_map.entities if e.entity_id == "slime"] == []
+    assert not any("splits into" in m for m in engine.message_log.messages)
+
+
+def test_splitter_uses_the_entitys_own_current_max_hp_not_the_catalog_base():
+    """A slime with a boosted max_hp (elite-scaled, or otherwise) splits
+    into copies scaled off its own current max_hp, not entities.yaml's
+    base hp=16 - so an elite splitter's children are elite-sized too."""
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0)
+    slime = make_monster(
+        2, 2, hp=40, attack=3, defense=0, ai="splitter",
+        split_count=1, split_hp_fraction=0.5, entity_id="slime",
+    )
+    game_map.entities.extend([player, slime])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(slime)
+
+    children = [e for e in game_map.entities if e.entity_id == "slime"]
+    assert len(children) == 1
+    assert children[0].fighter.max_hp == 20  # ceil(40 * 0.5), not ceil(16 * 0.5)
+
+
+def test_splitter_spawns_fewer_copies_when_space_is_limited():
+    """split_count=2, but only one adjacent tile is actually free - (2,1)
+    is walkable but occupied by the player, so nearby_walkable_tiles can
+    only offer one spot. Fewer than requested spawn; the request never
+    crashes or blocks on missing space."""
+    game_map = make_open_map(3, 3)
+    game_map.walkable[:, :] = False
+    for x, y in [(1, 1), (0, 1), (2, 1)]:
+        game_map.walkable[x, y] = True
+    catalog = load_catalog()
+    player = make_player(2, 1)
+    slime = make_monster(
+        1, 1, hp=10, attack=3, defense=0, ai="splitter",
+        split_count=2, split_hp_fraction=0.4, entity_id="slime",
+    )
+    game_map.entities.extend([player, slime])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(slime)
+
+    children = [e for e in game_map.entities if e.entity_id == "slime"]
+    assert len(children) == 1
+    assert (children[0].x, children[0].y) == (0, 1)
+
+
+def test_splitter_spawns_nothing_when_completely_surrounded():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[:, :] = False
+    game_map.walkable[1, 1] = True  # the slime's own tile, nothing adjacent walkable
+    catalog = load_catalog()
+    player = make_player(1, 1)  # overlapping the slime is fine - this test never moves either
+    slime = make_monster(
+        1, 1, hp=10, attack=3, defense=0, ai="splitter",
+        split_count=2, split_hp_fraction=0.4, entity_id="slime",
+    )
+    game_map.entities.append(slime)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(slime)
+
+    assert [e for e in game_map.entities if e.entity_id == "slime"] == []
+    assert not any("splits into" in m for m in engine.message_log.messages)
+
+
+def test_non_splitter_monster_never_splits():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0)
+    monster = make_monster(2, 2, hp=10, attack=3, defense=0, ai="hostile_basic", entity_id="rat")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.on_entity_death(monster)
+
+    assert len(game_map.entities) == 1  # just the player - monster removed, nothing spawned
+
+
+def test_splitter_without_a_catalog_does_not_crash():
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0)
+    slime = make_monster(
+        2, 2, hp=10, attack=3, defense=0, ai="splitter",
+        split_count=2, split_hp_fraction=0.4, entity_id="slime",
+    )
+    game_map.entities.extend([player, slime])
+    engine = Engine(game_map, player, "Test Level")  # no catalog
+
+    engine.on_entity_death(slime)  # must not raise
+
+    assert [e for e in game_map.entities if e.entity_id == "slime"] == []
 
 
 # --- monster drops (on-death loot) ---

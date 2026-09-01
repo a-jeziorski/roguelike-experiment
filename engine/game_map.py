@@ -335,6 +335,8 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         regen_amount=edef.regen_amount,
         drop_item_id=edef.drop_item_id,
         drop_chance=edef.drop_chance,
+        split_count=edef.split_count,
+        split_hp_fraction=edef.split_hp_fraction,
         stationary=edef.stationary,
         description=edef.description,
         dialogue=edef.dialogue,

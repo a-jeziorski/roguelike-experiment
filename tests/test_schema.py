@@ -207,6 +207,53 @@ def test_entity_def_rejects_out_of_range_drop_chance():
         )
 
 
+def test_entity_def_split_fields_default_none():
+    e = EntityDef(id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0)
+    assert e.split_count is None
+    assert e.split_hp_fraction is None
+
+
+def test_entity_def_accepts_split_count_with_fraction():
+    e = EntityDef(
+        id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0,
+        ai="splitter", split_count=2, split_hp_fraction=0.4,
+    )
+    assert e.split_count == 2
+    assert e.split_hp_fraction == 0.4
+
+
+def test_entity_def_rejects_split_count_without_fraction():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0,
+            ai="splitter", split_count=2,
+        )
+
+
+def test_entity_def_rejects_split_fraction_without_count():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0,
+            ai="splitter", split_hp_fraction=0.4,
+        )
+
+
+def test_entity_def_rejects_out_of_range_split_hp_fraction():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0,
+            ai="splitter", split_count=2, split_hp_fraction=1.5,
+        )
+
+
+def test_entity_def_rejects_nonpositive_split_count():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="slime", name="Slime", glyph="J", color=(1, 2, 3), hp=16, attack=3, defense=0,
+            ai="splitter", split_count=0, split_hp_fraction=0.4,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

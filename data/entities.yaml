@@ -444,9 +444,10 @@ stone_sentinel:
   xp_reward: 15
   description: A construct of seamless, grown stone, posted at the Cairn since before anyone kept records. Slow. Patient. Still on duty.
 
-# Bestiary expansion - not yet placed in any level, kept here for future
-# dungeons to draw on (see docs/content_design_process.md's balance
-# methodology for the hits-to-kill math these stats were checked against).
+# Bestiary expansion - all now placed somewhere (see
+# docs/content_design_process.md §0ab), kept together here since they were
+# authored as one batch (see the balance methodology for the hits-to-kill
+# math these stats were checked against).
 
 giant_rat:
   name: Giant Rat
@@ -578,6 +579,24 @@ giant_spider:
   inflicts_potency: 2
   inflicts_duration: 3
   description: Broods somewhere the ceiling goes dark, wrapped in more silk than any one meal could explain.
+
+slime:
+  name: Slime
+  glyph: "J"
+  color: [90, 170, 90]
+  hp: 16
+  attack: 3
+  defense: 0
+  ai: splitter
+  # A conservative first pass: each hit only really "counts" once the
+  # slime is dead, since every earlier hit's damage carries straight
+  # through into what its two children spawn with (0.4 of *current*
+  # max_hp, not the original 16) - see docs/content_design_process.md's
+  # splitter write-up for the full hits-to-kill accounting this implies.
+  split_count: 2
+  split_hp_fraction: 0.4
+  xp_reward: 4
+  description: A slow, patient wobble of green matter that never quite decides on a shape. Cut into it and it simply becomes two smaller problems.
 
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as

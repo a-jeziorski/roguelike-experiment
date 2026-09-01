@@ -97,9 +97,10 @@ AI_TOWN_GUARD = "town_guard"
 AI_ENRAGE = "enrage"
 AI_PACK_HUNTER = "pack_hunter"
 AI_REGENERATOR = "regenerator"
+AI_SPLITTER = "splitter"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
-    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR,
+    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -234,6 +235,18 @@ class EntityDef(BaseModel):
     # item catalog, the same shop_inventory/trainer_perks precedent.
     drop_item_id: str | None = None
     drop_chance: float | None = Field(default=None, gt=0, le=1)
+    # Only meaningful for AI_SPLITTER - on death, spawns split_count copies
+    # of itself (same catalog id) at free adjacent tiles, each with
+    # max_hp = ceil(this entity's own current max_hp * split_hp_fraction) -
+    # attack/defense unchanged, so a copy is smaller but not proportionally
+    # weaker in a fight. "This entity's own current max_hp," not the
+    # catalog base hp, deliberately - an elite-scaled splitter (§0w) splits
+    # into elite-sized-fraction copies too, not base-stat ones. Splits only
+    # once: the spawned copies carry Entity.can_split=False (see
+    # engine/engine.py's _maybe_split), so a chain can't cascade forever.
+    # Both or neither, same shape as drop_item_id/drop_chance above.
+    split_count: int | None = Field(default=None, gt=0)
+    split_hp_fraction: float | None = Field(default=None, gt=0, le=1)
 
     @field_validator("glyph")
     @classmethod
@@ -246,6 +259,12 @@ class EntityDef(BaseModel):
     def drop_item_id_and_chance_both_or_neither(self) -> "EntityDef":
         if (self.drop_item_id is None) != (self.drop_chance is None):
             raise ValueError("drop_item_id and drop_chance must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def split_count_and_fraction_both_or_neither(self) -> "EntityDef":
+        if (self.split_count is None) != (self.split_hp_fraction is None):
+            raise ValueError("split_count and split_hp_fraction must be set together or not at all")
         return self
 
     @model_validator(mode="after")
