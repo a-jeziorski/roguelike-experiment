@@ -392,6 +392,46 @@ def test_entity_def_rejects_nonpositive_ambush_bonus():
         )
 
 
+def test_entity_def_scavenge_fields_default_none():
+    e = EntityDef(id="vulture", name="Vulture", glyph="v", color=(1, 2, 3), hp=12, attack=3, defense=0)
+    assert e.scavenge_radius is None
+    assert e.scavenge_heal_fraction is None
+
+
+def test_entity_def_accepts_scavenge_fields():
+    e = EntityDef(
+        id="vulture", name="Vulture", glyph="v", color=(1, 2, 3), hp=12, attack=3, defense=0,
+        ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5,
+    )
+    assert e.scavenge_radius == 6
+    assert e.scavenge_heal_fraction == 0.5
+
+
+def test_entity_def_scavenge_fields_are_independently_optional():
+    e = EntityDef(
+        id="vulture", name="Vulture", glyph="v", color=(1, 2, 3), hp=12, attack=3, defense=0,
+        ai="scavenger", scavenge_radius=6,
+    )
+    assert e.scavenge_radius == 6
+    assert e.scavenge_heal_fraction is None
+
+
+def test_entity_def_rejects_nonpositive_scavenge_radius():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="vulture", name="Vulture", glyph="v", color=(1, 2, 3), hp=12, attack=3, defense=0,
+            ai="scavenger", scavenge_radius=0,
+        )
+
+
+def test_entity_def_rejects_out_of_range_scavenge_heal_fraction():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="vulture", name="Vulture", glyph="v", color=(1, 2, 3), hp=12, attack=3, defense=0,
+            ai="scavenger", scavenge_heal_fraction=1.5,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

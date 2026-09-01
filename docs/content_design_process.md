@@ -2380,6 +2380,61 @@ itself and lands the boosted hit the instant the player becomes
 adjacent, and behaves like an ordinary visible `hostile_basic` monster
 in every turn afterward.
 
+## 0al. Scavenger - heals off a nearby ally's death (`vulture`)
+
+The sixth AI behavior in this round, and the first whose trigger is
+*another entity's* death rather than anything happening to itself:
+`AI_SCAVENGER` fights exactly like `hostile_basic` on its own turns, but
+whenever a nearby non-peaceful monster dies - killed by the player, by
+each other, by anything - it heals a chunk of its own max_hp, capped at
+max_hp, off the corpse. `EntityDef.scavenge_radius`/
+`scavenge_heal_fraction` are independently optional, each with its own
+engine-level fallback (`DEFAULT_SCAVENGE_RADIUS`/
+`DEFAULT_SCAVENGE_HEAL_FRACTION`) - the same "omit-friendly" convention
+`charge_range`/`charge_attack_bonus` already established, not a "both or
+neither" pair.
+
+**The trigger lives in `on_entity_death`, not `_perform_ai`** - unlike
+every prior behavior in this round, a scavenger's own turn has nothing
+special to do (`_perform_ai`'s `AI_SCAVENGER` branch is just
+`_chase_and_attack`, identical to `AI_SPLITTER`'s own branch). The
+actual mechanic, `Engine._scavenge_from_death`, is called once per
+(non-player) death - right alongside `_maybe_split` - and scans, not
+from the dying entity's own AI, but *from the death itself outward*:
+every living scavenger anywhere on the map within its own
+`scavenge_radius` of wherever the death happened heals, regardless of
+whether that scavenger had anything to do with the kill. A vulture
+doesn't need to be hunting, chasing, or even aware of a fight to profit
+from it - it just needs to be close enough when the fight ends.
+
+**"Ally" reuses `_has_nearby_ally`'s own definition, not a new one** - a
+peaceful death (a villager or town guard) doesn't feed a scavenger,
+gated by the same `PEACEFUL_AI_TYPES` exclusion `AI_PACK_HUNTER`'s own
+nearby-ally check already established (§0v). This isn't really about
+loyalty between monsters (a scavenger heals off *any* hostile monster's
+death, not just its own kind) - it's the same boundary every other
+"ally" concept in this project already draws: hostile creatures count,
+the player and peaceful NPCs don't.
+
+**The heal amount is computed off the scavenger's own current max_hp at
+the moment of the kill, the same "read live state, don't cache it"
+principle Splitter's child-sizing already established (§0ag)** - `min(
+math.ceil(other.fighter.max_hp * fraction), other.fighter.max_hp -
+other.fighter.hp)`, capped so a feeding never overheals, mirroring
+`_regenerate`'s own capping logic (§0u) exactly. A scavenger already at
+full HP is silently skipped (no heal, no log message) rather than
+logging a zero-HP feeding, the same "don't narrate a no-op" posture
+`_regenerate` takes at full health.
+
+Ships one real example, `vulture` (`data/entities.yaml`,
+`scavenge_radius: 6`, `scavenge_heal_fraction: 0.5` - half its own
+`hp: 12` per feeding, out to 6 tiles) - not yet placed into a level,
+same reasoning as the other five behaviors in this round. Verified
+end-to-end via direct `Engine`/`Entity` construction against the real
+catalog entry: heals the correct capped amount when a hostile ally dies
+within radius, stays untouched when that death happens just outside its
+radius, and correctly ignores a peaceful NPC's death entirely.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

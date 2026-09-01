@@ -78,7 +78,7 @@ def make_monster(
     split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
     summon_entity_id=None, summon_interval=None, summon_max_active=None,
     charge_range=None, charge_attack_bonus=None, territory_radius=None,
-    ambush_bonus=None,
+    ambush_bonus=None, scavenge_radius=None, scavenge_heal_fraction=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -117,6 +117,8 @@ def make_monster(
         charge_attack_bonus=charge_attack_bonus,
         territory_radius=territory_radius,
         ambush_bonus=ambush_bonus,
+        scavenge_radius=scavenge_radius,
+        scavenge_heal_fraction=scavenge_heal_fraction,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1527,6 +1529,123 @@ def test_ambusher_uses_default_bonus_when_unset():
     engine.process_turn(WaitAction())
 
     assert player.fighter.hp == 30 - (5 + 5)  # DEFAULT_AMBUSH_BONUS=5
+
+
+# --- scavenger (heals off a nearby ally's death) ---
+
+
+def test_scavenger_heals_when_a_nearby_ally_dies():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(5, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5)
+    vulture.fighter.hp = 4
+    ally = make_monster(8, 1, hp=10, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, vulture, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert vulture.fighter.hp == 10  # 4 + ceil(12 * 0.5) = 10
+    assert any("feeds on the fallen Rat, healing 6 HP" in m for m in engine.message_log.messages)
+
+
+def test_scavenger_heal_caps_at_max_hp():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(5, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5)
+    vulture.fighter.hp = 10  # only 2 short of max_hp, less than the 6 a full feeding would give
+    ally = make_monster(8, 1, hp=10, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, vulture, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert vulture.fighter.hp == 12  # capped, not 16
+    assert any("healing 2 HP" in m for m in engine.message_log.messages)
+
+
+def test_scavenger_out_of_radius_does_not_heal():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(0, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=3, scavenge_heal_fraction=0.5)
+    vulture.fighter.hp = 4
+    ally = make_monster(8, 1, hp=10, attack=2, ai="hostile_basic")  # 8 tiles away, beyond radius 3
+    game_map.entities.extend([player, vulture, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert vulture.fighter.hp == 4
+    assert not any("feeds on" in m for m in engine.message_log.messages)
+
+
+def test_scavenger_does_not_heal_from_a_peaceful_death():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(5, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5)
+    vulture.fighter.hp = 4
+    villager = make_villager(6, 1)
+    game_map.entities.extend([player, vulture, villager])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(villager)
+
+    assert vulture.fighter.hp == 4
+    assert not any("feeds on" in m for m in engine.message_log.messages)
+
+
+def test_scavenger_uses_default_radius_and_fraction_when_unset():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(5, 1, hp=12, attack=3, ai="scavenger")  # DEFAULT_SCAVENGE_RADIUS=5, DEFAULT_SCAVENGE_HEAL_FRACTION=0.5
+    vulture.fighter.hp = 4
+    ally = make_monster(9, 1, hp=10, attack=2, ai="hostile_basic")  # 4 tiles away, within default radius 5
+    game_map.entities.extend([player, vulture, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert vulture.fighter.hp == 10  # 4 + ceil(12 * 0.5) = 10
+
+
+def test_scavenger_at_full_hp_does_not_heal_or_log():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    vulture = make_monster(5, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5)
+    ally = make_monster(8, 1, hp=10, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, vulture, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert vulture.fighter.hp == 12
+    assert not any("feeds on" in m for m in engine.message_log.messages)
+
+
+def test_non_scavenger_monster_never_feeds_on_a_nearby_death():
+    game_map = make_open_map(10, 3)
+    player = make_player(0, 1, hp=30, defense=0)
+    rat = make_monster(5, 1, hp=12, attack=3, ai="hostile_basic")
+    rat.fighter.hp = 4
+    ally = make_monster(8, 1, hp=10, attack=2, ai="hostile_basic")
+    game_map.entities.extend([player, rat, ally])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.on_entity_death(ally)
+
+    assert rat.fighter.hp == 4
+
+
+def test_scavenger_still_chases_and_attacks_normally_on_its_own_turn():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    vulture = make_monster(3, 1, hp=12, attack=3, ai="scavenger", scavenge_radius=6, scavenge_heal_fraction=0.5)
+    game_map.entities.extend([player, vulture])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (vulture.x, vulture.y) == (2, 1)  # ordinary single-step chase, same as hostile_basic
 
 
 # --- monster drops (on-death loot) ---

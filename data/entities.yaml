@@ -669,6 +669,24 @@ lurker:
   xp_reward: 7
   description: You won't see this coming. That's rather the point.
 
+vulture:
+  name: Vulture
+  glyph: "v"
+  color: [120, 100, 60]
+  hp: 12
+  attack: 3
+  defense: 0
+  ai: scavenger
+  # Heals off any nearby (non-peaceful) kill, not just its own - half its
+  # own max_hp (6) per feeding, capped at max_hp, out to 6 tiles. Fights
+  # like an ordinary hostile_basic the rest of the time; the incentive is
+  # to kill it before something else nearby dies, not to out-damage it.
+  # See docs/content_design_process.md's scavenger write-up.
+  scavenge_radius: 6
+  scavenge_heal_fraction: 0.5
+  xp_reward: 6
+  description: Circles, waits, and gets stronger for every fight that isn't its own.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the

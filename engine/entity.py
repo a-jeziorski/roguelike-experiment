@@ -175,6 +175,8 @@ class Entity:
         charge_attack_bonus: int | None = None,
         territory_radius: int | None = None,
         ambush_bonus: int | None = None,
+        scavenge_radius: int | None = None,
+        scavenge_heal_fraction: float | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -280,6 +282,11 @@ class Entity:
         # AI_AMBUSHER's static config, same "omit-friendly, engine-level
         # default" shape as charge_attack_bonus above.
         self.ambush_bonus = ambush_bonus
+        # AI_SCAVENGER's static config, same "omit-friendly, engine-level
+        # default" shape as charge_range/charge_attack_bonus above - see
+        # Engine._scavenge_from_death.
+        self.scavenge_radius = scavenge_radius
+        self.scavenge_heal_fraction = scavenge_heal_fraction
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

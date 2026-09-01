@@ -15,6 +15,7 @@ from content.schema import (
     AI_PACK_HUNTER,
     AI_RANGED_BASIC,
     AI_REGENERATOR,
+    AI_SCAVENGER,
     AI_SKITTISH,
     AI_SLEEPING_GUARD,
     AI_SPLITTER,
@@ -71,6 +72,10 @@ DEFAULT_TERRITORY_RADIUS = 6
 # branch, so (like AI_CHARGER's) this can live here rather than in
 # engine/entity.py.
 DEFAULT_AMBUSH_BONUS = 5
+# AI_SCAVENGER's own fallbacks - resolved entirely inside
+# _scavenge_from_death, same "omit-friendly" convention as above.
+DEFAULT_SCAVENGE_RADIUS = 5
+DEFAULT_SCAVENGE_HEAL_FRACTION = 0.5
 
 # Flat XP awarded for discovering a landmark (see
 # Engine._log_newly_seen_tile_announcements) - deliberately small relative
@@ -413,6 +418,38 @@ class Engine:
                 self._award_xp(entity.xp_reward, "kill")
             self._maybe_drop_loot(entity)
             self._maybe_split(entity)
+            self._scavenge_from_death(entity)
+
+    def _scavenge_from_death(self, dead_entity: Entity) -> None:
+        """AI_SCAVENGER's whole hook, called once per (non-player) death
+        from on_entity_death, after dead_entity has already been removed
+        from game_map.entities. Every living scavenger within its own
+        scavenge_radius of wherever dead_entity fell heals by its own
+        scavenge_heal_fraction of its own max_hp, capped at max_hp - a
+        battlefield feeding opportunity that happens to it, not something
+        a scavenger goes hunting for on its own (see the AI_SCAVENGER
+        branch in _perform_ai, which just chases and attacks normally).
+        A peaceful death (a villager/guard) doesn't feed one - same
+        PEACEFUL_AI_TYPES exclusion _has_nearby_ally already uses to
+        define "ally."
+        """
+        if dead_entity.ai in PEACEFUL_AI_TYPES:
+            return
+        for other in self.game_map.entities:
+            if other.ai != AI_SCAVENGER or not other.is_alive or other.fighter is None:
+                continue
+            if other.fighter.hp >= other.fighter.max_hp:
+                continue
+            radius = other.scavenge_radius or DEFAULT_SCAVENGE_RADIUS
+            if max(abs(other.x - dead_entity.x), abs(other.y - dead_entity.y)) > radius:
+                continue
+            fraction = other.scavenge_heal_fraction or DEFAULT_SCAVENGE_HEAL_FRACTION
+            healed = min(math.ceil(other.fighter.max_hp * fraction), other.fighter.max_hp - other.fighter.hp)
+            other.fighter.hp += healed
+            self.message_log.add(
+                f"{other.name} feeds on the fallen {dead_entity.name}, healing {healed} HP.",
+                category="combat",
+            )
 
     def _maybe_split(self, entity: Entity) -> None:
         """AI_SPLITTER's whole hook - on death, spawns entity.split_count
@@ -755,6 +792,13 @@ class Engine:
             # itself is a death trigger (_maybe_split, on_entity_death),
             # not a turn-by-turn behavior, so there's nothing extra to do
             # on an ordinary turn.
+            self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_SCAVENGER:
+            # Chases and attacks exactly like hostile_basic - feeding off a
+            # nearby ally's death is a death-triggered event
+            # (_scavenge_from_death, on_entity_death), not a turn-by-turn
+            # behavior, so there's nothing extra to do on an ordinary turn.
             self._chase_and_attack(entity, dx, dy, distance)
 
         elif entity.ai == AI_SUMMONER:

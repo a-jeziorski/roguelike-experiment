@@ -344,6 +344,8 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         charge_attack_bonus=edef.charge_attack_bonus,
         territory_radius=edef.territory_radius,
         ambush_bonus=edef.ambush_bonus,
+        scavenge_radius=edef.scavenge_radius,
+        scavenge_heal_fraction=edef.scavenge_heal_fraction,
         stationary=edef.stationary,
         description=edef.description,
         dialogue=edef.dialogue,
