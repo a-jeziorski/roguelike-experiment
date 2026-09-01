@@ -482,6 +482,7 @@ def test_load_catalog_accepts_a_valid_summoner(tmp_path):
         ("cave_bear", 22, 6, 1, "territorial"),
         ("lurker", 14, 5, 1, "ambusher"),
         ("vulture", 12, 3, 0, "scavenger"),
+        ("mimic_flask", 14, 4, 1, "mimic"),
     ],
 )
 def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):

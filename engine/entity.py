@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from content.schema import AI_AMBUSHER, AI_ENRAGE, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
+from content.schema import AI_AMBUSHER, AI_ENRAGE, AI_MIMIC, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
 
 Color = tuple[int, int, int]
 
@@ -24,6 +24,11 @@ RENDER_PRIORITY_PLAYER = 2
 # other way).
 DEFAULT_ENRAGE_HP_PCT = 0.3
 DEFAULT_ENRAGE_ATTACK_BONUS = 2
+# AI_MIMIC's own fallback, same "can't import engine/engine.py" reasoning
+# as above - engine/actions.py's PickupAction needs it too, and importing
+# engine/engine.py from there would be circular (engine/engine.py already
+# imports engine/actions.py).
+DEFAULT_MIMIC_BONUS = 5
 
 
 @dataclass
@@ -177,6 +182,7 @@ class Entity:
         ambush_bonus: int | None = None,
         scavenge_radius: int | None = None,
         scavenge_heal_fraction: float | None = None,
+        mimic_bonus: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -220,6 +226,17 @@ class Entity:
         # Engine._perform_ai's own AI_AMBUSHER branch the instant the
         # player gets adjacent. Always False for anything else.
         self.hidden = ai == AI_AMBUSHER
+        # AI_MIMIC's whole "disguised as an item" mechanic - derived purely
+        # from ai, not a separate EntityDef field, same shape as hidden
+        # above. Checked by engine/game_map.py's entity_from_def (which
+        # keeps a mimic non-blocking and item-render-priority while this is
+        # True) and engine/actions.py's PickupAction (which reveals it
+        # instead of collecting it). Cleared for good, like hidden, the
+        # instant the player tries to pick it up - never re-disguises.
+        # Unlike an ambusher, a mimic is never actually hidden (render.py/
+        # targeting.py don't check this) - it's fully visible the whole
+        # time, just mislabeled by its own glyph/color/name/description.
+        self.mimicking = ai == AI_MIMIC
         self.alert_radius = alert_radius
         self.flee_hp_pct = flee_hp_pct
         self.ranged_range = ranged_range
@@ -287,6 +304,18 @@ class Entity:
         # Engine._scavenge_from_death.
         self.scavenge_radius = scavenge_radius
         self.scavenge_heal_fraction = scavenge_heal_fraction
+        # AI_MIMIC's static config, same "omit-friendly, engine-level
+        # default" shape as ambush_bonus above.
+        self.mimic_bonus = mimic_bonus
+        # AI_MIMIC's *live* state - True for exactly one turn right after
+        # PickupAction's reveal (see engine/actions.py), during which
+        # Engine._perform_ai's own AI_MIMIC branch skips the ordinary
+        # chase/attack so a mimic doesn't land two hits in the same turn
+        # it's revealed - the reveal-strike already spent it, the same
+        # "special action replaces the normal one" principle
+        # AI_SUMMONER/AI_AMBUSHER already established. Harmless and unused
+        # for anything that isn't a mimic.
+        self.just_revealed = False
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

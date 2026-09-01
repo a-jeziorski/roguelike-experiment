@@ -5,8 +5,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from engine.combat import resolve_attack, resolve_ranged_attack
-from engine.entity import potion_kind
+from content.schema import AI_MIMIC
+from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
+from engine.entity import DEFAULT_MIMIC_BONUS, potion_kind
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -297,6 +298,11 @@ _TRINKET_EFFECT_WORD = {
 class PickupAction(Action):
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         for candidate in list(engine.game_map.entities):
+            if candidate.ai == AI_MIMIC and candidate.mimicking and candidate.x == entity.x and candidate.y == entity.y:
+                self._reveal_mimic(engine, entity, candidate)
+                return
+
+        for candidate in list(engine.game_map.entities):
             if candidate.item is None or candidate.x != entity.x or candidate.y != entity.y:
                 continue
 
@@ -320,6 +326,24 @@ class PickupAction(Action):
             return
 
         engine.message_log.add("There is nothing here to pick up.")
+
+    def _reveal_mimic(self, engine: "Engine", entity: "Entity", mimic: "Entity") -> None:
+        """AI_MIMIC's whole hook - the instant something tries to pick it
+        up instead of just walking past or over it. Clears mimicking for
+        good (never re-disguises, same shape as AI_AMBUSHER's hidden) and
+        starts blocking movement like an ordinary monster from here on, so
+        it can actually be bumped/fought back against afterward. The strike
+        itself reuses resolve_skill_damage, the same public flat-damage-
+        value entry point Charger/Ambusher's own reveal-strikes already
+        use, so dodge/crit/weapon-affix procs apply normally. just_revealed
+        stops Engine._perform_ai's own AI_MIMIC branch from also chasing
+        and attacking this same turn - this strike already spent it."""
+        mimic.mimicking = False
+        mimic.blocks_movement = True
+        mimic.just_revealed = True
+        engine.message_log.add(f"The {mimic.name} was a mimic all along!", category="combat")
+        bonus = mimic.mimic_bonus or DEFAULT_MIMIC_BONUS
+        resolve_skill_damage(engine, mimic, entity, mimic.effective_attack + bonus, "bites")
 
     def _equip(self, engine: "Engine", entity: "Entity", candidate: "Entity", slot: str) -> None:
         """Equips `candidate` into `slot` ("weapon"/"armor"/"ranged") if it's

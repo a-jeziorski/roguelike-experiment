@@ -687,6 +687,22 @@ vulture:
   xp_reward: 6
   description: Circles, waits, and gets stronger for every fight that isn't its own.
 
+mimic_flask:
+  name: Gleaming Vial
+  glyph: "!"
+  color: [150, 40, 160]
+  hp: 14
+  attack: 4
+  defense: 1
+  ai: mimic
+  # Reads and renders as an ordinary ground item (non-blocking, no HP
+  # shown anywhere) until the player tries to pick it up - then it bites
+  # for attack+bonus (4+6=10) and fights on as an ordinary hostile_basic
+  # monster from there. See docs/content_design_process.md's mimic write-up.
+  mimic_bonus: 6
+  xp_reward: 7
+  description: A small vial, glinting faintly - someone dropped this in a hurry, or wanted you to think so.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the

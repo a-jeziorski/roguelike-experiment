@@ -2435,6 +2435,96 @@ catalog entry: heals the correct capped amount when a hostile ally dies
 within radius, stays untouched when that death happens just outside its
 radius, and correctly ignores a peaceful NPC's death entirely.
 
+## 0am. Mimic - disguised as an item until picked at (`mimic_flask`)
+
+The seventh AI behavior in this round, and the first whose disguise is
+*visible*, not hidden - unlike `AI_AMBUSHER` (invisible outright),
+`AI_MIMIC` is drawn every turn, in plain sight, exactly like an ordinary
+ground item, and stays that way until the player actually tries to pick
+it up. Only then does it reveal itself, bite for bonus damage, and fight
+on like an ordinary `hostile_basic` monster from there.
+
+**`Entity.mimicking` is derived purely from `ai`, the same shape as
+`hidden`** - `self.mimicking = ai == AI_MIMIC`, no separate `EntityDef`
+field, cleared for good (never re-disguises) the instant it's revealed.
+But unlike `hidden`, nothing in `render.py`/`targeting.py` checks
+`mimicking` at all - a mimic is never actually invisible, it's fully
+rendered the whole time. The disguise is entirely in *what* gets
+rendered: its own catalog-authored glyph/color/name/description simply
+read like an item's (a vial, in `mimic_flask`'s case) from the moment
+it's placed, nothing to toggle.
+
+**Being visible-but-mislabeled needs `blocks_movement`/`render_priority`
+to lie too, and both are set once at spawn, not derived in
+`Entity.__init__`** - unlike every prior AI-derived field in this
+project, `blocks_movement`/`render_priority` are ordinary constructor
+params that `entity_from_def` (`engine/game_map.py`) has always hardcoded
+to `True`/`RENDER_PRIORITY_ACTOR` for every monster spawn. A mimic needs
+the opposite of both while disguised - non-blocking, so the player can
+stand on its tile exactly like a real item; item-priority, so it sorts/
+draws like one - so `entity_from_def` itself now branches on
+`edef.ai == AI_MIMIC` for these two fields specifically, the one time
+this round a behavior needed a change at the shared spawn-helper level
+rather than purely in `Entity.__init__`. Both flip to their ordinary
+monster values the instant it's revealed, so the ensuing fight works
+exactly like any other monster's (the player can now actually bump-attack
+it back).
+
+**The trigger lives in `PickupAction`, not `_perform_ai`** - a disguised
+mimic takes no action on its own turns at all (`_perform_ai`'s `AI_MIMIC`
+branch no-ops while `mimicking`, the same "stays motionless" posture
+`AI_AMBUSHER` already established), because the whole mechanic is a
+response to something the *player* does, not a timer or a proximity
+check. `engine/actions.py`'s `PickupAction.perform` now checks for a
+disguised mimic at the acting entity's own tile *before* its existing
+item-lookup loop (which would otherwise skip it silently, since
+`candidate.item is None` for a mimic) - a hit calls `_reveal_mimic`
+instead of collecting anything, and returns without ever reaching the
+ordinary pickup logic below it.
+
+**The disguise has to survive being looked at, not just walked past** -
+`describe_tile`'s per-entity HP suffix (`engine/render.py`) and
+`tools/play_llm.py`'s own `_entity_tag`/`entities`-command HP text both
+now check `entity.mimicking` before showing anything a real item would
+never have: an HP readout, or a "hostile" tag instead of "item." Skipping
+this would have been a smaller, quieter version of Ambusher's own
+information-leak problem (§0ak) - a player who merely *examines* a
+suspicious vial, or glances at the CLI's own map legend, would see
+"(HP: 14/14)" or "[hostile]" and the whole ruse would be spoiled before
+they ever tried to pick anything up. `_entity_tag`'s fix is the more
+consequential of the two, since `tools/play_llm.py`'s own 'walk'/'goto'
+auto-attack-refusal logic (`_peek_step`) reads that same tag - a mimic
+mistagged "hostile" would make the CLI's own movement helpers refuse to
+step onto its tile at all, telegraphing danger the disguise is supposed
+to hide.
+
+**The reveal-strike reuses the same seam Charger/Ambusher's own do** -
+`resolve_skill_damage(engine, mimic, entity, mimic.effective_attack +
+bonus, "bites")`, so dodge/crit/weapon-affix procs apply exactly as they
+would to any other hit. `Entity.just_revealed` (a plain bool, mirroring
+`charge_recovering`'s shape exactly) stops the same turn's enemy phase
+from also running an ordinary `_chase_and_attack` on top of the strike
+PickupAction already resolved - without it, a player picking up a mimic
+would take the reveal-bite *and* an unrelated second hit in the same
+turn, breaking the "one special action replaces the turn, doesn't add to
+it" principle every reveal-style behavior in this round has kept.
+`mimic_bonus`'s own engine-level fallback, `DEFAULT_MIMIC_BONUS`, lives
+in `engine/entity.py` rather than `engine/engine.py` - `engine/actions.py`
+needs it too, and importing `engine/engine.py` from there would be
+circular (`engine/engine.py` already imports `engine/actions.py`), the
+same reasoning `AI_ENRAGE`'s own defaults are placed there for.
+
+Ships one real example, `mimic_flask` (`data/entities.yaml`,
+`mimic_bonus: 6` against its own `attack: 4`, disguised as a "Gleaming
+Vial") - not yet placed into a level, same reasoning as the other six
+behaviors in this round. Verified end-to-end via direct `Engine`/
+`Entity`/`GameMap` construction against the real catalog entry: the
+player can freely walk onto its tile while disguised, `describe_tile`
+shows no HP for it until revealed, attempting to pick it up correctly
+bites for the boosted amount and flips it to an ordinary blocking
+monster, and `tools/play_llm.py`'s own `_entity_tag` correctly reads it
+as `"item"` before the reveal and `"hostile"` after.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

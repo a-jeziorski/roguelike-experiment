@@ -12,6 +12,7 @@ from content.schema import (
     AI_CHARGER,
     AI_ENRAGE,
     AI_HOSTILE_BASIC,
+    AI_MIMIC,
     AI_PACK_HUNTER,
     AI_RANGED_BASIC,
     AI_REGENERATOR,
@@ -793,6 +794,18 @@ class Engine:
             # not a turn-by-turn behavior, so there's nothing extra to do
             # on an ordinary turn.
             self._chase_and_attack(entity, dx, dy, distance)
+
+        elif entity.ai == AI_MIMIC:
+            if entity.just_revealed:
+                # Already landed its one attack this turn via PickupAction's
+                # reveal (see engine/actions.py) - skip the ordinary chase/
+                # attack so it doesn't also get an unrelated second hit in
+                # the very same turn it was revealed.
+                entity.just_revealed = False
+            elif entity.mimicking:
+                pass  # stays disguised and motionless until picked at
+            else:
+                self._chase_and_attack(entity, dx, dy, distance)
 
         elif entity.ai == AI_SCAVENGER:
             # Chases and attacks exactly like hostile_basic - feeding off a

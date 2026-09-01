@@ -10,7 +10,7 @@ import numpy as np
 import tcod.map
 
 from content.loader import PLAYER_ENTITY_ID, Catalog, EntityDef, ItemDef, ParsedLevel
-from content.schema import DECORATION_NAMES, TILE_PASSABILITY
+from content.schema import AI_MIMIC, DECORATION_NAMES, TILE_PASSABILITY
 from engine.clock import GameClock
 from engine.entity import (
     RENDER_PRIORITY_ACTOR,
@@ -316,8 +316,14 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         edef.glyph,
         edef.color,
         edef.name,
-        blocks_movement=True,
-        render_priority=RENDER_PRIORITY_ACTOR,
+        # AI_MIMIC's whole "looks and behaves like an item until picked at"
+        # disguise - non-blocking (so the player can stand on its tile like
+        # any real item) and item-priority (so it draws/sorts like one),
+        # instead of the ordinary blocking/actor-priority every other
+        # monster spawn gets. Both flip back to normal the instant it's
+        # revealed (see engine/actions.py's PickupAction).
+        blocks_movement=edef.ai != AI_MIMIC,
+        render_priority=RENDER_PRIORITY_ITEM if edef.ai == AI_MIMIC else RENDER_PRIORITY_ACTOR,
         fighter=Fighter(
             max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
         ),
@@ -346,6 +352,7 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         ambush_bonus=edef.ambush_bonus,
         scavenge_radius=edef.scavenge_radius,
         scavenge_heal_fraction=edef.scavenge_heal_fraction,
+        mimic_bonus=edef.mimic_bonus,
         stationary=edef.stationary,
         description=edef.description,
         dialogue=edef.dialogue,

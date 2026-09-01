@@ -29,7 +29,7 @@ from engine.entity import (
     Fighter,
     ItemEffect,
 )
-from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map
+from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map, entity_from_def
 from engine.quest import Quest, QuestLog, create_quest_log
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -79,6 +79,7 @@ def make_monster(
     summon_entity_id=None, summon_interval=None, summon_max_active=None,
     charge_range=None, charge_attack_bonus=None, territory_radius=None,
     ambush_bonus=None, scavenge_radius=None, scavenge_heal_fraction=None,
+    mimic_bonus=None, blocks_movement=True,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -90,7 +91,7 @@ def make_monster(
         )
     return Entity(
         x, y, "r", (140, 90, 60), "Rat",
-        blocks_movement=True,
+        blocks_movement=blocks_movement,
         render_priority=RENDER_PRIORITY_ACTOR,
         fighter=Fighter(max_hp=hp, hp=hp, attack=attack, defense=defense),
         ai=ai,
@@ -119,6 +120,7 @@ def make_monster(
         ambush_bonus=ambush_bonus,
         scavenge_radius=scavenge_radius,
         scavenge_heal_fraction=scavenge_heal_fraction,
+        mimic_bonus=mimic_bonus,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1646,6 +1648,126 @@ def test_scavenger_still_chases_and_attacks_normally_on_its_own_turn():
     engine.process_turn(WaitAction())
 
     assert (vulture.x, vulture.y) == (2, 1)  # ordinary single-step chase, same as hostile_basic
+
+
+# --- mimic (disguised as an item until picked at) ---
+
+
+def test_mimic_entity_starts_disguised_non_blocking_and_item_priority():
+    catalog = load_catalog()
+    edef = catalog.entities["mimic_flask"]
+    mimic = entity_from_def(edef, 2, 2)
+
+    assert mimic.mimicking is True
+    assert mimic.blocks_movement is False
+    assert mimic.render_priority == RENDER_PRIORITY_ITEM
+
+
+def test_non_mimic_entity_is_never_mimicking():
+    rat = make_monster(1, 1, ai="hostile_basic")
+    assert rat.mimicking is False
+
+
+def test_mimic_stays_disguised_and_motionless_when_not_picked_at():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(3, 1, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (mimic.x, mimic.y) == (3, 1)  # didn't move at all
+    assert mimic.mimicking is True
+    assert mimic.blocks_movement is False
+    assert player.fighter.hp == 30
+
+
+def test_pickup_reveals_and_bites_a_disguised_mimic():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(1, 1, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    PickupAction().perform(engine, player)
+
+    assert mimic.mimicking is False
+    assert mimic.blocks_movement is True
+    assert player.fighter.hp == 30 - (4 + 6)  # attack + mimic_bonus
+    assert any("was a mimic all along" in m for m in engine.message_log.messages)
+    assert any("bites" in m for m in engine.message_log.messages)
+    assert not any("picked up" in m for m in engine.message_log.messages)
+
+
+def test_pickup_uses_default_mimic_bonus_when_unset():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(1, 1, hp=14, attack=4, defense=1, ai="mimic", blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    PickupAction().perform(engine, player)
+
+    assert player.fighter.hp == 30 - (4 + 5)  # DEFAULT_MIMIC_BONUS=5
+
+
+def test_revealed_mimic_does_not_also_attack_the_same_turn_it_was_revealed():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(1, 1, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    PickupAction().perform(engine, player)
+    hp_after_reveal = player.fighter.hp
+    engine._perform_ai(mimic)  # the same enemy phase's own turn for this entity
+
+    assert player.fighter.hp == hp_after_reveal  # no second hit
+    assert mimic.just_revealed is False
+
+
+def test_revealed_mimic_behaves_like_an_ordinary_monster_on_a_later_turn():
+    game_map = make_open_map(5, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(1, 1, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+    PickupAction().perform(engine, player)
+    engine._perform_ai(mimic)  # consumes just_revealed, no-ops otherwise
+
+    player.x, player.y = 4, 1  # step away so the next turn has somewhere to chase toward
+    engine._perform_ai(mimic)
+
+    assert (mimic.x, mimic.y) == (2, 1)  # ordinary single-step chase, not another reveal
+
+
+def test_pickup_ignores_a_mimic_on_a_different_tile():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    mimic = make_monster(2, 2, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    PickupAction().perform(engine, player)
+
+    assert mimic.mimicking is True
+    assert player.fighter.hp == 30
+    assert any("nothing here to pick up" in m for m in engine.message_log.messages)
+
+
+def test_pickup_still_collects_a_real_item_when_a_mimic_is_elsewhere():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    potion = make_potion(1, 1)
+    mimic = make_monster(2, 2, hp=14, attack=4, defense=1, ai="mimic", mimic_bonus=6, blocks_movement=False)
+    game_map.entities.extend([player, potion, mimic])
+    engine = Engine(game_map, player, "Test Level")
+
+    PickupAction().perform(engine, player)
+
+    assert potion in player.inventory
+    assert mimic.mimicking is True
 
 
 # --- monster drops (on-death loot) ---

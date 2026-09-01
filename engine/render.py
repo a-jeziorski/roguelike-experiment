@@ -579,7 +579,11 @@ def describe_tile(
         line = entity.name
         if entity.description:
             line += f": {entity.description}"
-        if entity.fighter is not None:
+        # A disguised AI_MIMIC never shows this - an HP readout on
+        # something that's supposed to read as an inert item would give
+        # the whole ruse away just by looking, without the player ever
+        # trying to pick it up.
+        if entity.fighter is not None and not entity.mimicking:
             line += f" (HP: {entity.fighter.hp}/{entity.fighter.max_hp})"
         lines.append(line)
 

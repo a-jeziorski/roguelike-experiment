@@ -240,8 +240,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _entity_tag(entity) -> str:
     """hostile/peaceful/item, for the legend and the `entities` listing -
     entity.ai is None for an item spawn (only a monster/NPC ever sets it),
-    so that's checked first."""
-    if entity.ai is None:
+    so that's checked first. A still-disguised AI_MIMIC also tags as
+    "item" despite having a real ai value - the whole point of the
+    disguise is that it reads as inert scenery, on the map legend and in
+    'walk'/'goto's own auto-attack-refusal check alike, not just in
+    engine/render.py's own draw loop. Tags as "hostile" like anything else
+    the instant it's revealed."""
+    if entity.ai is None or entity.mimicking:
         return "item"
     return "peaceful" if entity.ai in PEACEFUL_AI_TYPES else "hostile"
 
@@ -678,7 +683,13 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
             print("(no other entities on this map)")
             return
         for entity in sorted(entities, key=lambda e: (e.x, e.y)):
-            hp_text = f", HP {entity.fighter.hp}/{entity.fighter.max_hp}" if entity.fighter else ""
+            # Same disguise-preserving guard as _entity_tag above - a
+            # still-disguised AI_MIMIC shows no HP here either.
+            hp_text = (
+                f", HP {entity.fighter.hp}/{entity.fighter.max_hp}"
+                if entity.fighter and not entity.mimicking
+                else ""
+            )
             print(f"({entity.x}, {entity.y}) {entity.name} [{_entity_tag(entity)}]{hp_text}")
         return
 

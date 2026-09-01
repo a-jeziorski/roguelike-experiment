@@ -103,10 +103,11 @@ AI_CHARGER = "charger"
 AI_TERRITORIAL = "territorial"
 AI_AMBUSHER = "ambusher"
 AI_SCAVENGER = "scavenger"
+AI_MIMIC = "mimic"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
     AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER, AI_CHARGER, AI_TERRITORIAL,
-    AI_AMBUSHER, AI_SCAVENGER,
+    AI_AMBUSHER, AI_SCAVENGER, AI_MIMIC,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -297,6 +298,14 @@ class EntityDef(BaseModel):
     # _scavenge_from_death, called once per death from on_entity_death).
     scavenge_radius: int | None = Field(default=None, gt=0)
     scavenge_heal_fraction: float | None = Field(default=None, gt=0, le=1)
+    # Only meaningful for AI_MIMIC - a bonus added to effective_attack for
+    # the guaranteed reveal-strike the instant the player tries to pick it
+    # up (see Entity.mimicking, engine/actions.py's PickupAction). Engine-
+    # level default when omitted, same convention as ambush_bonus above -
+    # its own fallback lives in engine/entity.py rather than engine/
+    # engine.py, since engine/actions.py needs it too and can't import
+    # engine/engine.py without a circular import.
+    mimic_bonus: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod

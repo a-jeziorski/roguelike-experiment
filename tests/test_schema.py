@@ -432,6 +432,27 @@ def test_entity_def_rejects_out_of_range_scavenge_heal_fraction():
         )
 
 
+def test_entity_def_mimic_bonus_defaults_none():
+    e = EntityDef(id="mimic_flask", name="Gleaming Vial", glyph="!", color=(1, 2, 3), hp=14, attack=4, defense=1)
+    assert e.mimic_bonus is None
+
+
+def test_entity_def_accepts_mimic_bonus():
+    e = EntityDef(
+        id="mimic_flask", name="Gleaming Vial", glyph="!", color=(1, 2, 3), hp=14, attack=4, defense=1,
+        ai="mimic", mimic_bonus=6,
+    )
+    assert e.mimic_bonus == 6
+
+
+def test_entity_def_rejects_nonpositive_mimic_bonus():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="mimic_flask", name="Gleaming Vial", glyph="!", color=(1, 2, 3), hp=14, attack=4, defense=1,
+            ai="mimic", mimic_bonus=0,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(
