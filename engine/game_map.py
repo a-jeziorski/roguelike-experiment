@@ -340,6 +340,8 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         summon_entity_id=edef.summon_entity_id,
         summon_interval=edef.summon_interval,
         summon_max_active=edef.summon_max_active,
+        charge_range=edef.charge_range,
+        charge_attack_bonus=edef.charge_attack_bonus,
         stationary=edef.stationary,
         description=edef.description,
         dialogue=edef.dialogue,

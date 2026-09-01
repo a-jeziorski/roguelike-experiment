@@ -2201,6 +2201,68 @@ not traded blows with - and summons `skeleton`, an entity that already
 exists in the catalog rather than a new minion invented just for this.
 Not yet placed into a level, same reasoning as `slime`.
 
+## 0ai. Charger - a telegraphed lunge with a recovery window (`boar`)
+
+The third AI behavior in this round, and the first whose whole point is a
+single risky, high-commitment action rather than a steady per-turn
+effect: `AI_CHARGER` covers several tiles in one turn to close a gap the
+player would otherwise have time to react to, hits harder for it, then
+is defenseless for exactly one turn afterward. `EntityDef.charge_range`/
+`charge_attack_bonus` are independently optional, each with its own
+engine-level fallback (`DEFAULT_CHARGE_RANGE`/`DEFAULT_CHARGE_ATTACK_BONUS`)
+- the same "omit-friendly" convention `alert_radius`/`flee_hp_pct` already
+established, not a "both or neither" pair, since either alone still means
+something sensible on its own.
+
+**A charge only triggers when the geometry actually reads as a charge** -
+`_perform_ai`'s `AI_CHARGER` branch requires `distance > 1` (already
+adjacent is just an ordinary attack, no lunge needed),
+`distance <= charge_range`, *and* the player aligned in a straight line
+(`dx == 0 or dy == 0 or abs(dx) == abs(dy)` - orthogonal or an exact
+diagonal, not merely "roughly toward"). Get any of these wrong and the
+entity falls through to plain `_chase_and_attack` instead - a charger
+one tile off the diagonal, or one tile past its range, behaves exactly
+like `hostile_basic` that turn, not like a broken charger.
+
+**The lunge is built from the same `MovementAction` every ordinary step
+already uses, just repeated** - `Engine._charge` steps once per tile
+(`up to min(distance - 1, charge_range)` times), checking after each step
+whether the entity's position actually changed. The instant a step
+doesn't move it (a wall, another entity in the way - `MovementAction`
+already no-ops safely on either), the charge stops right there: no
+attack, no recovery penalty, just however much ground it managed to
+cover before something got in the way. Only a charge that actually
+*reaches* adjacent resolves an attack at all.
+
+**The bonus damage is a value, not a stat mutation** - a landed charge
+calls `resolve_skill_damage(self, entity, self.player,
+entity.effective_attack + charge_attack_bonus, "charges into")`, the same
+public, flat-damage-value entry point into the full `_apply_damage`
+pipeline Ground Pound already uses (§0z) - dodge/crit/weapon-affix procs
+all still apply to a charge's hit exactly as they would to an ordinary
+one. This avoids the alternative of temporarily bumping
+`entity.fighter.attack` and restoring it after, which would need to
+survive `_apply_damage`'s own crit/message-logging path without leaking
+the temporary value anywhere - reusing the existing "pass a flat damage
+value in" seam is simpler and already proven correct.
+
+**`Entity.charge_recovering` is the entire recovery mechanic** - a plain
+bool, `True` for exactly one turn right after a landed charge, checked
+*first* in the `AI_CHARGER` branch (before the alignment/range check
+ever runs): a recovering charger skips its action outright and clears
+the flag, the same "block the action, don't run the normal branch at
+all" shape a stunned entity's own turn already takes (§0t), just
+self-inflicted by the charge itself rather than an external affliction.
+
+Ships one real example, `boar` (`data/entities.yaml`, `charge_range: 4`,
+`charge_attack_bonus: 4` - roughly doubling its own `attack: 4` on a
+landed hit) - not yet placed into a level, same reasoning as `slime`/
+`bone_caller`. Verified end-to-end via direct `Engine`/`Entity`
+construction: a lunge from range 3 correctly covers the gap and lands the
+boosted hit, a wall placed partway correctly stops it short with no
+attack and no recovery penalty, and a recovering boar correctly sits out
+its very next turn before returning to normal behavior.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -77,6 +77,7 @@ def make_monster(
     drop_item_id=None, drop_chance=None,
     split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
     summon_entity_id=None, summon_interval=None, summon_max_active=None,
+    charge_range=None, charge_attack_bonus=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -111,6 +112,8 @@ def make_monster(
         summon_entity_id=summon_entity_id,
         summon_interval=summon_interval,
         summon_max_active=summon_max_active,
+        charge_range=charge_range,
+        charge_attack_bonus=charge_attack_bonus,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1278,6 +1281,111 @@ def test_summoner_without_a_catalog_never_summons():
 
     assert [e for e in game_map.entities if e.entity_id == "kobold"] == []
     assert player.fighter.hp == 30 - 2  # falls through to an ordinary attack instead
+
+
+# --- charger (lunges several tiles for a bonus hit, then recovers) ---
+
+
+def test_charger_lunges_across_the_gap_and_lands_a_bonus_hit():
+    game_map = make_open_map(7, 3)
+    player = make_player(5, 1, hp=30, defense=0)
+    boar = make_monster(
+        1, 1, hp=12, attack=4, defense=0, ai="charger",
+        charge_range=4, charge_attack_bonus=4,
+    )
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (boar.x, boar.y) == (4, 1)  # covered 3 tiles to land adjacent
+    assert player.fighter.hp == 30 - (4 + 4)  # attack + charge_attack_bonus
+    assert boar.charge_recovering is True
+    assert any("charges into" in m for m in engine.message_log.messages)
+
+
+def test_charger_recovering_skips_its_entire_next_turn():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    boar = make_monster(2, 1, hp=12, attack=4, defense=0, ai="charger", charge_range=4, charge_attack_bonus=4)
+    boar.charge_recovering = True
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # no attack at all this turn, despite being adjacent
+    assert boar.charge_recovering is False  # cleared, ready to act again next turn
+    assert any("recovering from the charge" in m for m in engine.message_log.messages)
+
+
+def test_charger_blocked_partway_lands_no_hit_and_does_not_recover():
+    game_map = make_open_map(7, 3)
+    game_map.walkable[3, 1] = False  # a wall partway along the lunge
+    player = make_player(5, 1, hp=30, defense=0)
+    boar = make_monster(1, 1, hp=12, attack=4, defense=0, ai="charger", charge_range=4, charge_attack_bonus=4)
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (boar.x, boar.y) == (2, 1)  # stopped at the wall, one tile short of it
+    assert player.fighter.hp == 30  # never got close enough to land a hit
+    assert boar.charge_recovering is False  # a blocked charge costs nothing
+
+
+def test_charger_out_of_range_chases_one_tile_instead_of_charging():
+    game_map = make_open_map(10, 3)
+    player = make_player(7, 1, hp=30, defense=0)  # distance 6: past charge_range=4, within FOV_RADIUS=8
+    boar = make_monster(1, 1, hp=12, attack=4, defense=0, ai="charger", charge_range=4, charge_attack_bonus=4)
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (boar.x, boar.y) == (2, 1)  # ordinary single-step chase, distance (8) exceeds charge_range
+    assert player.fighter.hp == 30
+    assert boar.charge_recovering is False
+
+
+def test_charger_not_aligned_chases_one_tile_instead_of_charging():
+    game_map = make_open_map(10, 5)
+    player = make_player(4, 2, hp=30, defense=0)  # dx=3, dy=1 - neither equal nor zero, not aligned
+    boar = make_monster(1, 1, hp=12, attack=4, defense=0, ai="charger", charge_range=4, charge_attack_bonus=4)
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (boar.x, boar.y) == (2, 2)  # one ordinary diagonal step, not a straight-line charge
+    assert player.fighter.hp == 30
+    assert boar.charge_recovering is False
+
+
+def test_charger_already_adjacent_attacks_normally_without_charging():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    boar = make_monster(2, 1, hp=12, attack=4, defense=0, ai="charger", charge_range=4, charge_attack_bonus=4)
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # ordinary attack, no charge_attack_bonus applied
+    assert boar.charge_recovering is False
+
+
+def test_charger_uses_default_range_and_bonus_when_unset():
+    game_map = make_open_map(7, 3)
+    player = make_player(5, 1, hp=30, defense=0)
+    boar = make_monster(1, 1, hp=12, attack=4, defense=0, ai="charger")
+    game_map.entities.extend([player, boar])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (boar.x, boar.y) == (4, 1)  # DEFAULT_CHARGE_RANGE=4 covers the gap
+    assert player.fighter.hp == 30 - (4 + 3)  # DEFAULT_CHARGE_ATTACK_BONUS=3
 
 
 # --- monster drops (on-death loot) ---

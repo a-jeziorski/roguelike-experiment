@@ -99,9 +99,10 @@ AI_PACK_HUNTER = "pack_hunter"
 AI_REGENERATOR = "regenerator"
 AI_SPLITTER = "splitter"
 AI_SUMMONER = "summoner"
+AI_CHARGER = "charger"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
-    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER,
+    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER, AI_CHARGER,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -261,6 +262,15 @@ class EntityDef(BaseModel):
     summon_entity_id: str | None = None
     summon_interval: int | None = Field(default=None, gt=0)
     summon_max_active: int | None = Field(default=None, gt=0)
+    # Only meaningful for AI_CHARGER - each independently optional with its
+    # own engine-level fallback, same "omit-friendly" convention as
+    # alert_radius/flee_hp_pct/ranged_range above (not a "both or neither"
+    # pair - either alone still has a sensible default). charge_range is
+    # the max distance a charge can trigger from; charge_attack_bonus is a
+    # flat bonus added to effective_attack for a charge's own landed hit
+    # (see engine/engine.py's _charge).
+    charge_range: int | None = Field(default=None, gt=0)
+    charge_attack_bonus: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod

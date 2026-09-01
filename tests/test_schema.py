@@ -310,6 +310,46 @@ def test_entity_def_rejects_nonpositive_summon_interval():
         )
 
 
+def test_entity_def_charge_fields_default_none():
+    e = EntityDef(id="boar", name="Boar", glyph="a", color=(1, 2, 3), hp=12, attack=4, defense=0)
+    assert e.charge_range is None
+    assert e.charge_attack_bonus is None
+
+
+def test_entity_def_accepts_charge_range_and_bonus():
+    e = EntityDef(
+        id="boar", name="Boar", glyph="a", color=(1, 2, 3), hp=12, attack=4, defense=0,
+        ai="charger", charge_range=4, charge_attack_bonus=4,
+    )
+    assert e.charge_range == 4
+    assert e.charge_attack_bonus == 4
+
+
+def test_entity_def_accepts_charge_range_without_bonus():
+    e = EntityDef(
+        id="boar", name="Boar", glyph="a", color=(1, 2, 3), hp=12, attack=4, defense=0,
+        ai="charger", charge_range=4,
+    )
+    assert e.charge_range == 4
+    assert e.charge_attack_bonus is None
+
+
+def test_entity_def_rejects_nonpositive_charge_range():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="boar", name="Boar", glyph="a", color=(1, 2, 3), hp=12, attack=4, defense=0,
+            ai="charger", charge_range=0,
+        )
+
+
+def test_entity_def_rejects_nonpositive_charge_attack_bonus():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="boar", name="Boar", glyph="a", color=(1, 2, 3), hp=12, attack=4, defense=0,
+            ai="charger", charge_attack_bonus=0,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

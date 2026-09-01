@@ -617,6 +617,25 @@ bone_caller:
   xp_reward: 6
   description: A robed figure whose voice never quite rises, chanting the same handful of syllables until something answers.
 
+boar:
+  name: Boar
+  glyph: "a"
+  color: [110, 75, 50]
+  hp: 12
+  attack: 4
+  defense: 0
+  ai: charger
+  # From up to 4 tiles away, in a straight line, it covers the whole gap
+  # in one turn and hits for attack+bonus (4+4=8) instead of its usual 4 -
+  # then spends its next turn winded, doing nothing at all. A charge
+  # blocked partway (a wall, another body in the way) costs it nothing -
+  # only a *landed* hit winds it. See docs/content_design_process.md's
+  # charger write-up.
+  charge_range: 4
+  charge_attack_bonus: 4
+  xp_reward: 5
+  description: Low to the ground and built for exactly one thing - closing distance fast enough that stepping aside is the only real answer.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the

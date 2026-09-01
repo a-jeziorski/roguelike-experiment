@@ -478,6 +478,7 @@ def test_load_catalog_accepts_a_valid_summoner(tmp_path):
         ("stone_sentinel", 30, 5, 3, "hostile_basic"),
         ("slime", 16, 3, 0, "splitter"),
         ("bone_caller", 14, 2, 0, "summoner"),
+        ("boar", 12, 4, 0, "charger"),
     ],
 )
 def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):

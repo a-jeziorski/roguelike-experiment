@@ -171,6 +171,8 @@ class Entity:
         summon_entity_id: str | None = None,
         summon_interval: int | None = None,
         summon_max_active: int | None = None,
+        charge_range: int | None = None,
+        charge_attack_bonus: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -245,6 +247,15 @@ class Entity:
         # Harmless and unused for anything that isn't a summoner.
         self.summon_cooldown = 0
         self.summoned_children: list[Entity] = []
+        # AI_CHARGER's static config, same "omit-friendly, engine-level
+        # default" shape as alert_radius/flee_hp_pct above.
+        self.charge_range = charge_range
+        self.charge_attack_bonus = charge_attack_bonus
+        # AI_CHARGER's *live* state - True for exactly one turn right after
+        # a charge lands a hit (see Engine._charge/_perform_ai), during
+        # which this entity skips its action entirely instead of acting.
+        # Harmless and unused for anything that isn't a charger.
+        self.charge_recovering = False
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

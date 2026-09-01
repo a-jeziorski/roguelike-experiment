@@ -8,6 +8,7 @@ import random
 from typing import TYPE_CHECKING
 
 from content.schema import (
+    AI_CHARGER,
     AI_ENRAGE,
     AI_HOSTILE_BASIC,
     AI_PACK_HUNTER,
@@ -58,6 +59,10 @@ DEFAULT_MONSTER_RANGED_RANGE = 4
 DEFAULT_PACK_RADIUS = 3
 DEFAULT_PACK_ATTACK_BONUS = 1
 DEFAULT_REGEN_AMOUNT = 2
+# AI_CHARGER's own fallbacks - resolved entirely inside Engine._charge, so
+# unlike AI_ENRAGE's these can live here rather than in engine/entity.py.
+DEFAULT_CHARGE_RANGE = 4
+DEFAULT_CHARGE_ATTACK_BONUS = 3
 
 # Flat XP awarded for discovering a landmark (see
 # Engine._log_newly_seen_tile_announcements) - deliberately small relative
@@ -753,6 +758,23 @@ class Engine:
             if not self._maybe_summon(entity):
                 self._chase_and_attack(entity, dx, dy, distance)
 
+        elif entity.ai == AI_CHARGER:
+            if entity.charge_recovering:
+                # Skips its action entirely for exactly one turn, the
+                # same "block, don't chase/attack" shape a stunned
+                # entity's own turn already takes (§0t) - the cost for
+                # a charge that actually landed last turn.
+                entity.charge_recovering = False
+                self.message_log.add(f"{entity.name} is recovering from the charge.", category="combat")
+            elif (
+                distance > 1
+                and distance <= (entity.charge_range or DEFAULT_CHARGE_RANGE)
+                and (dx == 0 or dy == 0 or abs(dx) == abs(dy))
+            ):
+                self._charge(entity, dx, dy, distance)
+            else:
+                self._chase_and_attack(entity, dx, dy, distance)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -845,6 +867,38 @@ class Engine:
         entity.summoned_children.append(child)
         self.message_log.add(f"{entity.name} summons a {child.name}!", category="combat")
         return True
+
+    def _charge(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
+        """AI_CHARGER's whole hook, called from _perform_ai's own branch
+        only when the player is aligned in a straight line (orthogonal or
+        exact diagonal) within charge_range and farther than one tile
+        away. Covers up to charge_range tiles toward the player in this
+        one turn - one MovementAction step at a time, stopping early (no
+        attack, no recovery) the moment a step doesn't actually move it,
+        the same way an ordinary blocked step already no-ops safely.
+
+        Reaching adjacent resolves one attack immediately, with
+        charge_attack_bonus added on top of effective_attack via
+        resolve_skill_damage (the same flat-damage-value pipeline
+        Ground Pound uses, §0z) rather than temporarily mutating
+        fighter.attack - then sets charge_recovering so next turn is
+        spent winded instead of acting at all. A charge that gets blocked
+        partway and never reaches adjacent costs nothing extra: it simply
+        closed some distance, the same as a failed lunge would in
+        practice, not a punishable mistake."""
+        step_x = (dx > 0) - (dx < 0)
+        step_y = (dy > 0) - (dy < 0)
+        steps = min(distance - 1, entity.charge_range or DEFAULT_CHARGE_RANGE)
+        for _ in range(steps):
+            before = (entity.x, entity.y)
+            MovementAction(step_x, step_y).perform(self, entity)
+            if (entity.x, entity.y) == before:
+                return
+        if max(abs(self.player.x - entity.x), abs(self.player.y - entity.y)) > 1:
+            return
+        bonus = entity.charge_attack_bonus or DEFAULT_CHARGE_ATTACK_BONUS
+        resolve_skill_damage(self, entity, self.player, entity.effective_attack + bonus, "charges into")
+        entity.charge_recovering = True
 
     def _handle_enemy_turns(self) -> None:
         for entity in list(self.game_map.entities):
