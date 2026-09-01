@@ -76,6 +76,7 @@ def make_monster(
     pack_radius=None, pack_attack_bonus=None, regen_amount=None,
     drop_item_id=None, drop_chance=None,
     split_count=None, split_hp_fraction=None, can_split=True, entity_id="",
+    summon_entity_id=None, summon_interval=None, summon_max_active=None,
 ) -> Entity:
     # poison_potency/poison_duration kept as this helper's own kwarg names
     # (translated below) purely so the many existing call sites that pass
@@ -107,6 +108,9 @@ def make_monster(
         split_count=split_count,
         split_hp_fraction=split_hp_fraction,
         can_split=can_split,
+        summon_entity_id=summon_entity_id,
+        summon_interval=summon_interval,
+        summon_max_active=summon_max_active,
         stationary=stationary,
         entity_id=entity_id,
     )
@@ -1156,6 +1160,124 @@ def test_splitter_without_a_catalog_does_not_crash():
     engine.on_entity_death(slime)  # must not raise
 
     assert [e for e in game_map.entities if e.entity_id == "slime"] == []
+
+
+# --- summoner (spawns reinforcements instead of attacking) ---
+
+
+def test_summoner_summons_on_its_first_turn_instead_of_attacking():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    caller = make_monster(
+        2, 1, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, entity_id="bone_caller",
+    )
+    game_map.entities.extend([player, caller])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.process_turn(WaitAction())
+
+    summoned = [e for e in game_map.entities if e.entity_id == "kobold"]
+    assert len(summoned) == 1
+    assert max(abs(summoned[0].x - 2), abs(summoned[0].y - 1)) == 1  # adjacent to the caller
+    assert player.fighter.hp == 30  # summoning spent the turn, not an attack
+    assert caller.summon_cooldown == 4  # reset after the attempt
+    assert any("summons a Kobold" in m for m in engine.message_log.messages)
+
+
+def test_summoner_attacks_normally_while_on_cooldown():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    caller = make_monster(
+        2, 1, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, entity_id="bone_caller",
+    )
+    caller.summon_cooldown = 3  # not ready yet
+    game_map.entities.extend([player, caller])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.process_turn(WaitAction())
+
+    assert caller.summon_cooldown == 2  # ticked down, not reset
+    assert player.fighter.hp == 30 - 2  # attacked normally instead of summoning
+    assert [e for e in game_map.entities if e.entity_id == "kobold"] == []
+
+
+def test_summoner_respects_its_max_active_cap():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0, hp=30, defense=0)
+    caller = make_monster(
+        2, 2, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, summon_max_active=1, entity_id="bone_caller",
+    )
+    existing_child = make_monster(2, 3, hp=8, attack=3, defense=0, ai="hostile_basic", entity_id="kobold")
+    caller.summoned_children = [existing_child]
+    game_map.entities.extend([player, caller, existing_child])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.process_turn(WaitAction())
+
+    kobolds = [e for e in game_map.entities if e.entity_id == "kobold"]
+    assert len(kobolds) == 1  # still just the pre-existing one - cap held
+    assert caller.summon_cooldown == 4  # the attempt still happened (and reset), just didn't spawn
+
+
+def test_summoner_can_summon_again_once_a_child_dies():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(0, 0, hp=30, defense=0)
+    caller = make_monster(
+        2, 2, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, summon_max_active=1, entity_id="bone_caller",
+    )
+    dead_child = make_monster(2, 3, hp=0, attack=3, defense=0, ai="hostile_basic", entity_id="kobold")
+    caller.summoned_children = [dead_child]  # already dead - never added to game_map.entities
+    game_map.entities.extend([player, caller])
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.process_turn(WaitAction())
+
+    kobolds = [e for e in game_map.entities if e.entity_id == "kobold"]
+    assert len(kobolds) == 1  # the dead reference was pruned, a fresh one spawned
+
+
+def test_summoner_summons_nothing_when_surrounded():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[:, :] = False
+    game_map.walkable[1, 1] = True
+    catalog = load_catalog()
+    player = make_player(1, 1)
+    caller = make_monster(
+        1, 1, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, entity_id="bone_caller",
+    )
+    game_map.entities.append(caller)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    result = engine._maybe_summon(caller)
+
+    assert result is False
+    assert [e for e in game_map.entities if e.entity_id == "kobold"] == []
+    assert caller.summon_cooldown == 4  # the attempt still happened and reset
+
+
+def test_summoner_without_a_catalog_never_summons():
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    caller = make_monster(
+        2, 1, hp=14, attack=2, defense=0, ai="summoner",
+        summon_entity_id="kobold", summon_interval=4, entity_id="bone_caller",
+    )
+    game_map.entities.extend([player, caller])
+    engine = Engine(game_map, player, "Test Level")  # no catalog
+
+    engine.process_turn(WaitAction())
+
+    assert [e for e in game_map.entities if e.entity_id == "kobold"] == []
+    assert player.fighter.hp == 30 - 2  # falls through to an ordinary attack instead
 
 
 # --- monster drops (on-death loot) ---

@@ -379,6 +379,96 @@ def test_load_catalog_rejects_drop_item_id_on_a_peaceful_entity(tmp_path):
         load_catalog(entities_path, items_path, perks_path)
 
 
+def test_load_catalog_rejects_summon_entity_id_referencing_unknown_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "bone_caller:\n"
+        "  name: Bone Caller\n"
+        "  glyph: U\n"
+        "  color: [150, 140, 180]\n"
+        "  hp: 14\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: summoner\n"
+        "  summon_entity_id: nonexistent_monster\n"
+        "  summon_interval: 4\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="summon_entity_id references unknown entity"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_rejects_summon_entity_id_targeting_a_peaceful_entity(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "bone_caller:\n"
+        "  name: Bone Caller\n"
+        "  glyph: U\n"
+        "  color: [150, 140, 180]\n"
+        "  hp: 14\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: summoner\n"
+        "  summon_entity_id: villager\n"
+        "  summon_interval: 4\n"
+        "villager:\n"
+        "  name: Villager\n"
+        "  glyph: v\n"
+        "  color: [170, 140, 90]\n"
+        "  hp: 10\n"
+        "  attack: 0\n"
+        "  defense: 0\n"
+        "  ai: villager\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ContentValidationError, match="summoning one as reinforcement makes no sense"):
+        load_catalog(entities_path, items_path, perks_path)
+
+
+def test_load_catalog_accepts_a_valid_summoner(tmp_path):
+    entities_path = tmp_path / "entities.yaml"
+    items_path = tmp_path / "items.yaml"
+    perks_path = tmp_path / "perks.yaml"
+    entities_path.write_text(
+        "bone_caller:\n"
+        "  name: Bone Caller\n"
+        "  glyph: U\n"
+        "  color: [150, 140, 180]\n"
+        "  hp: 14\n"
+        "  attack: 2\n"
+        "  defense: 0\n"
+        "  ai: summoner\n"
+        "  summon_entity_id: kobold\n"
+        "  summon_interval: 4\n"
+        "  summon_max_active: 2\n"
+        "kobold:\n"
+        "  name: Kobold\n"
+        "  glyph: k\n"
+        "  color: [150, 120, 60]\n"
+        "  hp: 8\n"
+        "  attack: 3\n"
+        "  defense: 0\n"
+        "  ai: hostile_basic\n",
+        encoding="utf-8",
+    )
+    items_path.write_text("", encoding="utf-8")
+    perks_path.write_text("", encoding="utf-8")
+
+    catalog = load_catalog(entities_path, items_path, perks_path)
+
+    assert catalog.entities["bone_caller"].summon_entity_id == "kobold"
+
+
 @pytest.mark.parametrize(
     "entity_id,hp,attack,defense,ai",
     [
@@ -387,6 +477,7 @@ def test_load_catalog_rejects_drop_item_id_on_a_peaceful_entity(tmp_path):
         ("drowned_wretch", 11, 4, 0, "hostile_basic"),
         ("stone_sentinel", 30, 5, 3, "hostile_basic"),
         ("slime", 16, 3, 0, "splitter"),
+        ("bone_caller", 14, 2, 0, "summoner"),
     ],
 )
 def test_new_monster_catalog_entries(entity_id, hp, attack, defense, ai):

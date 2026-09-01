@@ -254,6 +254,62 @@ def test_entity_def_rejects_nonpositive_split_count():
         )
 
 
+def test_entity_def_summon_fields_default_none():
+    e = EntityDef(id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0)
+    assert e.summon_entity_id is None
+    assert e.summon_interval is None
+    assert e.summon_max_active is None
+
+
+def test_entity_def_accepts_summon_entity_id_with_interval():
+    e = EntityDef(
+        id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+        ai="summoner", summon_entity_id="skeleton", summon_interval=4,
+    )
+    assert e.summon_entity_id == "skeleton"
+    assert e.summon_interval == 4
+
+
+def test_entity_def_accepts_summon_max_active():
+    e = EntityDef(
+        id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+        ai="summoner", summon_entity_id="skeleton", summon_interval=4, summon_max_active=2,
+    )
+    assert e.summon_max_active == 2
+
+
+def test_entity_def_rejects_summon_entity_id_without_interval():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+            ai="summoner", summon_entity_id="skeleton",
+        )
+
+
+def test_entity_def_rejects_summon_interval_without_entity_id():
+    with pytest.raises(ValidationError, match="must be set together"):
+        EntityDef(
+            id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+            ai="summoner", summon_interval=4,
+        )
+
+
+def test_entity_def_rejects_summon_max_active_without_entity_id():
+    with pytest.raises(ValidationError, match="only meaningful when summon_entity_id"):
+        EntityDef(
+            id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+            summon_max_active=2,
+        )
+
+
+def test_entity_def_rejects_nonpositive_summon_interval():
+    with pytest.raises(ValidationError):
+        EntityDef(
+            id="bone_caller", name="Bone Caller", glyph="U", color=(1, 2, 3), hp=14, attack=2, defense=0,
+            ai="summoner", summon_entity_id="skeleton", summon_interval=0,
+        )
+
+
 def test_entity_def_rejects_out_of_range_flee_hp_pct():
     with pytest.raises(ValidationError):
         EntityDef(

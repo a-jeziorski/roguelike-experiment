@@ -277,6 +277,16 @@ def load_catalog(
                 )
             if edef.drop_item_id not in items:
                 errors.append(f"entity '{entity_id}': drop_item_id references unknown item '{edef.drop_item_id}'")
+        if edef.summon_entity_id is not None:
+            if edef.summon_entity_id not in entities:
+                errors.append(
+                    f"entity '{entity_id}': summon_entity_id references unknown entity '{edef.summon_entity_id}'"
+                )
+            elif entities[edef.summon_entity_id].ai in PEACEFUL_AI_TYPES:
+                errors.append(
+                    f"entity '{entity_id}': summon_entity_id '{edef.summon_entity_id}' is a peaceful "
+                    "NPC (villager/town_guard) - summoning one as reinforcement makes no sense"
+                )
         if not edef.trainer_perks:
             continue
         if edef.ai not in PEACEFUL_AI_TYPES:

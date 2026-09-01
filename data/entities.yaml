@@ -598,6 +598,25 @@ slime:
   xp_reward: 4
   description: A slow, patient wobble of green matter that never quite decides on a shape. Cut into it and it simply becomes two smaller problems.
 
+bone_caller:
+  name: Bone Caller
+  glyph: "U"
+  color: [150, 140, 180]
+  hp: 14
+  attack: 2
+  defense: 0
+  ai: summoner
+  # Weak in melee on purpose - it's meant to be killed fast, not traded
+  # blows with. Every 4 turns it doesn't summon, it raises one skeleton
+  # instead of attacking (capped at 2 active at once, so a player who
+  # can't close the distance faces a slow trickle, not an army) - see
+  # docs/content_design_process.md's summoner write-up.
+  summon_entity_id: skeleton
+  summon_interval: 4
+  summon_max_active: 2
+  xp_reward: 6
+  description: A robed figure whose voice never quite rises, chanting the same handful of syllables until something answers.
+
 # The Visitor's creations (docs/main_story.md, docs/region_bibles/northern_steppe.md) -
 # not yet placed in any level, same "define now, place later" pattern as
 # the bestiary expansion above. A deliberately new, higher power band: the

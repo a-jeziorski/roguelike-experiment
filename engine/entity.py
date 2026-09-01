@@ -168,6 +168,9 @@ class Entity:
         split_count: int | None = None,
         split_hp_fraction: float | None = None,
         can_split: bool = True,
+        summon_entity_id: str | None = None,
+        summon_interval: int | None = None,
+        summon_max_active: int | None = None,
         stationary: bool = False,
         description: str = "",
         dialogue: str = "",
@@ -230,6 +233,18 @@ class Entity:
         self.split_count = split_count
         self.split_hp_fraction = split_hp_fraction
         self.can_split = can_split
+        # AI_SUMMONER's static config - same "set once at spawn" shape as
+        # split_count/split_hp_fraction above.
+        self.summon_entity_id = summon_entity_id
+        self.summon_interval = summon_interval
+        self.summon_max_active = summon_max_active
+        # AI_SUMMONER's *live* state - summon_cooldown counts down to the
+        # next summon attempt (0 means ready now; see
+        # Engine._maybe_summon), summoned_children tracks this specific
+        # entity's own still-living summons for summon_max_active's cap.
+        # Harmless and unused for anything that isn't a summoner.
+        self.summon_cooldown = 0
+        self.summoned_children: list[Entity] = []
         # AI_PACK_HUNTER's *live* bonus - unlike the static config above,
         # this is recomputed by Engine._perform_ai every time this entity
         # acts (see Engine._has_nearby_ally), immediately before it

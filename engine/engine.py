@@ -16,6 +16,7 @@ from content.schema import (
     AI_SKITTISH,
     AI_SLEEPING_GUARD,
     AI_SPLITTER,
+    AI_SUMMONER,
     AI_TOWN_GUARD,
     AI_VILLAGER,
     EFFECT_POISON,
@@ -743,6 +744,15 @@ class Engine:
             # on an ordinary turn.
             self._chase_and_attack(entity, dx, dy, distance)
 
+        elif entity.ai == AI_SUMMONER:
+            # A summon attempt spends the whole turn - channeling a
+            # reinforcement instead of also swinging a weapon - so
+            # chase_and_attack only runs when this turn wasn't spent
+            # summoning (_maybe_summon returns False while its own
+            # cooldown hasn't reached 0 yet).
+            if not self._maybe_summon(entity):
+                self._chase_and_attack(entity, dx, dy, distance)
+
     def _chase_and_attack(self, entity: Entity, dx: int, dy: int, distance: int) -> None:
         if distance <= 1:
             resolve_attack(self, attacker=entity, defender=self.player)
@@ -794,6 +804,47 @@ class Engine:
         healed = min(amount, entity.fighter.max_hp - entity.fighter.hp)
         entity.fighter.hp += healed
         self.message_log.add(f"{entity.name} regenerates {healed} HP.", category="combat")
+
+    def _maybe_summon(self, entity: Entity) -> bool:
+        """AI_SUMMONER's whole hook, called from _perform_ai's own branch.
+        Returns True if this turn was spent summoning (the caller skips
+        its own chase_and_attack that turn), False if it wasn't time yet
+        or nothing could be summoned (caller falls through to an ordinary
+        chase_and_attack instead). entity.summon_cooldown counts down to
+        the next attempt; reaching 0 triggers one and resets it to
+        summon_interval, whether or not that attempt actually succeeds -
+        a summoner blocked by its own summon_max_active cap, or with
+        nowhere free to put a summon, tries again after another full
+        interval, not on the very next turn.
+
+        entity.summoned_children tracks this specific summoner's own
+        still-living summons (pruned of dead ones here) - the cap is per
+        summoner, not a global count of every copy of summon_entity_id
+        anywhere on the map, so two summoners of the same kind don't
+        starve each other's caps."""
+        if (
+            entity.summon_entity_id is None
+            or self.catalog is None
+            or entity.summon_entity_id not in self.catalog.entities
+        ):
+            return False
+        if entity.summon_cooldown > 0:
+            entity.summon_cooldown -= 1
+            return False
+        entity.summon_cooldown = entity.summon_interval
+        entity.summoned_children = [c for c in entity.summoned_children if c.is_alive]
+        if entity.summon_max_active is not None and len(entity.summoned_children) >= entity.summon_max_active:
+            return False
+        spawn_tiles = nearby_walkable_tiles(self.game_map, entity.x, entity.y, 1, radius=1)
+        if not spawn_tiles:
+            return False
+        edef = self.catalog.entities[entity.summon_entity_id]
+        x, y = spawn_tiles[0]
+        child = entity_from_def(edef, x, y)
+        self.game_map.entities.append(child)
+        entity.summoned_children.append(child)
+        self.message_log.add(f"{entity.name} summons a {child.name}!", category="combat")
+        return True
 
     def _handle_enemy_turns(self) -> None:
         for entity in list(self.game_map.entities):

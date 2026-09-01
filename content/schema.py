@@ -98,9 +98,10 @@ AI_ENRAGE = "enrage"
 AI_PACK_HUNTER = "pack_hunter"
 AI_REGENERATOR = "regenerator"
 AI_SPLITTER = "splitter"
+AI_SUMMONER = "summoner"
 AIType = Literal[
     AI_HOSTILE_BASIC, AI_SLEEPING_GUARD, AI_SKITTISH, AI_RANGED_BASIC, AI_VILLAGER, AI_TOWN_GUARD,
-    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER,
+    AI_ENRAGE, AI_PACK_HUNTER, AI_REGENERATOR, AI_SPLITTER, AI_SUMMONER,
 ]
 # AI types that never initiate violence on their own - villager never fights
 # back at all; town_guard doesn't either, until the map-wide, time-limited
@@ -247,6 +248,19 @@ class EntityDef(BaseModel):
     # Both or neither, same shape as drop_item_id/drop_chance above.
     split_count: int | None = Field(default=None, gt=0)
     split_hp_fraction: float | None = Field(default=None, gt=0, le=1)
+    # Only meaningful for AI_SUMMONER - every summon_interval turns it
+    # doesn't summon, this entity spends its own turn (not also attacking
+    # that turn) summoning one summon_entity_id at a free adjacent tile
+    # instead of chasing/attacking (see engine/engine.py's _maybe_summon).
+    # summon_entity_id/summon_interval are both or neither, same shape as
+    # split_count/split_hp_fraction above. summon_max_active is a genuinely
+    # separate, optional cap - None means unbounded (content/loader.py
+    # cross-references summon_entity_id against the entity catalog, same
+    # drop_item_id/items precedent, and rejects it on a peaceful entity,
+    # same reasoning xp_reward/drop_item_id already establish).
+    summon_entity_id: str | None = None
+    summon_interval: int | None = Field(default=None, gt=0)
+    summon_max_active: int | None = Field(default=None, gt=0)
 
     @field_validator("glyph")
     @classmethod
@@ -265,6 +279,18 @@ class EntityDef(BaseModel):
     def split_count_and_fraction_both_or_neither(self) -> "EntityDef":
         if (self.split_count is None) != (self.split_hp_fraction is None):
             raise ValueError("split_count and split_hp_fraction must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def summon_entity_id_and_interval_both_or_neither(self) -> "EntityDef":
+        if (self.summon_entity_id is None) != (self.summon_interval is None):
+            raise ValueError("summon_entity_id and summon_interval must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def summon_max_active_requires_summon_entity_id(self) -> "EntityDef":
+        if self.summon_max_active is not None and self.summon_entity_id is None:
+            raise ValueError("summon_max_active is only meaningful when summon_entity_id is set")
         return self
 
     @model_validator(mode="after")

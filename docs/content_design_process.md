@@ -2149,6 +2149,58 @@ later" pattern the very first bestiary-expansion pass used (§0t), since
 this round of AI behaviors is being built and reviewed one at a time
 before any of them get placed into real dungeons.
 
+## 0ah. Summoner - reinforcements instead of attacking (`bone_caller`)
+
+The second AI behavior in this round, and the first whose whole point is
+turning a fight into a race: `AI_SUMMONER` spends its own turn calling one
+reinforcement instead of also attacking that turn, on a cooldown
+(`EntityDef.summon_entity_id`/`summon_interval`, "both or neither," same
+shape as `split_count`/`split_hp_fraction`), capped at
+`summon_max_active` still-living summons at once (`summon_max_active` is
+independently optional - `None` means no cap at all, a deliberate escape
+hatch for a summoner that's meant to be an unwinnable war of attrition
+unless it dies fast).
+
+**A summon attempt replaces the turn's attack, it doesn't add to it** -
+`_perform_ai`'s `AI_SUMMONER` branch only calls `_chase_and_attack` when
+`_maybe_summon` returns `False` (not time yet, or nothing could actually
+be summoned). This is a real design choice, not an incidental one: a
+summoner that both attacked *and* periodically added reinforcements for
+free would be strictly stronger than an ordinary attacker for the exact
+same stat budget, with no real trade-off - "channeling a summon instead
+of swinging" is what makes rushing it down before it's summoned twice a
+meaningful player choice.
+
+**`Entity.summon_cooldown`/`summoned_children` are live, per-entity
+state** (defaulting `0`/`[]`, harmless and unread for anything that isn't
+a summoner) - `summon_cooldown` counts down to the next attempt exactly
+the way a status effect's `turns_remaining` counts down to expiry (§0t):
+reaching `0` triggers an attempt and resets to `summon_interval`,
+*whether or not that attempt actually produces a summon*. A summoner
+blocked by its own cap, or with nowhere free to put a new arrival, tries
+again after another full interval rather than immediately on the very
+next turn - the same "no free retry" shape a failed roll gets everywhere
+else in this project. `summoned_children` is a live list of this specific
+summoner's own actual summons (not a global count of every copy of
+`summon_entity_id` on the map), pruned of the dead each time the cap is
+checked - two summoners of the same kind never starve each other's caps,
+and a summon dying frees its own caller's slot immediately.
+
+**Reuses the same two helpers `slime`'s Splitter did** (§0ag) -
+`entity_from_def` (already used by both the map's own spawn loop and the
+visitor-band encounter system, per §0ad) builds the summoned reinforcement
+the same way a real level spawn would, and `nearby_walkable_tiles`
+(radius 1) finds it somewhere to land, silently offering fewer results
+(down to none) rather than erroring when the caller has nowhere free -
+the summon attempt is simply skipped for that cycle, same as
+`_maybe_split`'s own "spawn however many tiles actually exist" posture.
+
+Ships one real example, `bone_caller` (`data/entities.yaml`) - deliberately
+weak in melee (`attack: 2`, no defense) so it's meant to be rushed down,
+not traded blows with - and summons `skeleton`, an entity that already
+exists in the catalog rather than a new minion invented just for this.
+Not yet placed into a level, same reasoning as `slime`.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
