@@ -3,31 +3,40 @@ name: The Windrest
 
 map: |
   ################################
-  #,x@,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,!,,,/,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,b,,,,,,,,,,,,,b,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,[,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,b,,,,,,,,,,,,,b,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,b,,,,,,,,,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,####,####
-  #,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,#,,,C,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,#
-  #,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,#
+  #Fa@FFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FFFklFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FbFFFcFFFFFFFFFFFklFFFFFFFFFFF#
+  #FFFFFdFFFFFFFFFFFFFeFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FfFFFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFgFFFFFFFFFFFFFhFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FFmFFFFFFFFFFFFFFFFFmFFFFFFFFF#
+  #FFFFFFFFFFFFFFiFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF####F####
+  #FFFFFFFFFFFFFFFFFFFFFF#FFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#FmFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#FFFjFFF#
+  #FFFFFFFFFFFFFFFFFFFFFF#FFFFFlF#
+  #FFFFFFFFFFFFFFFFFFFFFF#FFFFFFF#
   ################################
 
 legend:
   "#": wall
-  ",": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "x": { stairs_down: null, description: "The Storm Door, iron-braced and still sound - the one thing here anybody's bothered to actually maintain, on both sides of it.", announce: true }
-  "b": { entity: bandit }
-  "C": { entity: windrest_captain }
-  "!": { item: healing_potion }
-  "/": { item: rusty_dagger, description: "A dagger, dropped or discarded near the door - whoever it belonged to didn't think it was worth the weight." }
-  "[": { item: leather_armor, description: "A stiff leather jerkin, patched more than once. Somebody's spare, left where it fell." }
+  "F": floor
+  "a": { tile: stairs_down, next_level: null, description: "The Storm Door, iron-braced and still sound - the one thing here anybody's bothered to actually maintain, on both sides of it.", announce: true }
+  "d": { tile: floor, entity: bandit }
+  "e": { tile: floor, entity: bandit }
+  "g": { tile: floor, entity: bandit }
+  "h": { tile: floor, entity: bandit }
+  "i": { tile: floor, entity: bandit }
+  "j": { tile: floor, entity: windrest_captain }
+  "b": { tile: floor, item: healing_potion }
+  "c": { tile: floor, item: rusty_dagger, description: "A dagger, dropped or discarded near the door - whoever it belonged to didn't think it was worth the weight." }
+  "f": { tile: floor, item: leather_armor, description: "A stiff leather jerkin, patched more than once. Somebody's spare, left where it fell." }
+  "k": { tile: floor, decoration: barrel }
+  "l": { tile: floor, decoration: crate }
+  "m": { tile: floor, decoration: bed }

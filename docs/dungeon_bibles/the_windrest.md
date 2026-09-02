@@ -157,3 +157,26 @@ unwinnable straight fight into a real, survivable one.
   door) helps this dungeon feel continuous with the hazard outside it
   rather than a wholly separate
   space the player steps into and forgets about.
+
+## Decoration pass
+
+No content variety - the bible is explicit ("no new monsters") and the
+item balance is precisely tuned (`rusty_dagger` + `leather_armor`
+turning `windrest_captain`'s otherwise-unwinnable math into a
+survivable fight); a fourth item would need that math reworked for no
+narrative gain. Decoration stays deliberately spare too, per the mood
+section's own "supplies stacked rather than displayed... nothing
+decorative": `barrel`/`crate` (two stacks, near two of the bandit
+clusters) and `bed` (four, tucked against walls rather than centered -
+"claimed sleeping spots near the better-sealed walls," never a
+comfortable arrangement) - never `table`/`chair`/`bookshelf`/
+`fireplace`, which would read as these occupants making themselves at
+home the way Broken Watch's did. One `bed` and one `crate` sit in the
+Captain's Corner - his own space, still functional, not staged as a
+command post the way Broken Watch's Captain's Perch was.
+
+Verification: re-validated via the real content loader (entity/item/
+decoration/stairs counts, roster and item placements unchanged), full
+`pytest -q` (1373 passed), `tools/preview.py data/dungeons` full
+registry, `main.py` smoke-launch, and a screenshot via the scratchpad's
+`screenshot_dungeon.py` harness.
