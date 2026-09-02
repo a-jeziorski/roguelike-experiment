@@ -554,15 +554,24 @@ def _resolve_goto_target(engine, target_tokens: list[str]) -> tuple[tuple[int, i
 def _execute_walk(
     engine, steps: list[tuple[int, int]], active_key: str, active_engines: dict,
     clock, quest_log, dungeon_registry: dict, overworld_level, catalog, encounter_registry,
+    on_step=None,
 ) -> tuple[str, object, list[str]]:
     """Executes up to len(steps) BumpAction moves ((dx, dy) tuples),
     stopping before spending a turn on any step _peek_step flags unsafe,
     or right after a step that changes game_state, hands the player to a
     different place, or costs HP - shared by the `walk` and `goto`
-    commands. Returns the possibly-updated (active_key, engine, notes)."""
+    commands. Returns the possibly-updated (active_key, engine, notes).
+
+    on_step, if given, is called as on_step(active_key, engine, step_number,
+    total_steps) immediately after each step actually executes (including
+    the one that ends the loop, whatever the reason) - main()'s hook for
+    recording one --record frame per step, rather than one for the whole
+    multi-step command, so a replay shows the route actually walked instead
+    of jumping straight from start to end (see tools/replay.py)."""
     notes: list[str] = []
     executed = 0
     stop_reason: str | None = None
+    entered_new_area = False
     start_pos = (engine.player.x, engine.player.y)
 
     for dx, dy in steps:
@@ -585,35 +594,47 @@ def _execute_walk(
             encounter_registry=encounter_registry,
         )
         executed += 1
+        entered_new_area = new_active_key != active_key
+        active_key = new_active_key
+
+        if on_step is not None:
+            on_step(active_key, engine, executed, len(steps))
 
         if engine.game_state == "dead":
-            active_key = new_active_key
             stop_reason = "you died"
             break
-        if new_active_key != active_key:
-            active_key = new_active_key
+        if entered_new_area:
             stop_reason = f"entered a new area ({engine.level_name})"
             break
-        active_key = new_active_key
         if engine.player.fighter.hp < pre_hp:
             stop_reason = f"took damage ({pre_hp} -> {engine.player.fighter.hp} HP)"
             break
 
     end_pos = (engine.player.x, engine.player.y)
-    notes.append(
-        f"Walked {executed}/{len(steps)} step(s): "
-        f"({start_pos[0]}, {start_pos[1]}) -> ({end_pos[0]}, {end_pos[1]})."
-    )
-    if stop_reason is not None:
-        notes.append(f"Stopped early: {stop_reason}.")
-    elif executed == len(steps):
-        notes.append("Completed all requested steps.")
+    if entered_new_area:
+        # end_pos is in the *new* level's own coordinate space - reporting
+        # it as "(start) -> (end)" would silently blend two unrelated
+        # coordinate systems into one misleading line (see
+        # docs/content_design_process.md's goto write-up). Report the
+        # step count and the arrival separately instead.
+        notes.append(f"Walked {executed}/{len(steps)} step(s) from ({start_pos[0]}, {start_pos[1]}).")
+        notes.append(f"Entered {engine.level_name} at ({end_pos[0]}, {end_pos[1]}).")
+    else:
+        notes.append(
+            f"Walked {executed}/{len(steps)} step(s): "
+            f"({start_pos[0]}, {start_pos[1]}) -> ({end_pos[0]}, {end_pos[1]})."
+        )
+        if stop_reason is not None:
+            notes.append(f"Stopped early: {stop_reason}.")
+        elif executed == len(steps):
+            notes.append("Completed all requested steps.")
     return active_key, engine, notes
 
 
 def apply_command(
     args: argparse.Namespace, active_key: str, active_engines: dict, engine,
     clock, quest_log, dungeon_registry: dict, overworld_level, catalog, encounter_registry,
+    on_step=None,
 ) -> tuple[str, object, bool, list[str]]:
     """Applies one non-query command; returns the possibly-updated
     (active_key, engine, full_map, notes) - resolve_transition can hand
@@ -621,7 +642,11 @@ def apply_command(
     overworld), so the caller must use the returned engine, not the one
     passed in. `notes` are short status lines (move outcome, walk/goto
     summary) printed before the standard render - the "did that actually
-    work" feedback a chain of blind moves otherwise lacks."""
+    work" feedback a chain of blind moves otherwise lacks.
+
+    on_step is passed straight through to _execute_walk for `walk`/`goto`
+    (the only commands that can span more than one turn) - see that
+    function's own docstring."""
     cmd = args.command
     full_map = False
     notes: list[str] = []
@@ -631,6 +656,7 @@ def apply_command(
         active_key, engine, notes = _execute_walk(
             engine, steps, active_key, active_engines, clock, quest_log,
             dungeon_registry, overworld_level, catalog, encounter_registry,
+            on_step=on_step,
         )
         return active_key, engine, full_map, notes
 
@@ -647,6 +673,7 @@ def apply_command(
         active_key, engine, walk_notes = _execute_walk(
             engine, path, active_key, active_engines, clock, quest_log,
             dungeon_registry, overworld_level, catalog, encounter_registry,
+            on_step=on_step,
         )
         notes.extend(walk_notes)
         return active_key, engine, full_map, notes
@@ -994,9 +1021,26 @@ def main(argv: list[str] | None = None) -> int:
         run_query_command(args, engine, catalog)
         return 0
 
+    on_step = None
+    if args.record:
+        def on_step(step_active_key, step_engine, step_number, total_steps):
+            # One frame per turn `walk`/`goto` actually executes, not one
+            # for the whole multi-step command - otherwise a replay would
+            # jump straight from the start position to the end position in
+            # a single frame instead of showing the route walked (see
+            # tools/replay.py, docs/content_design_process.md's goto
+            # write-up). Reuses the exact same frame shape/helper the
+            # end-of-command recording below uses.
+            step_save = capture_save(step_active_key, active_engines, clock, quest_log, overworld_level)
+            _append_replay_frame(
+                Path(args.record), call_argv, [f"Step {step_number}/{total_steps}"],
+                step_engine, step_save,
+            )
+
     active_key, engine, full_map, notes = apply_command(
         args, active_key, active_engines, engine, clock, quest_log,
         dungeon_registry, overworld_level, catalog, encounter_registry,
+        on_step=on_step,
     )
 
     save = capture_save(active_key, active_engines, clock, quest_log, overworld_level)

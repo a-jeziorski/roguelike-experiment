@@ -2670,6 +2670,34 @@ that specific step, so `_append_replay_frame` captures
 message log with those recorded messages before rendering - otherwise
 every replayed frame's log panel would be blank.
 
+**One frame per turn actually executed, not one per CLI call - found by
+actually watching a recorded session.** `walk`/`goto` are the only
+commands that can span more than one turn in a single invocation
+(`_execute_walk` in `tools/play_llm.py` runs a whole list of steps), and
+the first version of this feature recorded exactly one frame per `main()`
+call - so a 20-step `goto` showed up in the replay as a single instant
+jump from the start tile to the end tile, not a walk. `_execute_walk` now
+takes an `on_step` callback, invoked once per step that actually executes
+(right alongside the existing end-of-command frame, which still fires
+from `main()` afterward) - `main()` only builds one when `--record` is
+set, so a non-recording run pays zero extra `capture_save` cost per step.
+
+**The same real playtest surfaced a second, related bug: a level
+transition mid-route made `_execute_walk`'s own summary note lie.** Its
+final "Walked N/M step(s): (a, b) -> (c, d)" line was built from
+`engine.player.x/y` *after* the loop - but if one of the steps entered a
+new dungeon or the overworld, `engine` itself had already been replaced
+by `resolve_transition` with a different level's own `Engine`, whose
+(x, y) means nothing next to the *old* level's (a, b). The note looked
+like an ordinary completed walk right up until you tried to plot the two
+coordinates on the same map. `_execute_walk` now tracks whether the loop
+actually stopped on a transition (`entered_new_area`, computed the same
+turn `resolve_transition` reports a changed `active_key` - not inferred
+by string-matching `stop_reason` after the fact) and reports that case on
+its own terms: "Walked N/M step(s) from (a, b)." plus a separate "Entered
+{level} at (c, d)." line, never blending the two coordinate spaces into
+one misleading arrow.
+
 **The viewer is deliberately its own small event loop, not an extension of
 `engine/input_handlers.py`** - frame navigation (next/prev/play/pause)
 isn't a gameplay concern, the same reasoning `tools/preview.py`/
@@ -2699,7 +2727,12 @@ reconstruction of every recorded frame through the exact real rendering
 pipeline (`_build_engine_for_frame` + `render_all`, with real sprite
 codepoints, no window) confirming nothing raises, and an actual windowed
 launch of `tools/replay.py` confirming the SDL window opens and renders
-without error.
+without error. The per-step recording and coordinate-blending fixes above
+came from an actual multi-hour playtest session driven through this exact
+tool (534 recorded frames across three dungeons and two settlements,
+including two real character deaths) - the single most effective way
+either bug could have been found, since neither one is visible from
+`_execute_walk`'s code alone, only from watching what it produces.
 
 ## 1. Narrative framing
 
