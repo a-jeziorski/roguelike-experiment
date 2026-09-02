@@ -145,3 +145,30 @@ the two potions without re-running `testbuild` against the current
   dramatic possible obstacle, made to feel dangerous through reduced
   visibility rather than scale" - resist the urge to add a second level
   or a named threat.
+
+## Decoration pass
+
+No content variety - the balance here is testbuild-verified down to the
+exact wolf count and potion placement (see above), and the tone notes
+already warn against adding a second level or a named threat; a new
+monster or item would need the whole balance section re-run for no
+narrative gain. Decoration stays to a light scatter of `bones` only -
+already named in the pitch's own text ("packed earth, old bones,
+claw-worn hollows") - nothing else fits a natural den with no ruin
+underneath it and nothing built here (no `barrel`/`crate`/`table` kit;
+there was never anyone here to bring any of that in).
+
+One authoring note for anyone extending the scratchpad's
+`render_millhaven.py`-style toolkit to a level with the `dark: true`
+header flag: the generic renderer's hardcoded `id:`/`name:` header
+lines don't know about it, so a top-level flag like this one gets
+silently dropped on render and has to be added back by hand during the
+header fix-up step. Caught here before install; `sunless_hollow` is
+still the only dungeon using the flag, so no shared-script fix was
+needed, but the next one won't get this warning for free.
+
+Verification: re-validated via the real content loader (confirmed
+`dark: true` survived the header fix-up, entity/item/decoration/stairs
+counts all unchanged), full `pytest -q` (1373 passed), `tools/preview.py
+data/dungeons` full registry, `main.py` smoke-launch, and a screenshot
+via the scratchpad's `screenshot_dungeon.py` harness.
