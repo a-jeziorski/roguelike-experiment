@@ -493,7 +493,7 @@ and a screenshot of each level via the scratchpad's
 `screenshot_dungeon.py` harness.
 
 **Two pre-existing stairs bugs found during validation, unrelated to
-decoration and not fixed as part of this pass** (flagged separately):
+decoration - fixed in a follow-up pass, not the decoration pass itself**:
 `level_01_undisturbed`'s own entrance stairs (`<`) read
 `stairs_up: level_01_undisturbed` instead of `stairs_up: null` - since
 this is the dungeon's `pre_arrival_starting_level`
@@ -503,5 +503,10 @@ own entrance, not a self-referencing loop back into a freshly-rebuilt
 copy of itself. And `level_02_undisturbed`'s own stairs up
 (`<`) read `stairs_up: level_01` instead of `stairs_up:
 level_01_undisturbed` - walking up from the pre-arrival second level
-currently drops the player into the post-arrival, goblin-populated
-first level instead of the undisturbed one they actually came from.
+used to drop the player into the post-arrival, goblin-populated first
+level instead of the undisturbed one they actually came from. Both now
+fixed: `level_01_undisturbed`'s entrance is a real terminal exit
+(`next_level: null`), and `level_02_undisturbed`'s stairs up route back
+to `level_01_undisturbed`, keeping the pre-arrival branch entirely
+self-contained the way `level_01`/`level_02`'s own post-arrival pair
+already was.

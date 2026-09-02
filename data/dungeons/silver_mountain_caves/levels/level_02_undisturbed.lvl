@@ -51,7 +51,7 @@ legend:
   ".": road
   "@": player_start
   "F": floor
-  "a": { tile: stairs_up, next_level: level_01, description: "The winding way back up to the Upper Reaches and, eventually, daylight." }
+  "a": { tile: stairs_up, next_level: level_01_undisturbed, description: "The winding way back up to the Upper Reaches and, eventually, daylight." }
   "d": { tile: stairs_down, next_level: level_03, description: "The old rockfall, finally shifted enough to slip through - cold air moving up through the gap from somewhere much deeper.", announce: true }
   "b": { tile: floor, entity: giant_spider }
   "e": { tile: floor, entity: cave_spider }

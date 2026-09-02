@@ -51,7 +51,7 @@ legend:
   ".": road
   "@": player_start
   "F": floor
-  "a": { tile: stairs_up, next_level: level_01_undisturbed, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley.", announce: true }
+  "a": { tile: stairs_up, next_level: null, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley.", announce: true }
   "e": { tile: stairs_down, next_level: level_02_undisturbed, description: "The caverns narrow and drop away here, the air going colder - untouched as far as anyone's ever gone. Nothing about it seems worth the climb down.", announce: true }
   "b": { tile: floor, entity: cave_spider }
   "f": { tile: floor, entity: cave_spider }
