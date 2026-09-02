@@ -88,3 +88,26 @@ encounter.
   precedent as monster status effects never persisting across a
   save/load. Not enforced or blocked at runtime; just don't expect a
   saved-and-reloaded fight to resume with its monsters intact.
+
+## Decoration pass
+
+No roster to touch (there isn't one - see above) and no new geometry:
+the earlier mountain-ring border stays removed, per the reasoning
+already given for why. `rubble`/`bones` (both already established
+elsewhere, no new `DecorationKind`) sit only at the map's far edges and
+corners, kept outside `nearby_walkable_tiles`' `radius=3` band-placement
+zone around `player_start` (9,7) - close enough to read as Northern
+Steppe corruption at a glance, far enough that nothing about the
+decoration implies a specific monster or a tactical feature the roll
+can't guarantee. This also confirms the scratchpad's
+`render_millhaven.py` helper handles a `scoured_ground`-only map (no
+`floor`/`plains` cells anywhere) correctly - already supported from an
+earlier pass, not new plumbing.
+
+Verification: re-validated via the real content loader (confirmed
+`open_boundary`/`open_boundary_message`/`player_start_tile` all survived
+the header fix-up, zero entity/item spawns as expected,
+`require_stairs_down=False` still respected), full `pytest -q` (1447
+passed), `tools/preview.py data/dungeons` full registry, `main.py`
+smoke-launch, and a screenshot via the scratchpad's
+`screenshot_dungeon.py` harness.
