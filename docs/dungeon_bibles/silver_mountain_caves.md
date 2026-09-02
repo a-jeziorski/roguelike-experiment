@@ -445,3 +445,63 @@ chokepoint was hand-carved before either climactic fight, unlike
 `goblin_ambush`'s narrows - both are solo encounters, so the anti-swarm
 reasoning a chokepoint exists for doesn't apply the way it does to
 `level_01`'s Outer Pickets or `level_02`'s denser camp.
+
+## Decoration pass
+
+All seven level files were bare `floor` caverns - zero decorations
+anywhere. No new `DecorationKind` and no content/roster changes on any
+level - both the Round 1 balance section (testbuild-verified against
+`balance_reference_xp: 120`, "no count/placement changes made this
+pass") and Round 2's combat simulations already treat every level's
+population as settled; decoration doesn't touch it. Every placement
+also stays off `floor`-with-furniture entirely - the tone notes above
+are explicit that these caves should "never feel built," so nothing
+from the `table`/`chair`/`bed`/`chest`/`bookshelf`/`fireplace`/`barrel`/
+`crate` side of the kit appears anywhere in this dungeon.
+
+Three existing kinds do the whole job, each with a direct line back to
+the Mood section's own imagery ("goblin clutter (bones, crude blades,
+claimed sleeping hollows) encroaching on spider sign (webbing,
+silk-wrapped husks, the dens themselves)"):
+
+- **`bones`** - goblin clutter, placed near a sampling of `goblin`
+  spawns on `level_01`/`level_02` only (the two levels goblins actually
+  occupy). Never on the *_undisturbed variants or past the Sealed
+  Passage, where no goblin ever set foot.
+- **`cobwebs`** - spider webbing, placed near every spider-lineage
+  monster on every level, including `deep_spider`/`broodmother`/
+  `elder_widow` in the depths - per the bible's own "why spiders stay
+  the throughline" note, these are still spiders under the escalation,
+  and the webbing says so at a glance. Deliberately *not* placed near
+  `blind_stalker`/`cave_lurker`, the two non-spider exceptions the
+  roster is built around - giving them webbing too would blur the exact
+  distinction that section exists to draw.
+- **`rubble`** - general cave debris, scattered through open floor on
+  every level with no particular concentration - natural rockfall
+  litter, matching the Sealed Passage's own rockfall already
+  established as this dungeon's one recurring geological feature.
+
+Verification: all seven levels re-validated via the real content loader
+(entity/item/decoration/stairs counts per level matched the bible's own
+documented rosters exactly - `level_01` 9 goblins/4 spiders, `level_02`
+12 goblins/5 `cave_spider`/1 `giant_spider`, `level_03` 4 `deep_spider`/
+3 `blind_stalker`, `level_04` 3 `deep_spider`/2 `cave_lurker`/1
+`broodmother`, `level_05` 2 `deep_spider`/2 `blind_stalker`/1
+`cave_lurker`/1 `elder_widow`), full `pytest -q` (1447 passed),
+`tools/preview.py data/dungeons` full registry, `main.py` smoke-launch,
+and a screenshot of each level via the scratchpad's
+`screenshot_dungeon.py` harness.
+
+**Two pre-existing stairs bugs found during validation, unrelated to
+decoration and not fixed as part of this pass** (flagged separately):
+`level_01_undisturbed`'s own entrance stairs (`<`) read
+`stairs_up: level_01_undisturbed` instead of `stairs_up: null` - since
+this is the dungeon's `pre_arrival_starting_level`
+(`data/dungeons/silver_mountain_caves/dungeon.yaml`), that entrance
+should be a terminal exit to the overworld, exactly like `level_01`'s
+own entrance, not a self-referencing loop back into a freshly-rebuilt
+copy of itself. And `level_02_undisturbed`'s own stairs up
+(`<`) read `stairs_up: level_01` instead of `stairs_up:
+level_01_undisturbed` - walking up from the pre-arrival second level
+currently drops the player into the post-arrival, goblin-populated
+first level instead of the undisturbed one they actually came from.

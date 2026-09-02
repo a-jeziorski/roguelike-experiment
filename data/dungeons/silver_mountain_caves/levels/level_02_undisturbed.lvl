@@ -3,54 +3,71 @@ name: The Warren
 
 map: |
   ######################################################
-  #############@<..#####################################
-  ############......##...##########################..###
-  ###....####............#####...#################....##
-  ###....................####.....###############.....##
-  ###....................####......#######......X....###
-  ###.......!............#####.....######Z..........####
-  ####...................######....######...........####
-  ####..................########....######..##......####
-  ####...c..............#######.......#########......###
-  ###....................###...........#########......##
-  ##......................#c............###c#####.....##
-  ##.....X.........c......##.................#####....##
-  ##......................##...........c.....#####....##
-  ##.......................#.................#####....##
-  ###.........................................####.....#
-  ####.......###......................##.......####....#
-  ####...#######..........!..........####.......###...##
-  ###...#########..........X....##.c#####.......###...##
-  ###...#########...............#########.............##
-  ##.....#######.......##.........######..............##
-  ##......###..........###.........####...............##
-  ##..................#######......####...............##
-  ##........c.........########.....####........##.....##
-  ###.......#........#########....####.........###....##
-  ####.....###.......########.....####.........####..c.#
-  ####......##........######.......####........#####..##
-  ###......####..........###........####################
-  ###...#######...........###........###################
-  ###..########..c.........#...........#################
-  ###..#######.............................#############
-  ###...#####c..##..........................############
-  ###...#####..####.........................############
-  ####.############................c.......#############
-  ################........................##############
-  ##############.........................###############
-  #############.............##..........################
-  #############............####.....####################
-  ############.............#####...#####################
-  ############.....###....##############################
-  #############...######################################
+  #############@aFF#####################################
+  ############FFFFFF##FFF##########################FF###
+  ###FFFF####FFFFFFFFFFFF#####FFF#################FuFF##
+  ###FFFFFFFFFFFFFFFFFFFF####FFFFF###############FFFFF##
+  ###FFFFFFFFFFFFFFFFFFFF####FFFFFF#######FFFFFFbtuFF###
+  ###FFFFFFFcFFFFFFFFFFFF#####FFFFF######dFFFFFFFFFF####
+  ####FFFFFFFFFFFFFFFFFFF######FFFF######FFFFFFFFFFF####
+  ####FFFFFFuFFFFFFFFFFF########FFFF######FF##FFFFFF####
+  ####FFFetFFFFFFFFFFFFF#######FFFFFFF#########FFFFFF###
+  ###FFFFFFFFFFFFFFFFFFFF###FFFFFFFFFFF#########FFFFFF##
+  ##FFFFFFFFFFFFFFFFFFFuFF#ftFFFFFFFFFFF###g#####FFFFF##
+  ##FFFFFhtFFFFFFFFitFFFFF##FFFFFFFFFFuFFFFtF#####FFFF##
+  ##FFFFFFFFFFFFFFFFFFFFFF##FFFFFFFFFFFjtFFFF#####FFFF##
+  ##FFFFFFFFFFFFFFFFFFFFFFF#FFFFFFFFFFFFFFFFF#####FFFF##
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF####FFFFF#
+  ####uFFFFFF###FFFFFFFFFFFFFFFFFFFFFF##FFFFFFF####FFFF#
+  ####FFF#######FFFFFFFFFFkFFFFFFFFFF####FFFFFFF###FFF##
+  ###FFF#########FFFFFFFFFFltFFF##tm#####FFFFFFF###FFF##
+  ###FFF#########FFFFFFFFFFFFFFF#########FFFFFFFFFFFFF##
+  ##FFFFF#######FFFFFFF##FFFFFFFFF######FFFFFFFFFFFFFF##
+  ##FFFFFF###FFFFFFFFFF###FFFFFFFFF####FFFFFFFFFFFFFFF##
+  ##FFuFFFFFFFFFFFFFFF#######FFFFFF####FFFFFFFFFFFFFFF##
+  ##FFFFFFFFntFFFFFFFF########FFFFF####FFFFFFFF##FFFFF##
+  ###FFFFFFF#FFFFFFFF#########FFFF####FFFFFFFFF###FFFF##
+  ####FFFFF###FFFFFFF########FFFFF####FFFFFFFFF####FFot#
+  ####FFFFFF##FFFFFFFF######FFFFFFF####FFFFFFFF#####FF##
+  ###FFFFFF####FFFFFFFFFF###FFFFFFFF####################
+  ###FFF#######FFFFFFFFFFF###FFFFFFFF###################
+  ###FF########FFptFFFFFFFF#FFFFFFFFFFF#################
+  ###FF#######FFFFFFFFFFFFFFFuFFFFFFFFFFFFF#############
+  ###FFF#####qtF##FFFFFFFFuFFFFFFFFFFFFFFFFF############
+  ###FFF#####FF####FFFFFFFFFFFFFFFFFFFFFFFFF############
+  ####F############FFFFFFFFFFFFFFFFrtFFFFFF#############
+  ################FFFFFFFFFFFFFFFFFFFFFFFF##############
+  ##############FFFFFFFFFFFFFFFFFFFFFFFFF###############
+  #############FFFFFFFFFFFFF##FFFFFFFFFF################
+  #############FFFFFFFFFFuF####FFFFF####################
+  ############FFFFFFFFFFFFF#####FFF#####################
+  ############FFFFF###FFFF##############################
+  #############FFF######################################
   ######################################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01, description: "The winding way back up to the Upper Reaches and, eventually, daylight." }
-  "c": { entity: cave_spider }
-  "X": { entity: giant_spider }
-  "!": { item: healing_potion }
-  "Z": { stairs_down: level_03, description: "The old rockfall, finally shifted enough to slip through - cold air moving up through the gap from somewhere much deeper.", announce: true }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_01, description: "The winding way back up to the Upper Reaches and, eventually, daylight." }
+  "d": { tile: stairs_down, next_level: level_03, description: "The old rockfall, finally shifted enough to slip through - cold air moving up through the gap from somewhere much deeper.", announce: true }
+  "b": { tile: floor, entity: giant_spider }
+  "e": { tile: floor, entity: cave_spider }
+  "f": { tile: floor, entity: cave_spider }
+  "g": { tile: floor, entity: cave_spider }
+  "h": { tile: floor, entity: giant_spider }
+  "i": { tile: floor, entity: cave_spider }
+  "j": { tile: floor, entity: cave_spider }
+  "l": { tile: floor, entity: giant_spider }
+  "m": { tile: floor, entity: cave_spider }
+  "n": { tile: floor, entity: cave_spider }
+  "o": { tile: floor, entity: cave_spider }
+  "p": { tile: floor, entity: cave_spider }
+  "q": { tile: floor, entity: cave_spider }
+  "r": { tile: floor, entity: cave_spider }
+  "c": { tile: floor, item: healing_potion }
+  "k": { tile: floor, item: healing_potion }
+  "t": { tile: floor, decoration: cobwebs }
+  "u": { tile: floor, decoration: rubble }

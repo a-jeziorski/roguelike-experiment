@@ -3,48 +3,55 @@ name: The Elder's Den
 
 map: |
   ################################################
-  ########################################.......#
-  ###############################......###.......#
-  ##############...#####..######........##....>..#
-  ########..###....####....####................A.#
-  #######....##.....##......##...................#
-  #######....##............###...................#
-  #######.u................###...................#
-  #######.................#####..........##......#
-  ########.......!..u.....!####.........####.....#
-  ##########..........###..####........########.##
-  ###########.....l..##########........###########
-  ###...#####........##########.........##########
-  ###.....##.........#########...........#########
-  ###.................########...........#########
-  ###..................########..........#########
-  ####.....######........######.........##########
-  ####.....#######........######.......###########
-  ###......#######........#####........######..###
-  ##.........#####...#######............####...###
-  ##..........####...#######...................###
-  ###........######...######......f....#.......###
-  ###......########....####...........###......###
-  ###......##...###....................#.......###
-  ###............##...........................####
-  ##..............#..l.......................#####
-  #..............###........................######
-  #....#.......#####..................##....######
-  #...###.....######....####.......######...######
-  ##...#.....################.....#######...######
-  #..@<.....#################......######....#####
-  ##.......###################.....#######..######
-  ###.##########################..################
+  ########################################FFFFFFF#
+  ###############################FFFFFF###FFFFFFF#
+  ##############FFF#####FF######FFFFFFFF##FFFFaFF#
+  ########FF###FFFF####FFFF####FFFFFFFFFFFFFFFFbk#
+  #######FFFF##FFFFF##FFFFFF##FFFFFFFFFFFFFFFFFFF#
+  #######FFFF##FFFFFFFFFFFF###FFFFFFFFFFFFFFFFFFF#
+  #######FckFFFFFFFFFFFFFFF###FFFFFFFFFFFFFFFFFFF#
+  #######FFFFFFlFFFFFFFFFF#####FFFFFFFFFF##FFFFFF#
+  ########FFFFFFFdFFekFFFFf####FFFFFFFFF####FFFFF#
+  ##########FFFFFFFFFF###FF####FFFFFFFF########F##
+  ###########FFFFFgFF##########FFFFFFFF###########
+  ###FFF#####FFFFFFFF##########FFFFFFFFF##########
+  ###FFFFF##FFFFFFFFF#########FFFFFFFFFFF#########
+  ###FFFFFFFFFFFFFFFFF########FFFFFFFFlFF#########
+  ###FFFFFFFFFFFFFFFFFF########FFFFFlFFFF#########
+  ####FFFFF######FFFFFFFF######FFFFFFFFF##########
+  ####FFFFF#######FFFFFFFF######FFFFFFF###########
+  ###FFFFFF#######FFlFFFFF#####FFFFFFFF######FF###
+  ##FFFFFFFFF#####FFF#######FFFFFFFFFFFF####FFF###
+  ##FFFFFFFFFF####FFF#######FFFFFFFFFFFFFFFFFFF###
+  ###FFFFFFFF######FFF######FlFFFFhFFFF#FFFFFFF###
+  ###FFFFFF########FFFF####FFFFFFFFFFF###FFFFFF###
+  ###FFFFFF##FFF###FFFFFFFFFFFFFFFFFFFF#FFFFFFF###
+  ###FFFFFFFFFFFF##FFFFFFFFFFFFFFFFFFFFFFFFFFF####
+  ##FFFFFFlFFFFFFF#FFiFFFFFFFFFFFFFFFFFFFFFFF#####
+  #FFFFFFFFFFFFFF###FFFFFFFFFFFFFFFFFFFFFFFF######
+  #FFFF#FFFFFFF#####FFFFFFFFFFFFFFFFFF##FFFF######
+  #FFF###FFFFF######FFFF####FFFFFFF######FlF######
+  ##FFF#FFFFF################FFFFF#######FFF######
+  #FF@jFFFFl#################FFFFFF######FFFF#####
+  ##FFFFFFF###################FFFFF#######FF######
+  ###F##########################FF################
   ################################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_04, description: "Back up past the Broodmother's hall, toward air that still moves." }
-  ">": { stairs_down: null, description: "A crack in the rock above, cold air bleeding through it - not the way you came in, but a way out all the same.", announce: true }
-  "u": { entity: deep_spider }
-  "l": { entity: blind_stalker }
-  "f": { entity: cave_lurker }
-  "A": { entity: elder_widow }
-  "!": { item: healing_potion }
+  "F": floor
+  "a": { tile: stairs_down, next_level: null, description: "A crack in the rock above, cold air bleeding through it - not the way you came in, but a way out all the same.", announce: true }
+  "j": { tile: stairs_up, next_level: level_04, description: "Back up past the Broodmother's hall, toward air that still moves." }
+  "b": { tile: floor, entity: elder_widow }
+  "c": { tile: floor, entity: deep_spider }
+  "e": { tile: floor, entity: deep_spider }
+  "g": { tile: floor, entity: blind_stalker }
+  "h": { tile: floor, entity: cave_lurker }
+  "i": { tile: floor, entity: blind_stalker }
+  "d": { tile: floor, item: healing_potion }
+  "f": { tile: floor, item: healing_potion }
+  "k": { tile: floor, decoration: cobwebs }
+  "l": { tile: floor, decoration: rubble }

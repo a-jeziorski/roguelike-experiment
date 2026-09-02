@@ -4,52 +4,60 @@ name: The Upper Reaches
 map: |
   ######################################################
   ######################################################
-  #######@<...###############################.c#########
-  ####..........###....####.....############....########
-  ###...................##.......###..######....########
-  ###..................................#####....########
-  ####..................................####.....#...###
-  ####...............#....................#...........##
-  ####................................................##
-  ###.................................................##
-  ##............................................##....##
-  ##........#...!.................!.............###..###
-  ###......###..................................########
-  ###.......#...................#................#######
-  ###............##............###................######
-  ###...........####...........###................######
-  ####.........######.........#####................#####
-  #######.....#######......###########.............>####
-  ########...#######......##############...........#####
-  ########....#####.......###############.......########
-  #######......##.........##############################
-  #####....................#############################
-  ####.c....................####.c.#####################
-  #####................##...####....####################
-  #########............###..####....####################
-  ##########...........###...##....#####################
-  ##########............#..........#####################
-  #########........................#####################
-  ########..........................####################
-  ########..........................####################
-  ########.........................#####################
-  #######.........................######################
-  ###...........................########################
-  ##.c........................##########################
-  ###........................###########################
-  #######....................###########################
-  ###########................###########################
-  ############..............############################
-  #############.#######....#############################
+  #######@aFFF###############################ib#########
+  ####FFFFFFFFFF###FFFF####FFFFF############FFFF########
+  ###FFFFFFFFFFFFFFFFFFF##FFFFFFF###FF######FFFF########
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#####FFFF########
+  ####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF####FFFFF#FFF###
+  ####FFFFFFFFFFFFFFF#FFFFFFFFFFFFFFFFFFFF#FFFFFFFFFFF##
+  ####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  ##FFjFFjFFFFFFFFFFFFFFFFFFFFFFFFjFFFFFFFFFFFFF##FFFF##
+  ##FFFFFFFF#FFFcFFFFFFFFFFFFFFFFFdFFFFFFFFFFFFF###FF###
+  ###FFFFFF###FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF########
+  ###FFFFFFF#FFFFFFFFFFFFFFFFFFF#FFFFFFFFFFFFFFFF#######
+  ###FFFFFFFFFFFF##FFFFFFFFFFFF###FFFFFFFFFFFFFFFF######
+  ###FFFFFFFFFFF####FFFFFFFFFFF###FFFFFFFFFFFFFFFF######
+  ####FFFFFFFFF######FFFFFFFFj#####FFFFFFFFFFFFFFFF#####
+  #######jFFFF#######FFFFFF###########FFFFFFFFFFFFFe####
+  ########FFF#######FFFFFF##############FFFFFFFFFFF#####
+  ########FFFF#####FFFFFFF###############FFFFFjF########
+  #######FFFFFF##FFFFFFFFF##############################
+  #####FFFFFFFFFFFFFFFFFFFF#############################
+  ####FfiFFFFFFFFFFFFFFFFFFF####Fgi#####################
+  #####FFFFFFFFFFFFFFFF##FFF####FFFF####################
+  #########FFFFFFFFFFFF###FF####FFFF####################
+  ##########FFFFFFFFFFF###FFF##FFFF#####################
+  ##########FFFFFFFFFFFF#FFFFFFFFFF#####################
+  #########FFFFFFFFFFFFFFFFFFFFFFFF#####################
+  ########FFFFFFFFFFFFFFFFFFFFFFFFFF####################
+  ########FFFFFFFFFFFFFFFFFjFFFFFFFF####################
+  ########FFFFFFFFFFFFFFFFFFFFFFFFF#####################
+  #######FFFFFFFFFFFFFFFFFFjFFFFFF######################
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFF########################
+  ##FhiFFFFFFFFFFFFFFFFFFFFFFF##########################
+  ###FFFFFFFFFFFFFFFFFFFFFFFF###########################
+  #######FFFFFFFFFFFFFFFFFFFF###########################
+  ###########FFFFFFFFFFFFFFFF###########################
+  ############FFFFFFFFFFFFFF############################
+  #############F#######FFFF#############################
   ######################################################
   ######################################################
   ######################################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01_undisturbed, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley." , announce: true }
-  ">": { stairs_down: level_02_undisturbed, description: "The caverns narrow and drop away here, the air going colder - untouched as far as anyone's ever gone. Nothing about it seems worth the climb down.", announce: true }
-  "c": { entity: cave_spider }
-  "!": { item: healing_potion }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_01_undisturbed, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley.", announce: true }
+  "e": { tile: stairs_down, next_level: level_02_undisturbed, description: "The caverns narrow and drop away here, the air going colder - untouched as far as anyone's ever gone. Nothing about it seems worth the climb down.", announce: true }
+  "b": { tile: floor, entity: cave_spider }
+  "f": { tile: floor, entity: cave_spider }
+  "g": { tile: floor, entity: cave_spider }
+  "h": { tile: floor, entity: cave_spider }
+  "c": { tile: floor, item: healing_potion }
+  "d": { tile: floor, item: healing_potion }
+  "i": { tile: floor, decoration: cobwebs }
+  "j": { tile: floor, decoration: rubble }

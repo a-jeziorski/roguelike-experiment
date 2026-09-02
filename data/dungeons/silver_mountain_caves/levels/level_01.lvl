@@ -4,54 +4,71 @@ name: The Upper Reaches
 map: |
   ######################################################
   ######################################################
-  #######@<...###############################.c#########
-  ####..........###....####.....############....########
-  ###...................##.......###..######....########
-  ###..................................#####....########
-  ####..................................####.....#...###
-  ####........T......#....................#...........##
-  ####...............g................................##
-  ###....................g........g..g................##
-  ##............................................##....##
-  ##........#...!.................!.............###.g###
-  ###......###................g.................########
-  ###.......#...................#................#######
-  ###.......g....##............###................######
-  ###...........####......g....###................######
-  ####.........######.........#####................#####
-  #######.....#######......###########.............>####
-  ########...#######......##############...........#####
-  ########....#####.g.....###############.......########
-  #######......##.........##############################
-  #####....................#############################
-  ####.c....................####.c.#####################
-  #####................##...####....####################
-  #########............###..####....####################
-  ##########...........###...##....#####################
-  ##########............#..........#####################
-  #########........................#####################
-  ########..........................####################
-  ########..........................####################
-  ########.........................#####################
-  #######.........................######################
-  ###...........................########################
-  ##.c........................##########################
-  ###........................###########################
-  #######....................###########################
-  ###########................###########################
-  ############..............############################
-  #############.#######....#############################
+  #######@aFFF###############################ub#########
+  ####FFFFFFFFFF###FFFF####FFFFF############FFFF########
+  ###FFFFFFFFFFFFFFFFFFF##FFvFvFF###FF######FFFF########
+  ###FFFFFFFFFFFFFFFvFFFFFFFFFFFFFFFFFF#####FFFF########
+  ####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF####FFFFF#FFF###
+  ####FFFFFFFFcFFFFFF#FFFvFFFFFFFFFFFFFFFF#FFFFFFFFFFF##
+  ####FFFFFFFFFFFFFFFdtFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  ###FFFFFFFFFFFFFFFFFFFFeFFFFFFFFfFFgtFFFFFFFFFFFFFFF##
+  ##FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##FFFF##
+  ##FFFFFFFF#FFFhFFFFFFFFFFFFFFFFFivFFFFFFFFFFFF###Fj###
+  ###FFFFFF###FFFFFFFFFFFFFFFFkFFFFFFFFFFFFFFFFF########
+  ###FFFFFFF#FFFFFFFFFFFFFFFFFFF#FFFFFFFFFFFFFFFF#######
+  ###FFFFFFFltFFF##FFFFFFFFFFFF###FFFFFFFFFFFFFFFv######
+  ###FFFFFFFFFFF####FFFFFFmFFFF###FFFFFFFFFFFFFFFF######
+  ####FFFFFFFFF######FFFFFFFFF#####FFFFFFFFFFFFFFFF#####
+  #######FFFFF#######FFFFFF###########FFFFFFFFFFFFFn####
+  ########FFF#######FFFFFF##############FFFFFFFFFFF#####
+  ########FFFF#####FoFFFFF###############FFFFFFF########
+  #######FFFFFF##FFFFFFFFF##############################
+  #####FFFFFFFFFFFFFFFFFFFF#############################
+  ####FpuFFFFFFFFFFFFFFFFFFF####Fqu#####################
+  #####FFFFFFFFFFFFFFFF##FFF####FFFF####################
+  #########FFFFFFFFFFFF###FF####FFFF####################
+  ##########FFFFFFFFFFF###FFF##FFFF#####################
+  ##########FFFFFFFFFFFF#FFFFFFFFFF#####################
+  #########FFFFFFFFFFFFFFFFFFFFFFFF#####################
+  ########FFFFFFFFFFFFFFFFFFFFFFFFFF####################
+  ########FFFFFFFFFFFFFFFFFFFFFFFFFF####################
+  ########FFFFFFFFFFFFFFFFFvFFFFFFF#####################
+  #######FFFFFFFFFFFFFFFFFFFFFFFFF######################
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFF########################
+  ##FruFFFFFFFFFFFFFFFFFFFFFFF##########################
+  ###FFFFFFFFFFFFFFFFFFFFFFFF###########################
+  #######FFFFvFFFFFFFFFFFFFFF###########################
+  ###########FFFFFFFFFFFFFFFF###########################
+  ############FFFFFFFFFFFFFF############################
+  #############F#######FFFF#############################
   ######################################################
   ######################################################
   ######################################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: null, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley." , announce: true }
-  ">": { stairs_down: level_02, description: "The caverns narrow and drop away here, the air going colder - the way deeper into the warren." }
-  "g": { entity: goblin }
-  "c": { entity: cave_spider }
-  "!": { item: healing_potion }
-  "T": { tile: landmark, description: "A crude totem staked into the cave floor - bone, rusted iron, and something dark dried into the binding. A claim, not decoration.", announce: true }
+  "F": floor
+  "a": { tile: stairs_up, next_level: null, description: "Grey daylight, filtered through the fissure's mouth - the way back out to the valley.", announce: true }
+  "n": { tile: stairs_down, next_level: level_02, description: "The caverns narrow and drop away here, the air going colder - the way deeper into the warren." }
+  "b": { tile: floor, entity: cave_spider }
+  "d": { tile: floor, entity: goblin }
+  "e": { tile: floor, entity: goblin }
+  "f": { tile: floor, entity: goblin }
+  "g": { tile: floor, entity: goblin }
+  "j": { tile: floor, entity: goblin }
+  "k": { tile: floor, entity: goblin }
+  "l": { tile: floor, entity: goblin }
+  "m": { tile: floor, entity: goblin }
+  "o": { tile: floor, entity: goblin }
+  "p": { tile: floor, entity: cave_spider }
+  "q": { tile: floor, entity: cave_spider }
+  "r": { tile: floor, entity: cave_spider }
+  "c": { tile: landmark, description: "A crude totem staked into the cave floor - bone, rusted iron, and something dark dried into the binding. A claim, not decoration.", announce: true }
+  "h": { tile: floor, item: healing_potion }
+  "i": { tile: floor, item: healing_potion }
+  "t": { tile: floor, decoration: bones }
+  "u": { tile: floor, decoration: cobwebs }
+  "v": { tile: floor, decoration: rubble }

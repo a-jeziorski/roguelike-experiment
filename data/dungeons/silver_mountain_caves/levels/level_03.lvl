@@ -3,44 +3,54 @@ name: The Blind Reach
 
 map: |
   ##############################################
-  ##############.###############################
-  #########.l.....#####.....#####..#############
-  ##.#####........####.............######..#####
-  #...####........####.............######..#####
-  #.@<.###........####.............#####......##
-  #....###.........###............####.........#
-  ##....#...........###..........####..........#
-  ###................######......###....###...##
-  ####u.....#.........######....####...####...##
-  #####....###.........#####....####..####....##
-  ######...##...........####.....##....##.....##
-  ######...##.l...#u......##..................##
-  ##########.....##.l.........................##
-  #########.......#...........................##
-  ########....................................##
-  #####.......................................##
-  ###...u.....##..............................##
-  ###........###.......................!......##
-  ###.......####............#.................##
-  ####......###............##.......##.......###
-  #####....###.....###########.....###.......###
-  ###########.....############....u###..##...###
-  ###########....##########.##...!.##..####...##
-  ##.#########..##########.........##...##....##
-  #...########..#########..........##........###
-  #..............########.........####......####
-  #..............########........######......###
-  #..............#########......########.....###
-  ##......###...#######################...>...##
-  #####..###############################.....###
+  ##############F###############################
+  #########FaFFFFF#####FFFFF#####FF#############
+  ##F#####FFFFFFFF####FFFFFFFFFFFFF######FF#####
+  #FFF####FFFFmFFF####FFFFFFFFFFFFF######FF#####
+  #F@bF###FFFFFFFF####FFFFFFFFFFFFF#####FFFFFF##
+  #FFFF###FFFFFFFFF###FFFFFFFFFFFF####FFFFFFFFF#
+  ##FFFF#FFFFFFFFFFF###FFFFFFFFFF####FFFFFFFFFF#
+  ###FFFFFmFFFFFFFFFF######FFFFFF###FFFm###FFF##
+  ####clFFFF#FFFFFFFFF######FFFF####FFF####FFF##
+  #####FFFF###FFFFFFFFF#####FFFF####FF####FFFm##
+  ######FFF##FFFFFFFFFFF####FFFFF##FFFF##FFFFF##
+  ######FFF##FdFFF#elFFFFF##FFFFFFFFFFFFFFFFFF##
+  ##########FFFFF##FfFFFFFFFFFFFFFFFFFFFFFFFFF##
+  #########FFFFFFF#FFFFFFFFFFFmFFFFFFFFFFFFFFF##
+  ########FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  #####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  ###FFFglFFFF##FFFFFmFFFFFFFFFFFFFFFFFFFFFFFF##
+  ###FFFFFFFF###FFFFFFFFFFFFFFFFFFFFFFFhFFFFFF##
+  ###FFFFFFF####FFFFFFFFFFFF#FFFFFFFFFFFFFFFFF##
+  ####FFFFFF###FFmFFFFFFFFF##FFFFFFF##FFFFFFF###
+  #####FFFF###FFFFF###########FFFFF###FFFFFFF###
+  ###########FFFFF############FFFli###FF##FFF###
+  ###########FFFF##########F##FFmjF##FF####FFF##
+  ##F#########FF##########FFFFFFFFF##FFF##FFFF##
+  #FFF########FF#########mFFFFFFFFF##FmFFFFFF###
+  #FFFFFFFFFFFFFF########FFFFFFFFF####FFFFFF####
+  #FFFFFFFFFFFFFF########FFFFFFFF######FFFFFF###
+  #FFFFFFFFFFFFFF#########FFFFFF########FFFFF###
+  ##FFFFFF###FFF#######################FFFkFFF##
+  #####FF###############################FFFFF###
   ##############################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_02, description: "Back up through the fall, toward the Warren and whatever light still reaches it." }
-  ">": { stairs_down: level_04, description: "The dark keeps going down from here - colder, and a great deal quieter.", announce: true }
-  "u": { entity: deep_spider }
-  "l": { entity: blind_stalker }
-  "!": { item: healing_potion }
+  "F": floor
+  "b": { tile: stairs_up, next_level: level_02, description: "Back up through the fall, toward the Warren and whatever light still reaches it." }
+  "k": { tile: stairs_down, next_level: level_04, description: "The dark keeps going down from here - colder, and a great deal quieter.", announce: true }
+  "a": { tile: floor, entity: blind_stalker }
+  "c": { tile: floor, entity: deep_spider }
+  "d": { tile: floor, entity: blind_stalker }
+  "e": { tile: floor, entity: deep_spider }
+  "f": { tile: floor, entity: blind_stalker }
+  "g": { tile: floor, entity: deep_spider }
+  "i": { tile: floor, entity: deep_spider }
+  "h": { tile: floor, item: healing_potion }
+  "j": { tile: floor, item: healing_potion }
+  "l": { tile: floor, decoration: cobwebs }
+  "m": { tile: floor, decoration: rubble }

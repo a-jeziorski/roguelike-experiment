@@ -3,48 +3,56 @@ name: The Broodmother's Hall
 
 map: |
   ################################################
-  ###########################################....#
-  ###########################.......########...@<#
-  ####.....######...########%........######......#
-  ###.......#####....#######..........#####......#
-  ###.......#####.....#####............####......#
-  ####......######.....###.............####.!....#
-  ####......#######.............###.....##.......#
-  ###...........###.............###.............##
-  ##............................##..............##
-  #......##.....................................##
-  #.....####................................###..#
-  #.....####...............................####..#
-  #.....#####..............................####.##
-  ##....#####......................#####..####..##
-  ##....####....###...............##########....##
-  ###..####.....###...............#########.....##
-  #########....####...............#########.....##
-  ##########..#####................###.####.....##
-  #################.....................###.....##
-  #################.....................###......#
-  #####..##########................!..u.###......#
-  ####....#########.......##...........###.......#
-  ####.......######......####.........####.......#
-  #.##..........##.......#####........###........#
-  #.....................######.......###........##
-  #....................#####.........##f......f###
-  #...................####..........###........###
-  #>.................u.##..........#####........##
-  #q..............................#######.......##
-  #..............................#########......##
-  #.......##....................#############...##
-  #.....######u.###..#############################
+  ###########################################FFFF#
+  ###########################FFFFFFF########mFF@a#
+  ####FFFFF######FFF########bFFFFFFFF######FFFFFF#
+  ###FFFFFFF#####FFFF#######FFFFFFFFFF#####FFFFFF#
+  ###FFFFFFF#####FFFFF#####FFFFFFFFFFFF####FFFFFF#
+  ####FFFFFF######FFFFF###FFmFFFFFFFFFF####FcFFFF#
+  ####FFFFFF#######FFFFFFFFFFFFF###FFFFF##FFFFFFF#
+  ###FFFFFFFFFFF###FFFFFFFFFFFFF###FFFFFFFFFFFFF##
+  ##FFFFFFFFFFFFFFFFFFFFFFFFFFFF##FFFFFFFFFFFFFF##
+  #FFFFFF##FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF##
+  #FFFFF####FmFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF###FF#
+  #FFFFF####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF####FF#
+  #FFFFF#####FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF####F##
+  ##FFFF#####FFFFFFFFFFFFFFFFFFFFFF#####FF####FF##
+  ##FFFF####FFFF###FFFFmFFFFFFFFFF##########FFFF##
+  ###FF####FFFFF###FFFFFFFFFFFFFFF#########FFFFF##
+  #########FFFF####FFFFFFFFFFFFFFF#########FFFFF##
+  ##########FF#####FFFFFFFFFFFFFFFF###F####FFFFF##
+  #################FFFFFFFFFFFFFFFFFFFFF###FFFFF##
+  #################FFFFFFFFFFFFFFFFFFFmF###FFFFFF#
+  #####FF##########FFFmFFFFFFFFFFFFdFFel###FFFFFF#
+  ####FFFF#########FFFFFFF##FFFFFFFFFFF###FFFFFFF#
+  ####FFFFFFF######FFFFFF####FFFFFFFFF####FFFFFFF#
+  #F##FFFFFFFFFF##FFFFFFF#####FFFFFFFF###FFFFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFF######FFFFFFF###FFFFFFFF##
+  #FFFFFFFFFFFFFFFFFmFF#####FFFFFFFFF##fFFFFFFg###
+  #FFFFFFFFFFFFFFFFFFF####FFFFFFFFFF###FFFmFFFF###
+  #hFFFFFFFFFFFFFFmFFil##FFFFFFFFFF#####FFFFFFFF##
+  #jlFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#######FFFFFFF##
+  #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#########FFmFFF##
+  #FFFFFFF##FFFFFFFFFFFFFFFFFFFF#############FFF##
+  #FFFFF######kl###FF#############################
   ################################################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_03, description: "Back the way the cold came from." }
-  ">": { stairs_down: level_05, description: "Past the den, the passage narrows again and drops - whatever kept this deep is older than she is.", announce: true }
-  "u": { entity: deep_spider }
-  "f": { entity: cave_lurker }
-  "q": { entity: broodmother }
-  "!": { item: healing_potion }
-  "%": { item: banded_mail }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_03, description: "Back the way the cold came from." }
+  "h": { tile: stairs_down, next_level: level_05, description: "Past the den, the passage narrows again and drops - whatever kept this deep is older than she is.", announce: true }
+  "e": { tile: floor, entity: deep_spider }
+  "f": { tile: floor, entity: cave_lurker }
+  "g": { tile: floor, entity: cave_lurker }
+  "i": { tile: floor, entity: deep_spider }
+  "j": { tile: floor, entity: broodmother }
+  "k": { tile: floor, entity: deep_spider }
+  "b": { tile: floor, item: banded_mail }
+  "c": { tile: floor, item: healing_potion }
+  "d": { tile: floor, item: healing_potion }
+  "l": { tile: floor, decoration: cobwebs }
+  "m": { tile: floor, decoration: rubble }
