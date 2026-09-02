@@ -98,3 +98,26 @@ let the player reach an edge at all.
   (see the pitch section above); kept as historical context only in case a
   future dungeon ever wants a single explicit exit *alongside* an open
   boundary (this one doesn't need both).
+
+## Decoration pass
+
+No content or geometry changes - the missing chokepoint stays flagged
+above as a real, deliberately unfixed gap; decoration doesn't touch it.
+`bush`/`herb_clump` (both already established for outdoor clearings via
+Millhaven) ring the four corners of the clearing, kept well clear of the
+open tactical center between `player_start` and the goblin cluster - the
+whole point of this level's current geometry is that nothing separates
+the two, and decoration shouldn't quietly reintroduce cover the bible
+above explicitly says isn't there. This also required teaching the
+scratchpad's `render_millhaven.py` helper a `forest` base tile (symbol
+`T`) for the first time - every level decorated so far had `floor` or
+`plains` as its bare/ambient tile, never `forest` as the *outer* base
+ring with no interior walls at all.
+
+Verification: re-validated via the real content loader (confirmed
+`open_boundary`/`open_boundary_message`/`player_start_tile` all survived
+the header fix-up, entity/decoration counts as expected,
+`require_stairs_down=False` still respected), full `pytest -q` (1447
+passed), `tools/preview.py data/dungeons` full registry, `main.py`
+smoke-launch, and a screenshot via the scratchpad's
+`screenshot_dungeon.py` harness.

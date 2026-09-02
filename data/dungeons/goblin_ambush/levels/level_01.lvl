@@ -1,27 +1,33 @@
 id: level_01
 name: The Narrows
-
 open_boundary: true
 open_boundary_message: "You break off and put the trees behind you, back toward the open road."
 player_start_tile: plains
 
 map: |
-  FFFFFFFFFFFFFFFFF
-  F,,,,,,,,,,,,,,,F
-  F,,,,g,,,,,g,,,,F
-  F,,,,,,,g,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  F,,,,,,,@,,,,,,,F
-  F,,,,,,,,,,,,,,,F
-  FFFFFFFFFFFFFFFFF
+  TTTTTTTTTTTTTTTTT
+  T,,,,,,,,,,,,,,,T
+  T,d,,a,,,,,b,,e,T
+  T,,,,,,,c,,,,,,,T
+  T,,,,,,,,,,,,,,,T
+  T,,,,,,,,,,,,,,,T
+  T,d,,,,,,,,,,,e,T
+  T,,,,,,,,,,,,,,,T
+  T,,,,,,,,,,,,,,,T
+  T,,,,,,,,,,,,,,,T
+  T,e,,,,,@,,,,,d,T
+  T,,,,,,,,,,,,,,,T
+  TTTTTTTTTTTTTTTTT
 
 legend:
-  "F": forest
+  "#": wall
   ",": plains
+  ".": road
   "@": player_start
-  "g": { entity: goblin , tile: plains}
+  "F": floor
+  "T": forest
+  "a": { tile: plains, entity: goblin }
+  "b": { tile: plains, entity: goblin }
+  "c": { tile: plains, entity: goblin }
+  "d": { tile: plains, decoration: bush }
+  "e": { tile: plains, decoration: herb_clump }
