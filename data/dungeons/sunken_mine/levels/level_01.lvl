@@ -3,35 +3,45 @@ name: The Weighhouse Shaft
 
 map: |
   ###########################
-  #@...####............######
-  #......../...$.y..t..######
-  #....####..##.###.#..######
-  #########.k...K...k..######
-  #########......b.....######
-  #########............######
-  ###############.###########
-  ###############.########.[#
-  ##########.r...........D..#
-  ##########.#######...g.####
-  ##########.#######.###.####
-  ##########.g.......-##.####
-  ###################.r.>####
+  #@FFF####FFFFFFFFFFFF######
+  #FqrFFFFFaFFFbFcFFdFF######
+  #FFFt####FF##F###F#FF######
+  #########FeFFFfFFFgFF######
+  #########FFFFFFhFFFFF######
+  #########uFFFFFFFFFFF######
+  ###############F###########
+  ###############F########vi#
+  ##########FjFFFFFFFFFFrkFF#
+  ##########F#######qFFlF####
+  ##########u#######F###F####
+  ##########FmFFFFFFFn##F####
+  ###################FoFp####
   ###########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "/": { item: rusty_dagger }
-  "y": { tile: landmark, description: "A stone weighing-counter, its scale pan tipped at an angle. A scatter of undersized stones still sits in it - a shortchanged cart, or a thief caught mid-count. Whichever it was, nobody ever came back to sort it out.", announce: true }
-  "b": { tile: landmark, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since.", announce: true }
-  "r": { entity: rat }
-  "g": { entity: goblin }
-  "k": { entity: kobold }
-  "K": { entity: kobold_shaman }
-  "-": { item: rusty_key }
-  "D": { door: rusty_key }
-  "[": { item: leather_armor }
-  ">": { stairs_down: level_02 }
-  "$": { item: gold_pile, description: "A handful of coin, dropped or forgotten near the counter on the day the tally stopped.", announce: true }
-  "t": { item: teleportation_potion }
+  "F": floor
+  "p": { tile: stairs_down, next_level: level_02 }
+  "e": { tile: floor, entity: kobold }
+  "f": { tile: floor, entity: kobold_shaman }
+  "g": { tile: floor, entity: kobold }
+  "j": { tile: floor, entity: rat }
+  "l": { tile: floor, entity: goblin }
+  "m": { tile: floor, entity: goblin }
+  "o": { tile: floor, entity: rat }
+  "c": { tile: landmark, description: "A stone weighing-counter, its scale pan tipped at an angle. A scatter of undersized stones still sits in it - a shortchanged cart, or a thief caught mid-count. Whichever it was, nobody ever came back to sort it out.", announce: true }
+  "h": { tile: landmark, description: "A chalk tally board. One column of hatch-marks stops a third of the way down that day's quota. The chalk hasn't smudged in years - nothing's touched this wall since.", announce: true }
+  "a": { tile: floor, item: rusty_dagger }
+  "b": { tile: floor, item: gold_pile, description: "A handful of coin, dropped or forgotten near the counter on the day the tally stopped.", announce: true }
+  "d": { tile: floor, item: teleportation_potion }
+  "i": { tile: floor, item: leather_armor }
+  "k": { tile: floor, door: rusty_key }
+  "n": { tile: floor, item: rusty_key }
+  "q": { tile: floor, decoration: barrel }
+  "r": { tile: floor, decoration: crate }
+  "t": { tile: floor, decoration: cobwebs }
+  "u": { tile: floor, decoration: rubble }
+  "v": { tile: floor, decoration: chest }

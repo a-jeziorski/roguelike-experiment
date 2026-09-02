@@ -3,34 +3,42 @@ name: The Last Vein
 
 map: |
   #########################
-  #<@.#####################
-  #..!#####################
-  ###.#####################
-  ###.#####################
-  ###.#############.MMMMM.#
-  #............####...p...#
-  #..r.....g...####.......#
-  #.....n.$......|....s...#
-  #............####...O...#
-  #...g.....r..####.......#
-  #............####..>....#
-  #################.......#
+  #a@F#####################
+  #FFb#####################
+  ###F#####################
+  ###F#####################
+  ###F#############FcccccF#
+  #FFFFFFFFFFFF####pFFdFFF#
+  #FFeFFFFFfFFF####FFFFFFp#
+  #FFFFogohFFFFFFiFFFFjFFF#
+  #FqFFFFFFFFrF####FFFkFFF#
+  #FFFlFFFFFmFF####FFFFFFF#
+  #FFFFFFFFFFFF####FFnFFFF#
+  #################FFFFFFF#
   #########################
   #########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_02 }
-  ">": stairs_down
-  "!": { item: healing_potion }
-  "r": { entity: rat }
-  "g": { entity: goblin }
-  "s": { entity: skeleton }
-  "O": { entity: orc }
-  "n": { tile: landmark, description: "A nest built from things that used to belong to someone else - gnawed timber, a stolen glove, a coil of rope chewed to fiber. Rats first, by the look of it. Whatever moved in after never bothered clearing them out.", announce: true }
-  "|": { item: arrows }
-  "M": { tile: mountain, description: "The rock face the mine was cutting toward, sealed by a fall that was never cleared. This is where the last shift stopped - not by choice." }
-  "p": { tile: landmark, description: "A pick, still lodged in the rock at chest height, exactly where it was swung and left.", announce: true }
-  "$": { item: gold_pile, description: "Coin dragged into the nest along with everything else that used to belong to someone.", announce: true }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_02 }
+  "n": { tile: stairs_down, next_level: null }
+  "e": { tile: floor, entity: rat }
+  "f": { tile: floor, entity: goblin }
+  "j": { tile: floor, entity: skeleton }
+  "k": { tile: floor, entity: orc }
+  "l": { tile: floor, entity: goblin }
+  "m": { tile: floor, entity: rat }
+  "d": { tile: landmark, description: "A pick, still lodged in the rock at chest height, exactly where it was swung and left.", announce: true }
+  "g": { tile: landmark, description: "A nest built from things that used to belong to someone else - gnawed timber, a stolen glove, a coil of rope chewed to fiber. Rats first, by the look of it. Whatever moved in after never bothered clearing them out.", announce: true }
+  "b": { tile: floor, item: healing_potion }
+  "c": { tile: mountain, description: "The rock face the mine was cutting toward, sealed by a fall that was never cleared. This is where the last shift stopped - not by choice." }
+  "h": { tile: floor, item: gold_pile, description: "Coin dragged into the nest along with everything else that used to belong to someone.", announce: true }
+  "i": { tile: floor, item: arrows }
+  "o": { tile: floor, decoration: bones }
+  "p": { tile: floor, decoration: rubble }
+  "q": { tile: floor, decoration: barrel }
+  "r": { tile: floor, decoration: crate }

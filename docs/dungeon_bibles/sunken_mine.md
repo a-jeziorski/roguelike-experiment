@@ -242,3 +242,39 @@ and the climax beyond it.
 - The tragedy is procedural, not personal-villain-shaped: nobody did
   this to the mine. The Sundering simply stopped the office that used
   to check on it, and gravity did the rest.
+
+## Decoration pass
+
+Before this pass, all three levels were bare `floor` boxes - zero
+decorations anywhere, despite this being one of the most content-rich
+dungeons in the game. No content variety was added: the roster and item
+placements above were already this project's own most-reconciled work
+(rat/goblin/kobold/kobold_shaman/skeleton/orc, plus a full item list
+including two `gold_pile` placements and a `gold_stash`), so this pass
+is decoration only, reusing the existing kit
+(`barrel`/`crate`/`chest`/`table`/`chair`/`rubble`/`bones`/`cobwebs`)
+plus `kelp` (added for Drowned Waystation, reused here for the Flooded
+Sump - the one other standing-water spot in the game, so the same
+"water's been here a while" beat applies without a mine-specific
+sprite).
+
+- **`level_01` (The Weighhouse Shaft)**: `barrel`+`crate` near the
+  entrance (unweighed ore sacks), `cobwebs` in a corner, `rubble` near
+  the kobolds' room, a `chest` in the locker past the door, and more
+  `barrel`/`crate`/`rubble` through the southern approach.
+- **`level_02` (The Foreman's Gallery)**: a literal `table`+`chair` for
+  the ledger's own desk, `kelp` at two points along the Flooded Sump's
+  edge, `barrel`/`crate` for gallery supplies, `rubble` near the
+  entrance passage.
+- **`level_03` (The Last Vein)**: `bones` flanking the Vermin Warren's
+  nest (never on the landmark tile itself, which already carries the
+  "rats first" text), `rubble` near the Blocked Face's rockfall (loose
+  stone from the same collapse, kept separate from the skeleton/pick
+  beat itself), `barrel`/`crate` for stored tools elsewhere in the room.
+
+Verification: all three levels re-validated via the real content loader
+(entity/item/decoration/door/stairs/tile-description counts), full
+`pytest -q` (1373 passed, no existing test asserted this dungeon's
+exact counts), `tools/preview.py data/dungeons` full registry, `main.py`
+smoke-launch, and a screenshot of each level via the scratchpad's
+`screenshot_dungeon.py` harness.

@@ -3,36 +3,46 @@ name: The Foreman's Gallery
 
 map: |
   #############################
-  #<@..########################
-  #....########################
-  ####.########################
-  ####.########################
-  ##..r........################
-  ##........g.|################
-  ##.######....}....###########
-  ##.######.####....######..>.#
-  ##.g..-...######..~~~~~~....#
-  ###D############.%~~~~~~.####
-  ##.e.*##########..~~~~~~.####
-  ##..).##########......g..####
-  ################!........####
+  #a@FF########################
+  #FFFF########################
+  ####F########################
+  ####F########################
+  ##FFbFFFFFFFF################
+  ##FFFFuvFFcFd################
+  ##F######FFFFeFFFF###########
+  ##F######w####FFFF######FFfF#
+  ##FgFFhFFF######tFiiiiiivFFF#
+  ###j############Fkiiiiiit####
+  ##qlFm##########FFiiiiiiF####
+  ##FrnF##########FFFFFFoFF####
+  ################pFFFFFFFF####
   #############################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  "<": { stairs_up: level_01 }
-  ">": { stairs_down: level_03 }
-  "r": { entity: rat }
-  "g": { entity: goblin }
-  "-": { item: rusty_key }
-  "}": { item: hunting_bow }
-  "|": { item: arrows }
-  "D": { door: rusty_key }
-  "e": { tile: landmark, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word.", announce: true }
-  ")": { item: iron_sword }
-  "~": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
-  "!": { item: healing_potion }
-  "*": { item: gold_stash, description: "The contents of the foreman's strongbox - a payout that was due the day everything else stopped too.", announce: true }
-  "%": { item: pale_fungus, description: "A pale growth clinging to the ledge, right where the groundwater's been sitting untouched the longest.", announce: true }
+  "F": floor
+  "a": { tile: stairs_up, next_level: level_01 }
+  "f": { tile: stairs_down, next_level: level_03 }
+  "b": { tile: floor, entity: rat }
+  "c": { tile: floor, entity: goblin }
+  "g": { tile: floor, entity: goblin }
+  "o": { tile: floor, entity: goblin }
+  "l": { tile: landmark, description: "A ledger, open to its last page. The entries are ordinary - cart counts, a note about a squeaky axle - right up until the final line, which trails off mid-word.", announce: true }
+  "d": { tile: floor, item: arrows }
+  "e": { tile: floor, item: hunting_bow }
+  "h": { tile: floor, item: rusty_key }
+  "i": { tile: sea, description: "Groundwater, pooled ankle-deep and rising. Nobody's pumped this gallery since the office that used to schedule it stopped answering." }
+  "j": { tile: floor, door: rusty_key }
+  "k": { tile: floor, item: pale_fungus, description: "A pale growth clinging to the ledge, right where the groundwater's been sitting untouched the longest.", announce: true }
+  "m": { tile: floor, item: gold_stash, description: "The contents of the foreman's strongbox - a payout that was due the day everything else stopped too.", announce: true }
+  "n": { tile: floor, item: iron_sword }
+  "p": { tile: floor, item: healing_potion }
+  "q": { tile: floor, decoration: table }
+  "r": { tile: floor, decoration: chair }
+  "t": { tile: floor, decoration: kelp }
+  "u": { tile: floor, decoration: barrel }
+  "v": { tile: floor, decoration: crate }
+  "w": { tile: floor, decoration: rubble }
