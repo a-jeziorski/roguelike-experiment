@@ -51,6 +51,12 @@ Usage:
 
     python tools/play_llm.py --save saves/other_run.json move n
 
+    # Pass the same --record path on every call to capture a replayable session -
+    # watch it back afterward with real sprite art via tools/replay.py.
+    python tools/play_llm.py --record saves/demo.jsonl new
+    python tools/play_llm.py --record saves/demo.jsonl move n
+    python tools/replay.py saves/demo.jsonl
+
     # Debug-only: spawn adjacent to a dungeon's entrance with a hand-picked build,
     # to balance-test it without a full playthrough. Discards any existing session
     # at --save. See tools/balance.py and docs/content_design_process.md §0s.
@@ -61,6 +67,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import deque
 from pathlib import Path
@@ -134,6 +141,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--save", default=str(DEFAULT_SAVE_PATH),
         help=f"Session save-file path (default: {DEFAULT_SAVE_PATH})",
+    )
+    parser.add_argument(
+        "--record", default=None, metavar="PATH",
+        help=(
+            "Append this call's resulting state to PATH as one JSON-Lines frame "
+            "(see tools/replay.py) - off by default; pass the same PATH on every "
+            "call you want captured, same statelessness as --save. Only commands "
+            "that already persist state get recorded, so query commands "
+            "(character/quests/entities/inspect) never add a frame."
+        ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -909,9 +926,52 @@ def load_state(save_path: Path, force_new: bool, catalog, dungeon_registry, over
     return fresh_start(catalog, dungeon_registry, overworld_level, quest_defs, None)
 
 
+def _strip_session_flags(argv: list[str]) -> list[str]:
+    """argv, minus --save/--record and their values - just the subcommand
+    and its own args, for the replay viewer's on-screen caption (see
+    _append_replay_frame) rather than the noisy full invocation."""
+    result = []
+    skip_next = False
+    for token in argv:
+        if skip_next:
+            skip_next = False
+            continue
+        if token in ("--save", "--record"):
+            skip_next = True
+            continue
+        result.append(token)
+    return result
+
+
+def _append_replay_frame(record_path: Path, argv: list[str], notes: list[str], engine, save) -> None:
+    """Appends one JSON-Lines frame to record_path (see tools/replay.py) -
+    the raw argv that produced this frame (for the viewer's own caption),
+    apply_command's own notes, this step's own message log (SaveGame
+    deliberately never persists messages - each CLI invocation gets a
+    fresh one by design - so they're captured here, separately, and
+    re-injected by the viewer at replay time), and the full state snapshot
+    itself (save.model_dump(mode="json"), the same serialization
+    save_to_path already uses). Pure append - never rewrites the file, so
+    a growing session costs one write per call, not a rewrite of
+    everything recorded so far."""
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    frame = {
+        "argv": argv,
+        "notes": notes,
+        "messages": [
+            {"text": str(m), "category": m.category, "speaker": m.speaker}
+            for m in engine.message_log.messages
+        ],
+        "save": save.model_dump(mode="json"),
+    }
+    with record_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(frame) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     save_path = Path(args.save)
+    call_argv = _strip_session_flags(list(argv) if argv is not None else sys.argv[1:])
 
     try:
         catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = load_content()
@@ -942,6 +1002,8 @@ def main(argv: list[str] | None = None) -> int:
     save = capture_save(active_key, active_engines, clock, quest_log, overworld_level)
     save_path.parent.mkdir(parents=True, exist_ok=True)
     save_to_path(save, save_path)
+    if args.record:
+        _append_replay_frame(Path(args.record), call_argv, notes, engine, save)
 
     for note in notes:
         print(note)

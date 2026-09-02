@@ -2619,6 +2619,88 @@ watch it auto-slot, rebind it into a different slot with a swap rather
 than a duplicate, drink/trigger by slot number, hit the empty-slot message
 on a cleared one).
 
+## 0ao. Session replay (`tools/replay.py`, `play_llm.py --record`)
+
+Another pure tooling feature, same category as §0an - `tools/play_llm.py`
+is stateless by design (one CLI command per invocation, persisted through
+an ordinary `SaveGame` file), which is exactly what makes it usable for an
+LLM to drive turn by turn, but it leaves nothing for a human to review
+afterward: no history, and even if there were, the CLI only ever prints
+plain ASCII glyphs, never the real sprite art `main.py`'s graphical client
+draws. This adds an opt-in recorder plus a standalone viewer that watches
+a recorded session back using the exact same rendering code the real game
+uses. Human sessions are explicitly out of scope - a human playing through
+`main.py` already has a real window and can just screen-record it.
+
+**A state-snapshot recorder, not an action-replay one - the one design
+decision this whole feature turns on.** The obviously-simpler-sounding
+alternative - record just the list of commands, then re-run them through a
+fresh `Engine` to reproduce the session - has a real correctness problem:
+combat already has a deliberate randomness layer
+(`engine/combat.py`'s `COMBAT_VARIANCE_ENABLED` dodge/crit rolls), and
+enemy AI/hazard rolls are randomized too, so replaying the same commands
+against a fresh engine would not reliably reproduce the same fight
+outcomes - the "replay" could diverge from what actually happened. Instead,
+each recorded frame captures the *actual resulting game state* via
+`engine/save.py`'s already-tested `capture_save()` - the same serialization
+the real Save action uses - so replaying never re-runs any game logic or
+randomness at all; it only re-renders already-decided history. This also
+means frames can be viewed in any order for free (jump back and forth,
+restart from the middle) with zero extra bookkeeping, and the recorder adds
+essentially no new state model - it reuses `SaveGame`/`capture_save`/
+`restore_save` exactly as they already exist.
+
+**The recording hook rides on the save write that already exists, rather
+than a new command classification** - `tools/play_llm.py`'s new `--record
+PATH` flag (opt-in, off by default, passed on every call the same
+stateless way `--save` already is) appends one frame immediately after the
+existing `capture_save`/`save_to_path` call in `main()`. Since a query
+command (`character`/`quests`/`entities`/`inspect`) already returns before
+that point today, it's automatically never recorded either - no new "is
+this command worth recording" logic needed anywhere.
+
+**Messages are captured and re-injected separately from the `SaveGame`
+payload, on purpose** - `SaveGame` deliberately never persists the message
+log (each CLI invocation gets a fresh one; that's correct for real
+gameplay resumption). A replay frame still needs to show what happened on
+that specific step, so `_append_replay_frame` captures
+`engine.message_log.messages` directly at record time, independently of
+`save.model_dump(mode="json")`, and `tools/replay.py`'s
+`_build_engine_for_frame` overwrites the freshly-`restore_save`d engine's
+message log with those recorded messages before rendering - otherwise
+every replayed frame's log panel would be blank.
+
+**The viewer is deliberately its own small event loop, not an extension of
+`engine/input_handlers.py`** - frame navigation (next/prev/play/pause)
+isn't a gameplay concern, the same reasoning `tools/preview.py`/
+`tools/balance.py` already have their own bespoke logic rather than
+extending the core input layer. It reuses everything else outright:
+`tools.play_llm.load_content()`, `main.py`'s own
+`load_tileset()`/`load_sprite_manifest`/`apply_sprites()` bootstrap (so the
+sprite art is pixel-identical to a real graphical session), and
+`engine/render.py`'s `render_all` completely untouched - the console is
+just 2 rows taller than `main.py`'s own, with those extra rows reserved for
+the viewer's own "Frame N/M: `<command>`" caption, so nothing about the
+real HUD/map/log layout has to change or know a replay is happening.
+Autoplay reuses `tcod.event.wait(timeout=...)`'s own timeout parameter
+rather than a manual poll/sleep loop: blocking indefinitely while paused
+(no CPU spin for a keypress), returning after the configured per-frame
+delay with an empty event list while playing - exactly the signal needed
+to auto-advance one frame, stopping at the end rather than looping.
+
+Ships no new gameplay content - pure tooling, same as §0s's `tools/
+balance.py`. Verified via the full pytest suite (`load_frames`/
+`clamp_index` in `tools/replay.py`, and the `--record` append's shape/
+ordering/query-exclusion in `tools/play_llm.py`, both using `tmp_path` the
+same way `tests/test_save.py`'s own round-trip tests already do), a real
+CLI session recorded end-to-end (confirming the `.jsonl` grows one line
+per mutating call and a query call adds nothing), a headless
+reconstruction of every recorded frame through the exact real rendering
+pipeline (`_build_engine_for_frame` + `render_all`, with real sprite
+codepoints, no window) confirming nothing raises, and an actual windowed
+launch of `tools/replay.py` confirming the SDL window opens and renders
+without error.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
