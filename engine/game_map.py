@@ -180,8 +180,18 @@ class GameMap:
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
 
-    def is_walkable(self, x: int, y: int) -> bool:
-        return self.in_bounds(x, y) and bool(self.walkable[x, y])
+    def is_walkable(self, x: int, y: int, water_walking: bool = False) -> bool:
+        """water_walking (see engine/actions.py's MovementAction, which
+        computes it per-move from Entity.water_walking_turns_remaining/
+        Engine.is_overworld) additionally allows deep_water/sea tiles -
+        both count as "standing water" for this override even though only
+        deep_water is meant for dungeons (see docs/content_design_process.md
+        §0ap)."""
+        if not self.in_bounds(x, y):
+            return False
+        if self.walkable[x, y]:
+            return True
+        return water_walking and self.kinds[x, y] in ("sea", "deep_water")
 
     def unlock_door(self, x: int, y: int) -> None:
         self.walkable[x, y] = True
@@ -291,6 +301,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             key_id=idef.id if idef.is_key else None,
             is_ammo=idef.is_ammo,
             is_teleport=idef.is_teleport,
+            water_walking_duration=idef.water_walking_duration,
             quantity=idef.quantity,
         ),
         description=idef.description,

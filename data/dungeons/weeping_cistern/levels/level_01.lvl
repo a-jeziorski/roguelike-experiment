@@ -1,0 +1,34 @@
+id: level_01
+name: The Cistern Head
+
+map: |
+  ######################
+  #FFFFFFk##############
+  #F@FFbF###############
+  #FFFFFF###############
+  #aFFFFF###############
+  #FFFFFF###############
+  ###F##FFFFFF##########
+  ###F##FFFFcF##########
+  ###FFFFFFdFF##########
+  ######FFFFFF##########
+  ######FFFFFF##########
+  #########F####FFFFFF##
+  #########F####FFFFeF##
+  #########FFFFFFFFFFF##
+  ##############FFFFgF##
+  ##############FFFFkF##
+  ###############FwF####
+
+legend:
+  "#": wall
+  "@": player_start
+  "F": floor
+  "a": { tile: stairs_up, next_level: null }
+  "e": { tile: stairs_down, next_level: level_02 }
+  "d": { tile: floor, entity: drowned_wretch }
+  "g": { tile: floor, entity: gray_ooze }
+  "b": { tile: floor, item: healing_potion }
+  "c": { tile: floor, item: healing_potion }
+  "w": { tile: floor, item: water_walking_potion, description: "A vial the color of deep water, tucked into a niche that still smells faintly of standing water, though none is in sight yet." }
+  "k": { tile: floor, decoration: rubble }

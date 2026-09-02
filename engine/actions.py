@@ -244,7 +244,12 @@ class MovementAction(Action):
             if entity is engine.player and engine.game_map.open_boundary:
                 engine.on_player_reach_map_edge()
             return
-        if not engine.game_map.is_walkable(dest_x, dest_y):
+        water_walking = (
+            entity is engine.player
+            and not engine.is_overworld
+            and entity.water_walking_turns_remaining > 0
+        )
+        if not engine.game_map.is_walkable(dest_x, dest_y, water_walking):
             return
         if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
             return
@@ -475,6 +480,11 @@ class UseItemAction(Action):
                 f"You drink the {item_entity.name} and the world lurches sideways."
             )
             engine.wants_overworld = True
+        elif kind == "water_walking":
+            entity.water_walking_turns_remaining = item_entity.item.water_walking_duration
+            engine.message_log.add(
+                f"You drink the {item_entity.name} and your feet no longer sink."
+            )
 
 
 class UseSkillAction(Action):

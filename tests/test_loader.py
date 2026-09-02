@@ -1472,9 +1472,10 @@ SHIPPED_DUNGEON_IDS = {
     "sunless_hollow",
     "visitor_band_ambush",
     "northern_watch_post",
+    "weeping_cistern",
 }
 
-COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow"]
+COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern"]
 SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "farrows_stake", "northern_watch_post"]
 
 
@@ -1951,7 +1952,7 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.height == 180
     assert overworld.player_start == (29, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 16  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's first, the Watch Post
+    assert len(overworld.dungeon_entrances) == 17  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post and Weeping Cistern
     assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(
@@ -1974,12 +1975,15 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert {(d.x, d.y - y_offset, d.text) for d in overworld.tile_descriptions} >= heartlands_descriptions
 
 
-def test_load_overworld_northern_steppe_cell_has_its_first_dungeon():
-    """The Northern Steppe's first real dungeon - the Watch Post
+def test_load_overworld_northern_steppe_cell_has_its_dungeons():
+    """The Northern Steppe's first two real dungeons - the Watch Post
     (see docs/region_bibles/northern_steppe.md, docs/dungeon_bibles/
-    northern_watch_post.md) - replaces what was originally a `landmark`-only
-    placeholder; the region's other three reserved locations (the goblin
-    homeland, two Elder Age sites) are still landmarks, no dungeons yet."""
+    northern_watch_post.md) and the Weeping Cistern (docs/dungeon_bibles/
+    weeping_cistern.md, placed in the Frayed Edge band per that bible's
+    own tone note that the corruption bands' boundaries are "guidance,
+    not a hard fence") - the region's other three reserved locations (the
+    goblin homeland, two Elder Age sites) are still landmarks, no dungeons
+    yet."""
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     known_dungeon_ids = set(dungeon_registry)
@@ -1992,8 +1996,10 @@ def test_load_overworld_northern_steppe_cell_has_its_first_dungeon():
     assert steppe.width == 150
     assert steppe.height == 90
     assert steppe.player_starts == []
-    assert len(steppe.dungeon_entrances) == 1
-    assert steppe.dungeon_entrances[0].dungeon_id == "northern_watch_post"
+    assert {(d.x, d.y, d.dungeon_id) for d in steppe.dungeon_entrances} == {
+        (75, 72, "northern_watch_post"),
+        (95, 83, "weeping_cistern"),
+    }
     assert len(steppe.tile_descriptions) == 3
     kinds = {tile for row in steppe.tiles for tile in row}
     assert "ashen_plains" in kinds

@@ -16,6 +16,7 @@ TileType = Literal[
     "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
     "landmark", "dunes", "ashen_plains", "blighted_forest", "scoured_ground",
+    "deep_water",
 ]
 
 # Purely cosmetic map dressing (furniture indoors, plants outdoors) - a
@@ -79,6 +80,13 @@ TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
     "door": (False, False),  # closed; unlock_door() overrides both to True at runtime
     "mountain": (False, False),
     "sea": (False, True),  # can't cross it, but can see across it
+    # A dungeon-only counterpart to sea, for standing water that isn't the
+    # ocean (a flooded cistern, cellar, etc.) - same impassable-but-
+    # transparent shape, distinct label so a landlocked dungeon doesn't
+    # claim to be full of seawater. See engine/game_map.py's is_walkable
+    # water_walking override (docs/content_design_process.md §0ap), which
+    # accepts either kind.
+    "deep_water": (False, True),
     "forest": (True, False),  # can walk through, can't see far through/across it
     "blighted_forest": (True, False),  # corrupted forest - same sightline block as forest
     # dunes/ashen_plains deliberately have no entry here - they're chip-damage
@@ -419,6 +427,11 @@ class ItemDef(BaseModel):
     # Drinking this exits the current dungeon to the overworld - see
     # engine/actions.py's UseItemAction and engine/entity.py's POTION_KINDS.
     is_teleport: bool = False
+    # Drinking this lets the player cross deep_water/sea tiles for this many
+    # turns - dungeon-only (see engine/actions.py's MovementAction, which
+    # never honors it while Engine.is_overworld). Set/unset together with
+    # nothing else, same standalone shape as heal_amount/is_teleport above.
+    water_walking_duration: int | None = Field(default=None, gt=0)
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).

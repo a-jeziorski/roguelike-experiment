@@ -2734,6 +2734,105 @@ including two real character deaths) - the single most effective way
 either bug could have been found, since neither one is visible from
 `_execute_walk`'s code alone, only from watching what it produces.
 
+## 0ap. Water walking - a timed, dungeon-only terrain override (`water_walking_potion`, `deep_water`)
+
+A new potion kind, drunk to cross otherwise-impassable standing water for
+a limited number of turns - built alongside its own showcase dungeon, The
+Weeping Cistern (`data/dungeons/weeping_cistern/`,
+`docs/dungeon_bibles/weeping_cistern.md`, Northern Steppe's first combat
+dungeon).
+
+**`sea` needed a non-ocean sibling.** The obvious approach - just let the
+potion override the existing `sea` tile - was rejected mid-design: `sea`
+is specifically the overworld ocean, and almost no dungeon water is
+actually seawater (Drowned Waystation already stretches the label for
+coastal flooding; a landlocked cistern calling its water "sea" would be a
+much starker mismatch). Rather than compound an existing naming
+imprecision, a second tile kind, `deep_water`, was added to
+`content/schema.py`'s `TileType`/`TILE_PASSABILITY` - identical
+impassable-but-transparent behavior to `sea`, distinct label, and a
+slightly different color in `engine/render.py`'s `TILE_KINDS` (murky
+green-grey vs. `sea`'s clean ocean blue) reusing `sea`'s own sprite tile
+in `data/sprites.yaml`, the same "one sprite, two recolored kinds"
+precedent `scoured_ground`/`ashen_plains` already established. The
+walkability override itself still accepts *either* kind
+(`self.kinds[x, y] in ("sea", "deep_water")`) - the mechanic is "cross
+standing water," and staying inclusive of the older label costs nothing
+while covering any level still using it.
+
+**Not `Fighter.active_effects`.** That system exists for combat-inflicted
+afflictions, hooked into `_apply_damage`'s own inflict moment - the wrong
+shape for a self-applied consumable buff with no combat interaction at
+all. Water walking is instead a bespoke `Entity.water_walking_turns_
+remaining: int`, following the exact "omit-friendly, harmless on a
+monster" pattern `charge_recovering`/`summon_cooldown` already use, ticked
+down once per turn from `Engine.process_enemy_phase` (same "any turn
+anywhere" cadence `_tick_skill_cooldowns(SKILL_COOLDOWN_TURNS)` already
+has) via a new small `_tick_water_walking`.
+
+**The walkability hook**: `GameMap.is_walkable` gained an optional
+`water_walking: bool = False` parameter rather than a parallel function,
+so every existing call site is unaffected by the default.
+`MovementAction.perform` computes the actual override once, right before
+its `is_walkable` check: `entity is engine.player and not
+engine.is_overworld and entity.water_walking_turns_remaining > 0` - the
+`is_overworld` guard is the entire reason this can never be used to
+bypass the real ocean, and it's structural (computed at the movement
+check itself), not a refusal message. `tools/play_llm.py`'s own
+`_peek_step`/`_bfs_path`/`_resolve_goto_target` needed the identical
+threading for CLI parity (`walk`/`goto` must be able to path across water
+while the buff is active, matching what a real keypress can already do).
+
+**No overworld refusal message.** Unlike the Teleportation Potion's own
+"You're already on the surface" guard, drinking Water Walking on the
+overworld is allowed - it's simply inert there by construction, the same
+"no explicit refusal, just a capped effect" precedent a Healing Potion at
+full HP already sets.
+
+**The softlock this design structurally avoids**: a there-and-back water
+crossing (drink, cross, grab loot, cross back) risks the buff expiring
+mid-return with the player standing on a `deep_water` tile with no
+walkable neighbor - genuinely stuck, not just inconvenienced. The Weeping
+Cistern's own Water Gate is deliberately **forward-only** instead: no
+floor route back across the same water, so the far side has to supply its
+own way out (a `stairs_down` with `next_level: null`, matching Drowned
+Waystation `level_02`'s own convention for a dungeon's deepest level).
+Any future water-walking content should keep this shape - a one-way gate,
+never a round-trip over the same tiles - rather than relying on generous
+duration alone to avoid stranding the player.
+
+**Two real balance bugs, both caught by CLI playthroughs, not by hits-to-
+kill math**: an early layout put two `drowned_wretch` in one open hall
+with no chokepoints, letting both converge on the player at once (a
+straight pile-on); the fix was splitting the level into rooms joined by
+genuinely bent corridors (`Engine._perform_ai` only skips a monster whose
+own tile isn't currently visible to the player, and `FOV_RADIUS` is 8, so
+a long straight corridor lets the player see - and simultaneously aggro -
+everything on it, and a 1-wide corridor open at both ends lets separate
+monsters pincer the player from opposite sides, worse than an open room
+since there's no way to back off and face only one). Separately, even
+with that fixed, three back-to-back melee fights in a strictly linear,
+no-rest dungeon (two on the entrance level, a third guarding the Water
+Gate) cost far more cumulative HP for a fresh, unequipped character than
+the flat per-monster math implied - fixed by cutting the Water Gate's
+guard entirely, since the water crossing is this dungeon's intended
+obstacle and a third attrition fight bolted onto it was redundant with
+that, not additive. Neither issue was visible from `docs/dungeon_bibles/
+weeping_cistern.md`'s own hits-to-kill arithmetic alone - both only
+surfaced from actually playing the shipped level file turn by turn.
+
+Ships new content alongside the mechanic (`data/dungeons/weeping_cistern/`,
+one new item, one new tile kind) - verified via the full pytest suite
+(schema/`ItemDef` validation, `is_walkable`'s override on both `sea` and
+`deep_water`, `MovementAction`'s dungeon-only gate, the per-turn tick, a
+`SavedPlayer.water_walking_turns_remaining` round-trip - an easy miss,
+since `tools/play_llm.py` is a fresh process per command and silently
+drops any live-state field never added to `engine/save.py`), `tools/
+preview.py`'s full dungeon/overworld registry, and a real `tools/
+play_llm.py` playthrough from a fresh character through both levels -
+confirming water blocks movement without the potion, the crossing works
+with it, and the buff is inert if drunk on the overworld.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

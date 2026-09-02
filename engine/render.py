@@ -62,6 +62,12 @@ TILE_VISUALS = {
     # Overworld terrain.
     "mountain": {"glyph": "^", "dark": (70, 65, 60), "light": (150, 140, 130)},
     "sea": {"glyph": "~", "dark": (15, 40, 80), "light": (60, 110, 200)},
+    # Dungeon-only standing water (a flooded cistern, cellar...) - not the
+    # ocean, so a murky green-grey instead of sea's clean blue. Shares
+    # sea's sprite in data/sprites.yaml (no separate murky-water tile in
+    # either sheet), same "one sprite, two recolored kinds" precedent as
+    # scoured_ground/ashen_plains below.
+    "deep_water": {"glyph": "~", "dark": (20, 35, 30), "light": (70, 100, 85)},
     "forest": {"glyph": "T", "dark": (20, 50, 25), "light": (60, 140, 60)},
     "road": {"glyph": ".", "dark": (60, 50, 30), "light": (150, 130, 80)},
     "plains": {"glyph": ",", "dark": (35, 45, 20), "light": (120, 150, 70)},
@@ -99,6 +105,7 @@ TILE_DESCRIPTIONS = {
     "stairs_up": "Stairs leading up.",
     "mountain": "Impassable mountains.",
     "sea": "Open water, too deep to cross.",
+    "deep_water": "Standing water, still and dark. Too deep to cross on foot.",
     "forest": "Dense woodland.",
     "road": "A worn dirt road.",
     "plains": "Open grassland.",
@@ -442,7 +449,7 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
             continue
         count = sum(1 for it in inventory if potion_kind(it.item) == kind)
         marker = ">" if selected_potion == kind else " "
-        potion_parts.append(f"{marker}[{i + 5}] {kind.capitalize()} {count}")
+        potion_parts.append(f"{marker}[{i + 5}] {kind.replace('_', ' ').capitalize()} {count}")
     potions_text = "  ".join(potion_parts) if potion_parts else "(none bound)"
     y += console.print(
         0, y,
@@ -1078,7 +1085,7 @@ def render_character(console: "Console", engine: "Engine", selected: int) -> Non
     for i, kind in enumerate(player.potion_slots):
         row = len(player.skill_slots) + i
         marker = ">" if selected == row else " "
-        value = kind.capitalize() if kind is not None else "(empty)"
+        value = kind.replace("_", " ").capitalize() if kind is not None else "(empty)"
         y += console.print(2, y, f"{marker} [{i + 5}] {value}", fg=HUD_FG, width=width - 2)
 
     y = console.height - 1

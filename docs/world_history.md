@@ -150,9 +150,13 @@ homeland the goblin horde fled. See
 It now has its first real inhabited location - the Watch Post
 (`northern_watch_post`, a small settlement of survivors who stayed
 behind), reached via `word_from_the_north`/`a_warning_worth_carrying`
-(`data/quests.yaml`) - three further locations (the goblin homeland, two
-Elder Age sites) are still reserved as `landmark` tiles rather than
-built.
+(`data/quests.yaml`) - and its first combat dungeon, the Weeping Cistern
+(`weeping_cistern`, an Old Kingdom mountain-runoff cistern, flooded and
+predating the Visitor's corruption entirely - see
+`docs/dungeon_bibles/weeping_cistern.md`), placed in the Frayed Edge band
+without disturbing any of the region's three still-reserved locations
+(the goblin homeland, two Elder Age sites), which remain `landmark` tiles
+rather than built.
 
 ## Current roster
 

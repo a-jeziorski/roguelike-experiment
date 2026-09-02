@@ -169,6 +169,11 @@ class SavedPlayer(BaseModel):
     # last used), so unlike the stat-bonus totals above, this is saved
     # directly rather than re-derived.
     skill_cooldowns: dict[str, int] = Field(default_factory=dict)
+    # Turns left in which the player can cross deep_water/sea (see
+    # Entity.water_walking_turns_remaining, engine/actions.py's
+    # UseItemAction/MovementAction) - genuine live state like
+    # skill_cooldowns above, not derivable from anything else.
+    water_walking_turns_remaining: int = 0
     inventory: list[SavedItemSlot] = Field(default_factory=list)
     equipped_weapon: SavedItemSlot | None = None
     equipped_armor: SavedItemSlot | None = None
@@ -290,6 +295,7 @@ def capture_save(
         x=player.x, y=player.y, hp=player.fighter.hp, gold=player.gold,
         xp=player.xp, learned_perk_ids=set(player.learned_perk_ids),
         skill_cooldowns=dict(player.skill_cooldowns),
+        water_walking_turns_remaining=player.water_walking_turns_remaining,
         inventory=[
             SavedItemSlot(entity_id=item.entity_id, quantity=item.item.quantity)
             for item in player.inventory
@@ -372,6 +378,7 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     player.selected_potion_kind = saved.selected_potion_kind
     player.skill_slots = list(saved.skill_slots)
     player.potion_slots = list(saved.potion_slots)
+    player.water_walking_turns_remaining = saved.water_walking_turns_remaining
     player.equipped_weapon = _build_item_entity(saved.equipped_weapon, catalog) if saved.equipped_weapon else None
     player.equipped_armor = _build_item_entity(saved.equipped_armor, catalog) if saved.equipped_armor else None
     player.equipped_ranged_weapon = (

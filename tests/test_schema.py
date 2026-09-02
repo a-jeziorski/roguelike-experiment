@@ -896,6 +896,27 @@ def test_item_def_accepts_is_teleport():
     assert potion.is_teleport is True
 
 
+def test_item_def_water_walking_duration_defaults_none():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.water_walking_duration is None
+
+
+def test_item_def_accepts_water_walking_duration():
+    potion = ItemDef(
+        id="water_walking_potion", name="Water Walking Potion", glyph="~",
+        color=(1, 2, 3), water_walking_duration=20,
+    )
+    assert potion.water_walking_duration == 20
+
+
+def test_item_def_rejects_non_positive_water_walking_duration():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="water_walking_potion", name="Water Walking Potion", glyph="~",
+            color=(1, 2, 3), water_walking_duration=0,
+        )
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None
@@ -1098,7 +1119,7 @@ def test_level_def_accepts_a_walkable_player_start_tile_override():
 
 
 @pytest.mark.parametrize(
-    "kind", ["wall", "door", "mountain", "sea", "stairs_down", "stairs_up", "dungeon_entrance", "player_start"]
+    "kind", ["wall", "door", "mountain", "sea", "deep_water", "stairs_down", "stairs_up", "dungeon_entrance", "player_start"]
 )
 def test_level_def_rejects_an_unwalkable_or_special_purpose_player_start_tile(kind):
     with pytest.raises(ValidationError):

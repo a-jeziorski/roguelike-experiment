@@ -127,11 +127,14 @@ class ItemEffect:
     affix_potency: int | None = None
     affix_duration: int | None = None
     affix_chance: float | None = None
+    # How many turns UseItemAction grants passage over deep_water/sea for -
+    # see potion_kind below, engine/game_map.py's is_walkable.
+    water_walking_duration: int | None = None
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
-POTION_KINDS: tuple[str, ...] = ("healing", "teleport")
+POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking")
 
 
 def potion_kind(item: ItemEffect) -> str | None:
@@ -140,6 +143,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "healing"
     if item.is_teleport:
         return "teleport"
+    if item.water_walking_duration:
+        return "water_walking"
     return None
 
 
@@ -293,6 +298,13 @@ class Entity:
         # which this entity skips its action entirely instead of acting.
         # Harmless and unused for anything that isn't a charger.
         self.charge_recovering = False
+        # A player-only live counter (see engine/actions.py's UseItemAction
+        # "water_walking" branch, Engine._tick_water_walking): turns left in
+        # which MovementAction will let this entity cross deep_water/sea.
+        # Harmless and unread on anything but the player, same "set
+        # unconditionally, only ever matters for one entity" shape as
+        # selected_potion_kind below.
+        self.water_walking_turns_remaining = 0
         # AI_TERRITORIAL's static config, same "omit-friendly, engine-level
         # default" shape as alert_radius/flee_hp_pct above.
         self.territory_radius = territory_radius

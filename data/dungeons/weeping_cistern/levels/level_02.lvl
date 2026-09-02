@@ -1,0 +1,27 @@
+id: level_02
+name: The Flooded Vault
+
+map: |
+  ##########################
+  #FhFFFF#########FFFFFFFFF#
+  #FFFFFF#########FFFFFFFFF#
+  #FFFFFp~~~~~~~~~FFFFFsFcF#
+  #u@FFFF~~~~~~~~~FFFmFFFFF#
+  #FFFFFF~~~~~~~~~FrFFFFFFF#
+  #FFFFFF#########FFFFeFFFF#
+  #FFFFFF#########FFFFFFFFF#
+  ##########################
+
+legend:
+  "#": wall
+  "@": player_start
+  "F": floor
+  "~": { tile: deep_water, description: "Standing water, still and black - deep enough that whatever the cistern was built to hold, it's still holding it." }
+  "u": { tile: stairs_up, next_level: level_01 }
+  "e": { tile: stairs_down, next_level: null }
+  "h": { tile: floor, item: healing_potion }
+  "p": { tile: floor, item: water_walking_potion, description: "A second vial, left within easy reach of the water's edge - whoever stocked this place expected more than one crossing." }
+  "m": { tile: floor, item: chain_mail }
+  "s": { tile: floor, item: gold_stash }
+  "r": { tile: floor, decoration: rubble }
+  "c": { tile: floor, decoration: chest }

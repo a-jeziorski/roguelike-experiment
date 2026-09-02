@@ -1142,6 +1142,15 @@ class Engine:
         for perk_id in expired_ids:
             del self.player.skill_cooldowns[perk_id]
 
+    def _tick_water_walking(self) -> None:
+        """Counts down Entity.water_walking_turns_remaining by 1, same
+        "any turn anywhere" cadence as _tick_skill_cooldowns(SKILL_COOLDOWN_TURNS) -
+        called alongside it from process_enemy_phase, not gated to
+        is_overworld, so a buff spent crossing dungeon water also burns
+        down if the player then leaves to the surface."""
+        if self.player.water_walking_turns_remaining > 0:
+            self.player.water_walking_turns_remaining -= 1
+
     def _advance_world_clock(self) -> None:
         """The only source of in-game time passing: one hour per turn taken
         on the overworld (dungeons/settlements never call this - is_overworld
@@ -1726,6 +1735,9 @@ class Engine:
 
         if self.game_state == "playing":
             self._tick_skill_cooldowns(SKILL_COOLDOWN_TURNS)
+
+        if self.game_state == "playing":
+            self._tick_water_walking()
 
         if self.game_state == "playing" and not self.player.is_alive:
             self.on_entity_death(self.player)

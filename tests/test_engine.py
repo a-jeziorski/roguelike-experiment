@@ -37,6 +37,7 @@ from engine.entity import (
     Entity,
     Fighter,
     ItemEffect,
+    potion_kind,
 )
 from engine.game_map import DARK_FOV_RADIUS, FOV_RADIUS, PLAYER_ATTACK, GameMap, build_game_map, entity_from_def
 from engine.quest import Quest, QuestLog, create_quest_log
@@ -170,6 +171,15 @@ def make_teleport_potion(x: int, y: int) -> Entity:
         blocks_movement=False,
         render_priority=RENDER_PRIORITY_ITEM,
         item=ItemEffect(is_teleport=True),
+    )
+
+
+def make_water_walking_potion(x: int, y: int, duration: int = 20) -> Entity:
+    return Entity(
+        x, y, "~", (50, 190, 180), "Water Walking Potion",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(water_walking_duration=duration),
     )
 
 
@@ -1924,6 +1934,101 @@ def test_use_item_action_teleport_guards_against_already_being_on_overworld():
     assert potion in player.inventory  # not consumed
     assert engine.wants_overworld is False
     assert engine.message_log.messages[-1] == "You're already on the surface."
+
+
+def test_potion_kind_identifies_water_walking():
+    assert potion_kind(ItemEffect(water_walking_duration=20)) == "water_walking"
+    assert potion_kind(ItemEffect()) is None
+
+
+def test_use_item_action_drinks_water_walking_potion_and_sets_turns_remaining():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_water_walking_potion(1, 1, duration=20)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
+    player.selected_potion_kind = "water_walking"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    # 20 set by the drink, then process_enemy_phase ticks it down once
+    # within the same turn - same "set then immediately ticked" shape
+    # skill cooldowns already have.
+    assert player.water_walking_turns_remaining == 19
+    assert engine.message_log.messages[-1] == "You drink the Water Walking Potion and your feet no longer sink."
+
+
+def test_is_walkable_water_walking_override_accepts_sea_and_deep_water():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "deep_water"
+    game_map.walkable[1, 1] = False
+    game_map.kinds[2, 1] = "sea"
+    game_map.walkable[2, 1] = False
+
+    assert game_map.is_walkable(1, 1, water_walking=True) is True
+    assert game_map.is_walkable(2, 1, water_walking=True) is True
+    assert game_map.is_walkable(1, 1) is False
+    assert game_map.is_walkable(2, 1, water_walking=False) is False
+
+
+def test_movement_action_lets_player_cross_deep_water_with_active_buff():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "deep_water"
+    game_map.walkable[2, 1] = False
+    player = make_player(1, 1)
+    player.water_walking_turns_remaining = 5
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")  # is_overworld defaults False
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (2, 1)
+
+
+def test_movement_action_blocks_deep_water_without_active_buff():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "deep_water"
+    game_map.walkable[2, 1] = False
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # never moved
+
+
+def test_movement_action_water_walking_inert_on_the_overworld():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[2, 1] = "deep_water"
+    game_map.walkable[2, 1] = False
+    player = make_player(1, 1)
+    player.water_walking_turns_remaining = 5
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # the buff never applies on the overworld
+
+
+def test_water_walking_turns_remaining_ticks_down_each_turn():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.water_walking_turns_remaining = 2
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.water_walking_turns_remaining == 1
+
+    engine.process_turn(WaitAction())
+    assert player.water_walking_turns_remaining == 0
+
+    engine.process_turn(WaitAction())
+    assert player.water_walking_turns_remaining == 0  # never goes negative
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

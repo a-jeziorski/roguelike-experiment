@@ -45,6 +45,7 @@ TILE_GLYPHS = {
     "dungeon_entrance": "O",
     "mountain": "^",
     "sea": "~",
+    "deep_water": "~",
     "forest": "T",
     "road": ".",
     "plains": ",",

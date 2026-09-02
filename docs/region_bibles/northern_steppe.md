@@ -70,7 +70,7 @@ grid), divided into three corruption bands, south to north:
 
 | Band | Rows (local y) | Corruption density | What's there |
 |---|---|---|---|
-| The Frayed Edge | 60-89 (nearest the Heartlands seam) | Light - a handful of small scars | The Watch Post (future settler outpost) |
+| The Frayed Edge | 60-89 (nearest the Heartlands seam) | Light - a handful of small scars | The Watch Post (future settler outpost), the Weeping Cistern |
 | The Cinder Marches | 30-59 | Moderate - visibly spreading | The Goblin Camp (future goblin homeland) |
 | The Hollow Reach | 0-29 (northernmost) | Heavy - the epicenter | Two Elder Age excavation sites |
 
@@ -123,6 +123,19 @@ Visitor behavior of spending months studying one site before moving on).
 Their descriptions stay in the same register as every other Elder Age
 mention in this project - a shape too deliberate to be natural, evidence
 of recent digging, nothing explained beyond that.
+
+### 5. The Weeping Cistern (added this pass - not one of the original four)
+
+A second real dungeon in the Frayed Edge, at global (95, 83), well clear
+of the Watch Post (75, 72) - see `docs/dungeon_bibles/weeping_cistern.md`.
+An Old Kingdom mountain-runoff cistern, flooded for generations, entirely
+unrelated to the Visitor's corruption and to any of the three still-
+reserved locations above (the Goblin Camp, the two Elder Age sites) -
+this section's own tone note already anticipated a future pass adding
+content here, calling the corruption bands' boundaries "guidance, not a
+hard fence." It's the region's first *combat* dungeon (the Watch Post has
+no hostile roster at all) and the reason the water-walking potion
+mechanic exists.
 
 ## Roster
 

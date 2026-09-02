@@ -395,7 +395,7 @@ def render_hud_text(engine) -> str:
             continue
         count = sum(1 for it in inventory if potion_kind(it.item) == kind)
         marker = ">" if selected_potion == kind else " "
-        potion_parts.append(f"{marker}[{i + 5}] {kind.capitalize()} {count}")
+        potion_parts.append(f"{marker}[{i + 5}] {kind.replace('_', ' ').capitalize()} {count}")
     potions_text = "  ".join(potion_parts) if potion_parts else "(none bound)"
     lines.append(
         f"Potions: {potions_text}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}"
@@ -455,8 +455,8 @@ def _peek_step(engine, dx: int, dy: int) -> tuple[bool, str]:
         )
         if not has_key:
             return False, "a locked door (no matching key)"
-        return True, ""
-    if not game_map.is_walkable(dest_x, dest_y):
+    water_walking = not engine.is_overworld and engine.player.water_walking_turns_remaining > 0
+    if not game_map.is_walkable(dest_x, dest_y, water_walking):
         return False, f"impassable terrain ({game_map.kinds[dest_x, dest_y]})"
     blocker = game_map.blocking_entity_at(dest_x, dest_y)
     if blocker is not None:
@@ -465,7 +465,7 @@ def _peek_step(engine, dx: int, dy: int) -> tuple[bool, str]:
 
 
 def _bfs_path(
-    game_map, start: tuple[int, int], goal: tuple[int, int],
+    game_map, start: tuple[int, int], goal: tuple[int, int], water_walking: bool = False,
 ) -> list[tuple[int, int]] | None:
     """Shortest walkable-terrain path from start to goal, as a list of
     (dx, dy) steps - using full map knowledge (walkable/kinds are known
@@ -474,11 +474,13 @@ def _bfs_path(
     tool exists for efficient testing, not to simulate what a blind
     player could find by eye - see the module docstring. Ignores
     entities entirely (they move turn to turn); the caller re-peeks each
-    step against the live map at execution time via _peek_step. None if
-    no walkable path exists."""
+    step against the live map at execution time via _peek_step.
+    water_walking, if True, lets the path cross deep_water/sea tiles too -
+    the caller computes it the same way _peek_step does. None if no
+    walkable path exists."""
     if start == goal:
         return []
-    if not game_map.in_bounds(*goal) or not game_map.is_walkable(*goal):
+    if not game_map.in_bounds(*goal) or not game_map.is_walkable(*goal, water_walking):
         return None
     visited = {start}
     queue = deque([start])
@@ -489,7 +491,7 @@ def _bfs_path(
             break
         for dx, dy in DIRECTIONS.values():
             nxt = (current[0] + dx, current[1] + dy)
-            if nxt in visited or not game_map.in_bounds(*nxt) or not game_map.is_walkable(*nxt):
+            if nxt in visited or not game_map.in_bounds(*nxt) or not game_map.is_walkable(*nxt, water_walking):
                 continue
             visited.add(nxt)
             came_from[nxt] = (current, (dx, dy))
@@ -532,6 +534,7 @@ def _resolve_goto_target(engine, target_tokens: list[str]) -> tuple[tuple[int, i
     if not candidates:
         return None, f"no entity matching '{name_query}'"
 
+    water_walking = not engine.is_overworld and engine.player.water_walking_turns_remaining > 0
     start = (engine.player.x, engine.player.y)
     best_target: tuple[int, int] | None = None
     best_len: int | None = None
@@ -539,9 +542,9 @@ def _resolve_goto_target(engine, target_tokens: list[str]) -> tuple[tuple[int, i
     for entity in candidates:
         for dx, dy in DIRECTIONS.values():
             nx, ny = entity.x + dx, entity.y + dy
-            if not game_map.in_bounds(nx, ny) or not game_map.is_walkable(nx, ny):
+            if not game_map.in_bounds(nx, ny) or not game_map.is_walkable(nx, ny, water_walking):
                 continue
-            path = _bfs_path(game_map, start, (nx, ny))
+            path = _bfs_path(game_map, start, (nx, ny), water_walking)
             if path is None:
                 continue
             if best_len is None or len(path) < best_len:
@@ -665,7 +668,8 @@ def apply_command(
         if target is None:
             notes.append(f"Goto failed: {description}.")
             return active_key, engine, full_map, notes
-        path = _bfs_path(engine.game_map, (engine.player.x, engine.player.y), target)
+        water_walking = not engine.is_overworld and engine.player.water_walking_turns_remaining > 0
+        path = _bfs_path(engine.game_map, (engine.player.x, engine.player.y), target, water_walking)
         if path is None:
             notes.append(f"No path found to {description}.")
             return active_key, engine, full_map, notes
@@ -809,7 +813,7 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
 
         print("Potion hotbar:")
         for i, kind in enumerate(player.potion_slots):
-            print(f"  [{i + 5}] {kind.capitalize() if kind else '(empty)'}")
+            print(f"  [{i + 5}] {kind.replace('_', ' ').capitalize() if kind else '(empty)'}")
         return
 
     if args.command == "quests":

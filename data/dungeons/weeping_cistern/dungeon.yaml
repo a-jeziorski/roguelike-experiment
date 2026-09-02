@@ -1,0 +1,10 @@
+id: weeping_cistern
+name: The Weeping Cistern
+starting_level: level_01
+description: >
+  An Old Kingdom cistern, cut into the steppe to catch mountain runoff and
+  supply a garrison whose name nobody kept. The drainage failed generations
+  before the garrison did, and the lower vaults have stood full ever since -
+  water with nowhere to go, waiting on people who are not coming back.
+inspect_text: A cracked stone cistern-head, half-sunk into the plain. Something still moves in the water below, though nothing has drawn from it in a long time.
+balance_reference_xp: 80

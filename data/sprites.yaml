@@ -126,6 +126,7 @@ entities:
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
   teleportation_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
+  water_walking_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
   broadsword:            {sheet: rltiles, name: broadsword}
@@ -154,6 +155,9 @@ tile_kinds:
   stairs_up:        {sheet: rltiles, name: staircase_up, backdrop: floor}
   door:             {sheet: rltiles, name: closed_door_h}
   sea:              {sheet: kenney_roguelike, col: 0,  row: 2}
+  # Dungeon-only standing water (see content/schema.py's deep_water) -
+  # reuses sea's sprite tile, recolored via engine/render.py's TILE_KINDS.
+  deep_water:       {sheet: kenney_roguelike, col: 0,  row: 2}
   plains:           {sheet: kenney_roguelike, col: 5,  row: 0}
   dunes:            {sheet: kenney_roguelike, col: 8, row: 0}
   road:             {sheet: kenney_roguelike, col: 6,  row: 0}

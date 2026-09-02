@@ -853,6 +853,49 @@ def test_restore_save_defaults_skill_cooldowns_for_an_old_format_save(tmp_path):
     assert active_engines2[active_key].player.skill_cooldowns == {}
 
 
+def test_round_trip_preserves_water_walking_turns_remaining(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    engine.player.water_walking_turns_remaining = 14
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+    engine2 = active_engines2[active_key]
+
+    assert engine2.player.water_walking_turns_remaining == 14
+
+
+def test_restore_save_defaults_water_walking_turns_remaining_for_an_old_format_save(tmp_path):
+    """A save captured before this pass has no water_walking_turns_remaining
+    key at all - SavedPlayer's own 0 default must let it restore cleanly
+    instead of failing validation."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["water_walking_turns_remaining"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, clock2, quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    assert active_engines2[active_key].player.water_walking_turns_remaining == 0
+
+
 def test_round_trip_preserves_a_ground_item_carried_to_and_dropped_on_a_different_level(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()
