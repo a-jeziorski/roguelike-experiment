@@ -121,6 +121,7 @@ entities:
   bound_crawler:           {sheet: rltiles, name: demonic_crawler}
   charnel_colossus:        {sheet: rltiles, name: abomination_large4}
   excavation_warden:       {sheet: rltiles, name: barrow_wight}
+  vulture:                 {sheet: rltiles, name: raven}
 
 items:
   healing_potion:      {sheet: rltiles, name: misc_bottle, recolor: true}
