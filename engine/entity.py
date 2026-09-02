@@ -129,8 +129,8 @@ class ItemEffect:
     affix_chance: float | None = None
 
 
-# Cycle order for UseItemAction's potion-kind selection (see
-# Entity.selected_potion_kind and Engine.cycle_selected_potion_kind).
+# Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
+# Entity.potion_slots, Engine.assign_potion_slot).
 POTION_KINDS: tuple[str, ...] = ("healing", "teleport")
 
 
@@ -390,6 +390,19 @@ class Entity:
         # itself is what survives every dungeon-to-dungeon hand-off unchanged
         # (depart_player/arrive_player pass the same instance).
         self.selected_potion_kind = POTION_KINDS[0]
+        # Hotbar assignment for a learned active-skill perk (see
+        # Engine.assign_skill_slot, engine/actions.py's UseSkillSlotAction)
+        # - key "1".."4" in the graphical client. None means unassigned.
+        # Same "lives on the surviving player Entity, not Engine" reasoning
+        # as selected_potion_kind above; harmless and unread on a monster.
+        self.skill_slots: list[str | None] = [None, None, None, None]
+        # Hotbar assignment for a potion kind (see Engine.assign_potion_slot,
+        # engine/actions.py's UsePotionSlotAction) - key "5".."7". One more
+        # slot than POTION_KINDS has entries today, same "room to grow"
+        # reasoning as the 4 skill slots above having only 2 skills to fill
+        # them so far. Defaults to today's only two kinds, in POTION_KINDS
+        # order, so a fresh player's quick-slots work with no setup.
+        self.potion_slots: list[str | None] = [POTION_KINDS[0], POTION_KINDS[1], None]
 
     @property
     def is_alive(self) -> bool:

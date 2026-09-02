@@ -23,7 +23,7 @@ from content.loader import (
 from engine.actions import (
     DEFAULT_RANGED_RANGE,
     BumpAction,
-    CyclePotionKindAction,
+    CharacterAction,
     EscapeAction,
     FireAction,
     FireModeAction,
@@ -42,11 +42,13 @@ from engine.actions import (
 from engine.audio import SoundManager
 from engine.clock import GameClock
 from engine.engine import Engine, roll_visitor_band
+from engine.entity import POTION_KINDS
 from engine.game_map import build_game_map, entity_from_def, nearby_walkable_tiles
 from engine.quest import QuestLog, create_quest_log
 from engine.save import capture_save, load_from_path, restore_save, save_to_path
 from engine.sprites import apply_sprites
 from engine.input_handlers import (
+    handle_character_event,
     handle_continue_prompt_event,
     handle_event,
     handle_help_event,
@@ -67,6 +69,7 @@ from engine.render import (
     projectile_glyph,
     projectile_path,
     render_all,
+    render_character,
     render_confirm_attack_prompt,
     render_continue_prompt,
     render_help,
@@ -366,6 +369,64 @@ def run_trainer_mode(console: tcod.console.Console, context: tcod.context.Contex
                 selected = (selected + 1) % len(perk_ids)
             if result == "learn" and perk_ids:
                 status = engine.learn_perk(perk_ids[selected])
+
+
+def _skill_slot_candidates(engine: Engine) -> list[str | None]:
+    """Every value a skill hotbar slot could cycle to: no skill, or any
+    learned skill_effect perk, in catalog order (data/perks.yaml's own
+    order) - same source render_character reads for the "Perks learned"
+    list, so cycling never offers something the character screen itself
+    wouldn't show."""
+    if engine.catalog is None:
+        return [None]
+    return [None] + [
+        perk_id for perk_id, perk in engine.catalog.perks.items()
+        if perk_id in engine.player.learned_perk_ids and perk.skill_effect is not None
+    ]
+
+
+def run_character_mode(console: tcod.console.Console, context: tcod.context.Context, engine: Engine) -> None:
+    """Nested event loop for the character screen: up/down move a cursor
+    across the 7 combined skill/potion hotbar rows, left/right cycle
+    whichever row is selected to its next candidate value (see
+    _skill_slot_candidates above, POTION_KINDS for potion rows), calling
+    Engine.assign_skill_slot/assign_potion_slot to actually mutate -
+    cycling only computes "what's next," the same "engine owns the
+    mutation, this loop owns navigation" split run_trainer_mode/
+    run_shop_mode already follow. Never touches Engine.process_turn, so it
+    costs no game turn. No gate function, unlike shop/trainer - reviewing
+    and rebinding your own stats/hotbar needs no adjacent NPC."""
+    skill_slot_count = len(engine.player.skill_slots)
+    total_rows = skill_slot_count + len(engine.player.potion_slots)
+    selected = 0
+
+    while True:
+        render_character(console, engine, selected)
+        context.present(console)
+
+        for event in tcod.event.wait():
+            context.convert_event(event)
+            result = handle_character_event(event)
+
+            if result == "exit":
+                return
+            if result == "up":
+                selected = (selected - 1) % total_rows
+            if result == "down":
+                selected = (selected + 1) % total_rows
+            if result in ("left", "right"):
+                step = 1 if result == "right" else -1
+                if selected < skill_slot_count:
+                    candidates = _skill_slot_candidates(engine)
+                    current = engine.player.skill_slots[selected]
+                    index = candidates.index(current) if current in candidates else 0
+                    engine.assign_skill_slot(selected, candidates[(index + step) % len(candidates)])
+                else:
+                    potion_index = selected - skill_slot_count
+                    candidates = [None, *POTION_KINDS]
+                    current = engine.player.potion_slots[potion_index]
+                    index = candidates.index(current) if current in candidates else 0
+                    engine.assign_potion_slot(potion_index, candidates[(index + step) % len(candidates)])
 
 
 def run_help_mode(console: tcod.console.Console, context: tcod.context.Context) -> None:
@@ -1012,9 +1073,9 @@ def main() -> int:
                         engine.talk_to_adjacent()
                     continue
 
-                if isinstance(action, CyclePotionKindAction):
+                if isinstance(action, CharacterAction):
                     if engine.game_state == "playing":
-                        engine.cycle_selected_potion_kind()
+                        run_character_mode(console, context, engine)
                     continue
 
                 if isinstance(action, QuestLogAction):

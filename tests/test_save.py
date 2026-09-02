@@ -213,6 +213,54 @@ def test_restore_save_defaults_selected_potion_kind_for_an_old_format_save(tmp_p
     assert active_engines2[active_key].player.selected_potion_kind == "healing"
 
 
+def test_round_trip_preserves_skill_and_potion_slots(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.learned_perk_ids.add("second_wind")
+    engine.player.skill_slots[2] = "second_wind"
+    engine.player.potion_slots = [None, "healing", "teleport"]
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    restored = active_engines2[active_key].player
+    assert restored.skill_slots == [None, None, "second_wind", None]
+    assert restored.potion_slots == [None, "healing", "teleport"]
+
+
+def test_restore_save_defaults_skill_and_potion_slots_for_an_old_format_save(tmp_path):
+    """A save file written before skill_slots/potion_slots existed has no
+    such fields - pydantic should fill in the same defaults
+    Entity.__init__ uses, rather than erroring, so old saves keep loading."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "old_save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["skill_slots"]
+    del raw["player"]["potion_slots"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, _clock2, _quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    restored = active_engines2[active_key].player
+    assert restored.skill_slots == [None, None, None, None]
+    assert restored.potion_slots == ["healing", "teleport", None]
+
+
 def test_round_trip_preserves_poison_affliction(tmp_path):
     catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
     clock = GameClock()

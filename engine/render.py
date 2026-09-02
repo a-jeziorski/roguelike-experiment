@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING
 
 import tcod.los
 
+from engine.combat import total_crit_chance, total_dodge_chance
 from engine.entity import potion_kind
 from engine.targeting import is_valid_target
 
@@ -366,24 +367,19 @@ def _render_active_effects(console: "Console", fighter: "Fighter", y: int, width
     return y
 
 
-# Fixed key binding per shipped active skill (see engine/input_handlers.py's
-# same W/K bindings, engine/actions.py's UseSkillAction) - matches that
-# "not a scalable hotbar, just direct bindings" shape.
-_SKILL_KEYS = {"second_wind": "W", "ground_pound": "K"}
-
-
 def _render_skill_status(console: "Console", player: "Entity", catalog: "Catalog | None", y: int, width: int) -> int:
-    """One HUD line listing every active-skill perk the player has
-    learned, with its key binding and current cooldown status - omitted
-    entirely if the player hasn't learned any yet, so the HUD stays quiet
-    until skills are actually relevant. catalog may be None (a synthetic
-    Engine built without one, same guard several other render helpers/
-    Engine methods already use) - the line is just skipped in that case."""
+    """One HUD line listing every skill hotbar slot (1-4) that currently
+    holds a learned perk, with its cooldown status - omitted entirely if
+    every slot is empty, so the HUD stays quiet until skills are actually
+    relevant (see Entity.skill_slots, Engine.assign_skill_slot, the
+    character screen). catalog may be None (a synthetic Engine built
+    without one, same guard several other render helpers/Engine methods
+    already use) - the line is just skipped in that case."""
     if catalog is None:
         return y
     parts = []
-    for perk_id, key in _SKILL_KEYS.items():
-        if perk_id not in player.learned_perk_ids:
+    for i, perk_id in enumerate(player.skill_slots):
+        if perk_id is None:
             continue
         perk = catalog.perks.get(perk_id)
         if perk is None:
@@ -394,7 +390,7 @@ def _render_skill_status(console: "Console", player: "Entity", catalog: "Catalog
         else:
             unit = "h" if perk.skill_cooldown_kind == "hours" else "t"
             status = f"{remaining}{unit}"
-        parts.append(f"[{key}] {perk.name}: {status}")
+        parts.append(f"[{i + 1}] {perk.name}: {status}")
     if parts:
         y += console.print(0, y, "Skills: " + "  ".join(parts), fg=HUD_FG, width=width)
     return y
@@ -410,8 +406,6 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
     player = engine.player
     fighter = player.fighter
     inventory = player.inventory
-    healing_potions = sum(1 for it in inventory if potion_kind(it.item) == "healing")
-    teleport_potions = sum(1 for it in inventory if potion_kind(it.item) == "teleport")
     selected_potion = player.selected_potion_kind
     keys = sum(1 for it in inventory if it.item.key_id)
     ammo = sum(it.item.quantity for it in inventory if it.item.is_ammo)
@@ -442,13 +436,17 @@ def render_hud(console: "Console", engine: "Engine", y: int) -> int:
         width=width,
     )
     y = _render_skill_status(console, player, engine.catalog, y, width)
-    healing_marker = ">" if selected_potion == "healing" else " "
-    teleport_marker = ">" if selected_potion == "teleport" else " "
+    potion_parts = []
+    for i, kind in enumerate(player.potion_slots):
+        if kind is None:
+            continue
+        count = sum(1 for it in inventory if potion_kind(it.item) == kind)
+        marker = ">" if selected_potion == kind else " "
+        potion_parts.append(f"{marker}[{i + 5}] {kind.capitalize()} {count}")
+    potions_text = "  ".join(potion_parts) if potion_parts else "(none bound)"
     y += console.print(
         0, y,
-        f"Potions: {healing_marker}Healing {healing_potions} "
-        f"{teleport_marker}Teleport {teleport_potions}  "
-        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}",
+        f"Potions: {potions_text}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}",
         fg=HUD_FG, width=width,
     )
     y += console.print(0, y, "Press [h] for help.", fg=HUD_FG, width=width)
@@ -850,7 +848,8 @@ def render_help(console: "Console") -> None:
     section("Actions")
     binding("g", "Pick up whatever's underfoot")
     binding("u", "Use/drink the selected potion")
-    binding("c", "Cycle which potion kind 'u' drinks")
+    binding("1-4", "Trigger whichever skill is on that hotbar slot")
+    binding("5-7", "Drink whichever potion kind is on that hotbar slot")
     binding("f", "Aim and fire an equipped ranged weapon")
     binding("l", "Look around - inspect any tile")
     binding("t", "Talk to an adjacent NPC")
@@ -858,6 +857,7 @@ def render_help(console: "Console") -> None:
     y += 1
 
     section("Screens")
+    binding("c", "Character screen - stats, assign skill/potion hotbar slots")
     binding("q", "Quest log")
     binding("b", "Shop - buy from an adjacent trader")
     binding("p", "Trainer - learn perks from an adjacent trainer")
@@ -1007,4 +1007,81 @@ def render_trainer(
     y = console.height - 1
     console.print(
         0, y, "[up/down] select  [enter] learn  [p/esc] exit", fg=HUD_FG, width=width
+    )
+
+
+def render_character(console: "Console", engine: "Engine", selected: int) -> None:
+    """The character screen: a full stat readout plus the two editable
+    hotbars - skill slots (rows 0-3, keys 1-4) and potion slots (rows 4-6,
+    keys 5-7) - see Entity.skill_slots/potion_slots,
+    Engine.assign_skill_slot/assign_potion_slot. `selected` indexes into
+    the 7 combined rows: one shared cursor, since up/down moves between
+    rows and left/right edits whichever row currently has it (see
+    main.py's run_character_mode). engine.catalog may be None (a synthetic
+    Engine built without one) - perk names/descriptions are just skipped
+    in that case, same guard render_hud's own skill line uses."""
+    console.clear()
+    width = console.width
+    player = engine.player
+    fighter = player.fighter
+    catalog = engine.catalog
+    y = 0
+    y += console.print(0, y, "Character", fg=HUD_FG, width=width)
+    y += 1
+
+    y += console.print(0, y, f"HP: {fighter.hp}/{fighter.max_hp}", fg=HUD_FG, width=width)
+    y += console.print(
+        0, y,
+        f"Attack: {player.effective_attack}  Defense: {player.effective_defense}  "
+        f"Ranged: {player.effective_ranged_attack}",
+        fg=HUD_FG, width=width,
+    )
+    y += console.print(
+        0, y,
+        f"Crit chance: {total_crit_chance(player):.0%}  Dodge chance: {total_dodge_chance(player):.0%}",
+        fg=HUD_FG, width=width,
+    )
+    y += console.print(0, y, f"Gold: {player.gold}  XP: {player.xp}", fg=HUD_FG, width=width)
+    weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
+    armor_name = player.equipped_armor.name if player.equipped_armor else "none"
+    ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
+    trinket_name = player.equipped_trinket.name if player.equipped_trinket else "none"
+    y += console.print(
+        0, y,
+        f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}",
+        fg=HUD_FG, width=width,
+    )
+    y += 1
+
+    y += console.print(0, y, "Perks learned:", fg=HUD_FG, width=width)
+    learned_any = False
+    if catalog is not None:
+        for perk_id, perk in catalog.perks.items():
+            if perk_id not in player.learned_perk_ids:
+                continue
+            learned_any = True
+            y += console.print(2, y, f"{perk.name} - {perk.description}", fg=HUD_FG, width=width - 2)
+    if not learned_any:
+        y += console.print(2, y, "(none yet)", fg=HUD_FG, width=width - 2)
+    y += 1
+
+    y += console.print(0, y, "Skill hotbar:", fg=HUD_FG, width=width)
+    for i, perk_id in enumerate(player.skill_slots):
+        marker = ">" if selected == i else " "
+        value = "(empty)"
+        if perk_id is not None and catalog is not None and perk_id in catalog.perks:
+            value = catalog.perks[perk_id].name
+        y += console.print(2, y, f"{marker} [{i + 1}] {value}", fg=HUD_FG, width=width - 2)
+    y += 1
+
+    y += console.print(0, y, "Potion hotbar:", fg=HUD_FG, width=width)
+    for i, kind in enumerate(player.potion_slots):
+        row = len(player.skill_slots) + i
+        marker = ">" if selected == row else " "
+        value = kind.capitalize() if kind is not None else "(empty)"
+        y += console.print(2, y, f"{marker} [{i + 5}] {value}", fg=HUD_FG, width=width - 2)
+
+    y = console.height - 1
+    console.print(
+        0, y, "[up/down] select  [left/right] change  [c/esc] exit", fg=HUD_FG, width=width
     )

@@ -1463,6 +1463,15 @@ class Engine:
         # saved.hp already reflects every historical bump.
         if perk.max_hp_bonus:
             self.player.fighter.hp += perk.max_hp_bonus
+        # A freshly learned active-skill perk auto-slots into the first
+        # empty hotbar slot, same "learn it, it just works" experience the
+        # old hardcoded W/K bindings gave for free - still reassignable
+        # afterward via assign_skill_slot (see run_character_mode). No-ops
+        # if every slot is already full (nothing to do until the player
+        # frees one themselves).
+        if perk.skill_effect is not None and perk_id not in self.player.skill_slots:
+            if None in self.player.skill_slots:
+                self.assign_skill_slot(self.player.skill_slots.index(None), perk_id)
         message = f"You learn {perk.name}."
         self.message_log.add(message)
         self.sound_events.append("perk_learn")
@@ -1522,13 +1531,64 @@ class Engine:
             resolve_skill_damage(self, entity, target, perk.skill_aoe_damage, "pounds")
         return message
 
-    def cycle_selected_potion_kind(self) -> None:
-        """Free, non-turn action (see main.py's CyclePotionKindAction branch):
-        advances player.selected_potion_kind to the next POTION_KINDS entry,
-        wrapping around - this is what UseItemAction drinks."""
-        i = POTION_KINDS.index(self.player.selected_potion_kind)
-        self.player.selected_potion_kind = POTION_KINDS[(i + 1) % len(POTION_KINDS)]
-        self.message_log.add(f"Selected potion: {self.player.selected_potion_kind}.")
+    def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:
+        """Free, non-turn mutation (see main.py's CharacterAction/
+        run_character_mode, tools/play_llm.py's bind_skill command) - the
+        single validated path either front end uses to change
+        player.skill_slots. perk_id must be a known, learned,
+        skill_effect-bearing perk, or None to clear the slot. If perk_id is
+        already sitting in a *different* slot, that slot is cleared first
+        (moved, not duplicated) - the one rule that keeps a hotbar with
+        more slots than skills unambiguous. Also called once, automatically,
+        by learn_perk the moment a new skill perk is learned (auto-slotting
+        into the first empty slot) - this is the same method either path
+        uses, so validation/move-not-duplicate behavior can't drift between
+        them. Returns the status message (also logged), matching
+        learn_perk's own "return + log" convention."""
+        if not (0 <= slot_index < len(self.player.skill_slots)):
+            message = "Invalid skill slot."
+            self.message_log.add(message)
+            return message
+        if perk_id is not None:
+            perk = self.catalog.perks.get(perk_id) if self.catalog else None
+            if (
+                perk is None
+                or perk.skill_effect is None
+                or perk_id not in self.player.learned_perk_ids
+            ):
+                message = "That's not a skill you've learned."
+                self.message_log.add(message)
+                return message
+            for i, existing in enumerate(self.player.skill_slots):
+                if existing == perk_id:
+                    self.player.skill_slots[i] = None
+        self.player.skill_slots[slot_index] = perk_id
+        name = self.catalog.perks[perk_id].name if perk_id and self.catalog else "(empty)"
+        message = f"Skill slot {slot_index + 1}: {name}."
+        self.message_log.add(message)
+        return message
+
+    def assign_potion_slot(self, slot_index: int, kind: str | None) -> str:
+        """assign_skill_slot's exact shape, for player.potion_slots/
+        POTION_KINDS instead of skill_slots/learned perks - see main.py's
+        CharacterAction/run_character_mode, tools/play_llm.py's
+        bind_potion command."""
+        if not (0 <= slot_index < len(self.player.potion_slots)):
+            message = "Invalid potion slot."
+            self.message_log.add(message)
+            return message
+        if kind is not None and kind not in POTION_KINDS:
+            message = "That's not a potion kind."
+            self.message_log.add(message)
+            return message
+        if kind is not None:
+            for i, existing in enumerate(self.player.potion_slots):
+                if existing == kind:
+                    self.player.potion_slots[i] = None
+        self.player.potion_slots[slot_index] = kind
+        message = f"Potion slot {slot_index + 1}: {kind or '(empty)'}."
+        self.message_log.add(message)
+        return message
 
     def talk_to_adjacent(self) -> None:
         """Free, non-turn action (see main.py's TalkAction branch): shows an

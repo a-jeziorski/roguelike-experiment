@@ -2525,6 +2525,100 @@ bites for the boosted amount and flips it to an ordinary blocking
 monster, and `tools/play_llm.py`'s own `_entity_tag` correctly reads it
 as `"item"` before the reveal and `"hostile"` after.
 
+## 0an. The character screen: stats plus an assignable skill/potion hotbar
+
+Not a new content behavior like the sixteen sections above it - a UI/engine
+feature, replacing two things that had outgrown their original shape:
+active skills were bound with a literal `if sym == KeySym.W: return
+UseSkillAction("second_wind")` / `K` -> `"ground_pound"` pair in
+`engine/input_handlers.py`, with a comment on `UseSkillAction` itself
+admitting it wasn't "a scalable hotbar... since there are only two of them
+so far"; potions had no quick-access at all, only a blind `c`-cycles-then-
+`u`-drinks two-step. With more active-skill perks plausible soon, this was
+the moment to fix both, and to give the player a real stat overview while
+at it.
+
+**Two new slot lists on `Entity`, not a new subsystem** -
+`skill_slots: list[str | None]` (4 entries, keys 1-4) and
+`potion_slots: list[str | None]` (3 entries, keys 5-7 - deliberately one
+more than `POTION_KINDS` has entries today, same "room to grow" reasoning
+as 4 skill slots for 2 current skills), both set unconditionally in
+`Entity.__init__`, the same "lives on the surviving player Entity,
+harmless on a monster" shape `selected_potion_kind`/`learned_perk_ids`
+already use. `selected_potion_kind` itself wasn't touched - `UseItemAction`
+still reads it; a potion-slot press just sets it first, then delegates.
+
+**One validated assignment method per slot kind, shared by both front
+ends** - `Engine.assign_skill_slot`/`assign_potion_slot` are the only
+places `skill_slots`/`potion_slots` are ever mutated, whether the caller
+is the graphical client's cycling UI or `tools/play_llm.py`'s direct
+`bind_skill`/`bind_potion` commands. The one rule that keeps a hotbar with
+more slots than filled values unambiguous: **assigning a value already
+sitting in a different slot moves it there instead of allowing a
+duplicate** - clearing the old slot as part of the same call, so a
+duplicate is never even transiently possible. `learn_perk` calls
+`assign_skill_slot` once, automatically, the moment a new `skill_effect`
+perk is learned (into the first empty slot, if any) - the same "learn it,
+it just works" experience the old hardcoded W/K pair gave for free, still
+fully reassignable afterward. `tools/play_llm.py`'s `--testbuild` (which
+learns perks by mutating `learned_perk_ids` directly, bypassing
+`learn_perk` entirely) got the identical one-line auto-slot call for
+parity, so a pre-built skill-perk testbuild character shows up correctly
+hotbarred too.
+
+**Three new Actions, one of them a thin delegate rather than duplicated
+logic** - `UseSkillSlotAction(slot_index)` looks up the slot and calls
+`Engine.use_skill` exactly like the old fixed `UseSkillAction("second_wind")`
+did; `UsePotionSlotAction(slot_index)` sets `selected_potion_kind` to the
+slot's kind and then calls `UseItemAction().perform(...)` directly, so a
+slot press behaves identically to selecting that kind and pressing `u` in
+one turn, with zero duplicated drink logic. `CharacterAction` opens the
+screen - free, no-turn, the same shape `QuestLogAction` already
+established. Both `UseSkillSlotAction`/`UsePotionSlotAction` still cost a
+turn on an empty slot ("No skill bound to that slot." / "Nothing bound to
+that slot.") - the same "the attempt itself is the cost" posture
+`UseItemAction`'s own "nothing to drink" case already has, not a free
+no-op.
+
+**The graphical screen edits with one cursor, two axes** -
+`run_character_mode` (main.py) is `run_trainer_mode`'s exact shape (no
+gate function needed; reviewing your own stats needs no adjacent NPC),
+except this screen has left/right in addition to up/down: up/down move a
+single cursor across the 7 combined rows (skill slots first, then potion
+slots), left/right cycle whichever row is currently selected to its next
+candidate (`None` + every learned `skill_effect` perk, in catalog order,
+for a skill row; `None` + every `POTION_KINDS` entry for a potion row).
+Cycling only computes "what's next" - the mutation and its
+move-not-duplicate rule live entirely in `Engine.assign_skill_slot`/
+`assign_potion_slot`, so navigation logic can never drift out of sync with
+what the CLI's direct-set commands enforce.
+
+**A small, reusable extraction on the way**: `total_crit_chance`/
+`total_dodge_chance` (`engine/combat.py`) pull the base+trinket+perk
+formula `_apply_damage` already rolled inline into two public functions,
+so the character screen (and its CLI mirror) can display the *exact*
+number combat rolls against, not a separately maintained copy of the
+formula - `_apply_damage` itself now calls them too, removing the
+duplication rather than adding a third copy alongside it.
+
+Ships no new content - this is pure engine/UI - but touches every layer
+the ten AI behaviors above it didn't need to: `engine/entity.py` (the
+slot fields), `engine/engine.py` (the two assignment methods,
+`learn_perk`'s auto-slot call), `engine/actions.py` (three new Actions,
+`CyclePotionKindAction` removed as dead weight once slots replace it),
+`engine/input_handlers.py` (number-key bindings, `handle_character_event`),
+`engine/render.py` (`render_character`, the HUD's skill/potion lines now
+slot-driven), `main.py` (`run_character_mode`), `engine/save.py` (both
+slot lists persisted, with the same defaults `Entity.__init__` uses so an
+old save round-trips unchanged), and `tools/play_llm.py` (`character`/
+`bind_skill`/`bind_potion`/`use_skill_slot`/`use_potion_slot` commands,
+full parity with the graphical client). Verified via the full pytest
+suite, a direct-construction script against the real catalog, and a full
+CLI playthrough exercising every new command end-to-end (learn a skill,
+watch it auto-slot, rebind it into a different slot with a swap rather
+than a duplicate, drink/trigger by slot number, hit the empty-slot message
+on a cleared one).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

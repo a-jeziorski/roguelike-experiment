@@ -73,6 +73,17 @@ class QuestLogAction(Action):
         pass
 
 
+class CharacterAction(Action):
+    """Enters the character screen: a free, non-turn screen for reviewing
+    full stats and assigning learned skills/potion kinds to hotbar slots
+    (see Engine.assign_skill_slot/assign_potion_slot). Same "recognized
+    before Engine.process_turn, perform() never actually called" shape as
+    QuestLogAction above - main.py runs its own nested input loop instead."""
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        pass
+
+
 class HelpAction(Action):
     """Enters the help screen: a free, non-turn reference sheet of every
     keybinding in the game. main.py recognizes this before it would ever
@@ -436,9 +447,10 @@ class PickupAction(Action):
 
 class UseItemAction(Action):
     """Drinks the potion of entity.selected_potion_kind (see POTION_KINDS/
-    potion_kind, engine/entity.py), cycled via CyclePotionKindAction below.
-    Keys are never selected here - they're consumed automatically when
-    unlocking a matching door (see MovementAction), not "used" on demand."""
+    potion_kind, engine/entity.py) - set directly by a UsePotionSlotAction
+    press below, or left as whatever it was last set to. Keys are never
+    selected here - they're consumed automatically when unlocking a
+    matching door (see MovementAction), not "used" on demand."""
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         kind = entity.selected_potion_kind
@@ -466,12 +478,12 @@ class UseItemAction(Action):
 
 
 class UseSkillAction(Action):
-    """Manually triggers a learned active-skill perk (see
+    """Manually triggers a learned active-skill perk by id (see
     content/schema.py's PerkDef.skill_effect, Engine.use_skill) - a real,
     turn-costing action like UseItemAction above, not a free action like
-    Talk/Look. main.py binds one fixed key per shipped skill (not a
-    scalable hotbar - see engine/input_handlers.py) since there are only
-    two of them so far."""
+    Talk/Look. tools/play_llm.py's own `skill <perk_id>` CLI command uses
+    this directly; the graphical client instead goes through whichever
+    perk is currently on a hotbar slot (see UseSkillSlotAction below)."""
 
     def __init__(self, perk_id: str):
         self.perk_id = perk_id
@@ -480,13 +492,46 @@ class UseSkillAction(Action):
         engine.use_skill(entity, self.perk_id)
 
 
-class CyclePotionKindAction(Action):
-    """Cycles entity.selected_potion_kind through POTION_KINDS - free, costs
-    no turn, same shape as TalkAction. main.py recognizes this before it
-    would ever reach Engine.process_turn and calls
-    Engine.cycle_selected_potion_kind() directly instead; perform() is never
-    actually called in practice, kept only so CyclePotionKindAction
-    satisfies the Action interface."""
+class UseSkillSlotAction(Action):
+    """Triggers whichever perk (if any) is on entity.skill_slots[slot_index]
+    (see Engine.assign_skill_slot) - what the graphical client's number
+    keys 1-4 actually press. A real, turn-costing action like UseSkillAction
+    above; an empty slot still costs a turn (same "the attempt itself is
+    the cost, not just success" shape UseItemAction's own "nothing to
+    drink" case already has) rather than silently doing nothing."""
+
+    def __init__(self, slot_index: int):
+        self.slot_index = slot_index
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
-        pass
+        perk_id = (
+            entity.skill_slots[self.slot_index]
+            if self.slot_index < len(entity.skill_slots) else None
+        )
+        if perk_id is None:
+            engine.message_log.add("No skill bound to that slot.")
+            return
+        engine.use_skill(entity, perk_id)
+
+
+class UsePotionSlotAction(Action):
+    """Drinks whichever potion kind (if any) is on
+    entity.potion_slots[slot_index] (see Engine.assign_potion_slot) - what
+    the graphical client's number keys 5-7 actually press. Sets
+    entity.selected_potion_kind to match, then delegates to UseItemAction's
+    own drink logic rather than duplicating it, so a slot press behaves
+    identically to selecting that kind and pressing 'u' in one turn."""
+
+    def __init__(self, slot_index: int):
+        self.slot_index = slot_index
+
+    def perform(self, engine: "Engine", entity: "Entity") -> None:
+        kind = (
+            entity.potion_slots[self.slot_index]
+            if self.slot_index < len(entity.potion_slots) else None
+        )
+        if kind is None:
+            engine.message_log.add("Nothing bound to that slot.")
+            return
+        entity.selected_potion_kind = kind
+        UseItemAction().perform(engine, entity)

@@ -63,6 +63,20 @@ def _trinket_bonus(entity: "Entity", kind: str) -> float:
     return trinket.item.trinket_bonus or 0.0
 
 
+def total_crit_chance(entity: "Entity") -> float:
+    """The full crit-chance rate entity currently rolls with on an attack -
+    base + trinket + perk, exactly what _apply_damage below rolls against -
+    exposed publicly so engine/render.py's character screen can show the
+    same number combat actually uses instead of a separately maintained
+    copy of the formula."""
+    return CRIT_CHANCE + _trinket_bonus(entity, "crit_chance") + entity.fighter.perk_crit_chance_bonus
+
+
+def total_dodge_chance(entity: "Entity") -> float:
+    """total_crit_chance's exact shape, for dodge instead."""
+    return DODGE_CHANCE + _trinket_bonus(entity, "dodge_chance") + entity.fighter.perk_dodge_chance_bonus
+
+
 def _maybe_apply_weapon_affix(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
     """An offensive affix proc - attacker's equipped weapon (if any) has an
     affix_chance probability of inflicting affix_effect on defender,
@@ -128,7 +142,7 @@ def _apply_damage(
     # Trinket + perk bonuses stack additively - a Light Feet/Steady Aim
     # perk (permanent) and a matching trinket (equipped) both apply at
     # once, same as any other additive bonus in this project.
-    dodge_chance = DODGE_CHANCE + _trinket_bonus(defender, "dodge_chance") + defender.fighter.perk_dodge_chance_bonus
+    dodge_chance = total_dodge_chance(defender)
     if COMBAT_VARIANCE_ENABLED and random.random() < dodge_chance:
         engine.message_log.add(
             f"{defender.name} dodges {attacker.name}'s attack.", category="combat"
@@ -137,7 +151,7 @@ def _apply_damage(
 
     damage = max(0, attack_value - defender.effective_defense)
     is_critical = False
-    crit_chance = CRIT_CHANCE + _trinket_bonus(attacker, "crit_chance") + attacker.fighter.perk_crit_chance_bonus
+    crit_chance = total_crit_chance(attacker)
     if COMBAT_VARIANCE_ENABLED and damage > 0 and random.random() < crit_chance:
         # ceil, not round: a crit must always deal strictly more than the
         # base hit would have, even at low single-digit damage where

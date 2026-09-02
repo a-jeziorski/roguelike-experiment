@@ -175,6 +175,13 @@ class SavedPlayer(BaseModel):
     equipped_ranged_weapon: SavedItemSlot | None = None
     equipped_trinket: SavedItemSlot | None = None
     selected_potion_kind: str = "healing"
+    # Hotbar assignments (see Entity.skill_slots/potion_slots,
+    # Engine.assign_skill_slot/assign_potion_slot) - defaults match
+    # Entity.__init__'s own, so an old save missing these fields round-trips
+    # to exactly today's behavior (no skills slotted, healing/teleport in
+    # their default order).
+    skill_slots: list[str | None] = Field(default_factory=lambda: [None, None, None, None])
+    potion_slots: list[str | None] = Field(default_factory=lambda: ["healing", "teleport", None])
     # The player's live status-effect afflictions, if any (see
     # Fighter.active_effects) - monster effect state is never saved,
     # consistent with monster Fighter state beyond (x, y, hp) never being
@@ -292,6 +299,8 @@ def capture_save(
         equipped_ranged_weapon=_save_item_slot(player.equipped_ranged_weapon),
         equipped_trinket=_save_item_slot(player.equipped_trinket),
         selected_potion_kind=player.selected_potion_kind,
+        skill_slots=list(player.skill_slots),
+        potion_slots=list(player.potion_slots),
         active_effects={
             kind: SavedActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
             for kind, effect in player.fighter.active_effects.items()
@@ -361,6 +370,8 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     )
     player.inventory = [_build_item_entity(slot, catalog) for slot in saved.inventory]
     player.selected_potion_kind = saved.selected_potion_kind
+    player.skill_slots = list(saved.skill_slots)
+    player.potion_slots = list(saved.potion_slots)
     player.equipped_weapon = _build_item_entity(saved.equipped_weapon, catalog) if saved.equipped_weapon else None
     player.equipped_armor = _build_item_entity(saved.equipped_armor, catalog) if saved.equipped_armor else None
     player.equipped_ranged_weapon = (

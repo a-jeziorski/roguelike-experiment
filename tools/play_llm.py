@@ -35,13 +35,17 @@ Usage:
     python tools/play_llm.py wait                           # one turn
     python tools/play_llm.py pickup                          # one turn
     python tools/play_llm.py use                              # drink selected potion - one turn
-    python tools/play_llm.py skill second_wind                 # trigger a learned active skill - one turn
+    python tools/play_llm.py skill second_wind                 # trigger a learned active skill by id - one turn
+    python tools/play_llm.py use_skill_slot 1                   # trigger whichever skill is on hotbar slot 1 - one turn
+    python tools/play_llm.py use_potion_slot 2                   # drink whichever potion kind is on hotbar slot 2 - one turn
     python tools/play_llm.py fire 12 5                         # one turn
     python tools/play_llm.py restart                            # only once dead
     python tools/play_llm.py talk                                 # free
     python tools/play_llm.py buy healing_potion                    # free
     python tools/play_llm.py learn toughness_1                      # free
-    python tools/play_llm.py cycle_potion                             # free
+    python tools/play_llm.py character                               # free, full stat/hotbar readout
+    python tools/play_llm.py bind_skill 1 second_wind                  # free, assign a skill hotbar slot (1-4)
+    python tools/play_llm.py bind_potion 2 teleport                     # free, assign a potion hotbar slot (1-3)
     python tools/play_llm.py pin goblin_warning                        # free
     python tools/play_llm.py quests                                    # free, lists known quests
 
@@ -78,10 +82,13 @@ from engine.actions import (
     PickupAction,
     RestartAction,
     UseItemAction,
+    UsePotionSlotAction,
     UseSkillAction,
+    UseSkillSlotAction,
     WaitAction,
 )
 from engine.clock import GameClock
+from engine.combat import total_crit_chance, total_dodge_chance
 from engine.engine import Engine
 from engine.entity import apply_perk_stat_bonus, potion_kind
 from engine.game_map import build_game_map, item_entity_from_def
@@ -116,7 +123,7 @@ MESSAGE_LOG_TAIL = 20
 # mutation, so they print their own focused output instead of the full
 # HUD+map+log render (nothing about the world changed, so re-printing all
 # of that would just be noise).
-QUERY_COMMANDS = {"inspect", "quests", "entities"}
+QUERY_COMMANDS = {"inspect", "quests", "entities", "character"}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -205,7 +212,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = sub.add_parser("skill", help="Trigger a learned active-skill perk (e.g. second_wind, ground_pound). Costs a turn.")
     p.add_argument("perk_id")
 
-    sub.add_parser("cycle_potion", help="Cycle which potion kind 'use' drinks. Free.")
+    sub.add_parser(
+        "character",
+        help="Full stat/equipment/perk/hotbar readout - what the graphical character screen shows. Free.",
+    )
+
+    p = sub.add_parser(
+        "bind_skill",
+        help="Assign a learned skill perk to a skill hotbar slot (1-4), or 'none' to clear it. Free.",
+    )
+    p.add_argument("slot", type=int, choices=range(1, 5))
+    p.add_argument("perk_id")
+
+    p = sub.add_parser(
+        "bind_potion",
+        help="Assign a potion kind to a potion hotbar slot (1-3), or 'none' to clear it. Free.",
+    )
+    p.add_argument("slot", type=int, choices=range(1, 4))
+    p.add_argument("kind")
+
+    p = sub.add_parser("use_skill_slot", help="Trigger whichever skill is on that hotbar slot (1-4). Costs a turn.")
+    p.add_argument("slot", type=int, choices=range(1, 5))
+
+    p = sub.add_parser("use_potion_slot", help="Drink whichever potion kind is on that hotbar slot (1-3). Costs a turn.")
+    p.add_argument("slot", type=int, choices=range(1, 4))
 
     p = sub.add_parser("pin", help="Pin a quest as the one shown in the HUD. Free.")
     p.add_argument("quest_id")
@@ -306,8 +336,6 @@ def render_hud_text(engine) -> str:
     player = engine.player
     fighter = player.fighter
     inventory = player.inventory
-    healing_potions = sum(1 for it in inventory if potion_kind(it.item) == "healing")
-    teleport_potions = sum(1 for it in inventory if potion_kind(it.item) == "teleport")
     selected_potion = player.selected_potion_kind
     keys = sum(1 for it in inventory if it.item.key_id)
     ammo = sum(it.item.quantity for it in inventory if it.item.is_ammo)
@@ -332,23 +360,28 @@ def render_hud_text(engine) -> str:
     )
     lines.append(f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}")
     skill_parts = []
-    for perk_id, key in (("second_wind", "W"), ("ground_pound", "K")):
-        if perk_id not in player.learned_perk_ids or engine.catalog is None:
-            continue
-        perk = engine.catalog.perks.get(perk_id)
-        if perk is None:
-            continue
-        remaining = player.skill_cooldowns.get(perk_id, 0)
-        status = "ready" if remaining <= 0 else f"{remaining}{'h' if perk.skill_cooldown_kind == 'hours' else 't'}"
-        skill_parts.append(f"[{key}] {perk.name}: {status}")
+    if engine.catalog is not None:
+        for i, perk_id in enumerate(player.skill_slots):
+            if perk_id is None:
+                continue
+            perk = engine.catalog.perks.get(perk_id)
+            if perk is None:
+                continue
+            remaining = player.skill_cooldowns.get(perk_id, 0)
+            status = "ready" if remaining <= 0 else f"{remaining}{'h' if perk.skill_cooldown_kind == 'hours' else 't'}"
+            skill_parts.append(f"[{i + 1}] {perk.name}: {status}")
     if skill_parts:
         lines.append("Skills: " + "  ".join(skill_parts))
-    healing_marker = ">" if selected_potion == "healing" else " "
-    teleport_marker = ">" if selected_potion == "teleport" else " "
+    potion_parts = []
+    for i, kind in enumerate(player.potion_slots):
+        if kind is None:
+            continue
+        count = sum(1 for it in inventory if potion_kind(it.item) == kind)
+        marker = ">" if selected_potion == kind else " "
+        potion_parts.append(f"{marker}[{i + 5}] {kind.capitalize()} {count}")
+    potions_text = "  ".join(potion_parts) if potion_parts else "(none bound)"
     lines.append(
-        f"Potions: {healing_marker}Healing {healing_potions} "
-        f"{teleport_marker}Teleport {teleport_potions}  "
-        f"Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}"
+        f"Potions: {potions_text}  Keys: {keys}  Ammo: {ammo}  Gold: {player.gold}  XP: {player.xp}"
     )
     if engine.game_state == "dead":
         lines.append("YOU HAVE DIED. Use 'restart' to play again.")
@@ -624,6 +657,10 @@ def apply_command(
         turn_action = UseItemAction()
     elif cmd == "skill":
         turn_action = UseSkillAction(args.perk_id)
+    elif cmd == "use_skill_slot":
+        turn_action = UseSkillSlotAction(args.slot - 1)
+    elif cmd == "use_potion_slot":
+        turn_action = UsePotionSlotAction(args.slot - 1)
     elif cmd == "fire":
         turn_action = FireAction(args.x, args.y)
     elif cmd == "restart":
@@ -654,8 +691,10 @@ def apply_command(
         engine.buy_from_shop(args.item_id)
     elif cmd == "learn":
         engine.learn_perk(args.perk_id)
-    elif cmd == "cycle_potion":
-        engine.cycle_selected_potion_kind()
+    elif cmd == "bind_skill":
+        engine.assign_skill_slot(args.slot - 1, None if args.perk_id == "none" else args.perk_id)
+    elif cmd == "bind_potion":
+        engine.assign_potion_slot(args.slot - 1, None if args.kind == "none" else args.kind)
     elif cmd == "pin":
         engine.quest_log.set_active_quest(args.quest_id)
     elif cmd == "map":
@@ -691,6 +730,42 @@ def run_query_command(args: argparse.Namespace, engine, catalog) -> None:
                 else ""
             )
             print(f"({entity.x}, {entity.y}) {entity.name} [{_entity_tag(entity)}]{hp_text}")
+        return
+
+    if args.command == "character":
+        player = engine.player
+        fighter = player.fighter
+        print(f"HP: {fighter.hp}/{fighter.max_hp}")
+        print(
+            f"Attack: {player.effective_attack}  Defense: {player.effective_defense}  "
+            f"Ranged: {player.effective_ranged_attack}"
+        )
+        print(f"Crit chance: {total_crit_chance(player):.0%}  Dodge chance: {total_dodge_chance(player):.0%}")
+        print(f"Gold: {player.gold}  XP: {player.xp}")
+        weapon_name = player.equipped_weapon.name if player.equipped_weapon else "none"
+        armor_name = player.equipped_armor.name if player.equipped_armor else "none"
+        ranged_name = player.equipped_ranged_weapon.name if player.equipped_ranged_weapon else "none"
+        trinket_name = player.equipped_trinket.name if player.equipped_trinket else "none"
+        print(f"Weapon: {weapon_name}  Armor: {armor_name}  Ranged: {ranged_name}  Trinket: {trinket_name}")
+
+        print("Perks learned:")
+        learned_any = False
+        for perk_id, perk in catalog.perks.items():
+            if perk_id not in player.learned_perk_ids:
+                continue
+            learned_any = True
+            print(f"  {perk.name} - {perk.description}")
+        if not learned_any:
+            print("  (none yet)")
+
+        print("Skill hotbar:")
+        for i, perk_id in enumerate(player.skill_slots):
+            value = catalog.perks[perk_id].name if perk_id and perk_id in catalog.perks else "(empty)"
+            print(f"  [{i + 1}] {value}")
+
+        print("Potion hotbar:")
+        for i, kind in enumerate(player.potion_slots):
+            print(f"  [{i + 5}] {kind.capitalize() if kind else '(empty)'}")
         return
 
     if args.command == "quests":
@@ -770,6 +845,13 @@ def test_build_start(
         player.learned_perk_ids.add(perk_id)
         if perk.max_hp_bonus:
             player.fighter.hp += perk.max_hp_bonus
+        # Same auto-slotting learn_perk gives a live purchase (see
+        # Engine.learn_perk) - a pre-built skill perk should show up
+        # correctly hotbarred, not silently unassigned, since this bypasses
+        # learn_perk entirely.
+        if perk.skill_effect is not None and perk_id not in player.skill_slots:
+            if None in player.skill_slots:
+                player.skill_slots[player.skill_slots.index(None)] = perk_id
 
     for item_id, slot in (
         (args.weapon, "equipped_weapon"), (args.armor, "equipped_armor"), (args.ranged, "equipped_ranged_weapon"),

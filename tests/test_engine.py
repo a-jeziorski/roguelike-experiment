@@ -9,7 +9,16 @@ from pathlib import Path
 import engine.combat
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
-from engine.actions import BumpAction, FireAction, PickupAction, UseItemAction, UseSkillAction, WaitAction
+from engine.actions import (
+    BumpAction,
+    FireAction,
+    PickupAction,
+    UseItemAction,
+    UsePotionSlotAction,
+    UseSkillAction,
+    UseSkillSlotAction,
+    WaitAction,
+)
 from engine.clock import HOURS_PER_DAY, STARTING_DAY, STARTING_HOUR, STARTING_YEAR, GameClock
 from engine.engine import (
     CINDER_MARCHES_BAND,
@@ -1917,18 +1926,214 @@ def test_use_item_action_teleport_guards_against_already_being_on_overworld():
     assert engine.message_log.messages[-1] == "You're already on the surface."
 
 
-def test_cycle_selected_potion_kind_wraps_around():
+def test_assign_potion_slot_sets_a_valid_kind():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "Test Level")
 
+    message = engine.assign_potion_slot(2, "healing")
+
+    assert player.potion_slots[2] == "healing"
+    assert "Potion slot 3: healing." == message
+    assert engine.message_log.messages[-1] == message
+
+
+def test_assign_potion_slot_clears_with_none():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.assign_potion_slot(0, None)
+
+    assert player.potion_slots[0] is None
+
+
+def test_assign_potion_slot_moves_a_duplicate_instead_of_allowing_two():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    assert player.potion_slots == ["healing", "teleport", None]
+
+    engine.assign_potion_slot(2, "healing")
+
+    assert player.potion_slots == [None, "teleport", "healing"]
+
+
+def test_assign_potion_slot_rejects_an_unknown_kind():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    message = engine.assign_potion_slot(0, "not_a_real_kind")
+
+    assert message == "That's not a potion kind."
+    assert player.potion_slots[0] == "healing"  # unchanged
+
+
+def test_assign_potion_slot_rejects_an_out_of_range_index():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    message = engine.assign_potion_slot(99, "healing")
+
+    assert message == "Invalid potion slot."
+
+
+def test_assign_skill_slot_sets_a_learned_skill_perk():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    player.learned_perk_ids.add("second_wind")
+
+    message = engine.assign_skill_slot(1, "second_wind")
+
+    assert player.skill_slots[1] == "second_wind"
+    assert message == "Skill slot 2: Second Wind."
+
+
+def test_assign_skill_slot_rejects_an_unlearned_perk():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine.assign_skill_slot(0, "second_wind")
+
+    assert message == "That's not a skill you've learned."
+    assert player.skill_slots[0] is None
+
+
+def test_assign_skill_slot_rejects_a_non_skill_perk():
+    """toughness_1 is a flat stat perk (no skill_effect) - even if learned,
+    it can never occupy a skill hotbar slot."""
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    player.learned_perk_ids.add("toughness_1")
+
+    message = engine.assign_skill_slot(0, "toughness_1")
+
+    assert message == "That's not a skill you've learned."
+    assert player.skill_slots[0] is None
+
+
+def test_assign_skill_slot_moves_a_duplicate_instead_of_allowing_two():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    player.learned_perk_ids.add("second_wind")
+    engine.assign_skill_slot(0, "second_wind")
+
+    engine.assign_skill_slot(3, "second_wind")
+
+    assert player.skill_slots == [None, None, None, "second_wind"]
+
+
+def test_learn_perk_auto_assigns_a_new_skill_to_the_first_empty_slot():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 1000
+    player.gold = 1000
+    game_map.entities.append(player)
+    catalog = load_catalog()
+    trainer = make_monster(2, 1, ai="villager", entity_id="trainer")
+    trainer.trainer_perks = ["second_wind"]
+    game_map.entities.append(trainer)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine.learn_perk("second_wind")
+
+    assert player.skill_slots[0] == "second_wind"
+
+
+def test_learn_perk_does_not_reassign_an_already_slotted_skill():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.xp = 1000
+    player.gold = 1000
+    game_map.entities.append(player)
+    catalog = load_catalog()
+    trainer = make_monster(2, 1, ai="villager", entity_id="trainer")
+    trainer.trainer_perks = ["second_wind", "ground_pound"]
+    game_map.entities.append(trainer)
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    engine.learn_perk("second_wind")
+    engine.assign_skill_slot(2, "second_wind")  # player moved it manually
+
+    engine.learn_perk("ground_pound")
+
+    # second_wind stays put in slot 2; ground_pound takes the first empty
+    # slot (0), not slot 2's neighbor - learn_perk never touches an
+    # already-assigned skill.
+    assert player.skill_slots == ["ground_pound", None, "second_wind", None]
+
+
+def test_use_skill_slot_action_triggers_the_bound_perk():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=20)
+    player.fighter.hp = 10
+    game_map.entities.append(player)
+    catalog = load_catalog()
+    engine = Engine(game_map, player, "Test Level", catalog=catalog)
+    player.learned_perk_ids.add("second_wind")
+    player.skill_slots[0] = "second_wind"
+
+    engine.process_turn(UseSkillSlotAction(0))
+
+    assert player.fighter.hp > 10  # second_wind healed the player
+
+
+def test_use_skill_slot_action_on_an_empty_slot_logs_and_costs_a_turn():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(UseSkillSlotAction(0))
+
+    assert engine.message_log.messages[-1] == "No skill bound to that slot."
+
+
+def test_use_potion_slot_action_drinks_the_bound_kind():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.hp = 10
+    potion = make_potion(1, 1, heal_amount=10)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.potion_slots[0] = "healing"
+
+    engine.process_turn(UsePotionSlotAction(0))
+
+    assert player.fighter.hp == 20
+    assert potion not in player.inventory
     assert player.selected_potion_kind == "healing"
-    engine.cycle_selected_potion_kind()
-    assert player.selected_potion_kind == "teleport"
-    assert engine.message_log.messages[-1] == "Selected potion: teleport."
-    engine.cycle_selected_potion_kind()
-    assert player.selected_potion_kind == "healing"
+
+
+def test_use_potion_slot_action_on_an_empty_slot_logs_and_costs_a_turn():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.potion_slots[2] = None
+
+    engine.process_turn(UsePotionSlotAction(2))
+
+    assert engine.message_log.messages[-1] == "Nothing bound to that slot."
 
 
 def test_restart_resets_selected_potion_kind():

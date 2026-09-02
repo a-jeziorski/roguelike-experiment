@@ -6,7 +6,7 @@ import tcod.event
 
 from engine.actions import (
     BumpAction,
-    CyclePotionKindAction,
+    CharacterAction,
     EscapeAction,
     FireModeAction,
     HelpAction,
@@ -19,9 +19,12 @@ from engine.actions import (
     ShopAction,
     ToggleDecorationsAction,
     TrainerAction,
+    UsePotionSlotAction,
+    UseSkillSlotAction,
     WaitAction,
 )
 from engine.input_handlers import (
+    handle_character_event,
     handle_continue_prompt_event,
     handle_event,
     handle_help_event,
@@ -93,8 +96,37 @@ def test_handle_event_s_returns_save_game_action():
     assert isinstance(handle_event(key_down(tcod.event.KeySym.S)), SaveGameAction)
 
 
-def test_handle_event_c_returns_cycle_potion_kind_action():
-    assert isinstance(handle_event(key_down(tcod.event.KeySym.C)), CyclePotionKindAction)
+def test_handle_event_c_returns_character_action():
+    assert isinstance(handle_event(key_down(tcod.event.KeySym.C)), CharacterAction)
+
+
+@pytest.mark.parametrize(
+    "sym,slot",
+    [
+        (tcod.event.KeySym.N1, 0),
+        (tcod.event.KeySym.N2, 1),
+        (tcod.event.KeySym.N3, 2),
+        (tcod.event.KeySym.N4, 3),
+    ],
+)
+def test_handle_event_number_keys_1_to_4_return_use_skill_slot_action(sym, slot):
+    action = handle_event(key_down(sym))
+    assert isinstance(action, UseSkillSlotAction)
+    assert action.slot_index == slot
+
+
+@pytest.mark.parametrize(
+    "sym,slot",
+    [
+        (tcod.event.KeySym.N5, 0),
+        (tcod.event.KeySym.N6, 1),
+        (tcod.event.KeySym.N7, 2),
+    ],
+)
+def test_handle_event_number_keys_5_to_7_return_use_potion_slot_action(sym, slot):
+    action = handle_event(key_down(sym))
+    assert isinstance(action, UsePotionSlotAction)
+    assert action.slot_index == slot
 
 
 def test_handle_event_h_returns_help_action():
@@ -284,3 +316,31 @@ def test_handle_help_event_unmapped_key_returns_none():
 def test_handle_help_event_quit_raises_system_exit():
     with pytest.raises(SystemExit):
         handle_help_event(tcod.event.Quit(sdl_event=None))
+
+
+def test_handle_character_event_up_and_down():
+    assert handle_character_event(key_down(tcod.event.KeySym.UP)) == "up"
+    assert handle_character_event(key_down(tcod.event.KeySym.KP_8)) == "up"
+    assert handle_character_event(key_down(tcod.event.KeySym.DOWN)) == "down"
+    assert handle_character_event(key_down(tcod.event.KeySym.KP_2)) == "down"
+
+
+def test_handle_character_event_left_and_right():
+    assert handle_character_event(key_down(tcod.event.KeySym.LEFT)) == "left"
+    assert handle_character_event(key_down(tcod.event.KeySym.KP_4)) == "left"
+    assert handle_character_event(key_down(tcod.event.KeySym.RIGHT)) == "right"
+    assert handle_character_event(key_down(tcod.event.KeySym.KP_6)) == "right"
+
+
+@pytest.mark.parametrize("sym", [tcod.event.KeySym.ESCAPE, tcod.event.KeySym.C])
+def test_handle_character_event_exit_keys(sym):
+    assert handle_character_event(key_down(sym)) == "exit"
+
+
+def test_handle_character_event_unmapped_key_returns_none():
+    assert handle_character_event(key_down(tcod.event.KeySym.G)) is None
+
+
+def test_handle_character_event_quit_raises_system_exit():
+    with pytest.raises(SystemExit):
+        handle_character_event(tcod.event.Quit(sdl_event=None))

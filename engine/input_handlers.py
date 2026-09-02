@@ -7,7 +7,7 @@ import tcod.event
 from engine.actions import (
     Action,
     BumpAction,
-    CyclePotionKindAction,
+    CharacterAction,
     EscapeAction,
     FireModeAction,
     HelpAction,
@@ -23,7 +23,8 @@ from engine.actions import (
     ToggleDecorationsAction,
     TrainerAction,
     UseItemAction,
-    UseSkillAction,
+    UsePotionSlotAction,
+    UseSkillSlotAction,
     WaitAction,
 )
 
@@ -66,7 +67,7 @@ def handle_event(event: tcod.event.Event) -> Action | None:
             return UseItemAction()
 
         if sym == tcod.event.KeySym.C:
-            return CyclePotionKindAction()
+            return CharacterAction()
 
         if sym == tcod.event.KeySym.R:
             return RestartAction()
@@ -101,15 +102,31 @@ def handle_event(event: tcod.event.Event) -> Action | None:
         if sym == tcod.event.KeySym.D:
             return ToggleDecorationsAction()
 
-        # Fixed 1:1 key bindings for the two shipped active-skill perks
-        # (see content/schema.py's PerkDef.skill_effect, Engine.use_skill)
-        # - not a scalable hotbar, just direct bindings, since there are
-        # only two so far. Revisit if a third ever ships.
-        if sym == tcod.event.KeySym.W:
-            return UseSkillAction("second_wind")
+        # The player's own assignable hotbar (see Entity.skill_slots/
+        # potion_slots, Engine.assign_skill_slot/assign_potion_slot, the
+        # character screen opened by 'c' above) - number keys 1-4 trigger
+        # whichever learned skill (if any) sits in that slot, 5-7 drink
+        # whichever potion kind sits in that slot.
+        if sym == tcod.event.KeySym.N1:
+            return UseSkillSlotAction(0)
 
-        if sym == tcod.event.KeySym.K:
-            return UseSkillAction("ground_pound")
+        if sym == tcod.event.KeySym.N2:
+            return UseSkillSlotAction(1)
+
+        if sym == tcod.event.KeySym.N3:
+            return UseSkillSlotAction(2)
+
+        if sym == tcod.event.KeySym.N4:
+            return UseSkillSlotAction(3)
+
+        if sym == tcod.event.KeySym.N5:
+            return UsePotionSlotAction(0)
+
+        if sym == tcod.event.KeySym.N6:
+            return UsePotionSlotAction(1)
+
+        if sym == tcod.event.KeySym.N7:
+            return UsePotionSlotAction(2)
 
         if sym == tcod.event.KeySym.PAGEUP:
             return ScrollLogAction(10)
@@ -257,6 +274,38 @@ def handle_trainer_event(event: tcod.event.Event) -> str | None:
 
         if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.P):
             return "exit"
+
+
+def handle_character_event(event: tcod.event.Event) -> str | None:
+    """Input while inside the character screen: up/down (arrows or numpad)
+    move the row cursor across the 7 combined skill/potion slots,
+    left/right (arrows or numpad) cycle that row's assigned value through
+    its valid candidates, Escape/C exit back to normal play. Returns "up",
+    "down", "left", "right", "exit", or None - handle_trainer_event's
+    shape, with left/right added since this screen edits a value per row
+    instead of just confirming a selection."""
+    if isinstance(event, tcod.event.Quit):
+        raise SystemExit()
+
+    if isinstance(event, tcod.event.KeyDown):
+        sym = event.sym
+
+        if sym in (tcod.event.KeySym.UP, tcod.event.KeySym.KP_8):
+            return "up"
+
+        if sym in (tcod.event.KeySym.DOWN, tcod.event.KeySym.KP_2):
+            return "down"
+
+        if sym in (tcod.event.KeySym.LEFT, tcod.event.KeySym.KP_4):
+            return "left"
+
+        if sym in (tcod.event.KeySym.RIGHT, tcod.event.KeySym.KP_6):
+            return "right"
+
+        if sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.C):
+            return "exit"
+
+    return None
 
     return None
 

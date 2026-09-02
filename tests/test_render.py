@@ -37,6 +37,7 @@ from engine.render import (
     projectile_glyph,
     projectile_path,
     render_all,
+    render_character,
     render_confirm_attack_prompt,
     render_continue_prompt,
     render_decorations,
@@ -217,8 +218,37 @@ def test_render_hud_shows_per_kind_potion_counts_with_selected_marker():
     render_all(console, engine)
 
     text = console_text(console)
-    assert ">Healing 1" in text
-    assert " Teleport 1" in text
+    assert ">[5] Healing 1" in text
+    assert " [6] Teleport 1" in text
+
+
+def test_render_hud_shows_skill_slots_with_cooldown_status():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    player.learned_perk_ids.add("second_wind")
+    player.skill_slots[2] = "second_wind"
+    player.skill_cooldowns["second_wind"] = 5
+    engine = Engine(game_map, player, level.name, catalog=catalog, is_overworld=False)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "[3] Second Wind: 5h" in text
+
+
+def test_render_hud_omits_skill_line_with_no_slots_filled():
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, catalog=catalog, is_overworld=False)
+
+    console = tcod.console.Console(70, 40, order="F")
+    render_all(console, engine)
+
+    text = console_text(console)
+    assert "Skills:" not in text
 
 
 def test_render_message_log_colors_each_category():
@@ -762,6 +792,98 @@ def test_render_trainer_shows_the_status_message():
 
     text = console_text(console)
     assert "You learn Toughness." in text
+
+
+def _make_character_engine():
+    """A minimal real Engine (real catalog/level/game_map/player, via
+    build_game_map - same shape as the HUD tests above) for exercising
+    render_character without a full playthrough."""
+    catalog = load_catalog()
+    level = load_level(LEVELS_DIR / "level_01.lvl", catalog)
+    game_map, player = build_game_map(level, catalog)
+    engine = Engine(game_map, player, level.name, catalog=catalog)
+    return engine, player
+
+
+def test_render_character_shows_core_stats():
+    engine, player = _make_character_engine()
+    player.gold = 42
+    player.xp = 7
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert f"HP: {player.fighter.hp}/{player.fighter.max_hp}" in text
+    assert "Gold: 42" in text
+    assert "XP: 7" in text
+
+
+def test_render_character_lists_learned_perks_with_descriptions():
+    engine, player = _make_character_engine()
+    player.learned_perk_ids.add("toughness_1")
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert "Toughness" in text
+    assert "your max HP by 5" in text  # part of the (word-wrapped) description
+
+
+def test_render_character_shows_none_yet_with_no_learned_perks():
+    engine, _player = _make_character_engine()
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert "(none yet)" in text
+
+
+def test_render_character_shows_empty_skill_slots():
+    engine, _player = _make_character_engine()
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert "[1] (empty)" in text
+    assert "[4] (empty)" in text
+
+
+def test_render_character_shows_an_assigned_skill_slot():
+    engine, player = _make_character_engine()
+    player.learned_perk_ids.add("second_wind")
+    player.skill_slots[1] = "second_wind"
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert "[2] Second Wind" in text
+
+
+def test_render_character_marks_the_selected_row():
+    engine, _player = _make_character_engine()
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=2)
+
+    text = console_text(console)
+    assert "> [3] (empty)" in text
+
+
+def test_render_character_shows_default_potion_slots():
+    engine, _player = _make_character_engine()
+    console = tcod.console.Console(70, 30, order="F")
+
+    render_character(console, engine, selected=0)
+
+    text = console_text(console)
+    assert "[5] Healing" in text
+    assert "[6] Teleport" in text
+    assert "[7] (empty)" in text
 
 
 def test_long_monster_description_wraps_instead_of_being_clipped():
