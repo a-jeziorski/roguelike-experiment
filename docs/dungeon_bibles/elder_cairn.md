@@ -251,3 +251,32 @@ dungeon as designed.
   explained. If a future revision is tempted to add a note, a name tag,
   or any other object that explains who carried it, that's a different
   dungeon's tone.
+
+## Decoration and content-variety pass
+
+Deliberately minimal, and that restraint is itself the finding. No new
+monster and no new item this pass: the roster is already exactly what
+the "no new monsters unless they specifically fit" instinct produced
+(`stone_sentinel` + `wraith`), and the item balance table above is
+computed precisely against the three specific pieces of gear already
+placed - adding a fourth would need that whole table reworked for no
+narrative gain. No object-based decoration (`table`/`chair`/`barrel`/
+`crate`/`chest`/`bookshelf`) either - every one of those reads as human
+institutional furniture, wrong register entirely for a place that is
+"not architecture laid out to a floor plan." And the Heart Chamber's
+bareness in particular is load-bearing, not an authoring gap - see set
+piece 4's own "why an empty room is the right choice here."
+
+The one addition made: a small scatter of `bones` (two per level) near
+the `stone_sentinel`s only - at the `level_01` hub and along the Twin
+Watch's corridor in `level_02` - never near the Fallen Travelers' Gear,
+whose owners' fate has to stay unexplained. This reads as "the watch is
+real and has been tested before" without answering anything, in the
+same voice of non-explanation `DECORATION_NAMES["bones"]` already uses
+everywhere else it's placed ("whoever - or whatever - they belonged to
+isn't in a position to mind").
+
+Verification: both levels re-validated via the real content loader,
+full `pytest -q` (1373 passed), `tools/preview.py data/dungeons` full
+registry, `main.py` smoke-launch, and a screenshot of each level via
+the scratchpad's `screenshot_dungeon.py` harness.

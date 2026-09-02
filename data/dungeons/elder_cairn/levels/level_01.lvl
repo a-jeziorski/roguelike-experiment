@@ -3,28 +3,31 @@ name: The Silent Approach
 
 map: |
   ########################
-  #########......#########
-  #########...>..#########
-  #########..Q...#########
-  #########......#########
-  ###########..###########
-  #...###..........###...#
-  #.!..................[.#
-  #...###....).....###...#
-  #######..........#######
-  ###########..###########
-  ###########..###########
-  #########......#########
-  #########..@...#########
-  #########......#########
+  #########FFFFFF#########
+  #########FFFaFF#########
+  #########FfbFFF#########
+  #########FFFFfF#########
+  ###########FF###########
+  #FFF###FFFFFFFFFF###FFF#
+  #FcFFFFFFFFFFFFFFFFFFdF#
+  #FFF###FFFFeFFFFF###FFF#
+  #######FFFFFFFFFF#######
+  ###########FF###########
+  ###########FF###########
+  #########FFFFFF#########
+  #########FF@FFF#########
+  #########FFFFFF#########
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": { stairs_down: level_02, description: "The stone opens downward here, tighter and older with every step.", announce: true }
-  "Q": { entity: stone_sentinel }
-  ")": { item: iron_sword }
-  "!": { item: healing_potion }
-  "[": { item: leather_armor }
+  "F": floor
+  "a": { tile: stairs_down, next_level: level_02, description: "The stone opens downward here, tighter and older with every step.", announce: true }
+  "b": { tile: floor, entity: stone_sentinel }
+  "c": { tile: floor, item: healing_potion }
+  "d": { tile: floor, item: leather_armor }
+  "e": { tile: floor, item: iron_sword }
+  "f": { tile: floor, decoration: bones }

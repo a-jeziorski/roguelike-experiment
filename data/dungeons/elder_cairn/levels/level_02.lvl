@@ -3,33 +3,37 @@ name: The Heart of the Cairn
 
 map: |
   ########################
-  #########...>..#########
-  #########......#########
-  ###########..###########
-  ###########..###########
-  #########...^..#########
-  #########...Y..#########
-  #######..........#######
-  #######..........#######
-  #######..........#######
-  #...#######..#######...#
-  #.].####........####.!.#
-  #.Q..................Q.#
-  #...####........####...#
-  #...#######..#######...#
-  ###########..###########
-  ###########..###########
-  #########......#########
-  #########..@...#########
+  #########FFFaFF#########
+  #########FFFFFF#########
+  ###########FF###########
+  ###########FF###########
+  #########FFFbFF#########
+  #########FFFcFF#########
+  #######FFFFFFFFFF#######
+  #######FFFFFFFFFF#######
+  #######FFFFFFFFFF#######
+  #FFF#######FF#######FFF#
+  #FdF####FFFFFFFF####FeF#
+  #FfFFhFFFFFFFFFFFFFhFgF#
+  #FFF####FFFFFFFF####FFF#
+  #FFF#######FF#######FFF#
+  ###########FF###########
+  ###########FF###########
+  #########FFFFFF#########
+  #########FF@FFF#########
   ########################
 
 legend:
   "#": wall
-  ".": floor
+  ",": plains
+  ".": road
   "@": player_start
-  ">": { stairs_down: null, description: "The passage climbs back toward the grey light above - you have gone as deep as this place allows.", announce: true }
-  "Q": { entity: stone_sentinel }
-  "]": { item: bone_plate }
-  "!": { item: healing_potion }
-  "Y": { entity: wraith }
-  "^": { tile: landmark, description: "A single stone set into the floor, smaller than anything else in the Cairn and matching none of it - no grown curve, no seam, nothing to place it by. It's colder than the air around it." }
+  "F": floor
+  "a": { tile: stairs_down, next_level: null, description: "The passage climbs back toward the grey light above - you have gone as deep as this place allows.", announce: true }
+  "c": { tile: floor, entity: wraith }
+  "f": { tile: floor, entity: stone_sentinel }
+  "g": { tile: floor, entity: stone_sentinel }
+  "b": { tile: landmark, description: "A single stone set into the floor, smaller than anything else in the Cairn and matching none of it - no grown curve, no seam, nothing to place it by. It's colder than the air around it." }
+  "d": { tile: floor, item: bone_plate }
+  "e": { tile: floor, item: healing_potion }
+  "h": { tile: floor, decoration: bones }
