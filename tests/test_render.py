@@ -1336,6 +1336,41 @@ def test_render_decorations_hides_an_unexplored_decoration():
     assert "?" not in console_text(console)
 
 
+def test_render_decorations_persists_once_explored_even_when_no_longer_visible():
+    # Unlike an entity (which could have moved since last seen), a
+    # decoration is inert map dressing - it should stay drawn from memory
+    # exactly like a wall or floor tile once explored, not vanish the
+    # instant it leaves the player's current FOV.
+    game_map = make_game_map(10, 10)
+    game_map.explored[5, 5] = True  # explored, but not currently visible
+    table = Entity(5, 5, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.append(table)
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=0, cam_y=0)
+
+    assert "?" in console_text(console)
+
+
+def test_render_decorations_tints_with_the_underlying_tile_kinds_own_color():
+    # A decoration should blend into the floor it sits on, not stand out
+    # at a fixed brightness independent of the tile beneath it - so its fg
+    # tint must match TILE_VISUALS' own light/dark color for that tile_kind
+    # (the same tint render_map would use for a plain, undecorated cell).
+    game_map = make_game_map(10, 10)
+    game_map.visible[5, 5] = True
+    game_map.explored[6, 6] = True  # explored only, not visible
+    visible_table = Entity(5, 5, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    remembered_table = Entity(6, 6, "?", (255, 255, 255), "A plain wooden table.", entity_id="table")
+    game_map.decorations.extend([visible_table, remembered_table])
+
+    console = tcod.console.Console(20, 20, order="F")
+    render_decorations(console, game_map, cam_x=0, cam_y=0)
+
+    assert tuple(console.rgb[5, 5]["fg"]) == TILE_VISUALS["floor"]["light"]
+    assert tuple(console.rgb[6, 6]["fg"]) == TILE_VISUALS["floor"]["dark"]
+
+
 def test_render_decorations_uses_a_sprite_codepoint_when_mapped():
     game_map = make_game_map(10, 10)
     game_map.visible[5, 5] = True

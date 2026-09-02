@@ -312,15 +312,30 @@ def render_decorations(
     on a decorated tile still draws over it. Callers skip this call
     entirely when the player has toggled decorations off (see main.py's
     show_decorations/ToggleDecorationsAction) - a display preference, not
-    something threaded down into this function itself."""
+    something threaded down into this function itself.
+
+    Unlike render_entities, a decoration is drawn once explored, not only
+    while currently visible - it's inert map dressing, not something that
+    could have moved or been removed since the player last saw it, so it
+    persists in memory exactly like a wall or floor tile. And its fg tint
+    is the underlying tile_kind's own light/dark TILE_VISUALS color (the
+    same one render_map used to draw that tile), not a fixed decoration
+    color - the composited sprite already bakes the real tile pixels into
+    its transparent areas (see engine/sprites.py's
+    composite_sprite_over_terrain), so matching the tint too is what makes
+    a decorated tile blend into its surroundings instead of standing out
+    as a brighter or dimmer patch than the plain floor around it."""
     for decoration in game_map.decorations:
-        if not game_map.visible[decoration.x, decoration.y]:
+        x, y = decoration.x, decoration.y
+        visible = game_map.visible[x, y]
+        if not visible and not game_map.explored[x, y]:
             continue
-        sx, sy = decoration.x - cam_x, decoration.y - cam_y
+        sx, sy = x - cam_x, y - cam_y
         if 0 <= sx < VIEWPORT_WIDTH and 0 <= sy < VIEWPORT_HEIGHT:
-            tile_kind = game_map.kinds[decoration.x, decoration.y]
+            tile_kind = game_map.kinds[x, y]
             glyph = _resolved_decoration_glyph(decoration, tile_kind, sprite_codepoints)
-            console.print(sx, sy, glyph, fg=decoration.color)
+            fg = TILE_VISUALS[tile_kind]["light" if visible else "dark"]
+            console.print(sx, sy, glyph, fg=fg)
 
 
 def projectile_glyph(fx: int, fy: int, tx: int, ty: int) -> str:

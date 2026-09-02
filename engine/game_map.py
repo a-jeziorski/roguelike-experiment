@@ -25,21 +25,13 @@ PLAYER_MAX_HP = 30
 PLAYER_ATTACK = 5
 PLAYER_DEFENSE = 1
 
-# The fg color every decoration Entity renders with (see build_game_map's
-# decoration_spawns loop below). tcod's console.print multiplies a
-# registered tile's own RGB by this fg color per channel, regardless of
-# whether the tile is a plain ASCII glyph or a full true-color sprite
-# (confirmed empirically - see engine/sprites.py's SpriteCodepoints
-# rendering path) - fg=(255,255,255) is therefore not "neutral," it's an
-# identity multiply that renders a sprite at its full, undimmed brightness.
-# Every other rendered thing on the map (tile_kinds via TILE_VISUALS'
-# light/dark, entities via their own catalog .color) gets dimmed to some
-# real degree by that same multiply, so a decoration at pure white was the
-# one thing in a scene never dimmed at all - it read as a bright highlight/
-# glow next to everything else, easy to mistake for something interactive.
-# A muted mid-grey dims decorations down into roughly the same brightness
-# register as their surroundings while keeping them clearly legible - not
-# an attempt to color-match every possible underlying tile kind exactly.
+# Placeholder fg stored on every decoration Entity at construction time
+# (Entity.color is a required field) - no longer what a decoration
+# actually renders with. engine/render.py's render_decorations tints each
+# decoration with its own underlying tile_kind's light/dark TILE_VISUALS
+# color instead (the same tint the plain tile itself would get), so a
+# decorated tile blends fully into the floor around it rather than
+# reading as a fixed-brightness patch independent of its surroundings.
 DECORATION_FG = (160, 160, 160)
 
 FOV_RADIUS = 8
