@@ -46,6 +46,7 @@ from content.schema import (
     SKILL_EFFECT_PHASE_THROUGH,
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
+    SKILL_EFFECT_VENGEFUL_STRIKE,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
@@ -1804,19 +1805,48 @@ class Engine:
             self.message_log.add(f"{target.name} is marked for death!", category="combat")
             return message
 
-        # SKILL_EFFECT_PHASE_THROUGH - grants BUFF_PHASING for
-        # skill_phase_duration turns, riposte_stance's exact "the buff IS
-        # the mechanic" shape (§0ba): nothing more to do here than
-        # granting it. Ticked the ordinary way by _tick_active_buffs (no
-        # BUFF_HASTE-style exclusion needed). The actual pass-through-
-        # blockers behavior lives entirely in engine/actions.py's
-        # BumpAction/MovementAction, both of which check for this buff
-        # directly.
-        entity.fighter.active_buffs[BUFF_PHASING] = ActiveEffect(
-            potency=0, turns_remaining=perk.skill_phase_duration
-        )
-        message = f"You use {perk.name} and your footing turns weightless, unreal."
+        if perk.skill_effect == SKILL_EFFECT_PHASE_THROUGH:
+            # Grants BUFF_PHASING for skill_phase_duration turns,
+            # riposte_stance's exact "the buff IS the mechanic" shape
+            # (§0ba): nothing more to do here than granting it. Ticked the
+            # ordinary way by _tick_active_buffs (no BUFF_HASTE-style
+            # exclusion needed). The actual pass-through-blockers behavior
+            # lives entirely in engine/actions.py's BumpAction/
+            # MovementAction, both of which check for this buff directly.
+            entity.fighter.active_buffs[BUFF_PHASING] = ActiveEffect(
+                potency=0, turns_remaining=perk.skill_phase_duration
+            )
+            message = f"You use {perk.name} and your footing turns weightless, unreal."
+            self.message_log.add(message)
+            return message
+
+        # SKILL_EFFECT_VENGEFUL_STRIKE - blink_strike/guard_break's own
+        # single-nearest-target-within-range-or-refuse shape, but the only
+        # skill in this project whose damage isn't a fixed number: a flat
+        # skill_vengeful_damage base, plus 1 bonus point for every
+        # skill_vengeful_hp_per_missing HP the caster is currently missing
+        # (integer floor division - deliberately not a percentage-of-
+        # max_hp scale, keeping this whole-number like every other damage
+        # skill in the project rather than introducing float rounding).
+        # Computed once at cast time from current hp, not re-evaluated
+        # later - taking more damage after casting doesn't retroactively
+        # buff a strike that already landed.
+        candidates = [
+            e for e in list(self.game_map.entities)
+            if e is not entity and e.fighter is not None and e.is_alive
+            and e.ai not in PEACEFUL_AI_TYPES
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_vengeful_range
+        ]
+        if not candidates:
+            message = "There's nothing within range to strike."
+            self.message_log.add(message)
+            return message
+        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+        missing_hp = max(0, entity.fighter.max_hp - entity.fighter.hp)
+        damage = perk.skill_vengeful_damage + missing_hp // perk.skill_vengeful_hp_per_missing
+        message = f"You use {perk.name} on {target.name}!"
         self.message_log.add(message)
+        resolve_skill_damage(self, entity, target, damage, "strikes")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

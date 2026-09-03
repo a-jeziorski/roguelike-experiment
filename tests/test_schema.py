@@ -1914,6 +1914,38 @@ def test_perk_def_rejects_heal_skill_with_phase_duration_set():
         ))
 
 
+def test_perk_def_accepts_a_vengeful_strike_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="vengeful_strike",
+        skill_vengeful_damage=3, skill_vengeful_hp_per_missing=5, skill_vengeful_range=2,
+        skill_cooldown_kind="turns", skill_cooldown_amount=6,
+    ))
+    assert perk.skill_effect == "vengeful_strike"
+    assert perk.skill_vengeful_damage == 3
+    assert perk.skill_vengeful_hp_per_missing == 5
+    assert perk.skill_vengeful_range == 2
+
+
+def test_perk_def_rejects_vengeful_strike_skill_missing_a_field():
+    full = dict(skill_vengeful_damage=3, skill_vengeful_hp_per_missing=5, skill_vengeful_range=2)
+    for missing in full:
+        partial = {k: v for k, v in full.items() if k != missing}
+        with pytest.raises(ValidationError, match="requires skill_vengeful_damage"):
+            PerkDef(**_perk_kwargs(
+                max_hp_bonus=None, skill_effect="vengeful_strike",
+                skill_cooldown_kind="turns", skill_cooldown_amount=6, **partial,
+            ))
+
+
+def test_perk_def_rejects_heal_skill_with_vengeful_fields_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'vengeful_strike'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+            skill_vengeful_damage=3, skill_vengeful_hp_per_missing=5, skill_vengeful_range=2,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 

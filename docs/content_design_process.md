@@ -3931,6 +3931,53 @@ goblin's own tile with the goblin's hp completely untouched, and the
 same player two steps later is still stopped cold by an ordinary wall
 tile - phasing never touched, terrain still terrain.
 
+## 0bg. Vengeful Strike - the first skill whose damage isn't a fixed number (`vengeful_strike` perk)
+
+The eighth active perk, the tenth `SkillEffectKind`. Every prior damage-
+dealing skill in this project (aoe_damage, chain_lash, guard_break) hits
+for a flat, data-defined number, `perk.skill_X_damage`, unchanged no
+matter when it's cast. Vengeful Strike is the first whose payload is
+computed at cast time from live state:
+
+```python
+missing_hp = max(0, entity.fighter.max_hp - entity.fighter.hp)
+damage = perk.skill_vengeful_damage + missing_hp // perk.skill_vengeful_hp_per_missing
+```
+
+A flat base (`skill_vengeful_damage`) plus one bonus point for every
+`skill_vengeful_hp_per_missing` HP the caster is currently missing - the
+worse off you are, the harder it lands. Targeting is otherwise identical
+to Guard Break's own single-nearest-target-within-range-or-refuse shape;
+the only genuinely new piece is the bonus calculation itself.
+
+**Integer floor division on purpose, not a percentage-of-max_hp scale** -
+`missing_hp // skill_vengeful_hp_per_missing` keeps the whole calculation
+in plain integers, consistent with every other damage number in this
+project (no floats anywhere in `data/perks.yaml`, no rounding call at
+the point of use). Verified directly with a non-clean-multiple case (22
+HP missing at a 5-HP-per-bonus-point rate correctly yields `+4`, not
+`+4.4` or a rounded `+5`) specifically to catch an off-by-one or
+premature-rounding mistake in the floor division.
+
+**Computed once, at cast time, off the state that exists at that
+moment** - nothing re-evaluates the bonus later or ties it to a
+snapshot that could drift; the skill reads `entity.fighter.hp` the
+instant it resolves and that's the number used, the same "resolve now,
+not later" precedent basically every other skill and buff in this
+project already follows (a granted buff's own potency is likewise fixed
+at grant time, not re-read every tick).
+
+Ships one real example, `vengeful_strike` (`data/perks.yaml`,
+`skill_effect: vengeful_strike`, `skill_vengeful_damage: 3`,
+`skill_vengeful_hp_per_missing: 5`, `skill_vengeful_range: 2`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 6`, `xp_cost: 50` -
+the round's cheapest active skill so far, reflecting that its full value
+is conditional on the caster already being hurt, a real cost the flat-
+damage skills don't carry). Verified end-to-end via direct
+`Engine`/`Entity`/catalog construction against a real goblin at two
+different player HP levels: full HP deals exactly the 3-damage base with
+no bonus, and missing 24 HP correctly deals `3 + (24 // 5) = 7`.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

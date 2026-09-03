@@ -8418,6 +8418,104 @@ def test_phase_through_cooldown_ticks_down_each_turn_and_expires():
     assert "phase_through" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_vengeful_strike_at_full_hp_deals_only_base_damage():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)  # full hp - no missing-hp bonus
+    player.learned_perk_ids.add("vengeful_strike")
+    monster = make_monster(4, 2, hp=20, defense=0, ai=None)  # distance 2, range is 2
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "vengeful_strike")
+
+    assert monster.fighter.hp == 20 - 3  # skill_vengeful_damage=3, no bonus at full hp
+    assert player.skill_cooldowns["vengeful_strike"] == 6
+    assert message == "You use Vengeful Strike on Rat!"
+
+
+def test_use_skill_vengeful_strike_scales_with_missing_hp():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    player.fighter.hp = 10  # missing 20 hp
+    player.learned_perk_ids.add("vengeful_strike")
+    monster = make_monster(4, 2, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "vengeful_strike")
+
+    # base 3 + (20 missing // 5 per bonus point) = 3 + 4 = 7
+    assert monster.fighter.hp == 20 - 7
+
+
+def test_use_skill_vengeful_strike_bonus_uses_integer_floor_division():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    player.fighter.hp = 8  # missing 22 hp - not an exact multiple of 5
+    player.learned_perk_ids.add("vengeful_strike")
+    monster = make_monster(4, 2, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "vengeful_strike")
+
+    # base 3 + (22 // 5 = 4) = 7, not 3 + 4.4
+    assert monster.fighter.hp == 20 - 7
+
+
+def test_use_skill_vengeful_strike_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("vengeful_strike")
+    villager = make_villager(4, 2)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "vengeful_strike")
+
+    assert villager.fighter.hp == villager.fighter.max_hp
+    assert message == "There's nothing within range to strike."
+
+
+def test_use_skill_vengeful_strike_can_kill_a_target():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("vengeful_strike")
+    monster = make_monster(4, 2, hp=1, defense=0, ai=None)
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "vengeful_strike")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_vengeful_strike_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("vengeful_strike")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "vengeful_strike")
+    assert player.skill_cooldowns["vengeful_strike"] == 6
+
+    for _ in range(5):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["vengeful_strike"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "vengeful_strike" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

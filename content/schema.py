@@ -699,7 +699,10 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # within range for flat damage and, if it survives, inflicts EFFECT_EXPOSED
 # on it, "mark_for_death" inflicts EFFECT_MARKED on the nearest hostile
 # within range, dealing no direct damage of its own, "phase_through"
-# grants BUFF_PHASING for a number of turns (see Engine.use_skill).
+# grants BUFF_PHASING for a number of turns, "vengeful_strike" strikes the
+# nearest hostile within range for a flat base amount plus bonus damage
+# scaled by the caster's own currently-missing HP - the only skill in
+# this project whose damage isn't a fixed number (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
@@ -709,10 +712,11 @@ SKILL_EFFECT_CHAIN_LASH = "chain_lash"
 SKILL_EFFECT_GUARD_BREAK = "guard_break"
 SKILL_EFFECT_MARK_FOR_DEATH = "mark_for_death"
 SKILL_EFFECT_PHASE_THROUGH = "phase_through"
+SKILL_EFFECT_VENGEFUL_STRIKE = "vengeful_strike"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK, SKILL_EFFECT_MARK_FOR_DEATH,
-    SKILL_EFFECT_PHASE_THROUGH,
+    SKILL_EFFECT_PHASE_THROUGH, SKILL_EFFECT_VENGEFUL_STRIKE,
 ]
 
 
@@ -770,7 +774,9 @@ class PerkDef(BaseModel):
     # skill_guard_break_potency/skill_guard_break_duration for/exclusive
     # to "guard_break", skill_mark_range/skill_mark_bonus/
     # skill_mark_duration for/exclusive to "mark_for_death",
-    # skill_phase_duration for/exclusive to "phase_through"
+    # skill_phase_duration for/exclusive to "phase_through",
+    # skill_vengeful_damage/skill_vengeful_hp_per_missing/
+    # skill_vengeful_range for/exclusive to "vengeful_strike"
     # (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
@@ -825,6 +831,16 @@ class PerkDef(BaseModel):
     # potency field alongside it, same "an action is either free or it
     # isn't"-style binary shape skill_riposte_duration already uses.
     skill_phase_duration: int | None = Field(default=None, gt=0)
+    # A "vengeful_strike" skill's own payload: how far it can reach to
+    # strike the nearest hostile, a flat base damage, and how much
+    # currently-missing HP the caster needs (max_hp - hp) for each extra
+    # point of bonus damage - see Engine.use_skill's own
+    # "missing_hp // skill_vengeful_hp_per_missing" bonus calculation, the
+    # only skill in this project whose damage isn't a fixed number. All
+    # three required together, exclusively for this skill kind.
+    skill_vengeful_damage: int | None = Field(default=None, gt=0)
+    skill_vengeful_hp_per_missing: int | None = Field(default=None, gt=0)
+    skill_vengeful_range: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -966,6 +982,25 @@ class PerkDef(BaseModel):
         if self.skill_effect != SKILL_EFFECT_PHASE_THROUGH and self.skill_phase_duration is not None:
             raise ValueError(
                 "skill_phase_duration is only meaningful when skill_effect is 'phase_through'"
+            )
+        if self.skill_effect == SKILL_EFFECT_VENGEFUL_STRIKE:
+            if (
+                self.skill_vengeful_damage is None
+                or self.skill_vengeful_hp_per_missing is None
+                or self.skill_vengeful_range is None
+            ):
+                raise ValueError(
+                    "skill_effect 'vengeful_strike' requires skill_vengeful_damage, "
+                    "skill_vengeful_hp_per_missing, and skill_vengeful_range to be set"
+                )
+        elif (
+            self.skill_vengeful_damage is not None
+            or self.skill_vengeful_hp_per_missing is not None
+            or self.skill_vengeful_range is not None
+        ):
+            raise ValueError(
+                "skill_vengeful_damage/skill_vengeful_hp_per_missing/skill_vengeful_range are only "
+                "meaningful when skill_effect is 'vengeful_strike'"
             )
         return self
 
