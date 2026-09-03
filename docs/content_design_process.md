@@ -2976,6 +2976,88 @@ or negative-potency edge case exists here the way `_weaken_penalty`
 guards against, since a buff's potency is always additive and never drives
 `effective_attack`'s `max(0, ...)` floor into play.
 
+## 0as. Draught of Swiftness - a burst of genuinely free player actions (`swiftness_draught`)
+
+The second `BuffKind` (§0ar's namespace, `BUFF_HASTE = "haste"`), and the
+first buff whose mechanic isn't a stat number at all - "extra action per
+turn" from the original brainstorm, read literally: for a few actions, the
+world simply doesn't get a turn back. No monster moves, no hazard fires,
+no effect/cooldown/water-walking ticks, no world clock advances - the
+player's own action is the only thing that happens.
+
+**The core mechanism:** a new `Engine._skip_enemy_phase` flag, set by
+`process_player_action` (via a new `_consume_haste_action()` helper)
+immediately before `action.perform()` runs, and read-and-cleared at the
+very top of `process_enemy_phase`. When set, `process_enemy_phase` still
+updates FOV (the player may have moved) but returns before touching
+anything else - `_handle_enemy_turns`, `_apply_environmental_hazard`,
+every tick method, the world clock, all skipped outright for that one
+call. Both of Engine's callers (`process_turn` for tests/AI-only code,
+and `main.py`'s animated `process_player_action`/`process_enemy_phase`
+split) already call the two methods back to back unconditionally, so
+neither needed to change - the skip is entirely internal to
+`process_enemy_phase` deciding to no-op.
+
+**Why the checkpoint is *before* `action.perform()`, not after (unlike
+`_consume_stun_turn`, which fires at the moment a block actually takes
+effect):** checking pre-action state means haste isn't active yet at the
+moment `UseItemAction` itself is checked, so *drinking* the potion still
+costs a normal turn - a hostile monster gets to swing back on that same
+turn, confirmed by a live-verify script (26 hp, down from 30, right after
+the drink). Only the actions that follow are free. This was a deliberate
+choice over the alternative (checking post-action, which would make the
+drinking turn itself free too) - drinking should read as spending your
+turn to prepare, not as the first free swing.
+
+**Why haste needed its own ticking path, separate from `_tick_active_buffs`
+(§0ar):** that method only runs as part of `process_enemy_phase` - which a
+hasted action skips entirely - so a buff ticked there would never
+count down while it's actually paying for something. `_consume_haste_action`
+decrements `turns_remaining` itself, at the exact moment a free action is
+granted, then reports `True`/`False` for whether this turn should skip the
+enemy phase. The reverse bug bit first, though: **`_tick_active_buffs`
+still runs normally on the drinking turn itself** (haste isn't active
+during that check, so nothing is skipped) and would happily tick the
+freshly-granted haste buff down as "just another buff" alongside vigor -
+a real double-decrement caught by
+`test_use_item_action_haste_drinking_itself_costs_a_normal_turn` (haste
+read back as 2 remaining instead of 3 on first run). Fixed by excluding
+`BUFF_HASTE` from `_tick_active_buffs` outright, the same way
+`_tick_active_effects` already excludes `EFFECT_STUN` for the analogous
+reason (a different subsystem owns that kind's countdown).
+
+**A stunned turn never spends a haste charge either** - `process_player_action`'s
+stun branch returns before `_consume_haste_action` is ever reached, so a
+player frozen by stun doesn't also burn down a buff that couldn't have
+helped them act anyway. Verified directly
+(`test_stunned_player_does_not_consume_a_haste_charge`).
+
+**Schema shape - a second split off `_EFFECT_KINDS_WITH_POTENCY`'s own
+precedent:** haste has no intensity concept (an action is either free or
+it isn't, same reasoning `EFFECT_STUN` already established for
+afflictions), so `ItemDef`'s single `grants_buff_potency_and_duration_together`
+validator (§0ar) was split into two, mirroring
+`affix_effect_duration_and_chance_together`/`affix_potency_matches_effect_kind`'s
+own two-validator shape exactly: `grants_buff_and_duration_together`
+(grants_buff + buff_duration required together) and
+`buff_potency_matches_buff_kind` (potency required only for kinds in the
+new `_BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)` tuple, rejected otherwise).
+`vigor_elixir`'s own existing data needed no changes - vigor still
+requires potency, only its *validator path* changed shape.
+
+Ships one real example, `swiftness_draught` (`data/items.yaml`,
+`grants_buff: haste`, `buff_duration: 3`, no `buff_potency`, `cost: 55` -
+priced above Elixir of Vigor's 40, reflecting that three fully
+consequence-free actions is a stronger burst than a ten-turn stat bump).
+Verified end-to-end via direct `Engine`/`Entity` construction against the
+real catalog entry, with a hostile monster standing adjacent throughout:
+the drink itself costs a normal turn (monster attacks, hp drops), the
+next three actions are completely free (hp untouched, monster never
+moves), and the fourth action resumes normal turn economy in full -
+monster attack and a concurrently-active poison tick both firing again in
+the same turn, confirming nothing about the world's own clock quietly
+stayed frozen past haste's actual expiry.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

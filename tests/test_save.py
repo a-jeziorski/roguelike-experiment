@@ -344,6 +344,27 @@ def test_round_trip_preserves_vigor_buff(tmp_path):
     assert restored_fighter.active_buffs["vigor"].turns_remaining == 7
 
 
+def test_round_trip_preserves_haste_buff(tmp_path):
+    """Same generic active_buffs round-trip as vigor above - haste needs no
+    save.py changes of its own, since SavedPlayer.active_buffs already
+    persists any BuffKind by key."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.fighter.active_buffs["haste"] = ActiveEffect(potency=0, turns_remaining=2)
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    restored_fighter = active_engines2[active_key].player.fighter
+    assert restored_fighter.active_buffs["haste"].potency == 0
+    assert restored_fighter.active_buffs["haste"].turns_remaining == 2
+
+
 def test_restore_save_defaults_active_buffs_for_an_old_format_save(tmp_path):
     """A save file written before active_buffs existed has no such field -
     pydantic should fill in the default rather than erroring, so old saves

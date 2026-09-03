@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from content.schema import AI_MIMIC, BUFF_VIGOR
+from content.schema import AI_MIMIC, BUFF_HASTE, BUFF_VIGOR
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import DEFAULT_MIMIC_BONUS, ActiveEffect, potion_kind
 from engine.targeting import is_valid_target
@@ -498,6 +498,13 @@ class UseItemAction(Action):
             )
             engine.message_log.add(
                 f"You drink the {item_entity.name} and strength floods your limbs."
+            )
+        elif kind == "haste":
+            entity.fighter.active_buffs[BUFF_HASTE] = ActiveEffect(
+                potency=0, turns_remaining=item_entity.item.buff_duration
+            )
+            engine.message_log.add(
+                f"You drink the {item_entity.name} and the world around you seems to slow."
             )
 
 

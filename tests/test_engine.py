@@ -201,6 +201,15 @@ def make_vigor_potion(x: int, y: int, potency: int = 3, duration: int = 10) -> E
     )
 
 
+def make_haste_potion(x: int, y: int, duration: int = 3) -> Entity:
+    return Entity(
+        x, y, "!", (90, 220, 230), "Draught of Swiftness",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(grants_buff="haste", buff_duration=duration),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2127,6 +2136,81 @@ def test_vigor_buff_ticks_down_and_expires():
     engine.process_turn(WaitAction())
     assert "vigor" not in player.fighter.active_buffs
     assert player.effective_attack == player.fighter.attack
+
+
+def test_potion_kind_identifies_haste():
+    assert potion_kind(ItemEffect(grants_buff="haste", buff_duration=3)) == "haste"
+
+
+def test_use_item_action_haste_drinking_itself_costs_a_normal_turn():
+    """Haste isn't active yet at the moment the drinking action itself
+    runs (see Engine._consume_haste_action's own docstring) - so a
+    hostile monster still gets its turn on the same turn the potion is
+    drunk, and only the actions that follow are free."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=50, attack=4, ai="hostile_basic")
+    potion = make_haste_potion(1, 1, duration=3)
+    player.inventory.append(potion)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "haste"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert player.fighter.active_buffs["haste"] == ActiveEffect(potency=0, turns_remaining=3)
+    assert player.fighter.hp == 30 - 4  # the monster still got a turn this turn
+    assert "You drink the Draught of Swiftness and the world around you seems to slow." in engine.message_log.messages
+
+
+def test_haste_grants_free_actions_that_skip_the_enemy_phase():
+    """While haste is active, a hostile monster never gets to act, poison
+    never ticks, and water-walking never burns down - the world simply
+    doesn't move on a hasted action. Once haste runs out, everything
+    resumes normally on the very next action."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_buffs["haste"] = ActiveEffect(potency=0, turns_remaining=3)
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=99)
+    player.water_walking_turns_remaining = 5
+    monster = make_monster(2, 1, hp=50, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.hp == 30  # monster never got a turn
+    assert player.fighter.active_effects["poison"].turns_remaining == 99  # never ticked
+    assert player.water_walking_turns_remaining == 5  # never ticked
+    assert player.fighter.active_buffs["haste"].turns_remaining == 2
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.active_buffs["haste"].turns_remaining == 1
+
+    engine.process_turn(WaitAction())
+    assert "haste" not in player.fighter.active_buffs
+    assert player.fighter.hp == 30  # still untouched - the 3rd action was the last free one
+
+    engine.process_turn(WaitAction())
+    # haste exhausted - the monster's attack (4) and poison's own tick (2)
+    # both resume on this, the first normal turn since drinking.
+    assert player.fighter.hp == 30 - 4 - 2
+    assert player.fighter.active_effects["poison"].turns_remaining == 98  # ticking resumed
+    assert player.water_walking_turns_remaining == 4
+
+
+def test_stunned_player_does_not_consume_a_haste_charge():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.fighter.active_buffs["haste"] = ActiveEffect(potency=0, turns_remaining=2)
+    player.fighter.active_effects["stun"] = ActiveEffect(potency=0, turns_remaining=1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.active_buffs["haste"].turns_remaining == 2
+    assert "stun" not in player.fighter.active_effects
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

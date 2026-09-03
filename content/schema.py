@@ -158,12 +158,22 @@ _EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
 # ItemDef.affix_effect (both typed EffectKind) can never accidentally
 # reference one: a monster "inflicting" vigor on whatever it hits would be
 # backwards, and a type-level split rules that out rather than relying on
-# a convention nobody's forced to follow. Starts with just vigor
-# (ItemDef.grants_buff below); more potions/perks are expected to add
-# their own kind here later, same "defined once, fails loudly at
-# content-load time" reasoning as EffectKind/AIType.
+# a convention nobody's forced to follow. Same "defined once, fails loudly
+# at content-load time" reasoning as EffectKind/AIType.
 BUFF_VIGOR = "vigor"
-BuffKind = Literal[BUFF_VIGOR]
+# Grants a burst of free player actions (see engine/engine.py's
+# _consume_haste_action/process_enemy_phase) rather than a stat bonus - has
+# no intensity concept of its own (an action is either free or it isn't),
+# so it's excluded from _BUFF_KINDS_WITH_POTENCY below, same "no potency"
+# treatment EFFECT_STUN gets from _EFFECT_KINDS_WITH_POTENCY.
+BUFF_HASTE = "haste"
+BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE]
+# Buffs with a meaningful intensity - vigor's potency is a flat attack/
+# defense bonus. Haste has no intensity concept (an action is either free
+# or it isn't - see BUFF_HASTE above), so buff_potency is required for
+# vigor and rejected for haste - see ItemDef.buff_potency_matches_buff_kind
+# below, the same split _EFFECT_KINDS_WITH_POTENCY already establishes.
+_BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)
 
 # What a trinket (ItemDef.trinket_effect/trinket_bonus below, EquipSlot's
 # fourth slot) passively boosts - a percentage-point bonus applied on top
@@ -452,12 +462,14 @@ class ItemDef(BaseModel):
     cures_effects: bool = False
     # A timed positive self-buff this item grants on use (see BuffKind,
     # engine/entity.py's Fighter.active_buffs, engine/actions.py's
-    # UseItemAction) - all three must be set together or not at all, same
-    # shape affix_effect/affix_duration/affix_chance already establish
-    # (see grants_buff_potency_and_duration_together below). Vigor's own
-    # potency applies equally to both effective_attack and
-    # effective_defense (a single number, not two) - the simplest shape
-    # for the one buff kind that exists so far.
+    # UseItemAction) - grants_buff and buff_duration must be set together
+    # or not at all (see grants_buff_and_duration_together below), same
+    # shape affix_effect/affix_duration establish. buff_potency is required
+    # or rejected depending on which kind (see
+    # buff_potency_matches_buff_kind below, mirroring
+    # affix_potency_matches_effect_kind) - vigor's applies equally to both
+    # effective_attack and effective_defense (a single number, not two);
+    # haste has no potency at all, its free actions are just free.
     grants_buff: BuffKind | None = None
     buff_potency: int | None = Field(default=None, gt=0)
     buff_duration: int | None = Field(default=None, gt=0)
@@ -498,11 +510,23 @@ class ItemDef(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def grants_buff_potency_and_duration_together(self) -> "ItemDef":
-        fields_set = (self.grants_buff is not None, self.buff_potency is not None, self.buff_duration is not None)
-        if len(set(fields_set)) > 1:
+    def grants_buff_and_duration_together(self) -> "ItemDef":
+        if (self.grants_buff is None) != (self.buff_duration is None):
+            raise ValueError("grants_buff and buff_duration must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def buff_potency_matches_buff_kind(self) -> "ItemDef":
+        if self.grants_buff is None:
+            if self.buff_potency is not None:
+                raise ValueError("buff_potency requires grants_buff to be set")
+            return self
+        needs_potency = self.grants_buff in _BUFF_KINDS_WITH_POTENCY
+        if needs_potency and self.buff_potency is None:
+            raise ValueError(f"grants_buff '{self.grants_buff}' requires buff_potency to be set")
+        if not needs_potency and self.buff_potency is not None:
             raise ValueError(
-                "grants_buff, buff_potency, and buff_duration must all be set together or not at all"
+                f"grants_buff '{self.grants_buff}' has no intensity concept - buff_potency must be left unset"
             )
         return self
 

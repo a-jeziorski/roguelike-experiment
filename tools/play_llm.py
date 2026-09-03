@@ -348,6 +348,7 @@ _EFFECT_HUD_LABELS = {
 # reasoning as _EFFECT_HUD_LABELS above.
 _BUFF_HUD_LABELS = {
     "vigor": lambda e: f"VIGOR: +{e.potency} attack/defense ({e.turns_remaining} turn(s) left)",
+    "haste": lambda e: f"HASTE: {e.turns_remaining} free action(s) left",
 }
 
 

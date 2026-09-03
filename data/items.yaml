@@ -41,6 +41,15 @@ vigor_elixir:
   cost: 40
   description: A vial of something thick and amber, warm even through the glass. Drink it and feel your own strength come up to meet you.
 
+swiftness_draught:
+  name: Draught of Swiftness
+  glyph: "!"
+  color: [90, 220, 230]
+  grants_buff: haste
+  buff_duration: 3
+  cost: 55
+  description: A vial that fizzes faintly, cold as running water. Drink it and the world outside seems, just for a moment, to fall a half-step behind.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

@@ -24,6 +24,7 @@ from content.schema import (
     AI_TERRITORIAL,
     AI_TOWN_GUARD,
     AI_VILLAGER,
+    BUFF_HASTE,
     EFFECT_POISON,
     EFFECT_STUN,
     PEACEFUL_AI_TYPES,
@@ -343,6 +344,16 @@ class Engine:
         # _maybe_trigger_visitor_band_encounter below - main.py's
         # resolve_transition is the only thing that ever reads or clears it.
         self.wants_visitor_band_encounter = False
+        # Set by process_player_action, read and cleared by
+        # process_enemy_phase - purely an internal handoff within one
+        # process_turn()/main.py dispatch pair (unlike the mailbox flags
+        # above, nothing outside Engine ever reads this). True means the
+        # action just taken was a free action granted by an active haste
+        # buff (see _consume_haste_action below) - process_enemy_phase
+        # skips the world's own turn entirely when it sees this set, which
+        # is the whole mechanism behind "extra actions" (the world simply
+        # doesn't get a turn back for a hasted one).
+        self._skip_enemy_phase = False
         # The overworld coordinate this Engine should hand the player back
         # to whenever it next leaves for the overworld, overriding
         # main.py's normal _match_entrance lookup - None (the default, every
@@ -1126,12 +1137,22 @@ class Engine:
         removing it once it expires. Deliberately a separate method/dict
         from _tick_active_effects rather than folding buffs into it - see
         Fighter.active_buffs' own docstring on why buffs are a distinct
-        namespace from afflictions."""
+        namespace from afflictions.
+
+        Deliberately excludes BUFF_HASTE entirely - same reasoning
+        _tick_active_effects gives for excluding EFFECT_STUN. Haste's own
+        countdown is consumed by _consume_haste_action, at the moment a
+        hasted action actually happens; this method still runs on every
+        *normal* turn regardless (drinking the potion itself, a stunned
+        turn, any turn haste isn't currently paying for), so ticking haste
+        here too would double-decrement it on top of _consume_haste_action."""
         for entity in list(self.game_map.entities):
             if entity.fighter is None or not entity.fighter.active_buffs:
                 continue
             expired_kinds = []
             for kind, buff in entity.fighter.active_buffs.items():
+                if kind == BUFF_HASTE:
+                    continue
                 buff.turns_remaining -= 1
                 if buff.turns_remaining <= 0:
                     expired_kinds.append(kind)
@@ -1706,6 +1727,29 @@ class Engine:
         if effect.turns_remaining <= 0:
             del fighter.active_effects[EFFECT_STUN]
 
+    def _consume_haste_action(self) -> bool:
+        """Consumes one free action from the player's active haste buff, if
+        any, and reports whether the turn about to happen should skip
+        process_enemy_phase as a result. Called from process_player_action
+        BEFORE action.perform() - checking pre-action state, not post-, is
+        what makes the action that *drinks* a haste potion cost a normal
+        turn (haste isn't active yet at the moment this runs for that
+        action); only the actions that follow get to be free. Haste's own
+        countdown lives here rather than in _tick_active_buffs because
+        _tick_active_buffs only runs as part of process_enemy_phase - which
+        a hasted action skips entirely - so ticking it there would never
+        fire while haste is actually in effect. Same membership-is-the-
+        state expiry convention as every other ActiveEffect dict in this
+        file: the entry is deleted outright once exhausted, not left inert
+        at 0."""
+        buff = self.player.fighter.active_buffs.get(BUFF_HASTE)
+        if buff is None:
+            return False
+        buff.turns_remaining -= 1
+        if buff.turns_remaining <= 0:
+            del self.player.fighter.active_buffs[BUFF_HASTE]
+        return True
+
     def process_player_action(self, action: Action) -> bool:
         """The first half of a turn: just the player's own action. Returns
         False (and does nothing else) if the game had already ended before
@@ -1726,13 +1770,17 @@ class Engine:
         turn. Free/non-turn actions (Look, Talk, the shop/quest-log
         screens, ...) never reach this method at all - main.py's dispatch
         intercepts them before dispatch_action, so stun correctly never
-        blocks any of those, only real turn-costing actions."""
+        blocks any of those, only real turn-costing actions. A stunned
+        turn never consumes a haste charge either (returns before
+        _consume_haste_action runs) - being frozen shouldn't also burn
+        down a buff that can't help you act anyway."""
         if self.game_state != "playing":
             return False
         if EFFECT_STUN in self.player.fighter.active_effects:
             self.message_log.add("You are stunned and can't act!", category="combat")
             self._consume_stun_turn(self.player.fighter)
             return True
+        self._skip_enemy_phase = self._consume_haste_action()
         action.perform(self, self.player)
         return True
 
@@ -1742,7 +1790,21 @@ class Engine:
         bookkeeping, world clock/quest deadlines, and the FOV update - see
         process_player_action's docstring for why this is split out.
         Guarded the same way process_turn's tail always was: each step
-        only runs if the game is still "playing" going into it."""
+        only runs if the game is still "playing" going into it.
+
+        Entirely skipped - except the FOV update, since the player may
+        have moved - when process_player_action just consumed a haste
+        charge (self._skip_enemy_phase, see _consume_haste_action): no
+        monster turn, no hazard damage, no effect/buff/cooldown ticking, no
+        world clock advance. That's the whole mechanism behind "an extra
+        action" - the world simply doesn't get a turn back for a hasted
+        one, so nothing about it should happen twice as fast in exchange."""
+        if self._skip_enemy_phase:
+            self._skip_enemy_phase = False
+            self.game_map.update_fov((self.player.x, self.player.y))
+            self._log_newly_seen_tile_announcements()
+            return
+
         if self.game_state == "playing":
             self._handle_enemy_turns()
 

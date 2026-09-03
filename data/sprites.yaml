@@ -128,6 +128,7 @@ items:
   teleportation_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   water_walking_potion: {sheet: rltiles, name: misc_bottle, recolor: true}
   vigor_elixir:        {sheet: rltiles, name: misc_bottle, recolor: true}
+  swiftness_draught:   {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
   broadsword:            {sheet: rltiles, name: broadsword}

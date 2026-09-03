@@ -975,6 +975,32 @@ def test_item_def_rejects_buff_potency_and_duration_without_grants_buff():
         )
 
 
+def test_item_def_accepts_grants_buff_haste_without_potency():
+    potion = ItemDef(
+        id="swiftness_draught", name="Draught of Swiftness", glyph="!", color=(1, 2, 3),
+        grants_buff="haste", buff_duration=3,
+    )
+    assert potion.grants_buff == "haste"
+    assert potion.buff_potency is None
+    assert potion.buff_duration == 3
+
+
+def test_item_def_rejects_haste_with_potency():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="swiftness_draught", name="Draught of Swiftness", glyph="!", color=(1, 2, 3),
+            grants_buff="haste", buff_potency=1, buff_duration=3,
+        )
+
+
+def test_item_def_rejects_grants_buff_without_duration():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="swiftness_draught", name="Draught of Swiftness", glyph="!", color=(1, 2, 3),
+            grants_buff="haste",
+        )
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

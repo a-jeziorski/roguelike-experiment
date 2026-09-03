@@ -10,6 +10,7 @@ from content.schema import (
     AI_AMBUSHER,
     AI_ENRAGE,
     AI_MIMIC,
+    BUFF_HASTE,
     BUFF_VIGOR,
     BuffKind,
     EffectKind,
@@ -87,13 +88,20 @@ class Fighter:
     # duration countdown, expiry) and process_player_action/_perform_ai
     # (stun blocking an action) for where this is actually read/mutated.
     active_effects: dict[str, ActiveEffect] = field(default_factory=dict)
-    # This fighter's own live self-buffs, keyed by BuffKind ("vigor" today) -
-    # same ActiveEffect shape (potency/turns_remaining) and refresh-not-stack
-    # rule as active_effects above, but a deliberately separate dict: these
-    # are positive, self-applied (drunk, never inflicted by an attacker), and
-    # BuffKind is a type distinct from EffectKind precisely so nothing can
-    # accidentally wire a monster's inflicts_effect to a player buff. See
-    # engine/engine.py's _tick_active_buffs and Entity._vigor_bonus below.
+    # This fighter's own live self-buffs, keyed by BuffKind ("vigor"/
+    # "haste" today) - same ActiveEffect shape (potency/turns_remaining) and
+    # refresh-not-stack rule as active_effects above, but a deliberately
+    # separate dict: these are positive, self-applied (drunk, never
+    # inflicted by an attacker), and BuffKind is a type distinct from
+    # EffectKind precisely so nothing can accidentally wire a monster's
+    # inflicts_effect to a player buff. `turns_remaining` means different
+    # things per kind, though: for vigor it's real turns, ticked once per
+    # turn by engine/engine.py's _tick_active_buffs (Entity._vigor_bonus
+    # reads potency while it's active); for haste it's a count of free
+    # player actions remaining, consumed one at a time by
+    # Engine._consume_haste_action - never by _tick_active_buffs, since
+    # that only runs as part of process_enemy_phase, which a hasted action
+    # skips entirely.
     active_buffs: dict[str, ActiveEffect] = field(default_factory=dict)
 
 
@@ -153,8 +161,10 @@ class ItemEffect:
     cures_effects: bool = False
     # Which Fighter.active_buffs entry drinking this grants, and its
     # potency/duration - see potion_kind below, Entity._vigor_bonus,
-    # engine/engine.py's _tick_active_buffs. All three are set together or
-    # not at all (content/schema.py's grants_buff_potency_and_duration_together).
+    # engine/engine.py's _tick_active_buffs/_consume_haste_action.
+    # grants_buff+buff_duration are set together or not at all; buff_potency
+    # is set only for the buff kinds that need it (content/schema.py's
+    # grants_buff_and_duration_together/buff_potency_matches_buff_kind).
     grants_buff: "BuffKind | None" = None
     buff_potency: int | None = None
     buff_duration: int | None = None
@@ -162,7 +172,7 @@ class ItemEffect:
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
-POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking", "antidote", "vigor")
+POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking", "antidote", "vigor", "haste")
 
 
 def potion_kind(item: ItemEffect) -> str | None:
@@ -177,6 +187,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "antidote"
     if item.grants_buff == BUFF_VIGOR:
         return "vigor"
+    if item.grants_buff == BUFF_HASTE:
+        return "haste"
     return None
 
 
