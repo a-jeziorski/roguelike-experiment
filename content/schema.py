@@ -656,15 +656,18 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # beside the nearest hostile entity within range and lands one ordinary
 # attack, "riposte_stance" grants BUFF_RIPOSTE for a number of turns,
 # "root_ground" inflicts EFFECT_ROOTED on every hostile entity within
-# range (see Engine.use_skill).
+# range, "chain_lash" strikes the nearest hostile within range, then jumps
+# to the next-nearest hostile *to that target* (not back to the player)
+# and repeats, up to a cap (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
 SKILL_EFFECT_RIPOSTE_STANCE = "riposte_stance"
 SKILL_EFFECT_ROOT_GROUND = "root_ground"
+SKILL_EFFECT_CHAIN_LASH = "chain_lash"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
-    SKILL_EFFECT_ROOT_GROUND,
+    SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH,
 ]
 
 
@@ -716,7 +719,9 @@ class PerkDef(BaseModel):
     # for/exclusive to "aoe_damage", skill_blink_strike_range for/exclusive
     # to "blink_strike", skill_riposte_duration for/exclusive to
     # "riposte_stance", skill_root_radius/skill_root_duration for/exclusive
-    # to "root_ground" (skill_effect_matches_payload below).
+    # to "root_ground", skill_chain_damage/skill_chain_range/
+    # skill_chain_max_targets for/exclusive to "chain_lash"
+    # (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -738,6 +743,16 @@ class PerkDef(BaseModel):
     # Both required together, exclusively for this skill kind.
     skill_root_radius: int | None = Field(default=None, gt=0)
     skill_root_duration: int | None = Field(default=None, gt=0)
+    # A "chain_lash" skill's own payload: flat damage per hit (same
+    # not-effective_attack shape skill_aoe_damage already uses), the reach
+    # of each jump (reused for both the very first target - measured from
+    # the player - and every subsequent jump - measured from whichever
+    # entity was just hit, never back from the player again), and the most
+    # entities one use can ever strike. All three required together,
+    # exclusively for this skill kind.
+    skill_chain_damage: int | None = Field(default=None, gt=0)
+    skill_chain_range: int | None = Field(default=None, gt=0)
+    skill_chain_max_targets: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -817,6 +832,25 @@ class PerkDef(BaseModel):
         elif self.skill_root_radius is not None or self.skill_root_duration is not None:
             raise ValueError(
                 "skill_root_radius/skill_root_duration are only meaningful when skill_effect is 'root_ground'"
+            )
+        if self.skill_effect == SKILL_EFFECT_CHAIN_LASH:
+            if (
+                self.skill_chain_damage is None
+                or self.skill_chain_range is None
+                or self.skill_chain_max_targets is None
+            ):
+                raise ValueError(
+                    "skill_effect 'chain_lash' requires skill_chain_damage, skill_chain_range, "
+                    "and skill_chain_max_targets to be set"
+                )
+        elif (
+            self.skill_chain_damage is not None
+            or self.skill_chain_range is not None
+            or self.skill_chain_max_targets is not None
+        ):
+            raise ValueError(
+                "skill_chain_damage/skill_chain_range/skill_chain_max_targets are only meaningful "
+                "when skill_effect is 'chain_lash'"
             )
         return self
 

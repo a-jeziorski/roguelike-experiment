@@ -131,3 +131,19 @@ root_ground:
   skill_root_duration: 4
   skill_cooldown_kind: turns
   skill_cooldown_amount: 8
+
+chain_lash:
+  name: Chain Lash
+  description: >
+    A weighted lash that doesn't stop at the first thing it wraps around.
+    Strikes the nearest enemy within 4 tiles for 3 damage, then springs
+    from there to the next-nearest target within reach, and once more
+    after that - up to 3 hits total, never striking the same target
+    twice. A short recovery between uses.
+  xp_cost: 55
+  skill_effect: chain_lash
+  skill_chain_damage: 3
+  skill_chain_range: 4
+  skill_chain_max_targets: 3
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 7

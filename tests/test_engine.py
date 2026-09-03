@@ -8019,6 +8019,127 @@ def test_root_ground_cooldown_ticks_down_each_turn_and_expires():
     assert "root_ground" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_chain_lash_strikes_the_nearest_target():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    monster = make_monster(6, 4, hp=20, defense=0, ai=None)  # distance 2, range is 4
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "chain_lash")
+
+    assert monster.fighter.hp == 20 - 3  # skill_chain_damage=3
+    assert player.skill_cooldowns["chain_lash"] == 7
+    assert message == "You use Chain Lash!"
+
+
+def test_use_skill_chain_lash_jumps_from_the_previous_target_not_the_player():
+    """monster_b sits 8 tiles from the player - well beyond skill_chain_range
+    (4) measured from the player - but only 4 tiles from monster_a, which
+    the lash strikes first. The jump has to be measured from monster_a's
+    own position, not the player's, for monster_b to ever be reachable."""
+    catalog = load_catalog()
+    game_map = make_open_map(15, 15)
+    player = make_player(0, 4, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    monster_a = make_monster(4, 4, hp=20, defense=0, ai=None)  # distance 4 from player
+    monster_b = make_monster(8, 4, hp=20, defense=0, ai=None)  # distance 8 from player, 4 from monster_a
+    game_map.entities.extend([player, monster_a, monster_b])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "chain_lash")
+
+    assert monster_a.fighter.hp == 20 - 3
+    assert monster_b.fighter.hp == 20 - 3  # only reachable via the chain, not directly
+
+
+def test_use_skill_chain_lash_never_strikes_the_same_target_twice():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(0, 0, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    monster_a = make_monster(2, 0, hp=20, defense=0, ai=None)  # distance 2 from player
+    monster_b = make_monster(4, 0, hp=20, defense=0, ai=None)  # distance 4 from player, 2 from monster_a
+    game_map.entities.extend([player, monster_a, monster_b])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    # monster_a is hit first (nearest to the player), then the chain jumps
+    # to monster_b (nearest to monster_a). With max_targets=3 there'd be a
+    # third jump available - without the hit-exclusion, the nearest
+    # unstruck-looking candidate to monster_b would be monster_a again.
+    engine_.use_skill(player, "chain_lash")
+
+    assert monster_a.fighter.hp == 20 - 3  # exactly one hit, not two
+    assert monster_b.fighter.hp == 20 - 3
+
+
+def test_use_skill_chain_lash_respects_max_targets():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(0, 0, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    monsters = [make_monster(2 + i * 2, 0, hp=20, defense=0, ai=None) for i in range(5)]  # a line, 2 apart
+    game_map.entities.extend([player, *monsters])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "chain_lash")
+
+    hit_count = sum(1 for m in monsters if m.fighter.hp < 20)
+    assert hit_count == 3  # skill_chain_max_targets=3, even though all 5 were chainable
+
+
+def test_use_skill_chain_lash_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    villager = make_villager(6, 4)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "chain_lash")
+
+    assert villager.fighter.hp == villager.fighter.max_hp
+    assert message == "There's nothing within range for the lash to catch."
+
+
+def test_use_skill_chain_lash_can_kill_a_target():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("chain_lash")
+    monster = make_monster(6, 4, hp=1, defense=0, ai=None)
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "chain_lash")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_chain_lash_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("chain_lash")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "chain_lash")
+    assert player.skill_cooldowns["chain_lash"] == 7
+
+    for _ in range(6):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["chain_lash"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "chain_lash" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

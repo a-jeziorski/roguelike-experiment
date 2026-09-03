@@ -3646,6 +3646,92 @@ completely untouched - and a separate live-combat check confirms a
 rooted monster still lands its attack the instant it's already adjacent,
 proving the mechanic blocks movement, not action.
 
+## 0bc. Chain Lash - a multi-hit skill whose jumps measure from the previous target, not the player (`chain_lash` perk)
+
+The fourth active perk, the sixth `SkillEffectKind`. Unlike every prior
+multi-target skill in this project (aoe_damage's fixed adjacent-1 blast,
+root_ground's single radius around the player), Chain Lash's whole
+identity is *sequential* - it strikes the nearest hostile within
+`skill_chain_range` of the player, then jumps to the nearest still-unhit
+hostile within `skill_chain_range` of **wherever the previous hit
+landed**, repeating up to `skill_chain_max_targets` times. That's the one
+genuinely new piece of logic this perk needed: every earlier "find
+qualifying entities within range" list comprehension in this project
+measured distance from a single fixed point (the player, or a
+teleport-target's own position computed once); this one has to
+*re-measure from a moving origin* each iteration.
+
+**Implementation is a small local helper plus a `while` loop, not a new
+combat primitive** - `_chain_candidates(ox, oy, exclude_ids)` (a closure
+inside `use_skill`, capturing `entity`/`perk` from the enclosing scope)
+takes an origin and a set of already-struck ids, and the loop re-centers
+that origin on each new target's position after every hit:
+
+```python
+hit_ids: set[int] = set()
+origin_x, origin_y = entity.x, entity.y
+while len(hit_ids) < perk.skill_chain_max_targets:
+    candidates = _chain_candidates(origin_x, origin_y, hit_ids)
+    if not candidates:
+        break
+    target = min(candidates, key=lambda e: max(abs(e.x - origin_x), abs(e.y - origin_y)))
+    resolve_skill_damage(self, entity, target, perk.skill_chain_damage, "lashes")
+    hit_ids.add(id(target))
+    origin_x, origin_y = target.x, target.y
+```
+
+`skill_chain_range` deliberately does double duty - the same value bounds
+both the very first pick (measured from the player) and every later jump
+(measured from the previous target) - rather than a separate "jump range"
+field, since a single lash arcing consistent distances reads more
+naturally than one with a different reach for its first strike versus
+its later ones, and nothing in the brainstorm's own framing asked for
+that distinction.
+
+**`id(target)` in a plain `set`, not `Fighter`/`Entity` state - deliberately
+ephemeral, scoped to one `use_skill` call.** `hit_ids` exists purely to
+stop the chain from bouncing back onto a target it already hit (a real
+failure mode without it: two monsters standing near each other, each the
+other's own nearest neighbor, could otherwise ping-pong for the entire
+`skill_chain_max_targets` budget) - verified directly with a test
+deliberately shaped so that *without* the exclusion, the third jump would
+land back on the first target; with it, the chain instead finds nothing
+further and stops two hits early. `is_alive` (already part of the
+qualifying-entity filter every skill in this project uses) independently
+excludes anything the chain has already killed, so `hit_ids` and
+`is_alive` cover two different reasons a target should never be re-picked
+- one still alive but already struck, one no longer alive at all.
+
+**Flat `skill_chain_damage` via `resolve_skill_damage`, not
+`effective_attack` via `resolve_attack`** - the same choice aoe_damage
+made and blink_strike deliberately didn't: a skill that can hit up to
+three separate targets in one action needs its own, independently-tuned
+per-hit number (3, well under Ground Pound's single-target 4) rather than
+dealing full attack damage several times over, which the real combat
+pipeline (dodge/crit/weapon-affix/inflicts-effect) still runs in full for
+every individual hit regardless.
+
+**Refuses outright only at the very first target, matching Blink Strike's
+own shape** (`"There's nothing within range for the lash to catch."`,
+no cooldown-refund exception) - but once the chain has actually started,
+a later jump simply finding nothing more just ends the loop early with no
+separate refusal message, since the skill already "went off" the moment
+its first hit landed. This mirrors aoe_damage/root_ground's own "the
+skill fires regardless of how many targets it actually finds" convention
+for every hit *after* the first, while still giving the all-or-nothing
+opening whiff its own clear message the way blink_strike's own targeting
+failure does.
+
+Ships one real example, `chain_lash` (`data/perks.yaml`, `skill_effect:
+chain_lash`, `skill_chain_damage: 3`, `skill_chain_range: 4`,
+`skill_chain_max_targets: 3`, `skill_cooldown_kind: turns`,
+`skill_cooldown_amount: 7`, `xp_cost: 55`). Verified end-to-end via
+direct `Engine`/`Entity`/catalog construction against three real
+monsters spaced exactly `skill_chain_range` apart in a line: all three
+take damage in sequence even though the third is nowhere near the
+player's own `skill_chain_range`, confirming the jump genuinely measures
+from the previous hit and not the caster.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

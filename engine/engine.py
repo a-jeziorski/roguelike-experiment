@@ -36,6 +36,7 @@ from content.schema import (
     SKILL_COOLDOWN_TURNS,
     SKILL_EFFECT_AOE_DAMAGE,
     SKILL_EFFECT_BLINK_STRIKE,
+    SKILL_EFFECT_CHAIN_LASH,
     SKILL_EFFECT_HEAL,
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
@@ -1665,29 +1666,71 @@ class Engine:
             self.message_log.add(message)
             return message
 
-        # SKILL_EFFECT_ROOT_GROUND - aoe_damage's exact shape, minus the
-        # damage: strikes every hostile entity within skill_root_radius
-        # (not just adjacent-1 the way aoe_damage's own untargeted radius
-        # is - root_ground's whole point is reaching a wider area) and
-        # inflicts EFFECT_ROOTED on each one directly (Fighter.
-        # active_effects, the same dict a monster's own inflicts_effect
-        # writes into - see MovementAction's own top-of-perform() check
-        # for what rooted actually does). No refusal message for zero
-        # targets, same convention aoe_damage already established - the
-        # skill still "goes off," it just may hit nothing.
+        if perk.skill_effect == SKILL_EFFECT_ROOT_GROUND:
+            # aoe_damage's exact shape, minus the damage: strikes every
+            # hostile entity within skill_root_radius (not just adjacent-1
+            # the way aoe_damage's own untargeted radius is - root_ground's
+            # whole point is reaching a wider area) and inflicts
+            # EFFECT_ROOTED on each one directly (Fighter.active_effects,
+            # the same dict a monster's own inflicts_effect writes into -
+            # see MovementAction's own top-of-perform() check for what
+            # rooted actually does). No refusal message for zero targets,
+            # same convention aoe_damage already established - the skill
+            # still "goes off," it just may hit nothing.
+            message = f"You use {perk.name}!"
+            self.message_log.add(message)
+            targets = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_root_radius
+            ]
+            for target in targets:
+                target.fighter.active_effects[EFFECT_ROOTED] = ActiveEffect(
+                    potency=0, turns_remaining=perk.skill_root_duration
+                )
+                self.message_log.add(f"{target.name} is rooted in place!", category="combat")
+            return message
+
+        # SKILL_EFFECT_CHAIN_LASH - strikes the nearest hostile within
+        # skill_chain_range of the player, then repeatedly jumps to the
+        # nearest still-unstruck hostile within skill_chain_range of
+        # wherever the *previous* hit landed (never back from the player),
+        # up to skill_chain_max_targets total hits. Flat skill_chain_damage
+        # per hit via resolve_skill_damage - same "not effective_attack, a
+        # dedicated payload number" shape aoe_damage already established,
+        # since a chained multi-hit needs its own, deliberately lower per-
+        # hit number rather than dealing full attack damage several times
+        # over. Refuses outright, no cooldown-refund exception, if nothing
+        # is in range of the player at all (blink_strike's own "nothing to
+        # act on" shape) - but once the chain starts, it simply stops
+        # early if a later jump finds nothing more in range, no separate
+        # refusal message for that (the skill already "went off").
+        def _chain_candidates(ox: int, oy: int, exclude_ids: set[int]) -> list[Entity]:
+            return [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES and id(e) not in exclude_ids
+                and max(abs(e.x - ox), abs(e.y - oy)) <= perk.skill_chain_range
+            ]
+
+        if not _chain_candidates(entity.x, entity.y, set()):
+            message = "There's nothing within range for the lash to catch."
+            self.message_log.add(message)
+            return message
+
         message = f"You use {perk.name}!"
         self.message_log.add(message)
-        targets = [
-            e for e in list(self.game_map.entities)
-            if e is not entity and e.fighter is not None and e.is_alive
-            and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_root_radius
-        ]
-        for target in targets:
-            target.fighter.active_effects[EFFECT_ROOTED] = ActiveEffect(
-                potency=0, turns_remaining=perk.skill_root_duration
-            )
-            self.message_log.add(f"{target.name} is rooted in place!", category="combat")
+        hit_ids: set[int] = set()
+        origin_x, origin_y = entity.x, entity.y
+        while len(hit_ids) < perk.skill_chain_max_targets:
+            candidates = _chain_candidates(origin_x, origin_y, hit_ids)
+            if not candidates:
+                break
+            target = min(candidates, key=lambda e: max(abs(e.x - origin_x), abs(e.y - origin_y)))
+            resolve_skill_damage(self, entity, target, perk.skill_chain_damage, "lashes")
+            hit_ids.add(id(target))
+            origin_x, origin_y = target.x, target.y
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

@@ -1751,6 +1751,40 @@ def test_perk_def_rejects_heal_skill_with_root_fields_set():
         ))
 
 
+def test_perk_def_accepts_a_chain_lash_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="chain_lash",
+        skill_chain_damage=3, skill_chain_range=4, skill_chain_max_targets=3,
+        skill_cooldown_kind="turns", skill_cooldown_amount=7,
+    ))
+    assert perk.skill_effect == "chain_lash"
+    assert perk.skill_chain_damage == 3
+    assert perk.skill_chain_range == 4
+    assert perk.skill_chain_max_targets == 3
+
+
+def test_perk_def_rejects_chain_lash_skill_missing_a_field():
+    for kwargs in [
+        dict(skill_chain_range=4, skill_chain_max_targets=3),
+        dict(skill_chain_damage=3, skill_chain_max_targets=3),
+        dict(skill_chain_damage=3, skill_chain_range=4),
+    ]:
+        with pytest.raises(ValidationError, match="requires skill_chain_damage"):
+            PerkDef(**_perk_kwargs(
+                max_hp_bonus=None, skill_effect="chain_lash",
+                skill_cooldown_kind="turns", skill_cooldown_amount=7, **kwargs,
+            ))
+
+
+def test_perk_def_rejects_heal_skill_with_chain_fields_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'chain_lash'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+            skill_chain_damage=3, skill_chain_range=4, skill_chain_max_targets=3,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 
