@@ -8516,6 +8516,132 @@ def test_vengeful_strike_cooldown_ticks_down_each_turn_and_expires():
     assert "vengeful_strike" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_war_horn_frightens_hostile_entities_within_radius():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("war_horn")
+    monster = make_monster(7, 4, hp=10, defense=0, ai=None)  # distance 3, radius is 4
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "war_horn")
+
+    assert monster.fighter.active_effects["frightened"] == ActiveEffect(potency=0, turns_remaining=4)
+    assert player.skill_cooldowns["war_horn"] == 10
+    assert message == "You use War Horn!"
+    assert "Rat is frightened!" in engine_.message_log.messages
+
+
+def test_use_skill_war_horn_ignores_targets_beyond_radius():
+    catalog = load_catalog()
+    game_map = make_open_map(11, 11)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("war_horn")
+    monster = make_monster(9, 4, hp=10, defense=0, ai=None)  # distance 5, radius is 4
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "war_horn")
+
+    assert "frightened" not in monster.fighter.active_effects
+
+
+def test_use_skill_war_horn_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("war_horn")
+    villager = make_villager(6, 4)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "war_horn")
+
+    assert "frightened" not in villager.fighter.active_effects
+
+
+def test_frightened_monster_flees_instead_of_attacking_when_adjacent():
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(5, 4, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["frightened"] = ActiveEffect(potency=0, turns_remaining=4)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # never attacked, even from point-blank range
+    assert (monster.x, monster.y) == (6, 4)  # fled further away instead
+
+
+def test_frightened_overrides_every_ai_type_not_just_hostile_basic():
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(5, 4, hp=10, attack=4, defense=0, ai="pack_hunter")
+    monster.fighter.active_effects["frightened"] = ActiveEffect(potency=0, turns_remaining=4)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30
+    assert (monster.x, monster.y) == (6, 4)
+
+
+def test_frightened_monster_holds_position_when_fleeing_is_blocked():
+    game_map = make_open_map(9, 9)
+    game_map.walkable[6, 4] = False  # the tile directly away from the player
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(5, 4, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["frightened"] = ActiveEffect(potency=0, turns_remaining=4)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # still never attacks, even stuck adjacent
+    assert (monster.x, monster.y) == (5, 4)  # couldn't flee, held position instead
+
+
+def test_frightened_effect_ticks_down_and_expiry_restores_normal_behavior():
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(5, 4, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["frightened"] = ActiveEffect(potency=0, turns_remaining=1)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert "frightened" not in monster.fighter.active_effects
+    assert (monster.x, monster.y) == (6, 4)  # still fled this turn - frightened going into it
+
+    engine.process_turn(WaitAction())
+    # expired for good now - chases back toward the player instead of
+    # continuing to flee (not yet adjacent again, so a step closer, not
+    # an attack - the point is the *direction* flipped from away to toward).
+    assert (monster.x, monster.y) == (5, 4)
+
+
+def test_war_horn_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("war_horn")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "war_horn")
+    assert player.skill_cooldowns["war_horn"] == 10
+
+    for _ in range(9):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["war_horn"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "war_horn" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

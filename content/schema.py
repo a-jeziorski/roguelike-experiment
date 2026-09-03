@@ -174,17 +174,31 @@ EFFECT_EXPOSED = "exposed"
 # swinging - a deliberate "focus this target" tool, not a personal
 # affliction. Marked for Death's own active skill mechanic.
 EFFECT_MARKED = "marked"
+# Overrides the afflicted entity's entire AI dispatch for as long as it's
+# active: instead of whatever its own AIType would normally do (chase,
+# flee-at-low-hp, wander, ambush...), it flees directly away from the
+# player every turn, the same _flee helper AI_SKITTISH already uses (see
+# engine/engine.py's _perform_ai, which checks for this before any
+# per-AIType branch). Genuinely different from rooted (§0bb): rooted
+# blocks movement but not action (a rooted entity can still attack if
+# already adjacent); frightened blocks nothing about *ability* to act,
+# it just overrides *what* the entity chooses to do, and a fleeing
+# entity's own _flee never calls resolve_attack, so it never attacks
+# either, even from point-blank range. No intensity concept (fleeing or
+# not), same as stun/rooted. War Horn's own active skill mechanic.
+EFFECT_FRIGHTENED = "frightened"
 EffectKind = Literal[
     EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED, EFFECT_EXPOSED, EFFECT_MARKED,
+    EFFECT_FRIGHTENED,
 ]
 # Effects with a meaningful intensity, not just a duration - poison's
 # potency is damage/turn, weaken's is a flat attack reduction, exposed's
 # is a flat defense reduction, marked's is the flat bonus damage added to
-# every hit it takes. Stun and rooted both have no intensity concept (an
-# entity either can act or can't; either can move or can't), so
-# inflicts_potency is required for poison/weaken/exposed/marked and
-# rejected for stun/rooted - see
-# EntityDef.inflicts_potency_matches_effect_kind below.
+# every hit it takes. Stun, rooted, and frightened all have no intensity
+# concept (an entity either can act or can't; either can move or can't;
+# either flees or doesn't), so inflicts_potency is required for
+# poison/weaken/exposed/marked and rejected for stun/rooted/frightened -
+# see EntityDef.inflicts_potency_matches_effect_kind below.
 _EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN, EFFECT_EXPOSED, EFFECT_MARKED)
 
 # A player-facing timed self-buff - deliberately a separate Literal from
@@ -702,7 +716,9 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # grants BUFF_PHASING for a number of turns, "vengeful_strike" strikes the
 # nearest hostile within range for a flat base amount plus bonus damage
 # scaled by the caster's own currently-missing HP - the only skill in
-# this project whose damage isn't a fixed number (see Engine.use_skill).
+# this project whose damage isn't a fixed number, "war_horn" inflicts
+# EFFECT_FRIGHTENED on every hostile entity within range, dealing no
+# direct damage of its own (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
@@ -713,10 +729,11 @@ SKILL_EFFECT_GUARD_BREAK = "guard_break"
 SKILL_EFFECT_MARK_FOR_DEATH = "mark_for_death"
 SKILL_EFFECT_PHASE_THROUGH = "phase_through"
 SKILL_EFFECT_VENGEFUL_STRIKE = "vengeful_strike"
+SKILL_EFFECT_WAR_HORN = "war_horn"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK, SKILL_EFFECT_MARK_FOR_DEATH,
-    SKILL_EFFECT_PHASE_THROUGH, SKILL_EFFECT_VENGEFUL_STRIKE,
+    SKILL_EFFECT_PHASE_THROUGH, SKILL_EFFECT_VENGEFUL_STRIKE, SKILL_EFFECT_WAR_HORN,
 ]
 
 
@@ -776,8 +793,9 @@ class PerkDef(BaseModel):
     # skill_mark_duration for/exclusive to "mark_for_death",
     # skill_phase_duration for/exclusive to "phase_through",
     # skill_vengeful_damage/skill_vengeful_hp_per_missing/
-    # skill_vengeful_range for/exclusive to "vengeful_strike"
-    # (skill_effect_matches_payload below).
+    # skill_vengeful_range for/exclusive to "vengeful_strike",
+    # skill_warhorn_radius/skill_warhorn_duration for/exclusive to
+    # "war_horn" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -841,6 +859,12 @@ class PerkDef(BaseModel):
     skill_vengeful_damage: int | None = Field(default=None, gt=0)
     skill_vengeful_hp_per_missing: int | None = Field(default=None, gt=0)
     skill_vengeful_range: int | None = Field(default=None, gt=0)
+    # A "war_horn" skill's own radius (how far from the player it reaches,
+    # same Chebyshev-distance shape as skill_root_radius) and how many
+    # turns EFFECT_FRIGHTENED lasts on whatever it hits. Both required
+    # together, exclusively for this skill kind.
+    skill_warhorn_radius: int | None = Field(default=None, gt=0)
+    skill_warhorn_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -1001,6 +1025,17 @@ class PerkDef(BaseModel):
             raise ValueError(
                 "skill_vengeful_damage/skill_vengeful_hp_per_missing/skill_vengeful_range are only "
                 "meaningful when skill_effect is 'vengeful_strike'"
+            )
+        if self.skill_effect == SKILL_EFFECT_WAR_HORN:
+            if self.skill_warhorn_radius is None or self.skill_warhorn_duration is None:
+                raise ValueError(
+                    "skill_effect 'war_horn' requires skill_warhorn_radius and skill_warhorn_duration "
+                    "to be set"
+                )
+        elif self.skill_warhorn_radius is not None or self.skill_warhorn_duration is not None:
+            raise ValueError(
+                "skill_warhorn_radius/skill_warhorn_duration are only meaningful when skill_effect "
+                "is 'war_horn'"
             )
         return self
 

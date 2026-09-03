@@ -3978,6 +3978,74 @@ damage skills don't carry). Verified end-to-end via direct
 different player HP levels: full HP deals exactly the 3-damage base with
 no bonus, and missing 24 HP correctly deals `3 + (24 // 5) = 7`.
 
+## 0bh. War Horn - a seventh `EffectKind` that overrides AI dispatch entirely, not a stat (`war_horn` perk)
+
+The ninth active perk, the eleventh `SkillEffectKind`, and the seventh
+`EffectKind` - `EFFECT_FRIGHTENED = "frightened"`. Where Root the Ground
+(§0bb) blocks *movement* but leaves an entity free to attack if already
+adjacent, and every other affliction in this project shifts some input
+into an existing formula (weaken/exposed feed `effective_attack`/
+`effective_defense`; marked feeds `_apply_damage` directly), frightened
+overrides the entity's entire turn: it doesn't attack, doesn't chase,
+doesn't wander, doesn't do whatever its own `AIType` would otherwise
+dictate - it flees, unconditionally, every turn, from anywhere.
+
+**The choke point sits above every `AIType` branch, at the very top of
+`_perform_ai`, checked before Vial of Shadows' own distance-based gate
+(§0at):**
+
+```python
+if entity.fighter is not None and EFFECT_FRIGHTENED in entity.fighter.active_effects:
+    self._flee(entity, dx, dy)
+    return
+```
+
+Reuses `_flee` verbatim - the exact helper `AI_SKITTISH` already calls
+below its own hp threshold, not a new movement primitive. Checked
+*before* the shadowed gate deliberately: fear overrides "can't currently
+detect the source," not the other way around - a frightened entity keeps
+running even from a threat it can no longer see, which reads more
+correctly than a frightened-but-shadowed entity just freezing in place.
+
+**A frightened entity never attacks, even from point-blank range -
+confirmed as a real, deliberate behavior difference from rooted, not an
+oversight.** Rooted's own choke point lives in `MovementAction`, so a
+rooted entity already adjacent still routes straight to
+`_chase_and_attack`'s `distance <= 1` branch and fights normally
+(§0bb). Frightened's choke point sits above the AI dispatch entirely,
+so an adjacent frightened entity never reaches that branch at all -
+`_flee` has no attack path in it whatsoever. Verified with two separate
+tests: one confirming a frightened entity flees instead of attacking
+while adjacent, another confirming that when its own flee direction is
+physically blocked by a wall, it just holds position (silently, via
+`_flee`'s existing "blocked move is a no-op" behavior, §0z-era) rather
+than falling back to attacking as a consolation.
+
+**Generic across every `AIType`, verified rather than assumed** - a
+second monster given `ai="pack_hunter"` (a materially different AI
+branch from `hostile_basic`) behaves identically once frightened,
+confirming the override genuinely sits above the per-type dispatch and
+isn't accidentally specific to whichever AI type got tested first.
+
+**`Engine.use_skill`'s own branch is root_ground's exact untargeted-AoE
+shape (§0bb) with no damage** - every hostile within `skill_warhorn_radius`
+gets `EFFECT_FRIGHTENED` for `skill_warhorn_duration` turns, no refusal
+message for zero targets (the skill still "goes off"), same convention
+aoe_damage/root_ground/war_horn's own sibling skills already established.
+`_EFFECT_INFLICT_MESSAGES` (`engine/combat.py`) gained a frightened entry
+too, same "general-purpose EffectKind, latent KeyError otherwise"
+reasoning as every prior skill-authored effect this round (rooted,
+exposed, marked).
+
+Ships one real example, `war_horn` (`data/perks.yaml`, `skill_effect:
+war_horn`, `skill_warhorn_radius: 4`, `skill_warhorn_duration: 4`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 10`, `xp_cost: 60`).
+Verified end-to-end via direct `Engine`/`Entity`/catalog construction
+against two real goblins (one adjacent, one at the edge of range): both
+get frightened in one cast, and the adjacent one flees turn after turn
+across three full turns of live AI resolution without the player ever
+taking a single point of damage.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

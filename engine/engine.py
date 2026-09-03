@@ -30,6 +30,7 @@ from content.schema import (
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     EFFECT_EXPOSED,
+    EFFECT_FRIGHTENED,
     EFFECT_MARKED,
     EFFECT_POISON,
     EFFECT_ROOTED,
@@ -47,6 +48,7 @@ from content.schema import (
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
     SKILL_EFFECT_VENGEFUL_STRIKE,
+    SKILL_EFFECT_WAR_HORN,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
@@ -744,6 +746,19 @@ class Engine:
         dx = self.player.x - entity.x
         dy = self.player.y - entity.y
         distance = max(abs(dx), abs(dy))
+
+        # War Horn's entire mechanic: overrides every AI branch below
+        # outright, the same way the stun check above does, rather than
+        # threading a check into each one - a frightened entity's only
+        # behavior is fleeing (_flee, the exact helper AI_SKITTISH already
+        # uses below its own hp threshold), regardless of what its own
+        # AIType would otherwise do. Checked before the shadowed gate
+        # below on purpose: fear overrides "can't currently detect you,"
+        # not the other way around - a frightened entity flees even from
+        # a threat it can't see the source of.
+        if entity.fighter is not None and EFFECT_FRIGHTENED in entity.fighter.active_effects:
+            self._flee(entity, dx, dy)
+            return
 
         # A single choke point covering every AI branch below, rather than
         # threading a check into each one individually - Vial of Shadows'
@@ -1820,33 +1835,57 @@ class Engine:
             self.message_log.add(message)
             return message
 
-        # SKILL_EFFECT_VENGEFUL_STRIKE - blink_strike/guard_break's own
-        # single-nearest-target-within-range-or-refuse shape, but the only
-        # skill in this project whose damage isn't a fixed number: a flat
-        # skill_vengeful_damage base, plus 1 bonus point for every
-        # skill_vengeful_hp_per_missing HP the caster is currently missing
-        # (integer floor division - deliberately not a percentage-of-
-        # max_hp scale, keeping this whole-number like every other damage
-        # skill in the project rather than introducing float rounding).
-        # Computed once at cast time from current hp, not re-evaluated
-        # later - taking more damage after casting doesn't retroactively
-        # buff a strike that already landed.
-        candidates = [
+        if perk.skill_effect == SKILL_EFFECT_VENGEFUL_STRIKE:
+            # blink_strike/guard_break's own single-nearest-target-within-
+            # range-or-refuse shape, but the only skill in this project
+            # whose damage isn't a fixed number: a flat skill_vengeful_damage
+            # base, plus 1 bonus point for every skill_vengeful_hp_per_missing
+            # HP the caster is currently missing (integer floor division -
+            # deliberately not a percentage-of-max_hp scale, keeping this
+            # whole-number like every other damage skill in the project
+            # rather than introducing float rounding). Computed once at
+            # cast time from current hp, not re-evaluated later - taking
+            # more damage after casting doesn't retroactively buff a
+            # strike that already landed.
+            candidates = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_vengeful_range
+            ]
+            if not candidates:
+                message = "There's nothing within range to strike."
+                self.message_log.add(message)
+                return message
+            target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+            missing_hp = max(0, entity.fighter.max_hp - entity.fighter.hp)
+            damage = perk.skill_vengeful_damage + missing_hp // perk.skill_vengeful_hp_per_missing
+            message = f"You use {perk.name} on {target.name}!"
+            self.message_log.add(message)
+            resolve_skill_damage(self, entity, target, damage, "strikes")
+            return message
+
+        # SKILL_EFFECT_WAR_HORN - root_ground's exact untargeted-AoE shape
+        # (§0bb), minus the damage: strikes every hostile entity within
+        # skill_warhorn_radius and inflicts EFFECT_FRIGHTENED on each one
+        # directly (Fighter.active_effects), rather than a status effect
+        # that modifies a stat. The actual behavior-override lives
+        # entirely in _perform_ai's own choke point, checked before every
+        # per-AIType branch. No refusal message for zero targets, same
+        # convention aoe_damage/root_ground already established.
+        message = f"You use {perk.name}!"
+        self.message_log.add(message)
+        targets = [
             e for e in list(self.game_map.entities)
             if e is not entity and e.fighter is not None and e.is_alive
             and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_vengeful_range
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_warhorn_radius
         ]
-        if not candidates:
-            message = "There's nothing within range to strike."
-            self.message_log.add(message)
-            return message
-        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
-        missing_hp = max(0, entity.fighter.max_hp - entity.fighter.hp)
-        damage = perk.skill_vengeful_damage + missing_hp // perk.skill_vengeful_hp_per_missing
-        message = f"You use {perk.name} on {target.name}!"
-        self.message_log.add(message)
-        resolve_skill_damage(self, entity, target, damage, "strikes")
+        for target in targets:
+            target.fighter.active_effects[EFFECT_FRIGHTENED] = ActiveEffect(
+                potency=0, turns_remaining=perk.skill_warhorn_duration
+            )
+            self.message_log.add(f"{target.name} is frightened!", category="combat")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

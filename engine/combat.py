@@ -10,6 +10,7 @@ from content.schema import (
     BUFF_IRONROOT,
     BUFF_RIPOSTE,
     EFFECT_EXPOSED,
+    EFFECT_FRIGHTENED,
     EFFECT_MARKED,
     EFFECT_POISON,
     EFFECT_ROOTED,
@@ -27,19 +28,20 @@ if TYPE_CHECKING:
 # _tick_active_effects' own per-turn message, e.g. poison's "writhes from
 # poison, taking N damage") - one per EffectKind, since each reads
 # differently as a fresh affliction. Root the Ground/Guard Break/Marked
-# for Death's own skills (see Engine.use_skill) write EFFECT_ROOTED/
-# EFFECT_EXPOSED/EFFECT_MARKED directly rather than going through
-# _inflict_effect below, but these entries still matter: EffectKind is a
-# general-purpose enum, not tied to those three skills, so any future
-# EntityDef.inflicts_effect/ItemDef.affix_effect using one of these kinds
-# needs a message here too, the same way poison/stun/weaken already have
-# one.
+# for Death/War Horn's own skills (see Engine.use_skill) write
+# EFFECT_ROOTED/EFFECT_EXPOSED/EFFECT_MARKED/EFFECT_FRIGHTENED directly
+# rather than going through _inflict_effect below, but these entries
+# still matter: EffectKind is a general-purpose enum, not tied to those
+# four skills, so any future EntityDef.inflicts_effect/ItemDef.affix_effect
+# using one of these kinds needs a message here too, the same way
+# poison/stun/weaken already have one.
 _EFFECT_INFLICT_MESSAGES = {
     EFFECT_POISON: "{name} is poisoned!",
     EFFECT_STUN: "{name} is stunned!",
     EFFECT_WEAKEN: "{name} is weakened!",
     EFFECT_ROOTED: "{name} is rooted in place!",
     EFFECT_EXPOSED: "{name}'s guard is broken!",
+    EFFECT_FRIGHTENED: "{name} is frightened!",
     EFFECT_MARKED: "{name} is marked for death!",
 }
 

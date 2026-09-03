@@ -207,3 +207,18 @@ vengeful_strike:
   skill_vengeful_range: 2
   skill_cooldown_kind: turns
   skill_cooldown_amount: 6
+
+war_horn:
+  name: War Horn
+  description: >
+    A blast that carries further than any voice - and means something
+    different to whoever's already decided you're prey. Every hostile
+    creature within 4 tiles breaks and runs for 4 turns, unable to chase,
+    flee toward you, or fight back, even from point-blank range. A long
+    recovery once the sound fades.
+  xp_cost: 60
+  skill_effect: war_horn
+  skill_warhorn_radius: 4
+  skill_warhorn_duration: 4
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 10
