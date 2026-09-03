@@ -3426,6 +3426,87 @@ Draught of Swiftness (§0as), Vial of Shadows (§0at), Bottled Second Sight
 Riposte Stance, Root the Ground, Chain Lash, Guard Break, Marked for
 Death, Phase Through, Vengeful Strike, War Horn, Bloodletter - are next.
 
+## 0az. Blink Strike - a third active-skill effect kind, and the first that targets (`blink_strike` perk)
+
+The first of ten active perks from the same brainstorm the potions round
+just finished, and the third `SkillEffectKind` alongside the existing
+`"heal"` (Second Wind) and `"aoe_damage"` (Ground Pound) - a new
+`SKILL_EFFECT_BLINK_STRIKE = "blink_strike"`, `PerkDef.
+skill_blink_strike_range: int`, and the same two-validator shape
+(`skill_fields_set_together`/`skill_effect_matches_payload`) every prior
+skill kind already established, extended rather than replaced.
+
+**The one genuinely new capability this round needed: picking a specific
+target.** Both existing skills are untargeted - heal always affects the
+caster, aoe_damage always hits whatever's already adjacent. Blink Strike
+is the first active skill in this project that has to *choose* an enemy
+to act on, and there's no player-facing targeting UI for active skills
+today (unlike `FireAction`'s own aim-mode cursor for ranged attacks).
+Rather than building that UI layer just for one perk, the skill picks its
+own target automatically - the nearest hostile within
+`skill_blink_strike_range` (Chebyshev distance, same metric every other
+range check in this project already uses), ties broken by
+`game_map.entities` order rather than randomly (deterministic, and an
+exact-distance tie is rare enough that either candidate is an equally
+reasonable pick regardless). This mirrors aoe_damage's own "automatic,
+not manually aimed" precedent rather than inventing a new interaction
+pattern - a future perk that genuinely needs the player to choose *which*
+of several valid targets would be the first one to justify building real
+skill-targeting UI, and this isn't that perk.
+
+**The mechanic itself is two reused primitives stitched together, not new
+combat math:** `Engine.use_skill`'s new branch finds the nearest qualifying
+target, then calls `nearby_walkable_tiles(game_map, target.x, target.y,
+count=1, radius=1)` - the exact same helper Smoke Bomb's own relocation
+already relies on (§0aw), just centered on the target instead of the
+player and shrunk to a single adjacent tile - to find a landing spot, then
+relocates the player there directly (`entity.x, entity.y = landing`,
+`MovementAction`'s own assignment shape) and calls `resolve_attack(self,
+attacker=entity, defender=target)` - the *ordinary* melee attack function,
+using `effective_attack` and the full dodge/crit/weapon-affix/
+inflicts-effect pipeline, not a flat skill-damage number like
+`resolve_skill_damage` (aoe_damage's own choice). This is a deliberate
+difference in flavor from Ground Pound: Blink Strike isn't extra damage,
+it's guaranteed melee range against something you couldn't otherwise
+reach yet - whatever you'd normally hit it for, you hit it for here too.
+
+**Whiffs still cost the cooldown, matching aoe_damage's own "wasted
+attempt" precedent exactly** - both failure cases (nothing in range;
+something in range but boxed in with no free adjacent tile, verified with
+a monster walled in on all eight sides) still consume
+`skill_cooldown_amount` and the turn, logging a distinct message
+(`"There's nothing within range to blink to."` /
+`"There's nowhere to land beside {name}."`) rather than refunding the
+attempt - triggering the skill is the commitment, not a preview.
+
+**Restructured `use_skill`'s own control flow slightly** while adding
+this: the previous version had only `if skill_effect == HEAL: ... return`
+followed by an *implicit* trailing block assumed to be aoe_damage (fine
+with two kinds, ambiguous with three) - now `aoe_damage` gets its own
+explicit `if` block too, with `blink_strike` as the trailing case. Purely
+a readability change; the full suite passed unchanged with this
+restructuring alone, before any blink_strike-specific code existed.
+
+**Deliberately not added to either trainer's `trainer_perks` list yet**
+(`millhaven_trainer`/`wayford_trainer` in `data/entities.yaml`, both
+currently identical master lists) - same scope boundary already
+established for every potion this round: the mechanic ships fully
+implemented and tested against the real catalog, but *placing* new
+content into the world (which NPC teaches it, at what price relative to
+the existing lineup) is being treated as a separate, later pass, not
+bundled into landing the mechanic itself.
+
+Ships one real example, `blink_strike` (`data/perks.yaml`, `skill_effect:
+blink_strike`, `skill_blink_strike_range: 5`, `skill_cooldown_kind: turns`,
+`skill_cooldown_amount: 6`, `xp_cost: 55`). Verified end-to-end via direct
+`Engine`/`Entity`/catalog construction: a goblin 4 tiles away is correctly
+targeted, the player relocates to land exactly adjacent to it, the attack
+lands using the player's real `effective_attack`, the skill hotbar
+displays "Blink Strike: 6t" afterward, and separate tests confirm nearest-
+target selection among multiple candidates, peaceful-NPC exclusion, an
+out-of-range refusal, a kill case (XP awarded, entity removed), and the
+boxed-in landing failure.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

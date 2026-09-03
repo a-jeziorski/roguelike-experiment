@@ -7710,6 +7710,125 @@ def test_second_wind_cooldown_expires_after_24_overworld_hours():
     assert "second_wind" not in player.skill_cooldowns
 
 
+def test_use_skill_blink_strike_relocates_beside_and_strikes_the_target():
+    catalog = load_catalog()
+    game_map = make_open_map(15, 15)
+    player = make_player(7, 7, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    monster = make_monster(11, 7, hp=20, defense=0, ai=None)  # distance 4, within range 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "blink_strike")
+
+    assert monster.fighter.hp == 20 - player.effective_attack
+    assert max(abs(player.x - monster.x), abs(player.y - monster.y)) == 1  # landed adjacent
+    assert player.skill_cooldowns["blink_strike"] == 6
+    assert "You use Blink Strike and blink beside Rat!" in message
+
+
+def test_use_skill_blink_strike_picks_the_nearest_of_multiple_targets():
+    catalog = load_catalog()
+    game_map = make_open_map(15, 15)
+    player = make_player(7, 7, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    near_monster = make_monster(9, 7, hp=20, defense=0, ai=None)  # distance 2
+    far_monster = make_monster(12, 7, hp=20, defense=0, ai=None)  # distance 5
+    game_map.entities.extend([player, near_monster, far_monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "blink_strike")
+
+    assert near_monster.fighter.hp < 20  # the nearer one was struck
+    assert far_monster.fighter.hp == 20  # the farther one was never touched
+
+
+def test_use_skill_blink_strike_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    villager = make_villager(6, 4)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "blink_strike")
+
+    assert (player.x, player.y) == (4, 4)  # never moved
+    assert villager.fighter.hp == villager.fighter.max_hp  # untouched
+    assert message == "There's nothing within range to blink to."
+
+
+def test_use_skill_blink_strike_refuses_a_target_beyond_range():
+    catalog = load_catalog()
+    game_map = make_open_map(15, 15)
+    player = make_player(7, 7, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    monster = make_monster(13, 7, hp=20, defense=0, ai=None)  # distance 6, range is 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "blink_strike")
+
+    assert (player.x, player.y) == (7, 7)  # never moved
+    assert monster.fighter.hp == 20  # untouched
+    assert message == "There's nothing within range to blink to."
+
+
+def test_use_skill_blink_strike_can_kill_the_target():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    monster = make_monster(6, 4, hp=1, defense=0, ai=None)
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "blink_strike")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_use_skill_blink_strike_refuses_when_the_target_has_no_free_adjacent_tile():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    for x, y in [(1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)]:
+        game_map.walkable[x, y] = False  # box in every tile surrounding (2, 2)
+    player = make_player(0, 0, defense=0)
+    player.learned_perk_ids.add("blink_strike")
+    monster = make_monster(2, 2, hp=20, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "blink_strike")
+
+    assert (player.x, player.y) == (0, 0)  # never moved
+    assert monster.fighter.hp == 20  # never struck
+    assert player.skill_cooldowns["blink_strike"] == 6  # still consumed on the whiff
+    assert message == "There's nowhere to land beside Rat."
+
+
+def test_blink_strike_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("blink_strike")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "blink_strike")
+    assert player.skill_cooldowns["blink_strike"] == 6
+
+    for _ in range(5):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["blink_strike"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "blink_strike" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

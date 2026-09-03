@@ -1650,6 +1650,32 @@ def test_perk_def_rejects_out_of_range_skill_heal_pct():
         ))
 
 
+def test_perk_def_accepts_a_blink_strike_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="blink_strike", skill_blink_strike_range=5,
+        skill_cooldown_kind="turns", skill_cooldown_amount=6,
+    ))
+    assert perk.skill_effect == "blink_strike"
+    assert perk.skill_blink_strike_range == 5
+    assert perk.skill_cooldown_kind == "turns"
+
+
+def test_perk_def_rejects_blink_strike_skill_without_range():
+    with pytest.raises(ValidationError, match="requires skill_blink_strike_range"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="blink_strike",
+            skill_cooldown_kind="turns", skill_cooldown_amount=6,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_blink_strike_range_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'blink_strike'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_blink_strike_range=5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 

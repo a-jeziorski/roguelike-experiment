@@ -629,10 +629,13 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 
 # What a triggered active skill actually does - "heal" restores a
 # percentage of max_hp, "aoe_damage" strikes every hostile entity adjacent
-# to the player for a flat amount (see Engine.use_skill).
+# to the player for a flat amount, "blink_strike" teleports the player
+# beside the nearest hostile entity within range and lands one ordinary
+# attack (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
-SkillEffectKind = Literal[SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE]
+SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
+SkillEffectKind = Literal[SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE]
 
 
 class PerkDef(BaseModel):
@@ -680,12 +683,18 @@ class PerkDef(BaseModel):
     # like any other real action, then goes on cooldown. All three must be
     # set together or not at all (skill_fields_set_together below);
     # skill_heal_pct is required for/exclusive to "heal", skill_aoe_damage
-    # for/exclusive to "aoe_damage" (skill_effect_matches_payload below).
+    # for/exclusive to "aoe_damage", skill_blink_strike_range for/exclusive
+    # to "blink_strike" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
     skill_heal_pct: float | None = Field(default=None, gt=0, le=1)
     skill_aoe_damage: int | None = Field(default=None, gt=0)
+    # How far Engine.use_skill searches for a "blink_strike" target - the
+    # player always lands *adjacent* to whatever it finds (see
+    # _adjacent_walkable_tile), regardless of this value; this only bounds
+    # how far away a target can be picked from in the first place.
+    skill_blink_strike_range: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -745,6 +754,12 @@ class PerkDef(BaseModel):
             raise ValueError("skill_effect 'aoe_damage' requires skill_aoe_damage to be set")
         if self.skill_effect != SKILL_EFFECT_AOE_DAMAGE and self.skill_aoe_damage is not None:
             raise ValueError("skill_aoe_damage is only meaningful when skill_effect is 'aoe_damage'")
+        if self.skill_effect == SKILL_EFFECT_BLINK_STRIKE and self.skill_blink_strike_range is None:
+            raise ValueError("skill_effect 'blink_strike' requires skill_blink_strike_range to be set")
+        if self.skill_effect != SKILL_EFFECT_BLINK_STRIKE and self.skill_blink_strike_range is not None:
+            raise ValueError(
+                "skill_blink_strike_range is only meaningful when skill_effect is 'blink_strike'"
+            )
         return self
 
 

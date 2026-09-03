@@ -33,6 +33,7 @@ from content.schema import (
     SKILL_COOLDOWN_HOURS,
     SKILL_COOLDOWN_TURNS,
     SKILL_EFFECT_AOE_DAMAGE,
+    SKILL_EFFECT_BLINK_STRIKE,
     SKILL_EFFECT_HEAL,
 )
 from engine.actions import Action, MovementAction
@@ -1580,26 +1581,65 @@ class Engine:
             self.message_log.add(message)
             return message
 
-        # SKILL_EFFECT_AOE_DAMAGE - strikes every hostile entity adjacent
-        # to entity (8-directional), reusing the full combat resolution
-        # pipeline per target (resolve_skill_damage -> _apply_damage), so
-        # dodge/crit/weapon-affix procs and on_entity_death all apply
-        # exactly as they would for an ordinary attack - not a special
-        # case to avoid, a nice emergent synergy with whatever's equipped.
-        message = f"You use {perk.name}!"
-        self.message_log.add(message)
-        # fighter is not None already excludes every item entity (no item
-        # ever has a Fighter) - an extra "ai is not None" check would be
-        # redundant for that and wrong besides, since a real monster's own
-        # ai is never actually None in shipped content.
-        targets = [
+        if perk.skill_effect == SKILL_EFFECT_AOE_DAMAGE:
+            # Strikes every hostile entity adjacent to entity (8-directional),
+            # reusing the full combat resolution pipeline per target
+            # (resolve_skill_damage -> _apply_damage), so dodge/crit/weapon-
+            # affix procs and on_entity_death all apply exactly as they
+            # would for an ordinary attack - not a special case to avoid, a
+            # nice emergent synergy with whatever's equipped.
+            message = f"You use {perk.name}!"
+            self.message_log.add(message)
+            # fighter is not None already excludes every item entity (no
+            # item ever has a Fighter) - an extra "ai is not None" check
+            # would be redundant for that and wrong besides, since a real
+            # monster's own ai is never actually None in shipped content.
+            targets = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= 1
+            ]
+            for target in targets:
+                resolve_skill_damage(self, entity, target, perk.skill_aoe_damage, "pounds")
+            return message
+
+        # SKILL_EFFECT_BLINK_STRIKE - teleports entity adjacent to the
+        # nearest qualifying hostile within skill_blink_strike_range, then
+        # lands one ordinary attack via resolve_attack (attacker.
+        # effective_attack, full dodge/crit/affix pipeline - the same
+        # "reuse the real combat resolution, don't invent a parallel one"
+        # reasoning aoe_damage above already established). Ties broken by
+        # game_map.entities order (stable, no randomness needed) - "nearest"
+        # rarely has an exact tie in practice, and when it does either
+        # candidate is an equally reasonable pick. The landing tile itself
+        # reuses nearby_walkable_tiles(radius=1, count=1) - the exact same
+        # helper Smoke Bomb's own relocation already relies on (§0aw), just
+        # centered on the target instead of the player and shrunk to a
+        # single adjacent tile. Whiffs (no target in range, or a target
+        # with no free adjacent tile to land on) still consume the
+        # cooldown - same "a wasted attempt still costs the cooldown"
+        # precedent aoe_damage already sets for zero targets.
+        candidates = [
             e for e in list(self.game_map.entities)
             if e is not entity and e.fighter is not None and e.is_alive
             and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= 1
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_blink_strike_range
         ]
-        for target in targets:
-            resolve_skill_damage(self, entity, target, perk.skill_aoe_damage, "pounds")
+        if not candidates:
+            message = "There's nothing within range to blink to."
+            self.message_log.add(message)
+            return message
+        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+        landing_tiles = nearby_walkable_tiles(self.game_map, target.x, target.y, count=1, radius=1)
+        if not landing_tiles:
+            message = f"There's nowhere to land beside {target.name}."
+            self.message_log.add(message)
+            return message
+        entity.x, entity.y = landing_tiles[0]
+        message = f"You use {perk.name} and blink beside {target.name}!"
+        self.message_log.add(message)
+        resolve_attack(self, attacker=entity, defender=target)
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:
