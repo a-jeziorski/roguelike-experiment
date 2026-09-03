@@ -1995,6 +1995,39 @@ def test_perk_def_rejects_heal_skill_with_warhorn_fields_set():
         ))
 
 
+def test_perk_def_accepts_a_bloodletter_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="bloodletter",
+        skill_bloodletter_range=2, skill_bloodletter_heal_divisor=2,
+        skill_cooldown_kind="turns", skill_cooldown_amount=6,
+    ))
+    assert perk.skill_effect == "bloodletter"
+    assert perk.skill_bloodletter_range == 2
+    assert perk.skill_bloodletter_heal_divisor == 2
+
+
+def test_perk_def_rejects_bloodletter_skill_without_range_or_divisor():
+    with pytest.raises(ValidationError, match="requires skill_bloodletter_range"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="bloodletter", skill_bloodletter_range=2,
+            skill_cooldown_kind="turns", skill_cooldown_amount=6,
+        ))
+    with pytest.raises(ValidationError, match="requires skill_bloodletter_range"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="bloodletter", skill_bloodletter_heal_divisor=2,
+            skill_cooldown_kind="turns", skill_cooldown_amount=6,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_bloodletter_fields_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'bloodletter'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+            skill_bloodletter_range=2, skill_bloodletter_heal_divisor=2,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 

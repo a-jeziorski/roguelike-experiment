@@ -8642,6 +8642,108 @@ def test_war_horn_cooldown_ticks_down_each_turn_and_expires():
     assert "war_horn" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_bloodletter_strikes_and_heals_the_caster():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, attack=6, defense=0)
+    player.fighter.hp = 20  # room to heal
+    player.learned_perk_ids.add("bloodletter")
+    monster = make_monster(4, 2, hp=20, defense=2, ai=None)  # distance 2, range is 2
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "bloodletter")
+
+    assert monster.fighter.hp == 20 - 4  # effective_attack(6) - defense(2) = 4
+    assert player.fighter.hp == 20 + 2  # half of 4 damage dealt, floor divided
+    assert player.skill_cooldowns["bloodletter"] == 6
+    assert message == "You use Bloodletter on Rat!"
+    assert "You drain 2 HP from the wound." in engine_.message_log.messages
+
+
+def test_use_skill_bloodletter_heal_is_capped_at_max_hp():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, attack=6, defense=0)
+    player.fighter.hp = 29  # only 1 hp of headroom
+    player.learned_perk_ids.add("bloodletter")
+    monster = make_monster(4, 2, hp=20, defense=2, ai=None)
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "bloodletter")
+
+    assert player.fighter.hp == 30  # never exceeds max_hp despite a 2-hp heal
+
+
+def test_use_skill_bloodletter_heals_nothing_on_a_fully_mitigated_hit():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=20, attack=3, defense=0)
+    player.learned_perk_ids.add("bloodletter")
+    monster = make_monster(4, 2, hp=20, defense=5, ai=None)  # defense exceeds attack - 0 damage
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "bloodletter")
+
+    assert monster.fighter.hp == 20  # 0 damage dealt
+    assert player.fighter.hp == 20  # nothing to drain, no heal
+    assert not any("drain" in m for m in engine_.message_log.messages)
+
+
+def test_use_skill_bloodletter_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("bloodletter")
+    villager = make_villager(4, 2)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "bloodletter")
+
+    assert villager.fighter.hp == villager.fighter.max_hp
+    assert message == "There's nothing within range to drain."
+
+
+def test_use_skill_bloodletter_can_kill_a_target_and_still_heal_off_the_overkill():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=20, attack=6, defense=0)
+    player.fighter.hp = 10  # room to heal
+    player.learned_perk_ids.add("bloodletter")
+    monster = make_monster(4, 2, hp=3, defense=0, ai=None)  # dies to a 6-damage hit
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "bloodletter")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+    assert player.fighter.hp == 10 + 3  # healed off the full 6 damage dealt, not capped at monster's hp
+
+
+def test_bloodletter_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("bloodletter")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "bloodletter")
+    assert player.skill_cooldowns["bloodletter"] == 6
+
+    for _ in range(5):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["bloodletter"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "bloodletter" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

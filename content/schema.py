@@ -718,7 +718,13 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # scaled by the caster's own currently-missing HP - the only skill in
 # this project whose damage isn't a fixed number, "war_horn" inflicts
 # EFFECT_FRIGHTENED on every hostile entity within range, dealing no
-# direct damage of its own (see Engine.use_skill).
+# direct damage of its own, "bloodletter" lands one ordinary attack
+# (like blink_strike, effective_attack through the full combat pipeline,
+# not a flat number) on the nearest hostile within range and heals the
+# caster for a fraction of whatever damage actually landed - the first
+# skill whose own payoff depends on the *outcome* of its attack roll
+# (dodge/crit/variance) rather than a value fixed at cast time (see
+# Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
@@ -730,10 +736,11 @@ SKILL_EFFECT_MARK_FOR_DEATH = "mark_for_death"
 SKILL_EFFECT_PHASE_THROUGH = "phase_through"
 SKILL_EFFECT_VENGEFUL_STRIKE = "vengeful_strike"
 SKILL_EFFECT_WAR_HORN = "war_horn"
+SKILL_EFFECT_BLOODLETTER = "bloodletter"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK, SKILL_EFFECT_MARK_FOR_DEATH,
-    SKILL_EFFECT_PHASE_THROUGH, SKILL_EFFECT_VENGEFUL_STRIKE, SKILL_EFFECT_WAR_HORN,
+    SKILL_EFFECT_PHASE_THROUGH, SKILL_EFFECT_VENGEFUL_STRIKE, SKILL_EFFECT_WAR_HORN, SKILL_EFFECT_BLOODLETTER,
 ]
 
 
@@ -795,7 +802,8 @@ class PerkDef(BaseModel):
     # skill_vengeful_damage/skill_vengeful_hp_per_missing/
     # skill_vengeful_range for/exclusive to "vengeful_strike",
     # skill_warhorn_radius/skill_warhorn_duration for/exclusive to
-    # "war_horn" (skill_effect_matches_payload below).
+    # "war_horn", skill_bloodletter_range/skill_bloodletter_heal_divisor
+    # for/exclusive to "bloodletter" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -865,6 +873,15 @@ class PerkDef(BaseModel):
     # together, exclusively for this skill kind.
     skill_warhorn_radius: int | None = Field(default=None, gt=0)
     skill_warhorn_duration: int | None = Field(default=None, gt=0)
+    # A "bloodletter" skill's own payload: how far it can reach to strike
+    # the nearest hostile (its attack itself uses effective_attack, not a
+    # flat number here - see skill_vengeful_range's own precedent for the
+    # "no damage field, the real combat pipeline supplies it" shape), and
+    # the divisor the actual damage dealt is floor-divided by to compute
+    # how much HP the caster drains back (e.g. 2 heals half of whatever
+    # landed). Both required together, exclusively for this skill kind.
+    skill_bloodletter_range: int | None = Field(default=None, gt=0)
+    skill_bloodletter_heal_divisor: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -1036,6 +1053,17 @@ class PerkDef(BaseModel):
             raise ValueError(
                 "skill_warhorn_radius/skill_warhorn_duration are only meaningful when skill_effect "
                 "is 'war_horn'"
+            )
+        if self.skill_effect == SKILL_EFFECT_BLOODLETTER:
+            if self.skill_bloodletter_range is None or self.skill_bloodletter_heal_divisor is None:
+                raise ValueError(
+                    "skill_effect 'bloodletter' requires skill_bloodletter_range and "
+                    "skill_bloodletter_heal_divisor to be set"
+                )
+        elif self.skill_bloodletter_range is not None or self.skill_bloodletter_heal_divisor is not None:
+            raise ValueError(
+                "skill_bloodletter_range/skill_bloodletter_heal_divisor are only meaningful when "
+                "skill_effect is 'bloodletter'"
             )
         return self
 

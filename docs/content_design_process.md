@@ -4046,6 +4046,83 @@ get frightened in one cast, and the adjacent one flees turn after turn
 across three full turns of live AI resolution without the player ever
 taking a single point of damage.
 
+## 0bi. Bloodletter - the first skill whose payoff depends on the outcome of its own attack roll, not a value fixed before it's thrown (`bloodletter` perk)
+
+The tenth and final active perk from the original brainstorm, and the
+twelfth `SkillEffectKind`. Structurally it's blink_strike's own "ordinary
+attack" shape (`resolve_attack`, `effective_attack`, the full dodge/
+crit/weapon-affix pipeline) targeted like guard_break (nearest hostile
+within range, refuse outright if none) - but its actual payoff, healing
+the caster, isn't computed from any perk field at all. It's read back
+from what the attack roll *actually did*:
+
+```python
+hp_before = target.fighter.hp
+resolve_attack(self, attacker=entity, defender=target)
+damage_dealt = max(0, hp_before - target.fighter.hp)
+healed = damage_dealt // perk.skill_bloodletter_heal_divisor
+```
+
+**Why an hp-delta read instead of a return value:** `resolve_attack`/
+`_apply_damage` have always been `-> None` - they mutate state and log
+messages, nothing in this project has ever needed the actual damage
+number back out of them before. Rather than changing that function's
+signature (and every other call site's assumptions about it) just for
+this one skill, Bloodletter reads the *effect* of the call instead - the
+defender's own hp before minus after - which is already exactly the
+right number for any outcome: a full hit, a partial one, a crit, a
+complete miss. No branch anywhere has to ask "did it dodge?" or "did it
+crit?" separately; the hp delta already encodes all of it.
+
+**This is the first skill in the project where variance (crit/dodge)
+actually changes the skill's *own* effect, not just the target's hp** -
+confirmed unexpectedly during live verification rather than by design
+intent alone: a live-verify run against the real catalog rolled a
+critical hit (`COMBAT_VARIANCE_ENABLED = True` outside the test suite),
+and the heal scaled with it automatically - 6 base damage crit-multiplied
+to 9, healing 4 (`9 // 2`) rather than the 3 a non-crit hit would have
+given. Nothing about the implementation anticipated that specific
+outcome; it fell out naturally from reading the real result instead of
+recomputing one.
+
+**A dodge or fully-mitigated hit needs no special case either** - if the
+defender's hp doesn't move, `damage_dealt` is `0`, `healed` is `0`, and
+the `if healed > 0:` guard around the heal message means nothing gets
+logged at all (no "you drain 0 HP" line cluttering the log for a miss).
+Verified directly with a target whose defense fully cancels the
+attacker's own attack value.
+
+**Overkill still counts in full, not clamped to the target's remaining
+hp** - `_apply_damage` never floors `defender.fighter.hp` at 0 (a hit for
+more than remaining hp just goes negative), so `hp_before - hp_after`
+correctly reports the *full* damage dealt even on a killing blow, and
+the entity object itself survives `on_entity_death` long enough to read
+that final value (only removed from `game_map.entities`, `Fighter` state
+untouched). Verified with a lethal 6-damage hit against a 3-hp target:
+the heal is computed off the full 6, not the 3 that "mattered" for the
+kill.
+
+Ships one real example, `bloodletter` (`data/perks.yaml`, `skill_effect:
+bloodletter`, `skill_bloodletter_range: 2`, `skill_bloodletter_heal_divisor: 2`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 6`, `xp_cost: 55`).
+Verified end-to-end via direct `Engine`/`Entity`/catalog construction
+covering a normal hit-and-heal, a heal correctly capped at `max_hp`, a
+fully-mitigated hit healing nothing, and a lethal overkill hit healing
+off the full damage dealt.
+
+**This completes the entire original brainstorm** - all ten potions
+(§0aq-§0ay, plus Water Walking from an earlier session) and all ten
+active perks (§0az-§0bi) are now shipped, tested against the real
+catalog, and documented. Twenty items, twenty design write-ups, each one
+scoped to introduce exactly one genuinely new mechanic rather than
+reskinning an existing one - poison/stun/weaken grew into rooted/exposed/
+marked/frightened; the buff system grew from a single potion-only
+namespace into a shared mechanism used by skills and items alike; combat
+resolution itself grew a new injection point for marked's damage bonus
+and a new outcome-reading pattern for bloodletter's lifesteal. Nothing
+further is queued from this brainstorm; the next content pass starts
+fresh.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four
