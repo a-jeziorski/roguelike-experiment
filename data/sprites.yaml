@@ -134,6 +134,7 @@ items:
   sure_footing_draught: {sheet: rltiles, name: misc_bottle, recolor: true}
   smoke_bomb:           {sheet: rltiles, name: misc_bottle, recolor: true}
   bezoar_of_clarity:    {sheet: rltiles, name: misc_bottle, recolor: true}
+  ironroot_draught:     {sheet: rltiles, name: misc_bottle, recolor: true}
   rusty_dagger:    {sheet: rltiles, name: dagger}
   iron_sword:      {sheet: rltiles, name: short_sword}
   broadsword:            {sheet: rltiles, name: broadsword}

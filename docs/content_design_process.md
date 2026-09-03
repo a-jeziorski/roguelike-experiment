@@ -3347,6 +3347,85 @@ Sure-Footing Draught (§0av), Smoke Bomb (§0aw), and Bezoar of Clarity
 here. One potion remains before the ten active perks begin: Ironroot
 Draught (stun/knockback immunity).
 
+## 0ay. Ironroot Draught - full stun immunity, and no knockback because none exists (`ironroot_draught`)
+
+The tenth and final potion of this round's original brainstorm. The
+fifth `BuffKind` (`BUFF_IRONROOT`), same no-potency shape as haste/
+shadowed/sure_footed - a stun either lands or it doesn't, nothing to
+scale.
+
+**Scoped down from the brainstorm's own framing before writing any
+code.** The original pitch was "stun/knockback immunity," but this
+engine has no knockback mechanic at all - nothing anywhere displaces an
+entity against its will (confirmed by grepping the whole codebase for
+"knockback" and finding only planning notes, no implementation). Building
+immunity to a mechanic that doesn't exist would be immunity to nothing,
+so this ships as stun immunity only, documented here as a deliberate
+scope cut rather than a silent omission - the same "don't build
+unrequested mechanics" restraint Sure-Footing Draught's own encounter-
+avoidance scope note already established (§0av). If a knockback mechanic
+is ever added, Ironroot Draught is the natural place to extend, not a
+reason to add one preemptively.
+
+**The choke point required touching combat.py's structure, not just
+adding a new site** - unlike every hazard/detection gate so far (a single
+`if` at the top of one method), stun can currently reach the player
+through three separate call sites in `engine/combat.py`: `_apply_damage`'s
+`attacker.inflicts_effect` block (a monster's innate stun attack - the
+only one with real shipped content behind it, e.g. `wraith`/
+`excavation_warden`), `_maybe_apply_weapon_affix` (an attacker's weapon
+affix landing on the defender), and `_maybe_apply_armor_affix` (a
+defender's armor affix striking back at the attacker). All three
+duplicated the identical `target.fighter.active_effects[kind] =
+ActiveEffect(...)` + inflict-message shape. Rather than pasting the same
+immunity check into three places, this round factored that shared tail
+into a new `_inflict_effect(engine, target, kind, potency, duration)`
+helper - a real, in-place refactor of pre-existing code, not just new
+code alongside it - and the immunity check lives in exactly that one
+function:
+
+```python
+if kind == EFFECT_STUN and target.fighter is not None and BUFF_IRONROOT in target.fighter.active_buffs:
+    engine.message_log.add(f"{target.name} shrugs off the stun.", category="combat")
+    return
+```
+
+Checked against `target.fighter.active_buffs` directly rather than
+`target is engine.player` - `active_buffs` is already a per-Fighter dict
+with no player-only assumption baked in anywhere else in this codebase
+(`_tick_active_buffs` iterates every entity on the map), so there was no
+reason for this one check to special-case "the player" when "whichever
+fighter has the buff" is both simpler and already the correct general
+rule. Nothing about the refactor changed behavior for poison, weaken, or
+any existing affix interaction - confirmed by the full suite passing
+unchanged immediately after the refactor, before any ironroot-specific
+code or tests were added at all.
+
+**A distinct "resisted" message, not silence** - `"{name} shrugs off the
+stun."` fires in place of the normal `"{name} is stunned!"` line, so a
+player watching the log can tell the potion is actively doing something
+each time it blocks a hit, the same "don't let a working effect look like
+nothing happened" reasoning Antidote's own no-op message follows.
+
+Ships one real example, `ironroot_draught` (`data/items.yaml`,
+`grants_buff: ironroot`, `buff_duration: 20`, no `buff_potency`,
+`cost: 35`). Verified end-to-end via direct `Engine`/`Entity`/catalog
+construction against a real shipped monster (`wraith`, whose own
+`inflicts_effect: stun` is unrelated placeholder data no test had to
+invent): three full turns of live combat against it with the buff active
+never once landed a stun, logging "shrugs off the stun" every time the
+attack connected, and a companion test confirms ironroot leaves poison
+completely untouched - the immunity is stun-specific, not a general
+"can't be afflicted" flag.
+
+**This completes all ten potions from the original brainstorm** - Water
+Walking (an earlier session), Antidote (§0aq), Elixir of Vigor (§0ar),
+Draught of Swiftness (§0as), Vial of Shadows (§0at), Bottled Second Sight
+(§0au), Sure-Footing Draught (§0av), Smoke Bomb (§0aw), Bezoar of Clarity
+(§0ax), and Ironroot Draught here. The ten active perks - Blink Strike,
+Riposte Stance, Root the Ground, Chain Lash, Guard Break, Marked for
+Death, Phase Through, Vengeful Strike, War Horn, Bloodletter - are next.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -11,6 +11,7 @@ from content.schema import (
     AI_ENRAGE,
     AI_MIMIC,
     BUFF_HASTE,
+    BUFF_IRONROOT,
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     BUFF_VIGOR,
@@ -91,19 +92,21 @@ class Fighter:
     # (stun blocking an action) for where this is actually read/mutated.
     active_effects: dict[str, ActiveEffect] = field(default_factory=dict)
     # This fighter's own live self-buffs, keyed by BuffKind ("vigor"/
-    # "haste"/"shadowed"/"sure_footed" today) - same ActiveEffect shape
-    # (potency/turns_remaining) and refresh-not-stack rule as active_effects
-    # above, but a deliberately separate dict: these are positive,
-    # self-applied (drunk, never inflicted by an attacker), and BuffKind is
-    # a type distinct from EffectKind precisely so nothing can accidentally
-    # wire a monster's inflicts_effect to a player buff. `turns_remaining`
-    # means different things per kind, though: for vigor, shadowed, and
-    # sure_footed it's real turns, ticked once per turn by
-    # engine/engine.py's _tick_active_buffs (Entity._vigor_bonus reads
-    # vigor's potency while active; shadowed/sure_footed have no potency,
-    # engine/engine.py's _perform_ai/_apply_environmental_hazard just check
-    # for presence); for haste it's a count of free player actions
-    # remaining, consumed one at a time by Engine._consume_haste_action -
+    # "haste"/"shadowed"/"sure_footed"/"ironroot" today) - same ActiveEffect
+    # shape (potency/turns_remaining) and refresh-not-stack rule as
+    # active_effects above, but a deliberately separate dict: these are
+    # positive, self-applied (drunk, never inflicted by an attacker), and
+    # BuffKind is a type distinct from EffectKind precisely so nothing can
+    # accidentally wire a monster's inflicts_effect to a player buff.
+    # `turns_remaining` means different things per kind, though: for vigor,
+    # shadowed, sure_footed, and ironroot it's real turns, ticked once per
+    # turn by engine/engine.py's _tick_active_buffs (Entity._vigor_bonus
+    # reads vigor's potency while active; shadowed/sure_footed/ironroot
+    # have no potency, engine/engine.py's _perform_ai/
+    # _apply_environmental_hazard and engine/combat.py's _inflict_effect
+    # just check for presence); for haste it's a count of free player
+    # actions remaining, consumed one at a time by
+    # Engine._consume_haste_action -
     # never by _tick_active_buffs, since that only runs as part of
     # process_enemy_phase, which a hasted action skips entirely.
     active_buffs: dict[str, ActiveEffect] = field(default_factory=dict)
@@ -192,7 +195,7 @@ class ItemEffect:
 # Entity.potion_slots, Engine.assign_potion_slot).
 POTION_KINDS: tuple[str, ...] = (
     "healing", "teleport", "water_walking", "antidote", "vigor", "haste", "shadowed", "second_sight",
-    "sure_footed", "smoke_bomb", "clarity",
+    "sure_footed", "smoke_bomb", "clarity", "ironroot",
 )
 
 
@@ -222,6 +225,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "shadowed"
     if item.grants_buff == BUFF_SURE_FOOTED:
         return "sure_footed"
+    if item.grants_buff == BUFF_IRONROOT:
+        return "ironroot"
     if item.reveals_map:
         return "second_sight"
     return None

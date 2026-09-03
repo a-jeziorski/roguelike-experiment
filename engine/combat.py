@@ -6,7 +6,7 @@ import math
 import random
 from typing import TYPE_CHECKING
 
-from content.schema import EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, PEACEFUL_AI_TYPES
+from content.schema import BUFF_IRONROOT, EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, PEACEFUL_AI_TYPES
 from engine.entity import ActiveEffect
 
 if TYPE_CHECKING:
@@ -22,6 +22,23 @@ _EFFECT_INFLICT_MESSAGES = {
     EFFECT_STUN: "{name} is stunned!",
     EFFECT_WEAKEN: "{name} is weakened!",
 }
+
+
+def _inflict_effect(engine: "Engine", target: "Entity", kind: str, potency: int, duration: int) -> None:
+    """Writes one status effect onto target.fighter.active_effects and logs
+    the inflict message - the shared tail of every effect-proc site in this
+    module (a monster's innate inflicts_effect, a weapon affix landing on
+    the defender, an armor affix striking back at the attacker). Refuses
+    outright - no write, a resisted message instead - when target is the
+    player, kind is EFFECT_STUN, and BUFF_IRONROOT (Ironroot Draught) is
+    currently active: Ironroot's entire mechanic. Every other kind/target
+    combination is unaffected; a stunned monster is never immune to
+    anything, and ironroot does nothing to poison/weaken."""
+    if kind == EFFECT_STUN and target.fighter is not None and BUFF_IRONROOT in target.fighter.active_buffs:
+        engine.message_log.add(f"{target.name} shrugs off the stun.", category="combat")
+        return
+    target.fighter.active_effects[kind] = ActiveEffect(potency=potency, turns_remaining=duration)
+    engine.message_log.add(_EFFECT_INFLICT_MESSAGES[kind].format(name=target.name), category="combat")
 
 # Global on/off switch for the variance layer below - flip to False to
 # fully restore the original deterministic formula (max(0, attack -
@@ -92,11 +109,9 @@ def _maybe_apply_weapon_affix(engine: "Engine", attacker: "Entity", defender: "E
         return
     if random.random() >= weapon.item.affix_chance:
         return
-    defender.fighter.active_effects[weapon.item.affix_effect] = ActiveEffect(
-        potency=weapon.item.affix_potency or 0, turns_remaining=weapon.item.affix_duration,
-    )
-    engine.message_log.add(
-        _EFFECT_INFLICT_MESSAGES[weapon.item.affix_effect].format(name=defender.name), category="combat",
+    _inflict_effect(
+        engine, defender, weapon.item.affix_effect,
+        weapon.item.affix_potency or 0, weapon.item.affix_duration,
     )
 
 
@@ -111,11 +126,9 @@ def _maybe_apply_armor_affix(engine: "Engine", attacker: "Entity", defender: "En
         return
     if random.random() >= armor.item.affix_chance:
         return
-    attacker.fighter.active_effects[armor.item.affix_effect] = ActiveEffect(
-        potency=armor.item.affix_potency or 0, turns_remaining=armor.item.affix_duration,
-    )
-    engine.message_log.add(
-        _EFFECT_INFLICT_MESSAGES[armor.item.affix_effect].format(name=attacker.name), category="combat",
+    _inflict_effect(
+        engine, attacker, armor.item.affix_effect,
+        armor.item.affix_potency or 0, armor.item.affix_duration,
     )
 
 
@@ -173,13 +186,9 @@ def _apply_damage(
         # that dict entry rather than adding to it (see
         # Fighter.active_effects) - a different kind coexists independently.
         if attacker.inflicts_effect:
-            defender.fighter.active_effects[attacker.inflicts_effect] = ActiveEffect(
-                potency=attacker.inflicts_potency or 0,
-                turns_remaining=attacker.inflicts_duration,
-            )
-            engine.message_log.add(
-                _EFFECT_INFLICT_MESSAGES[attacker.inflicts_effect].format(name=defender.name),
-                category="combat",
+            _inflict_effect(
+                engine, defender, attacker.inflicts_effect,
+                attacker.inflicts_potency or 0, attacker.inflicts_duration,
             )
         _maybe_apply_weapon_affix(engine, attacker, defender)
         _maybe_apply_armor_affix(engine, attacker, defender)

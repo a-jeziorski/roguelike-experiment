@@ -94,6 +94,15 @@ bezoar_of_clarity:
   cost: 50
   description: A stone found in the gut of something that never should have swallowed it. Hold it a moment and every trained instinct comes back all at once, sharp and ready.
 
+ironroot_draught:
+  name: Ironroot Draught
+  glyph: "!"
+  color: [90, 70, 40]
+  grants_buff: ironroot
+  buff_duration: 20
+  cost: 35
+  description: A muddy draught, thick as wet clay. Drink it and your footing sets like a tree taking root - nothing short of the ground itself is knocking you down.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

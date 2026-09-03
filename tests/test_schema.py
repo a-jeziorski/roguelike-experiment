@@ -1037,6 +1037,24 @@ def test_item_def_rejects_sure_footed_with_potency():
         )
 
 
+def test_item_def_accepts_grants_buff_ironroot_without_potency():
+    potion = ItemDef(
+        id="ironroot_draught", name="Ironroot Draught", glyph="!", color=(1, 2, 3),
+        grants_buff="ironroot", buff_duration=20,
+    )
+    assert potion.grants_buff == "ironroot"
+    assert potion.buff_potency is None
+    assert potion.buff_duration == 20
+
+
+def test_item_def_rejects_ironroot_with_potency():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="ironroot_draught", name="Ironroot Draught", glyph="!", color=(1, 2, 3),
+            grants_buff="ironroot", buff_potency=1, buff_duration=20,
+        )
+
+
 def test_item_def_resets_skill_cooldowns_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.resets_skill_cooldowns is False

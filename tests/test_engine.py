@@ -247,6 +247,15 @@ def make_smoke_bomb(x: int, y: int, duration: int = 3) -> Entity:
     )
 
 
+def make_ironroot_potion(x: int, y: int, duration: int = 20) -> Entity:
+    return Entity(
+        x, y, "!", (90, 70, 40), "Ironroot Draught",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(grants_buff="ironroot", buff_duration=duration),
+    )
+
+
 def make_clarity_potion(x: int, y: int) -> Entity:
     return Entity(
         x, y, "!", (220, 200, 160), "Bezoar of Clarity",
@@ -2488,6 +2497,28 @@ def test_use_item_action_clarity_with_nothing_on_cooldown_still_consumes_it():
     assert engine.message_log.messages[-1] == "You drink the Bezoar of Clarity, but feel no different."
 
 
+def test_potion_kind_identifies_ironroot():
+    assert potion_kind(ItemEffect(grants_buff="ironroot", buff_duration=20)) == "ironroot"
+
+
+def test_use_item_action_ironroot_grants_the_buff():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_ironroot_potion(1, 1, duration=20)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "ironroot"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    # Granted and ticked in the same turn, same "first tick lands
+    # immediately" convention every other active_buffs entry follows.
+    assert player.fighter.active_buffs["ironroot"] == ActiveEffect(potency=0, turns_remaining=19)
+    assert "You drink the Ironroot Draught and your stance sets like rooted stone." in engine.message_log.messages
+
+
 def test_assign_potion_slot_sets_a_valid_kind():
     game_map = make_open_map(3, 3)
     player = make_player(1, 1)
@@ -3383,6 +3414,42 @@ def test_stunning_attacker_afflicts_stun_on_a_landed_hit():
 
     assert "stun" in player.fighter.active_effects
     assert "Player is stunned!" in engine.message_log.messages
+
+
+def test_ironroot_buff_prevents_stun_from_being_inflicted():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_buffs["ironroot"] = ActiveEffect(potency=0, turns_remaining=20)
+    monster = make_monster(
+        2, 1, hp=5, attack=4, ai="hostile_basic",
+        inflicts_effect="stun", inflicts_duration=1,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert "stun" not in player.fighter.active_effects
+    assert "Player shrugs off the stun." in engine.message_log.messages
+    assert "Player is stunned!" not in engine.message_log.messages
+
+
+def test_ironroot_buff_does_not_block_poison():
+    """Ironroot's immunity is specifically to stun - a poisoning attacker
+    should still land poison on an ironroot player exactly as normal."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_buffs["ironroot"] = ActiveEffect(potency=0, turns_remaining=20)
+    monster = make_monster(
+        2, 1, hp=5, attack=4, ai="hostile_basic",
+        inflicts_effect="poison", inflicts_potency=2, inflicts_duration=3,
+    )
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert "poison" in player.fighter.active_effects
 
 
 # --- multiple simultaneous effects ---

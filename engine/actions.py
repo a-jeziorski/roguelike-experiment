@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from content.schema import AI_MIMIC, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_VIGOR
+from content.schema import AI_MIMIC, BUFF_HASTE, BUFF_IRONROOT, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_VIGOR
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import DEFAULT_MIMIC_BONUS, ActiveEffect, potion_kind
 from engine.game_map import nearby_walkable_tiles
@@ -549,6 +549,13 @@ class UseItemAction(Action):
             )
             engine.message_log.add(
                 f"You drink the {item_entity.name} and your footing turns certain."
+            )
+        elif kind == "ironroot":
+            entity.fighter.active_buffs[BUFF_IRONROOT] = ActiveEffect(
+                potency=0, turns_remaining=item_entity.item.buff_duration
+            )
+            engine.message_log.add(
+                f"You drink the {item_entity.name} and your stance sets like rooted stone."
             )
         elif kind == "second_sight":
             engine.game_map.explored[:, :] = True
