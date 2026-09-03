@@ -481,6 +481,16 @@ class ItemDef(BaseModel):
     grants_buff: BuffKind | None = None
     buff_potency: int | None = Field(default=None, gt=0)
     buff_duration: int | None = Field(default=None, gt=0)
+    # Drinking this instantly marks every tile of the current level as
+    # explored and logs a one-time summary of every creature currently on
+    # it - not a timed buff (nothing about it decays; the map stays
+    # explored, and the creature summary is a one-shot glimpse, not an
+    # ongoing detection effect), so it's a plain flag like cures_effects
+    # above, not a BuffKind. Dungeon-only, refused on the overworld before
+    # consuming - same shape as is_teleport's own overworld refusal (see
+    # engine/actions.py's UseItemAction) - since instantly revealing the
+    # entire stitched overworld map would dwarf what any other potion does.
+    reveals_map: bool = False
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).

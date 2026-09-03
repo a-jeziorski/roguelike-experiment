@@ -1019,6 +1019,19 @@ def test_item_def_rejects_shadowed_with_potency():
         )
 
 
+def test_item_def_reveals_map_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.reveals_map is False
+
+
+def test_item_def_accepts_reveals_map():
+    potion = ItemDef(
+        id="bottled_second_sight", name="Bottled Second Sight", glyph="!", color=(1, 2, 3),
+        reveals_map=True,
+    )
+    assert potion.reveals_map is True
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

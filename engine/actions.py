@@ -470,6 +470,10 @@ class UseItemAction(Action):
             engine.message_log.add("You're already on the surface.")
             return
 
+        if kind == "second_sight" and engine.is_overworld:
+            engine.message_log.add("There's too much ground out here for any vision to take in.")
+            return
+
         entity.inventory.remove(item_entity)
         if kind == "healing":
             heal = item_entity.item.heal_amount
@@ -513,6 +517,25 @@ class UseItemAction(Action):
             engine.message_log.add(
                 f"You drink the {item_entity.name} and fade into the shadows."
             )
+        elif kind == "second_sight":
+            engine.game_map.explored[:, :] = True
+            creature_counts: dict[str, int] = {}
+            for other in engine.game_map.entities:
+                if other is entity or other.fighter is None or other.ai is None:
+                    continue
+                creature_counts[other.name] = creature_counts.get(other.name, 0) + 1
+            if creature_counts:
+                summary = ", ".join(
+                    f"{count} {name}{'s' if count > 1 else ''}" for name, count in creature_counts.items()
+                )
+                engine.message_log.add(
+                    f"You drink the {item_entity.name} and a vision floods your mind: {summary}."
+                )
+            else:
+                engine.message_log.add(
+                    f"You drink the {item_entity.name} and a vision floods your mind, "
+                    "but nothing stirs here."
+                )
 
 
 class UseSkillAction(Action):

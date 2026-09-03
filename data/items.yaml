@@ -59,6 +59,14 @@ shadow_vial:
   cost: 45
   description: A vial of liquid darker than the glass that holds it. Drink it and the space around you stops quite reaching the eye - so long as nothing's already close enough to touch.
 
+bottled_second_sight:
+  name: Bottled Second Sight
+  glyph: "!"
+  color: [190, 170, 230]
+  reveals_map: true
+  cost: 50
+  description: A vial of liquid that never sits quite still. Drink it and the walls between you and everything else become, for a moment, only a suggestion.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

@@ -3132,6 +3132,56 @@ then closes the distance and lands a hit exactly once the buff is fully
 expired - and a second, separate scenario confirming an already-adjacent
 monster attacks straight through the buff, undisturbed.
 
+## 0au. Bottled Second Sight - an instant map reveal, deliberately not a `BuffKind` (`bottled_second_sight`)
+
+The fourth new potion in this round, and the first that isn't a timed
+effect at all - a plain `ItemDef.reveals_map: bool` flag, same shape as
+`cures_effects` (§0aq): it either does its one thing right now or it
+doesn't, nothing to tick down, nothing living in `Fighter.active_buffs`.
+Drinking it does two things in the same instant: `game_map.explored[:, :]
+= True` (every tile of the *current* level, permanently - the same array
+`update_fov` already ORs into on every ordinary turn, so this needed no
+new persisted state; `engine/save.py`'s existing coordinate-list
+serialization of `explored` handles a fully-True array exactly like any
+other), and a one-time message-log summary of every creature currently on
+the level (`fighter is not None and ai is not None`, grouped by name with
+a naive `+"s"` pluralization - "2 Goblins, 1 Villager" - matching the
+"there's no existing pluralization helper in this codebase" reality
+rather than inventing one for a single flavor line).
+
+**Why not model this as a buff at all**, given the last three potions
+all were one: there's nothing here that decays. The map, once explored,
+stays explored the same way walking there manually would leave it -
+there's no "un-reveal" moment for `_tick_active_buffs` to manage, and the
+creature summary is a one-off glimpse, not an ongoing detection effect
+(unlike, say, a hypothetical "see monsters through walls for N turns"
+potion, which *would* need a buff and a real change to `render.py`'s
+FOV-gated entity draw check). Modeling a one-shot effect as a buff with
+`buff_duration=1` would have been technically possible but pointlessly
+indirect - `is_teleport`/`cures_effects` already established "plain flag,
+no BuffKind" as the right shape for anything that just happens once, and
+this is squarely that.
+
+**Dungeon-only, refused on the overworld before consuming - `is_teleport`'s
+exact refusal shape** (`if kind == "second_sight" and engine.is_overworld:
+... return`, no consumption), for a reason specific to this potion rather
+than copied wholesale: the overworld is one large stitched `GameMap`
+(`docs/region_bibles`' own "overworld cell grid" convention), so `explored
+[:, :] = True` there would reveal the *entire game world* in one drink -
+an effect an order of magnitude larger than what any level-scoped potion
+in this project does, and worth a hard no rather than a smaller,
+quietly-inconsistent radius limit.
+
+Ships one real example, `bottled_second_sight` (`data/items.yaml`,
+`reveals_map: true`, `cost: 50`, no `buff_duration`/`buff_potency` fields
+at all). Verified end-to-end via direct `Engine`/`Entity` construction
+against the real catalog entry on a 20x20 map: a corner tile 17 tiles
+from the player (`FOV_RADIUS` is 8, so nowhere near reachable by ordinary
+FOV) reads `explored=False` before drinking and `True` immediately after,
+the creature summary correctly names a distant goblin, and a second,
+separate overworld-Engine construction confirms the refusal fires and the
+potion stays in inventory, unconsumed.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

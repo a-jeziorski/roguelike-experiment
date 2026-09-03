@@ -170,12 +170,17 @@ class ItemEffect:
     grants_buff: "BuffKind | None" = None
     buff_potency: int | None = None
     buff_duration: int | None = None
+    # Whether drinking this instantly explores the whole current level and
+    # logs a one-time creature summary - see potion_kind below,
+    # engine/actions.py's UseItemAction. A plain flag, not a buff - the map
+    # stays explored permanently, there's nothing to tick down.
+    reveals_map: bool = False
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
 POTION_KINDS: tuple[str, ...] = (
-    "healing", "teleport", "water_walking", "antidote", "vigor", "haste", "shadowed",
+    "healing", "teleport", "water_walking", "antidote", "vigor", "haste", "shadowed", "second_sight",
 )
 
 
@@ -195,6 +200,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "haste"
     if item.grants_buff == BUFF_SHADOWED:
         return "shadowed"
+    if item.reveals_map:
+        return "second_sight"
     return None
 
 

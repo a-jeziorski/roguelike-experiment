@@ -219,6 +219,15 @@ def make_shadow_potion(x: int, y: int, duration: int = 8) -> Entity:
     )
 
 
+def make_second_sight_potion(x: int, y: int) -> Entity:
+    return Entity(
+        x, y, "!", (190, 170, 230), "Bottled Second Sight",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(reveals_map=True),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2289,6 +2298,72 @@ def test_shadowed_buff_ticks_down_and_expiry_restores_detection():
 
     engine.process_turn(WaitAction())
     assert (monster.x, monster.y) == (1, 2)  # expired for good now - the monster closes in
+
+
+def test_potion_kind_identifies_second_sight():
+    assert potion_kind(ItemEffect(reveals_map=True)) == "second_sight"
+
+
+def test_use_item_action_second_sight_reveals_the_whole_map_and_lists_creatures():
+    # Larger than FOV_RADIUS (8) in every direction from the player's
+    # corner, so a far corner becoming explored can only be the potion's
+    # own doing, not ordinary FOV update_fov would have done anyway.
+    game_map = make_open_map(30, 30)
+    player = make_player(1, 1)
+    potion = make_second_sight_potion(1, 1)
+    player.inventory.append(potion)
+    monster_a = make_monster(0, 0, ai="hostile_basic")
+    monster_a.name = "Goblin"
+    monster_b = make_monster(29, 29, ai="hostile_basic")
+    monster_b.name = "Goblin"
+    villager = make_villager(29, 0)
+    game_map.entities.extend([player, monster_a, monster_b, villager])
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "second_sight"
+
+    assert not game_map.explored[29, 29]
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert game_map.explored[29, 29]  # far corner, well outside FOV_RADIUS
+    assert (
+        "You drink the Bottled Second Sight and a vision floods your mind: "
+        "2 Goblins, 1 Villager." in engine.message_log.messages
+    )
+
+
+def test_use_item_action_second_sight_with_no_creatures_present():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_second_sight_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "second_sight"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert game_map.explored.all()
+    assert (
+        "You drink the Bottled Second Sight and a vision floods your mind, but nothing stirs here."
+        in engine.message_log.messages
+    )
+
+
+def test_use_item_action_second_sight_refuses_on_the_overworld():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_second_sight_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+    player.selected_potion_kind = "second_sight"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion in player.inventory  # never consumed
+    assert engine.message_log.messages[-1] == "There's too much ground out here for any vision to take in."
 
 
 def test_assign_potion_slot_sets_a_valid_kind():
