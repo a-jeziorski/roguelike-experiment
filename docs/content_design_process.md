@@ -3732,6 +3732,64 @@ take damage in sequence even though the third is nowhere near the
 player's own `skill_chain_range`, confirming the jump genuinely measures
 from the previous hit and not the caster.
 
+## 0bd. Guard Break - a fifth `EffectKind`, `effective_defense`'s first-ever penalty (`guard_break` perk)
+
+The fifth active perk, the seventh `SkillEffectKind`, and the fifth
+`EffectKind` - `EFFECT_EXPOSED = "exposed"`, weaken's exact shape (flat
+potency, a duration, `_EFFECT_KINDS_WITH_POTENCY` membership) aimed at
+`effective_defense` instead of `effective_attack`/`effective_ranged_attack`.
+A new `Entity._exposed_penalty` property mirrors `_weaken_penalty`
+property-for-property, and `effective_defense` gained both the
+subtraction and - since nothing had ever pushed defense below its base
+value before - a `max(0, ...)` floor it never previously needed
+(`effective_attack` has had one since `_weaken_penalty` first shipped;
+`effective_defense` simply had nothing to floor against until now).
+Verified directly, including the floor: a monster with `defense=1` and an
+absurd `potency=99` exposed reads `effective_defense == 0`, never
+negative.
+
+**Targeting is Blink Strike's shape, not Chain Lash's or Root the
+Ground's** - a single nearest-qualifying-target pick within
+`skill_guard_break_range`, refusing outright with a distinct message if
+nothing's in range (§0az's own precedent), rather than an untargeted
+blast (aoe_damage/root_ground) or a multi-hit walk (chain_lash). Damage
+is flat `skill_guard_break_damage` via `resolve_skill_damage`, the same
+dedicated-payload reasoning every flat-damage skill in this project
+already follows.
+
+**The debuff only applies if the target survives the hit, not if the hit
+actually dealt damage** - `if target.is_alive: ... EFFECT_EXPOSED ...`,
+checked strictly after `resolve_skill_damage` returns, deliberately
+*not* gated on `damage > 0` the way the standard `_apply_damage` pipeline
+gates its own `inflicts_effect`/affix procs. This surfaced as a real,
+useful interaction during live verification rather than a hypothetical:
+a goblin with `defense=4` fully absorbed the skill's own 4 damage
+("does no damage"), yet the guard-break debuff landed anyway, dropping
+that same defense from 4 to 2 for follow-up hits - "cracking the stance"
+reads as something that can succeed even when the strike itself doesn't
+penetrate, which is exactly the point of a skill that exists to set up
+*other* damage, not replace it. The only thing the survival check
+actually guards against is writing a status effect onto a corpse, which
+nothing would ever read.
+
+**`_EFFECT_INFLICT_MESSAGES` (`engine/combat.py`) got an exposed entry
+too, same reasoning as rooted's own entry (§0bb)** - the skill writes
+`Fighter.active_effects` directly rather than through `_inflict_effect`,
+but `EFFECT_EXPOSED` is now a general-purpose `EffectKind` any future
+`inflicts_effect`/`affix_effect` could reach for, and leaving it out of
+that dict would be the same latent `KeyError` waiting to happen.
+
+Ships one real example, `guard_break` (`data/perks.yaml`, `skill_effect:
+guard_break`, `skill_guard_break_damage: 4`, `skill_guard_break_range: 2`,
+`skill_guard_break_potency: 2`, `skill_guard_break_duration: 4`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 7`, `xp_cost: 55`).
+Verified end-to-end via direct `Engine`/`Entity`/catalog construction
+against a real high-defense target: the debuff applies and reads back
+correctly through `effective_defense` itself (not just the raw
+`ActiveEffect` entry), and a separate kill-case confirms a lethally
+struck target is removed and awards XP through the normal death pipeline
+without any attempt to also expose it.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

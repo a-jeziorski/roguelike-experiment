@@ -155,14 +155,22 @@ EFFECT_WEAKEN = "weaken"
 # normally do - but nothing about EffectKind was ever direction-specific,
 # so it slots into the same enum rather than needing a parallel one.
 EFFECT_ROOTED = "rooted"
-EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED]
+# A flat defense reduction - weaken's own exact shape (potency/duration),
+# just aimed at effective_defense instead of effective_attack/
+# effective_ranged_attack (see Entity._exposed_penalty, engine/entity.py).
+# Same "player inflicts it on a monster" direction Root the Ground already
+# established for rooted - the Guard Break active skill's own mechanic -
+# though nothing here is direction-specific either.
+EFFECT_EXPOSED = "exposed"
+EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED, EFFECT_EXPOSED]
 # Effects with a meaningful intensity, not just a duration - poison's
-# potency is damage/turn, weaken's is a flat attack reduction. Stun and
-# rooted both have no intensity concept (an entity either can act or
-# can't; either can move or can't), so inflicts_potency is required for
-# poison/weaken and rejected for stun/rooted - see
-# EntityDef.inflicts_potency_matches_effect_kind below.
-_EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
+# potency is damage/turn, weaken's is a flat attack reduction, exposed's
+# is a flat defense reduction. Stun and rooted both have no intensity
+# concept (an entity either can act or can't; either can move or can't),
+# so inflicts_potency is required for poison/weaken/exposed and rejected
+# for stun/rooted - see EntityDef.inflicts_potency_matches_effect_kind
+# below.
+_EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN, EFFECT_EXPOSED)
 
 # A player-facing timed self-buff - deliberately a separate Literal from
 # EffectKind above, not another member of it, so EntityDef.inflicts_effect/
@@ -658,16 +666,19 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # "root_ground" inflicts EFFECT_ROOTED on every hostile entity within
 # range, "chain_lash" strikes the nearest hostile within range, then jumps
 # to the next-nearest hostile *to that target* (not back to the player)
-# and repeats, up to a cap (see Engine.use_skill).
+# and repeats, up to a cap, "guard_break" strikes the nearest hostile
+# within range for flat damage and, if it survives, inflicts EFFECT_EXPOSED
+# on it (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
 SKILL_EFFECT_RIPOSTE_STANCE = "riposte_stance"
 SKILL_EFFECT_ROOT_GROUND = "root_ground"
 SKILL_EFFECT_CHAIN_LASH = "chain_lash"
+SKILL_EFFECT_GUARD_BREAK = "guard_break"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
-    SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH,
+    SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK,
 ]
 
 
@@ -720,8 +731,10 @@ class PerkDef(BaseModel):
     # to "blink_strike", skill_riposte_duration for/exclusive to
     # "riposte_stance", skill_root_radius/skill_root_duration for/exclusive
     # to "root_ground", skill_chain_damage/skill_chain_range/
-    # skill_chain_max_targets for/exclusive to "chain_lash"
-    # (skill_effect_matches_payload below).
+    # skill_chain_max_targets for/exclusive to "chain_lash",
+    # skill_guard_break_damage/skill_guard_break_range/
+    # skill_guard_break_potency/skill_guard_break_duration for/exclusive
+    # to "guard_break" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -753,6 +766,16 @@ class PerkDef(BaseModel):
     skill_chain_damage: int | None = Field(default=None, gt=0)
     skill_chain_range: int | None = Field(default=None, gt=0)
     skill_chain_max_targets: int | None = Field(default=None, gt=0)
+    # A "guard_break" skill's own payload: flat damage to the nearest
+    # hostile within skill_guard_break_range (same not-effective_attack
+    # shape skill_aoe_damage/skill_chain_damage already use), then, if the
+    # target survives, EFFECT_EXPOSED at skill_guard_break_potency for
+    # skill_guard_break_duration turns. All four required together,
+    # exclusively for this skill kind.
+    skill_guard_break_damage: int | None = Field(default=None, gt=0)
+    skill_guard_break_range: int | None = Field(default=None, gt=0)
+    skill_guard_break_potency: int | None = Field(default=None, gt=0)
+    skill_guard_break_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -851,6 +874,28 @@ class PerkDef(BaseModel):
             raise ValueError(
                 "skill_chain_damage/skill_chain_range/skill_chain_max_targets are only meaningful "
                 "when skill_effect is 'chain_lash'"
+            )
+        if self.skill_effect == SKILL_EFFECT_GUARD_BREAK:
+            if (
+                self.skill_guard_break_damage is None
+                or self.skill_guard_break_range is None
+                or self.skill_guard_break_potency is None
+                or self.skill_guard_break_duration is None
+            ):
+                raise ValueError(
+                    "skill_effect 'guard_break' requires skill_guard_break_damage, "
+                    "skill_guard_break_range, skill_guard_break_potency, and "
+                    "skill_guard_break_duration to be set"
+                )
+        elif (
+            self.skill_guard_break_damage is not None
+            or self.skill_guard_break_range is not None
+            or self.skill_guard_break_potency is not None
+            or self.skill_guard_break_duration is not None
+        ):
+            raise ValueError(
+                "skill_guard_break_damage/skill_guard_break_range/skill_guard_break_potency/"
+                "skill_guard_break_duration are only meaningful when skill_effect is 'guard_break'"
             )
         return self
 

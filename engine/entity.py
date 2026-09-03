@@ -517,6 +517,20 @@ class Entity:
         return weaken.potency if weaken else 0
 
     @property
+    def _exposed_penalty(self) -> int:
+        """The live defense reduction from an active "exposed" affliction,
+        if any - weaken's exact shape (_weaken_penalty above), just read
+        from a separate active_effects key and subtracted from
+        effective_defense instead of effective_attack/
+        effective_ranged_attack. See EFFECT_EXPOSED (content/schema.py),
+        Guard Break's own active-skill mechanic (engine/engine.py's
+        use_skill)."""
+        if self.fighter is None:
+            return 0
+        exposed = self.fighter.active_effects.get("exposed")
+        return exposed.potency if exposed else 0
+
+    @property
     def _vigor_bonus(self) -> int:
         """The live attack/defense bonus from an active "vigor" buff, if
         any - see Fighter.active_buffs, Elixir of Vigor. Added to both
@@ -553,7 +567,7 @@ class Entity:
     def effective_defense(self) -> int:
         base = self.fighter.defense if self.fighter else 0
         bonus = self.equipped_armor.item.defense_bonus if self.equipped_armor else None
-        return base + (bonus or 0) + self._vigor_bonus
+        return max(0, base + (bonus or 0) + self._vigor_bonus - self._exposed_penalty)
 
     @property
     def effective_ranged_attack(self) -> int:

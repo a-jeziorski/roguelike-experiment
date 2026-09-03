@@ -28,6 +28,7 @@ from content.schema import (
     BUFF_RIPOSTE,
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
+    EFFECT_EXPOSED,
     EFFECT_POISON,
     EFFECT_ROOTED,
     EFFECT_STUN,
@@ -37,6 +38,7 @@ from content.schema import (
     SKILL_EFFECT_AOE_DAMAGE,
     SKILL_EFFECT_BLINK_STRIKE,
     SKILL_EFFECT_CHAIN_LASH,
+    SKILL_EFFECT_GUARD_BREAK,
     SKILL_EFFECT_HEAL,
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
@@ -1692,45 +1694,80 @@ class Engine:
                 self.message_log.add(f"{target.name} is rooted in place!", category="combat")
             return message
 
-        # SKILL_EFFECT_CHAIN_LASH - strikes the nearest hostile within
-        # skill_chain_range of the player, then repeatedly jumps to the
-        # nearest still-unstruck hostile within skill_chain_range of
-        # wherever the *previous* hit landed (never back from the player),
-        # up to skill_chain_max_targets total hits. Flat skill_chain_damage
-        # per hit via resolve_skill_damage - same "not effective_attack, a
-        # dedicated payload number" shape aoe_damage already established,
-        # since a chained multi-hit needs its own, deliberately lower per-
-        # hit number rather than dealing full attack damage several times
-        # over. Refuses outright, no cooldown-refund exception, if nothing
-        # is in range of the player at all (blink_strike's own "nothing to
-        # act on" shape) - but once the chain starts, it simply stops
-        # early if a later jump finds nothing more in range, no separate
-        # refusal message for that (the skill already "went off").
-        def _chain_candidates(ox: int, oy: int, exclude_ids: set[int]) -> list[Entity]:
-            return [
-                e for e in list(self.game_map.entities)
-                if e is not entity and e.fighter is not None and e.is_alive
-                and e.ai not in PEACEFUL_AI_TYPES and id(e) not in exclude_ids
-                and max(abs(e.x - ox), abs(e.y - oy)) <= perk.skill_chain_range
-            ]
+        if perk.skill_effect == SKILL_EFFECT_CHAIN_LASH:
+            # Strikes the nearest hostile within skill_chain_range of the
+            # player, then repeatedly jumps to the nearest still-unstruck
+            # hostile within skill_chain_range of wherever the *previous*
+            # hit landed (never back from the player), up to
+            # skill_chain_max_targets total hits. Flat skill_chain_damage
+            # per hit via resolve_skill_damage - same "not effective_attack,
+            # a dedicated payload number" shape aoe_damage already
+            # established, since a chained multi-hit needs its own,
+            # deliberately lower per-hit number rather than dealing full
+            # attack damage several times over. Refuses outright, no
+            # cooldown-refund exception, if nothing is in range of the
+            # player at all (blink_strike's own "nothing to act on" shape)
+            # - but once the chain starts, it simply stops early if a later
+            # jump finds nothing more in range, no separate refusal message
+            # for that (the skill already "went off").
+            def _chain_candidates(ox: int, oy: int, exclude_ids: set[int]) -> list[Entity]:
+                return [
+                    e for e in list(self.game_map.entities)
+                    if e is not entity and e.fighter is not None and e.is_alive
+                    and e.ai not in PEACEFUL_AI_TYPES and id(e) not in exclude_ids
+                    and max(abs(e.x - ox), abs(e.y - oy)) <= perk.skill_chain_range
+                ]
 
-        if not _chain_candidates(entity.x, entity.y, set()):
-            message = "There's nothing within range for the lash to catch."
+            if not _chain_candidates(entity.x, entity.y, set()):
+                message = "There's nothing within range for the lash to catch."
+                self.message_log.add(message)
+                return message
+
+            message = f"You use {perk.name}!"
             self.message_log.add(message)
+            hit_ids: set[int] = set()
+            origin_x, origin_y = entity.x, entity.y
+            while len(hit_ids) < perk.skill_chain_max_targets:
+                candidates = _chain_candidates(origin_x, origin_y, hit_ids)
+                if not candidates:
+                    break
+                target = min(candidates, key=lambda e: max(abs(e.x - origin_x), abs(e.y - origin_y)))
+                resolve_skill_damage(self, entity, target, perk.skill_chain_damage, "lashes")
+                hit_ids.add(id(target))
+                origin_x, origin_y = target.x, target.y
             return message
 
-        message = f"You use {perk.name}!"
+        # SKILL_EFFECT_GUARD_BREAK - blink_strike's own "pick the single
+        # nearest qualifying hostile within range, or refuse outright"
+        # targeting shape, minus the relocation: strikes the target for
+        # flat skill_guard_break_damage (resolve_skill_damage, same
+        # dedicated-payload reasoning as every other flat-damage skill in
+        # this project), then, only if it survived the hit, inflicts
+        # EFFECT_EXPOSED at skill_guard_break_potency for
+        # skill_guard_break_duration turns - a corpse has no defense left
+        # to break, and writing a status effect onto one would just be
+        # dead state nobody ever reads. The debuff itself lives entirely in
+        # Entity._exposed_penalty (engine/entity.py), read by
+        # effective_defense exactly the way _weaken_penalty already is.
+        candidates = [
+            e for e in list(self.game_map.entities)
+            if e is not entity and e.fighter is not None and e.is_alive
+            and e.ai not in PEACEFUL_AI_TYPES
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_guard_break_range
+        ]
+        if not candidates:
+            message = "There's nothing within range to break the guard of."
+            self.message_log.add(message)
+            return message
+        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+        message = f"You use {perk.name} on {target.name}!"
         self.message_log.add(message)
-        hit_ids: set[int] = set()
-        origin_x, origin_y = entity.x, entity.y
-        while len(hit_ids) < perk.skill_chain_max_targets:
-            candidates = _chain_candidates(origin_x, origin_y, hit_ids)
-            if not candidates:
-                break
-            target = min(candidates, key=lambda e: max(abs(e.x - origin_x), abs(e.y - origin_y)))
-            resolve_skill_damage(self, entity, target, perk.skill_chain_damage, "lashes")
-            hit_ids.add(id(target))
-            origin_x, origin_y = target.x, target.y
+        resolve_skill_damage(self, entity, target, perk.skill_guard_break_damage, "cracks")
+        if target.is_alive:
+            target.fighter.active_effects[EFFECT_EXPOSED] = ActiveEffect(
+                potency=perk.skill_guard_break_potency, turns_remaining=perk.skill_guard_break_duration
+            )
+            self.message_log.add(f"{target.name}'s guard is broken!", category="combat")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

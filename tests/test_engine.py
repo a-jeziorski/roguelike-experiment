@@ -8140,6 +8140,91 @@ def test_chain_lash_cooldown_ticks_down_each_turn_and_expires():
     assert "chain_lash" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_guard_break_strikes_the_target_and_exposes_it():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("guard_break")
+    monster = make_monster(4, 2, hp=20, defense=0, ai=None)  # distance 2, range is 2
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "guard_break")
+
+    assert monster.fighter.hp == 20 - 4  # skill_guard_break_damage=4
+    assert monster.fighter.active_effects["exposed"] == ActiveEffect(potency=2, turns_remaining=4)
+    assert player.skill_cooldowns["guard_break"] == 7
+    assert message == "You use Guard Break on Rat!"
+    assert "Rat's guard is broken!" in engine_.message_log.messages
+
+
+def test_use_skill_guard_break_does_not_expose_a_killed_target():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("guard_break")
+    monster = make_monster(4, 2, hp=1, defense=0, ai=None)
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "guard_break")
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_exposed_effect_reduces_effective_defense():
+    monster = make_monster(0, 0, hp=10, defense=5, ai=None)
+    base_defense = monster.effective_defense
+
+    monster.fighter.active_effects["exposed"] = ActiveEffect(potency=2, turns_remaining=4)
+
+    assert monster.effective_defense == base_defense - 2
+
+
+def test_exposed_effect_never_drives_effective_defense_negative():
+    monster = make_monster(0, 0, hp=10, defense=1, ai=None)
+    monster.fighter.active_effects["exposed"] = ActiveEffect(potency=99, turns_remaining=4)
+
+    assert monster.effective_defense == 0
+
+
+def test_use_skill_guard_break_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, defense=0)
+    player.learned_perk_ids.add("guard_break")
+    villager = make_villager(4, 2)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "guard_break")
+
+    assert villager.fighter.hp == villager.fighter.max_hp
+    assert "exposed" not in villager.fighter.active_effects
+    assert message == "There's nothing within range to break the guard of."
+
+
+def test_guard_break_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("guard_break")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "guard_break")
+    assert player.skill_cooldowns["guard_break"] == 7
+
+    for _ in range(6):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["guard_break"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "guard_break" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 
