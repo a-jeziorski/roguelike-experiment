@@ -3300,6 +3300,53 @@ configured radius, the shadowed buff appears correctly on the HUD, and a
 1x1-map construction confirms the refusal path leaves the bomb
 unconsumed and the player exactly where they started.
 
+## 0ax. Bezoar of Clarity - clears every skill cooldown at once (`bezoar_of_clarity`)
+
+The ninth of this round's original ten-item potion brainstorm (potion #7,
+Water Walking, was already built before this round began; Ironroot
+Draught is the one still left), and a near-exact structural repeat of
+Antidote (§0aq) - the same "plain flag, clears a dict, always consumes,
+sometimes a no-op" shape, just aimed at `Entity.skill_cooldowns` instead
+of `Fighter.active_effects`.
+`ItemDef.resets_skill_cooldowns: bool`, `ItemEffect.resets_skill_cooldowns`,
+a `potion_kind()` branch, and one `UseItemAction` elif branch
+(`had_cooldowns = bool(entity.skill_cooldowns); entity.skill_cooldowns.clear()`)
+- the exact same four-step shape Antidote already established, right down
+to reusing its identical "but feel no different" fallback message for the
+no-op case.
+
+**Needs no new persisted state, same as Antidote's own §0aq note** -
+`Entity.skill_cooldowns` has been a genuine `SavedPlayer` field since
+skills themselves shipped, long before this potion existed
+(`engine/save.py`'s `capture_save`/`_build_player` already round-trip it
+verbatim). `engine/save.py` needed zero changes, and no render/HUD work
+either - there's no buff to display, just a dict that's suddenly empty.
+
+**No dungeon/overworld distinction, unlike most of this round's other
+potions** - skill cooldowns aren't tied to terrain or location the way
+water-walking, sure-footing, or the map-scale second sight are, so there
+was no refusal case to design at all: it either has something to clear or
+it doesn't, everywhere, always.
+
+Ships one real example, `bezoar_of_clarity` (`data/items.yaml`,
+`resets_skill_cooldowns: true`, `cost: 50` - priced at the round's upper
+end, on par with Bottled Second Sight, since clearing every cooldown at
+once is a strictly stronger effect than any single active-skill perk's
+own cooldown reduction would be). Verified end-to-end via direct
+`Engine`/`Entity` construction against the real catalog entry: two
+independent cooldowns (arbitrary perk-id keys, since none of this round's
+active perks are built yet - `skill_cooldowns` only cares about the
+dict shape, not catalog membership) both clear in one drink, and a
+separate no-cooldowns case confirms the potion still consumes with the
+same graceful no-op message Antidote already uses.
+
+Nine of the original ten potions are now shipped: Water Walking (an
+earlier session), Antidote (§0aq), Elixir of Vigor (§0ar), Draught of
+Swiftness (§0as), Vial of Shadows (§0at), Bottled Second Sight (§0au),
+Sure-Footing Draught (§0av), Smoke Bomb (§0aw), and Bezoar of Clarity
+here. One potion remains before the ten active perks begin: Ironroot
+Draught (stun/knockback immunity).
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -485,6 +485,11 @@ class ItemDef(BaseModel):
     # duration pair - there's nothing to scale, it either cures everything
     # right now or (already effect-free) does nothing.
     cures_effects: bool = False
+    # Drinking this clears every entry in Entity.skill_cooldowns at once -
+    # see engine/actions.py's UseItemAction. Same "plain flag, always
+    # consumes, sometimes a no-op" shape as cures_effects immediately
+    # above, just for skill cooldowns instead of status afflictions.
+    resets_skill_cooldowns: bool = False
     # A timed positive self-buff this item grants on use (see BuffKind,
     # engine/entity.py's Fighter.active_buffs, engine/actions.py's
     # UseItemAction) - grants_buff and buff_duration must be set together

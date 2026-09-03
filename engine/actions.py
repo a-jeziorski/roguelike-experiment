@@ -513,6 +513,15 @@ class UseItemAction(Action):
                 engine.message_log.add(f"You drink the {item_entity.name} and the afflictions lift.")
             else:
                 engine.message_log.add(f"You drink the {item_entity.name}, but feel no different.")
+        elif kind == "clarity":
+            had_cooldowns = bool(entity.skill_cooldowns)
+            entity.skill_cooldowns.clear()
+            if had_cooldowns:
+                engine.message_log.add(
+                    f"You drink the {item_entity.name} and your mind sharpens - every skill feels ready again."
+                )
+            else:
+                engine.message_log.add(f"You drink the {item_entity.name}, but feel no different.")
         elif kind == "vigor":
             entity.fighter.active_buffs[BUFF_VIGOR] = ActiveEffect(
                 potency=item_entity.item.buff_potency, turns_remaining=item_entity.item.buff_duration

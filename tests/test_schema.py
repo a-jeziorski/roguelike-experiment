@@ -1037,6 +1037,19 @@ def test_item_def_rejects_sure_footed_with_potency():
         )
 
 
+def test_item_def_resets_skill_cooldowns_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.resets_skill_cooldowns is False
+
+
+def test_item_def_accepts_resets_skill_cooldowns():
+    potion = ItemDef(
+        id="bezoar_of_clarity", name="Bezoar of Clarity", glyph="!", color=(1, 2, 3),
+        resets_skill_cooldowns=True,
+    )
+    assert potion.resets_skill_cooldowns is True
+
+
 def test_item_def_local_teleport_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.local_teleport is False

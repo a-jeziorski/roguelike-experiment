@@ -295,6 +295,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             is_teleport=idef.is_teleport,
             water_walking_duration=idef.water_walking_duration,
             cures_effects=idef.cures_effects,
+            resets_skill_cooldowns=idef.resets_skill_cooldowns,
             grants_buff=idef.grants_buff,
             buff_potency=idef.buff_potency,
             buff_duration=idef.buff_duration,

@@ -183,13 +183,16 @@ class ItemEffect:
     # "smoke_bomb" kind rather than colliding with plain "shadowed"),
     # engine/actions.py's UseItemAction.
     local_teleport: bool = False
+    # Whether drinking this clears every entry in Entity.skill_cooldowns at
+    # once - see potion_kind below. Same plain-flag shape as cures_effects.
+    resets_skill_cooldowns: bool = False
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
 POTION_KINDS: tuple[str, ...] = (
     "healing", "teleport", "water_walking", "antidote", "vigor", "haste", "shadowed", "second_sight",
-    "sure_footed", "smoke_bomb",
+    "sure_footed", "smoke_bomb", "clarity",
 )
 
 
@@ -203,6 +206,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "water_walking"
     if item.cures_effects:
         return "antidote"
+    if item.resets_skill_cooldowns:
+        return "clarity"
     if item.local_teleport:
         # Checked before grants_buff below: a smoke bomb also sets
         # grants_buff=BUFF_SHADOWED on itself (see ItemDef.local_teleport's

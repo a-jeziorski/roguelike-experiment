@@ -247,6 +247,15 @@ def make_smoke_bomb(x: int, y: int, duration: int = 3) -> Entity:
     )
 
 
+def make_clarity_potion(x: int, y: int) -> Entity:
+    return Entity(
+        x, y, "!", (220, 200, 160), "Bezoar of Clarity",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(resets_skill_cooldowns=True),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2437,6 +2446,46 @@ def test_use_item_action_smoke_bomb_refuses_with_nowhere_to_go():
     assert potion in player.inventory  # never consumed
     assert (player.x, player.y) == (0, 0)  # never moved
     assert engine.message_log.messages[-1] == "The smoke has nowhere to carry you."
+
+
+def test_potion_kind_identifies_clarity():
+    assert potion_kind(ItemEffect(resets_skill_cooldowns=True)) == "clarity"
+
+
+def test_use_item_action_clarity_clears_every_skill_cooldown():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.skill_cooldowns["blink_strike"] = 4
+    player.skill_cooldowns["war_horn"] = 2
+    potion = make_clarity_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "clarity"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert player.skill_cooldowns == {}
+    assert (
+        "You drink the Bezoar of Clarity and your mind sharpens - every skill feels ready again."
+        in engine.message_log.messages
+    )
+
+
+def test_use_item_action_clarity_with_nothing_on_cooldown_still_consumes_it():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_clarity_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "clarity"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert engine.message_log.messages[-1] == "You drink the Bezoar of Clarity, but feel no different."
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

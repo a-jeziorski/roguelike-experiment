@@ -86,6 +86,14 @@ smoke_bomb:
   cost: 40
   description: A clay sphere packed with something that catches fast and burns slow. Crack it underfoot and the world goes gray for just long enough to be somewhere else.
 
+bezoar_of_clarity:
+  name: Bezoar of Clarity
+  glyph: "!"
+  color: [220, 200, 160]
+  resets_skill_cooldowns: true
+  cost: 50
+  description: A stone found in the gut of something that never should have swallowed it. Hold it a moment and every trained instinct comes back all at once, sharp and ready.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"
