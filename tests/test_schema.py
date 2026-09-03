@@ -1001,6 +1001,24 @@ def test_item_def_rejects_grants_buff_without_duration():
         )
 
 
+def test_item_def_accepts_grants_buff_shadowed_without_potency():
+    potion = ItemDef(
+        id="shadow_vial", name="Vial of Shadows", glyph="!", color=(1, 2, 3),
+        grants_buff="shadowed", buff_duration=8,
+    )
+    assert potion.grants_buff == "shadowed"
+    assert potion.buff_potency is None
+    assert potion.buff_duration == 8
+
+
+def test_item_def_rejects_shadowed_with_potency():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="shadow_vial", name="Vial of Shadows", glyph="!", color=(1, 2, 3),
+            grants_buff="shadowed", buff_potency=1, buff_duration=8,
+        )
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

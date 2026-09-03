@@ -167,11 +167,19 @@ BUFF_VIGOR = "vigor"
 # so it's excluded from _BUFF_KINDS_WITH_POTENCY below, same "no potency"
 # treatment EFFECT_STUN gets from _EFFECT_KINDS_WITH_POTENCY.
 BUFF_HASTE = "haste"
-BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE]
+# Makes the player undetectable to any monster more than one tile away
+# (see engine/engine.py's _perform_ai) - deliberately not named "hidden",
+# which is already Entity.hidden, AI_AMBUSHER's own per-monster "lying in
+# wait" flag; "shadowed" keeps the two concepts textually distinct even
+# though both mean roughly "can't currently be seen." No intensity concept
+# either (concealed or not), same treatment as BUFF_HASTE.
+BUFF_SHADOWED = "shadowed"
+BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED]
 # Buffs with a meaningful intensity - vigor's potency is a flat attack/
-# defense bonus. Haste has no intensity concept (an action is either free
-# or it isn't - see BUFF_HASTE above), so buff_potency is required for
-# vigor and rejected for haste - see ItemDef.buff_potency_matches_buff_kind
+# defense bonus. Haste and shadowed have no intensity concept (an action
+# is either free or it isn't; the player is either concealed or isn't -
+# see BUFF_HASTE/BUFF_SHADOWED above), so buff_potency is required for
+# vigor and rejected for both - see ItemDef.buff_potency_matches_buff_kind
 # below, the same split _EFFECT_KINDS_WITH_POTENCY already establishes.
 _BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)
 

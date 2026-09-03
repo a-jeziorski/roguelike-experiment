@@ -210,6 +210,15 @@ def make_haste_potion(x: int, y: int, duration: int = 3) -> Entity:
     )
 
 
+def make_shadow_potion(x: int, y: int, duration: int = 8) -> Entity:
+    return Entity(
+        x, y, "!", (70, 60, 100), "Vial of Shadows",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(grants_buff="shadowed", buff_duration=duration),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2211,6 +2220,75 @@ def test_stunned_player_does_not_consume_a_haste_charge():
 
     assert player.fighter.active_buffs["haste"].turns_remaining == 2
     assert "stun" not in player.fighter.active_effects
+
+
+def test_potion_kind_identifies_shadowed():
+    assert potion_kind(ItemEffect(grants_buff="shadowed", buff_duration=8)) == "shadowed"
+
+
+def test_use_item_action_shadowed_grants_the_buff():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_shadow_potion(1, 1, duration=8)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "shadowed"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    # Granted and ticked in the same turn, same "first tick lands
+    # immediately" convention _tick_active_buffs already establishes.
+    assert player.fighter.active_buffs["shadowed"] == ActiveEffect(potency=0, turns_remaining=7)
+    assert "You drink the Vial of Shadows and fade into the shadows." in engine.message_log.messages
+
+
+def test_shadowed_prevents_a_distant_hostile_monster_from_acting():
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    player.fighter.active_buffs["shadowed"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(0, 2, hp=50, attack=4, ai="hostile_basic")  # distance 2
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (monster.x, monster.y) == (0, 2)  # never closed the distance
+    assert player.fighter.hp == 30
+
+
+def test_shadowed_does_not_protect_an_already_adjacent_monster():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_buffs["shadowed"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(2, 1, hp=50, attack=4, ai="hostile_basic")  # already adjacent
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # still attacked - shadowed can't hide you at melee range
+
+
+def test_shadowed_buff_ticks_down_and_expiry_restores_detection():
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, hp=30, defense=0)
+    player.fighter.active_buffs["shadowed"] = ActiveEffect(potency=0, turns_remaining=2)
+    monster = make_monster(0, 2, hp=50, attack=4, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.active_buffs["shadowed"].turns_remaining == 1
+    assert (monster.x, monster.y) == (0, 2)
+
+    engine.process_turn(WaitAction())
+    assert "shadowed" not in player.fighter.active_buffs
+    assert (monster.x, monster.y) == (0, 2)  # still didn't move - shadowed was active going into this turn too
+
+    engine.process_turn(WaitAction())
+    assert (monster.x, monster.y) == (1, 2)  # expired for good now - the monster closes in
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

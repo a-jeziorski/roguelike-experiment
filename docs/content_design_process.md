@@ -3058,6 +3058,80 @@ monster attack and a concurrently-active poison tick both firing again in
 the same turn, confirming nothing about the world's own clock quietly
 stayed frozen past haste's actual expiry.
 
+## 0at. Vial of Shadows - undetectable from a distance, not from melee (`shadow_vial`)
+
+The third `BuffKind` (§0ar/§0as's namespace), and by far the smallest
+diff of the three: a single choke point in `_perform_ai`, right after the
+existing stun check and the `dx`/`dy`/`distance` computation, before any
+AI-type dispatch:
+
+```python
+if distance > 1 and BUFF_SHADOWED in self.player.fighter.active_buffs:
+    return
+```
+
+That one `if` covers every AI branch below it uniformly -
+`hostile_basic`, `ranged_basic`, `sleeping_guard`, `pack_hunter`,
+`regenerator`, `splitter`, `enrage`, `territorial`, `ambusher`,
+`town_guard`, `villager`, `skittish` - without threading a check into
+each one individually, the same "one gate at the top" shape the existing
+FOV check (`if not self.game_map.visible[...]: return`) and stun check
+already establish for this method. `distance > 1` is the entire design:
+shadowed conceals from anything not already adjacent, but does nothing
+once something is standing right next to the player - confirmed live with
+a hostile monster starting two tiles out (drinks the potion, monster
+never closes the distance or attacks for the buff's full duration) versus
+one already adjacent (drinks it, gets hit anyway, same turn). This is a
+deliberate scope limit distinguishing it from the still-unbuilt Smoke
+Bomb (an "escape + aggro break" tool, next round's list) - Shadows is for
+slipping *past* threats at range, not escaping ones already on top of
+you.
+
+**Naming, not mechanics, was the one real hazard here:** `AI_AMBUSHER`
+monsters already have `Entity.hidden`, an unrelated per-monster "lying in
+wait" flag checked by this exact same `_perform_ai` method a few branches
+down. Calling the new buff kind
+`"hidden"` would have made `entity.hidden` (a monster's own state) and
+`"hidden" in player.fighter.active_buffs` (the player's) sit side by side
+in the same function reading like the same concept - so it's
+`BUFF_SHADOWED = "shadowed"` instead, textually distinct even though both
+ultimately mean "can't currently be seen." No functional interaction
+between the two: an ambusher already `hidden=True` and lying in wait
+stays exactly that regardless of whether the player is shadowed (the
+choke point returns before the AI dispatch reaches the ambusher branch
+either way, at distance > 1); at distance <= 1 neither flag matters to
+the other.
+
+**No intensity concept, same as haste** (§0as) - `_BUFF_KINDS_WITH_POTENCY`
+stays `(BUFF_VIGOR,)` unchanged, `buff_potency_matches_buff_kind` rejects
+one for shadowed the same way it already rejects one for haste, and
+`shadow_vial` sets no `buff_potency` in its own data.
+
+**Ticked the ordinary way, unlike haste - the one respect in which this
+buff is closer to vigor than to its `_perform_ai`-gating sibling:**
+shadowed doesn't grant free actions or skip any part of the world's own
+turn, it just adds one extra condition to whether a monster notices the
+player, so `_tick_active_buffs` handles its countdown exactly like
+vigor's (once per turn, in `process_enemy_phase`) with no special-casing
+needed in that method at all - only `BUFF_HASTE` is excluded there.
+Consequently there's no "drinking costs a normal turn" carve-out either:
+unlike haste (whose `_consume_haste_action` deliberately checks
+*pre*-action state so the drink itself isn't free), shadowed takes effect
+immediately within the same turn it's drunk, since `UseItemAction` runs
+during `process_player_action`, strictly before `_handle_enemy_turns`
+checks the buff later that same `process_enemy_phase` call - confirmed
+live: a monster two tiles out at the moment of drinking never gets a turn
+even on that first turn.
+
+Ships one real example, `shadow_vial` (`data/items.yaml`, `grants_buff:
+shadowed`, `buff_duration: 8`, no `buff_potency`, `cost: 45`). Verified
+end-to-end via direct `Engine`/`Entity` construction against the real
+catalog entry, with a hostile monster two tiles out: the monster never
+moves or attacks for the full 8-turn duration (confirmed turn by turn),
+then closes the distance and lands a hit exactly once the buff is fully
+expired - and a second, separate scenario confirming an already-adjacent
+monster attacks straight through the buff, undisturbed.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

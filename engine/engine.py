@@ -25,6 +25,7 @@ from content.schema import (
     AI_TOWN_GUARD,
     AI_VILLAGER,
     BUFF_HASTE,
+    BUFF_SHADOWED,
     EFFECT_POISON,
     EFFECT_STUN,
     PEACEFUL_AI_TYPES,
@@ -729,6 +730,18 @@ class Engine:
         dx = self.player.x - entity.x
         dy = self.player.y - entity.y
         distance = max(abs(dx), abs(dy))
+
+        # A single choke point covering every AI branch below, rather than
+        # threading a check into each one individually - Vial of Shadows'
+        # entire mechanic. Only blocks detection from a distance: adjacent
+        # (distance <= 1) still sees/attacks normally, so this can't be
+        # used to vanish out of an ongoing melee, only to avoid ever being
+        # noticed by anything not already on top of you. Named BUFF_SHADOWED
+        # rather than reusing entity.hidden (AI_AMBUSHER's own unrelated
+        # per-monster "lying in wait" flag) precisely to avoid this
+        # confusion.
+        if distance > 1 and BUFF_SHADOWED in self.player.fighter.active_buffs:
+            return
 
         if entity.ai == AI_HOSTILE_BASIC:
             self._chase_and_attack(entity, dx, dy, distance)
