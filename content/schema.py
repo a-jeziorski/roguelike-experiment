@@ -17,6 +17,12 @@ TileType = Literal[
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
     "landmark", "dunes", "ashen_plains", "blighted_forest", "scoured_ground",
     "deep_water",
+    # Force-physics test-arena wall flavors (see engine/physics.py's
+    # cast_force_ray, TILE_FORCE_COST below) - a cheap-to-smash wall and an
+    # indestructible one, so the arena can compare knockback behavior against
+    # different resistances in one room. Not used by any authored dungeon
+    # content today; ordinary "wall" is unaffected.
+    "wall_brittle", "wall_reinforced",
 ]
 
 # Purely cosmetic map dressing (furniture indoors, plants outdoors) - a
@@ -93,6 +99,32 @@ TILE_PASSABILITY: dict[str, tuple[bool, bool]] = {
     # hazards (see Engine.ENVIRONMENTAL_HAZARD_MESSAGES), not movement/sight
     # obstructions, so they fall through to the default (True, True), same as
     # plains. The danger is standing on them, not crossing them.
+    "wall_brittle": (False, False),
+    "wall_reinforced": (False, False),
+}
+
+# kind -> force cost for engine/physics.py's cast_force_ray to cross one tile
+# of it - the cost to DESTROY an impassable kind and smash through, or the
+# per-tile drag cost to cross a walkable one. None means indestructible/
+# immovable: the ray always stops here regardless of remaining budget, no
+# matter how large (this is what gives even a huge hit a soft travel cap in
+# open terrain too, once combined with floor's own nonzero drag - see
+# DEFAULT_FLOOR_DRAG below). Lives here rather than engine/physics.py for the
+# same "content/loader.py can validate against it without a circular import"
+# reason TILE_PASSABILITY does. Unlisted kinds fall back to
+# DEFAULT_WALL_DESTROY_COST (impassable) or DEFAULT_FLOOR_DRAG (walkable),
+# checked against TILE_PASSABILITY the same way engine/game_map.py's
+# build_game_map already does for walkable/transparent.
+DEFAULT_FLOOR_DRAG = 1.0
+DEFAULT_WALL_DESTROY_COST = 18.0
+TILE_FORCE_COST: dict[str, float | None] = {
+    "wall": DEFAULT_WALL_DESTROY_COST,
+    "wall_brittle": 6.0,
+    "wall_reinforced": None,
+    "door": DEFAULT_WALL_DESTROY_COST,  # a smashed door behaves like a smashed wall
+    "mountain": None,
+    "sea": None,
+    "deep_water": None,
 }
 
 Color = tuple[int, int, int]
@@ -297,6 +329,15 @@ class EntityDef(BaseModel):
     hp: int = Field(gt=0)
     attack: int = Field(ge=0)
     defense: int = Field(ge=0)
+    # Flat resistance to being displaced by engine/physics.py's
+    # cast_force_ray - subtracted from an incoming hit's force budget before
+    # any of it is spent on actually moving this entity, independent of how
+    # much damage it takes to kill it (see engine/entity.py's Fighter.poise).
+    # 0 (the default, left unset on every existing monster) means "as easy
+    # to knock around as its HP alone would suggest" - only content that
+    # specifically wants comic-book "durable/heavy barely budges" behavior
+    # (see data/dungeons/physics_arena) sets this.
+    poise: int = Field(default=0, ge=0)
     ai: AIType = AI_HOSTILE_BASIC
     # Only meaningful for the AI type that uses them (sleeping_guard /
     # skittish / ranged_basic respectively); engine-level defaults apply

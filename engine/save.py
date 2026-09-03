@@ -42,6 +42,7 @@ from engine.game_map import (
     PLAYER_ATTACK,
     PLAYER_DEFENSE,
     PLAYER_MAX_HP,
+    PLAYER_POISE,
     GameMap,
     apply_dungeon_destruction,
     build_game_map,
@@ -91,6 +92,11 @@ class SavedLevelState(BaseModel):
     # back into FOV, breaking the "once ever" promise.
     announced_tiles: list[tuple[int, int]] = Field(default_factory=list)
     unlocked_doors: list[tuple[int, int]] = Field(default_factory=list)
+    # Coordinates GameMap.destroy_wall_tile has smashed into rubble (see
+    # engine/physics.py's cast_force_ray) - replayed through that same
+    # method on load, same "coordinate list, not the tile grid itself"
+    # shape as unlocked_doors above.
+    destroyed_wall_tiles: list[tuple[int, int]] = Field(default_factory=list)
     player_attacked_peaceful_npc: bool = False
     # (year, day, hour) or None - see GameMap.hostility_expires_at/
     # trigger_guard_hostility. Without persisting this, a save made mid-
@@ -247,6 +253,7 @@ def _capture_level_state(game_map: GameMap, level: ParsedLevel) -> SavedLevelSta
         explored=explored_coords,
         announced_tiles=sorted(game_map.announced_tiles),
         unlocked_doors=unlocked_doors,
+        destroyed_wall_tiles=sorted(game_map.destroyed_wall_tiles),
         player_attacked_peaceful_npc=game_map.player_attacked_peaceful_npc,
         hostility_expires_at=game_map.hostility_expires_at,
         player_murdered_peaceful_npc=game_map.player_murdered_peaceful_npc,
@@ -362,7 +369,9 @@ def _build_item_entity(slot: SavedItemSlot, catalog: Catalog) -> Entity:
 
 
 def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
-    fighter = Fighter(max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE)
+    fighter = Fighter(
+        max_hp=PLAYER_MAX_HP, hp=saved.hp, attack=PLAYER_ATTACK, defense=PLAYER_DEFENSE, poise=PLAYER_POISE
+    )
     fighter.active_effects = {
         kind: ActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
         for kind, effect in saved.active_effects.items()
@@ -409,6 +418,8 @@ def _apply_level_state(game_map: GameMap, state: SavedLevelState, catalog: Catal
     game_map.announced_tiles = set(state.announced_tiles)
     for x, y in state.unlocked_doors:
         game_map.unlock_door(x, y)
+    for x, y in state.destroyed_wall_tiles:
+        game_map.destroy_wall_tile(x, y)
     game_map.player_attacked_peaceful_npc = state.player_attacked_peaceful_npc
     game_map.hostility_expires_at = state.hostility_expires_at
     game_map.player_murdered_peaceful_npc = state.player_murdered_peaceful_npc

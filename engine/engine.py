@@ -343,6 +343,15 @@ class Engine:
         # here instead of forcing Engine to know about rendering.
         self.ranged_attack_events: list[tuple[int, int, int, int]] = []
         self.melee_attack_events: list[tuple[int, int]] = []
+        # (from_x, from_y, to_x, to_y) for every entity a force ray actually
+        # moved, and (x, y) for every wall tile a force ray destroyed -
+        # engine/physics.py's cast_force_ray appends to these during combat
+        # resolution, main.py's animate_physics_events drains them for
+        # visual feedback. Same mailbox pattern/lifecycle as
+        # ranged_attack_events/melee_attack_events above - Engine itself
+        # never reads these back.
+        self.knockback_events: list[tuple[int, int, int, int]] = []
+        self.wall_destruction_events: list[tuple[int, int]] = []
         # Semantic sound-effect keys (e.g. "melee_hit", "pickup_gold" - see
         # data/audio.yaml) queued during the last process_turn()/free-action
         # call - same mailbox pattern as the two event lists above: Engine
@@ -720,6 +729,8 @@ class Engine:
         self.message_log = MessageLog()
         self.ranged_attack_events = []
         self.melee_attack_events = []
+        self.knockback_events = []
+        self.wall_destruction_events = []
         self.sound_events = []
         self.wants_overworld = False
         self.pending_dungeon_entry = None

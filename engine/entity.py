@@ -66,6 +66,13 @@ class Fighter:
     hp: int
     attack: int
     defense: int
+    # Flat resistance to forced movement (see engine/physics.py's
+    # cast_force_ray, content/schema.py's EntityDef.poise) - subtracted from
+    # an incoming hit's force budget before any of it moves this fighter,
+    # independent of max_hp/attack/defense. 0 by default, same as every other
+    # stat here; never derived (no effective_poise property) since nothing
+    # today grants a temporary poise bonus.
+    poise: int = 0
     # A learned perk's ranged_attack_bonus, permanently folded in (see
     # apply_perk_stat_bonus below) - unlike max_hp/attack/defense, ranged
     # attack has no base stat of its own to bump (effective_ranged_attack

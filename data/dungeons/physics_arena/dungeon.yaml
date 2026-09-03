@@ -1,0 +1,10 @@
+id: physics_arena
+name: The Physics Arena
+starting_level: level_01
+requires_stairs_down: false
+description: >
+  A debug proving ground, not a real dungeon - built to test how attack
+  magnitude affects the environment itself: wall tiles of varying
+  durability, target dummies of varying Poise, and nothing resembling a
+  narrative.
+inspect_text: A plain stone chamber, built for testing rather than telling a story.

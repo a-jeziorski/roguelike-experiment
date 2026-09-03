@@ -19,6 +19,7 @@ from content.schema import (
     PEACEFUL_AI_TYPES,
 )
 from engine.entity import ActiveEffect
+from engine.physics import apply_attack_physics
 
 if TYPE_CHECKING:
     from engine.engine import Engine
@@ -253,6 +254,16 @@ def _apply_damage(
 
     if defender.fighter.hp <= 0:
         engine.on_entity_death(defender)
+
+    # Every landed hit - melee, ranged, and skill damage alike, since all
+    # three funnel through here - triggers engine/physics.py's knockback/
+    # wall-smashing/shockwave resolution (see apply_attack_physics's own
+    # docstring for why this runs after the death check above rather than
+    # before it). Deliberately unconditional, not opt-in per attack: a big
+    # enough hit having physical consequences is the whole feature, not a
+    # flag on specific "special" attacks.
+    if damage > 0:
+        apply_attack_physics(engine, attacker, defender, damage)
 
 
 def resolve_attack(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:

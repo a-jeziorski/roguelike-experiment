@@ -953,3 +953,56 @@ elder_widow:
   inflicts_duration: 4
   xp_reward: 65
   description: Whatever the settlers meant by "genuinely dangerous," this is almost certainly what they'd seen once and never gone looking for again.
+
+# Force-physics test-arena roster (see data/dungeons/physics_arena) - debug
+# targets spanning the Poise/HP spectrum, not placed in any other dungeon.
+# xp_reward: 0 throughout - these aren't meant to be a real fight, just
+# something to hit. poise is otherwise unset (0, the default) on every
+# monster above this point in the file.
+physics_dummy_fragile:
+  name: Fragile Dummy
+  glyph: d
+  color: [200, 200, 100]
+  hp: 5
+  attack: 1
+  defense: 0
+  poise: 0
+  ai: hostile_basic
+  xp_reward: 0
+  description: A straw practice dummy, barely holding together. The lightest real hit sends it flying.
+
+physics_dummy_glass_cannon:
+  name: Glass Cannon Dummy
+  glyph: d
+  color: [220, 140, 60]
+  hp: 40
+  attack: 2
+  defense: 1
+  poise: 2
+  ai: hostile_basic
+  xp_reward: 0
+  description: A sturdier dummy, reinforced just enough to take a real hit before it goes anywhere.
+
+physics_dummy_tank:
+  name: Immovable Dummy
+  glyph: D
+  color: [120, 120, 140]
+  hp: 200
+  attack: 3
+  defense: 4
+  poise: 100
+  ai: hostile_basic
+  xp_reward: 0
+  description: A dummy built around a buried iron core. It does not, as a rule, move.
+
+physics_dummy_bystander:
+  name: Bystander Dummy
+  glyph: d
+  color: [160, 200, 160]
+  hp: 8
+  attack: 0
+  defense: 0
+  poise: 0
+  ai: hostile_basic
+  xp_reward: 0
+  description: A dummy standing well clear of the action - or trying to.

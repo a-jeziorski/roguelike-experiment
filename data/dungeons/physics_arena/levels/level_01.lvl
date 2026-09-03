@@ -1,0 +1,33 @@
+id: level_01
+name: The Arena Floor
+
+map: |
+  ######################$
+  #aFFFFFFFFFFFFFFFFFFFF$
+  #1FFFFFFFFFFFFFFFFFFFF$
+  #2FFFFFFFFFgFFFFFFFFFF$
+  #3FFFFFFFFFFFFFFFFFFFF$
+  #4FFFFFFFFFFFFFFFFFFFF$
+  #FF@FFFFFFdFFFbFFFFFFF$
+  #FFFFFFFFFFFFFFbFFFFFF$
+  #FFFFFFFFFFFFFbFFFFFFF$
+  #FFFFFFFFFtFFFFFFFFFFF$
+  #FFFFFFFFFFFFFFFFFFFFF$
+  #FFFFFFFFFFFFFFFFFFFFF$
+  #%%%%%%%%%%%%%%%%%%%%%$
+
+legend:
+  "#": wall
+  "$": wall_brittle
+  "%": wall_reinforced
+  "@": player_start
+  "F": floor
+  "a": { tile: stairs_up, next_level: null }
+  "d": { tile: floor, entity: physics_dummy_fragile }
+  "g": { tile: floor, entity: physics_dummy_glass_cannon }
+  "t": { tile: floor, entity: physics_dummy_tank }
+  "b": { tile: floor, entity: physics_dummy_bystander }
+  "1": { tile: floor, item: debug_hammer_100 }
+  "2": { tile: floor, item: debug_hammer_1000 }
+  "3": { tile: floor, item: debug_hammer_10000 }
+  "4": { tile: floor, item: debug_hammer_1000000 }

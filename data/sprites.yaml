@@ -158,6 +158,11 @@ items:
 
 tile_kinds:
   wall:             {sheet: rltiles, name: dngn_rock_wall_00}
+  # Same base sprite as wall - engine/render.py's TILE_VISUALS carries the
+  # actual visual distinction for the ASCII/headless path; a genuinely
+  # different sprite for these can follow once the arena's in use.
+  wall_brittle:     {sheet: rltiles, name: dngn_rock_wall_00}
+  wall_reinforced:  {sheet: rltiles, name: dngn_rock_wall_00}
   floor:            {sheet: rltiles, name: floor_of_a_room}
   stairs_down:      {sheet: rltiles, name: staircase_down, backdrop: floor}
   stairs_up:        {sheet: rltiles, name: staircase_up, backdrop: floor}

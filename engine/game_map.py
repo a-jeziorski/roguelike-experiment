@@ -24,6 +24,9 @@ from engine.entity import (
 PLAYER_MAX_HP = 30
 PLAYER_ATTACK = 5
 PLAYER_DEFENSE = 1
+# See Fighter.poise/EntityDef.poise - the player is exactly as easy to knock
+# around as an unset (poise=0) monster by default, no special-casing.
+PLAYER_POISE = 0
 
 # Placeholder fg stored on every decoration Entity at construction time
 # (Entity.color is a required field) - no longer what a decoration
@@ -168,6 +171,13 @@ class GameMap:
         # reads these two dicts.
         self.entity_spawn_index: dict[int, Entity] = {}
         self.item_spawn_index: dict[int, Entity] = {}
+        # Coordinates where engine/physics.py's cast_force_ray has smashed a
+        # wall tile into rubble at runtime - see destroy_wall_tile below.
+        # Persisted (engine/save.py's SavedLevelState.destroyed_wall_tiles)
+        # the same way locked_doors' unlocked state is, via a coordinate list
+        # replayed through destroy_wall_tile on load rather than saving the
+        # tile grid itself.
+        self.destroyed_wall_tiles: set[tuple[int, int]] = set()
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
@@ -190,6 +200,25 @@ class GameMap:
         self.transparent[x, y] = True
         self.kinds[x, y] = "floor"
         self.locked_doors.pop((x, y), None)
+
+    def destroy_wall_tile(self, x: int, y: int) -> None:
+        """Smashes the wall tile at (x, y) into open floor - called by
+        engine/physics.py's cast_force_ray, never directly by combat code.
+        Same lockstep kinds/walkable/transparent update as unlock_door above
+        (FOV/AI pick up the change for free on their next live read, no
+        separate invalidation needed - see GameMap.update_fov). Idempotent:
+        a tile already recorded in destroyed_wall_tiles is a no-op, so
+        engine/save.py's _apply_level_state can safely replay every saved
+        coordinate through this without double-spawning rubble."""
+        if (x, y) in self.destroyed_wall_tiles:
+            return
+        self.kinds[x, y] = "floor"
+        self.walkable[x, y] = True
+        self.transparent[x, y] = True
+        self.decorations.append(
+            Entity(x, y, "?", DECORATION_FG, DECORATION_NAMES["rubble"], entity_id="rubble")
+        )
+        self.destroyed_wall_tiles.add((x, y))
 
     def trigger_guard_hostility(self, clock: GameClock) -> None:
         """Called from engine/combat.py the instant the player attacks any
@@ -335,7 +364,7 @@ def entity_from_def(edef: EntityDef, x: int = 0, y: int = 0) -> Entity:
         blocks_movement=edef.ai != AI_MIMIC,
         render_priority=RENDER_PRIORITY_ITEM if edef.ai == AI_MIMIC else RENDER_PRIORITY_ACTOR,
         fighter=Fighter(
-            max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense
+            max_hp=edef.hp, hp=edef.hp, attack=edef.attack, defense=edef.defense, poise=edef.poise
         ),
         ai=edef.ai,
         alert_radius=edef.alert_radius,
@@ -501,6 +530,7 @@ def build_game_map(
                 hp=PLAYER_MAX_HP,
                 attack=PLAYER_ATTACK,
                 defense=PLAYER_DEFENSE,
+                poise=PLAYER_POISE,
             ),
             entity_id=PLAYER_ENTITY_ID,
         )

@@ -1473,6 +1473,7 @@ SHIPPED_DUNGEON_IDS = {
     "visitor_band_ambush",
     "northern_watch_post",
     "weeping_cistern",
+    "physics_arena",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern"]
@@ -1952,7 +1953,7 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.height == 180
     assert overworld.player_start == (29, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 17  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post and Weeping Cistern
+    assert len(overworld.dungeon_entrances) == 18  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post, Weeping Cistern, and Physics Arena
     assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(
@@ -1999,6 +2000,7 @@ def test_load_overworld_northern_steppe_cell_has_its_dungeons():
     assert {(d.x, d.y, d.dungeon_id) for d in steppe.dungeon_entrances} == {
         (75, 72, "northern_watch_post"),
         (95, 83, "weeping_cistern"),
+        (20, 33, "physics_arena"),
     }
     assert len(steppe.tile_descriptions) == 3
     kinds = {tile for row in steppe.tiles for tile in row}

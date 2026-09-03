@@ -51,6 +51,14 @@ if TYPE_CHECKING:
 
 TILE_VISUALS = {
     "wall": {"glyph": "#", "dark": (35, 35, 55), "light": (100, 100, 130)},
+    # Force-physics test-arena wall flavors (see content/schema.py's
+    # TILE_FORCE_COST) - a lighter, cracked-looking grey for the cheap-to-
+    # smash variant, a darker/denser one for the indestructible variant, so
+    # the two read apart from ordinary "wall" and each other at a glance
+    # even in the ASCII/headless path play_llm.py and tools/replay.py render
+    # through (both pass sprite_codepoints=None).
+    "wall_brittle": {"glyph": "#", "dark": (60, 55, 50), "light": (150, 135, 115)},
+    "wall_reinforced": {"glyph": "#", "dark": (20, 20, 30), "light": (70, 70, 90)},
     "floor": {"glyph": ".", "dark": (25, 25, 35), "light": (75, 75, 95)},
     "stairs_down": {"glyph": ">", "dark": (65, 45, 15), "light": (210, 160, 60)},
     "stairs_up": {"glyph": "<", "dark": (65, 45, 15), "light": (210, 160, 60)},
@@ -100,6 +108,8 @@ TILE_VISUALS = {
 
 TILE_DESCRIPTIONS = {
     "wall": "Wall.",
+    "wall_brittle": "A cracked, crumbling wall - it wouldn't take much to bring this down.",
+    "wall_reinforced": "A dense, reinforced wall. Nothing short of the ground itself is bringing this down.",
     "floor": "Bare floor.",
     "stairs_down": "Stairs leading down.",
     "stairs_up": "Stairs leading up.",

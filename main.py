@@ -549,11 +549,43 @@ def animate_melee_attacks(
         time.sleep(IMPACT_FLASH_SECONDS)
 
 
+def animate_physics_events(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine
+) -> None:
+    """Visual flair for engine/physics.py's knockback/wall-smashing - a
+    rubble-burst flash on every destroyed wall tile, then a brief impact
+    flash at the end of every knockback path. Same mailbox-draining shape as
+    animate_melee_attacks/animate_ranged_attacks above; harmless no-op for
+    tools/play_llm.py and tools/replay.py, which never call this (or any
+    other animate_* function) at all."""
+    wall_events = engine.wall_destruction_events
+    engine.wall_destruction_events = []
+    knockback_events = engine.knockback_events
+    engine.knockback_events = []
+    cam_x, cam_y = compute_camera(
+        engine.game_map.width, engine.game_map.height, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+        engine.player.x, engine.player.y,
+    )
+
+    for x, y in wall_events:
+        render_all(console, engine)
+        flash_impact(console, engine.game_map, cam_x, cam_y, x, y)
+        context.present(console)
+        time.sleep(IMPACT_FLASH_SECONDS)
+
+    for _from_x, _from_y, to_x, to_y in knockback_events:
+        render_all(console, engine)
+        flash_impact(console, engine.game_map, cam_x, cam_y, to_x, to_y)
+        context.present(console)
+        time.sleep(IMPACT_FLASH_SECONDS)
+
+
 def animate_combat_feedback(
     console: tcod.console.Console, context: tcod.context.Context, engine: Engine
 ) -> None:
     animate_melee_attacks(console, context, engine)
     animate_ranged_attacks(console, context, engine)
+    animate_physics_events(console, context, engine)
 
 
 def play_queued_sounds(engine: Engine, sound_manager: SoundManager) -> None:
