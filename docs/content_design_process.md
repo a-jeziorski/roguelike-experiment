@@ -3790,6 +3790,82 @@ correctly through `effective_defense` itself (not just the raw
 struck target is removed and awards XP through the normal death pipeline
 without any attempt to also expose it.
 
+## 0be. Marked for Death - a sixth `EffectKind` that modifies damage taken from *any* attacker (`mark_for_death` perk)
+
+The sixth active perk, the eighth `SkillEffectKind`, and the sixth
+`EffectKind` - `EFFECT_MARKED = "marked"` - and the first one that isn't
+a stat penalty on the afflicted entity at all. Every prior `EffectKind`
+(poison, weaken, exposed, rooted) changes something about the afflicted
+entity's *own* stats or ability to act. Marked changes something about
+*combat resolution itself*: a flat bonus added to every hit the marked
+entity takes, from whichever entity happens to be swinging - not folded
+into `effective_defense`/`effective_attack` at all, but injected directly
+into `engine/combat.py`'s `_apply_damage`, after the crit multiplier and
+before the `if damage > 0:` branch:
+
+```python
+if defender.fighter is not None:
+    mark = defender.fighter.active_effects.get(EFFECT_MARKED)
+    if mark:
+        damage += mark.potency
+```
+
+**Deliberately after crit, not before** - the mark bonus is never itself
+multiplied by a crit roll, keeping it a predictable flat addition rather
+than a number that occasionally spikes further depending on unrelated
+variance.
+
+**Deliberately before the `damage > 0` branch, which is the entire
+mechanical point** - a hit that would otherwise be fully absorbed by
+`effective_defense` (`"but does no damage"`, the same message every other
+0-damage hit already logs) instead lands for exactly the mark's own
+bonus. Verified directly: a defender with `defense` exactly matching the
+attacker's `attack` (guaranteed 0 base damage) still takes the mark's
+flat bonus and nothing else. No other `EffectKind` in this project can
+turn a fully-mitigated hit into real damage - weaken/exposed only shift
+the *inputs* to the same `max(0, attack - defense)` formula, never
+sidestep it.
+
+**"From any attacker" is the mechanic's whole identity, and it falls out
+for free rather than needing special-casing** - the bonus check reads
+`defender.fighter.active_effects`, with no reference anywhere to who
+applied the mark or who's currently attacking. Verified with a dedicated
+test: an entity that is neither the player nor whoever cast the skill
+lands a hit on a pre-marked target via `resolve_attack` directly, and the
+bonus still applies. This is the reason Marked for Death earns its own
+`EffectKind` rather than reusing, say, a variant of exposed (defense
+reduction) - exposed changes what the *defender* mitigates; marked
+changes what *any hit* delivers, a genuinely different combat-resolution
+hook, not a reskin of an existing one.
+
+**Targeting and no-direct-damage shape**: the same single-nearest-target-
+within-range-or-refuse-outright pattern Guard Break/Blink Strike already
+established, but unlike guard_break, mark_for_death deals **no** damage
+of its own - it's a pure setup tool, applied unconditionally to whatever
+living target it finds (no `if target.is_alive` gate is even needed,
+since nothing here can kill the target to begin with). Its value is
+entirely deferred to whatever hits land on the marked target afterward,
+from any source, for `skill_mark_duration` turns.
+
+**`_EFFECT_INFLICT_MESSAGES` (`engine/combat.py`) got a marked entry too,
+same reasoning as rooted/exposed's own entries (§0bb/§0bd)** - the skill
+writes `Fighter.active_effects` directly, but `EFFECT_MARKED` is now a
+general-purpose `EffectKind` any future `inflicts_effect`/`affix_effect`
+could reach for.
+
+Ships one real example, `mark_for_death` (`data/perks.yaml`,
+`skill_effect: mark_for_death`, `skill_mark_range: 5`,
+`skill_mark_bonus: 2`, `skill_mark_duration: 6`, `skill_cooldown_kind:
+turns`, `skill_cooldown_amount: 10`, `xp_cost: 60` - the round's longest
+cooldown so far, reflecting that the bonus compounds across every hit
+the target takes for six full turns, not just one). Verified end-to-end
+via direct `Engine`/`Entity`/catalog construction: casting leaves the
+target's hp completely untouched, and a normal follow-up attack that
+would otherwise deal 2 damage (base `attack 6 - defense 4`) instead deals
+4, the mark's own bonus folded transparently into the same "Player hits
+Goblin for 4 damage" message every ordinary attack already produces - no
+separate line, no special UI, just a bigger number.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

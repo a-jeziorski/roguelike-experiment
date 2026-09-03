@@ -10,6 +10,7 @@ from content.schema import (
     BUFF_IRONROOT,
     BUFF_RIPOSTE,
     EFFECT_EXPOSED,
+    EFFECT_MARKED,
     EFFECT_POISON,
     EFFECT_ROOTED,
     EFFECT_STUN,
@@ -25,19 +26,21 @@ if TYPE_CHECKING:
 # The message logged the instant an effect is inflicted (distinct from
 # _tick_active_effects' own per-turn message, e.g. poison's "writhes from
 # poison, taking N damage") - one per EffectKind, since each reads
-# differently as a fresh affliction. Root the Ground/Guard Break's own
-# skills (see Engine.use_skill) write EFFECT_ROOTED/EFFECT_EXPOSED
-# directly rather than going through _inflict_effect below, but these
-# entries still matter: EffectKind is a general-purpose enum, not tied to
-# those two skills, so any future EntityDef.inflicts_effect/ItemDef.
-# affix_effect using either kind needs a message here too, the same way
-# poison/stun/weaken already have one.
+# differently as a fresh affliction. Root the Ground/Guard Break/Marked
+# for Death's own skills (see Engine.use_skill) write EFFECT_ROOTED/
+# EFFECT_EXPOSED/EFFECT_MARKED directly rather than going through
+# _inflict_effect below, but these entries still matter: EffectKind is a
+# general-purpose enum, not tied to those three skills, so any future
+# EntityDef.inflicts_effect/ItemDef.affix_effect using one of these kinds
+# needs a message here too, the same way poison/stun/weaken already have
+# one.
 _EFFECT_INFLICT_MESSAGES = {
     EFFECT_POISON: "{name} is poisoned!",
     EFFECT_STUN: "{name} is stunned!",
     EFFECT_WEAKEN: "{name} is weakened!",
     EFFECT_ROOTED: "{name} is rooted in place!",
     EFFECT_EXPOSED: "{name}'s guard is broken!",
+    EFFECT_MARKED: "{name} is marked for death!",
 }
 
 
@@ -208,6 +211,18 @@ def _apply_damage(
         # same integer.
         damage = math.ceil(damage * CRIT_MULTIPLIER)
         is_critical = True
+
+    # Marked for Death's entire mechanic: a flat bonus added on top of
+    # whatever this hit would otherwise have dealt, from *any* attacker -
+    # deliberately after the crit multiplier (a marked bonus is never
+    # itself multiplied by a crit) and before the damage > 0 branch below,
+    # so it can turn an otherwise-fully-mitigated 0-damage hit into a real
+    # one. See content/schema.py's EFFECT_MARKED for why this lives here
+    # rather than as a passive stat penalty like weaken/exposed.
+    if defender.fighter is not None:
+        mark = defender.fighter.active_effects.get(EFFECT_MARKED)
+        if mark:
+            damage += mark.potency
 
     if damage > 0:
         defender.fighter.hp -= damage

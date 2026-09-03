@@ -29,6 +29,7 @@ from content.schema import (
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     EFFECT_EXPOSED,
+    EFFECT_MARKED,
     EFFECT_POISON,
     EFFECT_ROOTED,
     EFFECT_STUN,
@@ -40,6 +41,7 @@ from content.schema import (
     SKILL_EFFECT_CHAIN_LASH,
     SKILL_EFFECT_GUARD_BREAK,
     SKILL_EFFECT_HEAL,
+    SKILL_EFFECT_MARK_FOR_DEATH,
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
 )
@@ -1737,37 +1739,66 @@ class Engine:
                 origin_x, origin_y = target.x, target.y
             return message
 
-        # SKILL_EFFECT_GUARD_BREAK - blink_strike's own "pick the single
-        # nearest qualifying hostile within range, or refuse outright"
-        # targeting shape, minus the relocation: strikes the target for
-        # flat skill_guard_break_damage (resolve_skill_damage, same
-        # dedicated-payload reasoning as every other flat-damage skill in
-        # this project), then, only if it survived the hit, inflicts
-        # EFFECT_EXPOSED at skill_guard_break_potency for
-        # skill_guard_break_duration turns - a corpse has no defense left
-        # to break, and writing a status effect onto one would just be
-        # dead state nobody ever reads. The debuff itself lives entirely in
-        # Entity._exposed_penalty (engine/entity.py), read by
-        # effective_defense exactly the way _weaken_penalty already is.
+        if perk.skill_effect == SKILL_EFFECT_GUARD_BREAK:
+            # blink_strike's own "pick the single nearest qualifying
+            # hostile within range, or refuse outright" targeting shape,
+            # minus the relocation: strikes the target for flat
+            # skill_guard_break_damage (resolve_skill_damage, same
+            # dedicated-payload reasoning as every other flat-damage skill
+            # in this project), then, only if it survived the hit,
+            # inflicts EFFECT_EXPOSED at skill_guard_break_potency for
+            # skill_guard_break_duration turns - a corpse has no defense
+            # left to break, and writing a status effect onto one would
+            # just be dead state nobody ever reads. The debuff itself
+            # lives entirely in Entity._exposed_penalty (engine/entity.py),
+            # read by effective_defense exactly the way _weaken_penalty
+            # already is.
+            candidates = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_guard_break_range
+            ]
+            if not candidates:
+                message = "There's nothing within range to break the guard of."
+                self.message_log.add(message)
+                return message
+            target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+            message = f"You use {perk.name} on {target.name}!"
+            self.message_log.add(message)
+            resolve_skill_damage(self, entity, target, perk.skill_guard_break_damage, "cracks")
+            if target.is_alive:
+                target.fighter.active_effects[EFFECT_EXPOSED] = ActiveEffect(
+                    potency=perk.skill_guard_break_potency, turns_remaining=perk.skill_guard_break_duration
+                )
+                self.message_log.add(f"{target.name}'s guard is broken!", category="combat")
+            return message
+
+        # SKILL_EFFECT_MARK_FOR_DEATH - the same single-nearest-target
+        # shape as guard_break, but deals no direct damage of its own: it
+        # only inflicts EFFECT_MARKED on the nearest qualifying hostile
+        # within skill_mark_range. Applied unconditionally to a living
+        # target found in range - no "if target.is_alive" gate like
+        # guard_break's, since nothing here can kill the target itself.
+        # The actual bonus-damage mechanic lives entirely in
+        # engine/combat.py's _apply_damage.
         candidates = [
             e for e in list(self.game_map.entities)
             if e is not entity and e.fighter is not None and e.is_alive
             and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_guard_break_range
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_mark_range
         ]
         if not candidates:
-            message = "There's nothing within range to break the guard of."
+            message = "There's nothing within range to mark."
             self.message_log.add(message)
             return message
         target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+        target.fighter.active_effects[EFFECT_MARKED] = ActiveEffect(
+            potency=perk.skill_mark_bonus, turns_remaining=perk.skill_mark_duration
+        )
         message = f"You use {perk.name} on {target.name}!"
         self.message_log.add(message)
-        resolve_skill_damage(self, entity, target, perk.skill_guard_break_damage, "cracks")
-        if target.is_alive:
-            target.fighter.active_effects[EFFECT_EXPOSED] = ActiveEffect(
-                potency=perk.skill_guard_break_potency, turns_remaining=perk.skill_guard_break_duration
-            )
-            self.message_log.add(f"{target.name}'s guard is broken!", category="combat")
+        self.message_log.add(f"{target.name} is marked for death!", category="combat")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

@@ -110,6 +110,23 @@ def test_entity_def_rejects_exposed_without_potency():
         )
 
 
+def test_entity_def_accepts_marked_effect_with_potency_and_duration():
+    e = EntityDef(
+        id="gray_ooze", name="Gray Ooze", glyph="j", color=(1, 2, 3), hp=16, attack=4, defense=1,
+        inflicts_effect="marked", inflicts_potency=2, inflicts_duration=6,
+    )
+    assert e.inflicts_effect == "marked"
+    assert e.inflicts_potency == 2
+
+
+def test_entity_def_rejects_marked_without_potency():
+    with pytest.raises(ValidationError, match="requires inflicts_potency"):
+        EntityDef(
+            id="gray_ooze", name="Gray Ooze", glyph="j", color=(1, 2, 3), hp=16, attack=4, defense=1,
+            inflicts_effect="marked", inflicts_duration=6,
+        )
+
+
 def test_entity_def_rejects_inflicts_effect_without_duration():
     with pytest.raises(ValidationError, match="must be set together"):
         EntityDef(
@@ -1836,6 +1853,38 @@ def test_perk_def_rejects_heal_skill_with_guard_break_fields_set():
             max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
             skill_guard_break_damage=4, skill_guard_break_range=2,
             skill_guard_break_potency=2, skill_guard_break_duration=4,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
+def test_perk_def_accepts_a_mark_for_death_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="mark_for_death",
+        skill_mark_range=5, skill_mark_bonus=2, skill_mark_duration=6,
+        skill_cooldown_kind="turns", skill_cooldown_amount=10,
+    ))
+    assert perk.skill_effect == "mark_for_death"
+    assert perk.skill_mark_range == 5
+    assert perk.skill_mark_bonus == 2
+    assert perk.skill_mark_duration == 6
+
+
+def test_perk_def_rejects_mark_for_death_skill_missing_a_field():
+    full = dict(skill_mark_range=5, skill_mark_bonus=2, skill_mark_duration=6)
+    for missing in full:
+        partial = {k: v for k, v in full.items() if k != missing}
+        with pytest.raises(ValidationError, match="requires skill_mark_range"):
+            PerkDef(**_perk_kwargs(
+                max_hp_bonus=None, skill_effect="mark_for_death",
+                skill_cooldown_kind="turns", skill_cooldown_amount=10, **partial,
+            ))
+
+
+def test_perk_def_rejects_heal_skill_with_mark_fields_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'mark_for_death'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+            skill_mark_range=5, skill_mark_bonus=2, skill_mark_duration=6,
             skill_cooldown_kind="hours", skill_cooldown_amount=24,
         ))
 

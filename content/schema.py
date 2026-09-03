@@ -162,15 +162,30 @@ EFFECT_ROOTED = "rooted"
 # established for rooted - the Guard Break active skill's own mechanic -
 # though nothing here is direction-specific either.
 EFFECT_EXPOSED = "exposed"
-EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED, EFFECT_EXPOSED]
+# A flat bonus added to every hit the marked entity takes, from *any*
+# attacker, on top of whatever that hit would already have dealt -
+# including a hit that would otherwise deal 0 (see engine/combat.py's
+# _apply_damage, where this is added after the crit multiplier but before
+# the damage > 0 branch, so a marked target can never fully deflect a
+# blow the way an ordinary 0-damage hit still can). Genuinely different
+# from every other EffectKind so far: poison/weaken/exposed/rooted all
+# modify something about the *afflicted* entity's own stats or ability to
+# act; marked modifies how much damage lands on it, regardless of who's
+# swinging - a deliberate "focus this target" tool, not a personal
+# affliction. Marked for Death's own active skill mechanic.
+EFFECT_MARKED = "marked"
+EffectKind = Literal[
+    EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED, EFFECT_EXPOSED, EFFECT_MARKED,
+]
 # Effects with a meaningful intensity, not just a duration - poison's
 # potency is damage/turn, weaken's is a flat attack reduction, exposed's
-# is a flat defense reduction. Stun and rooted both have no intensity
-# concept (an entity either can act or can't; either can move or can't),
-# so inflicts_potency is required for poison/weaken/exposed and rejected
-# for stun/rooted - see EntityDef.inflicts_potency_matches_effect_kind
-# below.
-_EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN, EFFECT_EXPOSED)
+# is a flat defense reduction, marked's is the flat bonus damage added to
+# every hit it takes. Stun and rooted both have no intensity concept (an
+# entity either can act or can't; either can move or can't), so
+# inflicts_potency is required for poison/weaken/exposed/marked and
+# rejected for stun/rooted - see
+# EntityDef.inflicts_potency_matches_effect_kind below.
+_EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN, EFFECT_EXPOSED, EFFECT_MARKED)
 
 # A player-facing timed self-buff - deliberately a separate Literal from
 # EffectKind above, not another member of it, so EntityDef.inflicts_effect/
@@ -668,7 +683,8 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # to the next-nearest hostile *to that target* (not back to the player)
 # and repeats, up to a cap, "guard_break" strikes the nearest hostile
 # within range for flat damage and, if it survives, inflicts EFFECT_EXPOSED
-# on it (see Engine.use_skill).
+# on it, "mark_for_death" inflicts EFFECT_MARKED on the nearest hostile
+# within range, dealing no direct damage of its own (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
@@ -676,9 +692,10 @@ SKILL_EFFECT_RIPOSTE_STANCE = "riposte_stance"
 SKILL_EFFECT_ROOT_GROUND = "root_ground"
 SKILL_EFFECT_CHAIN_LASH = "chain_lash"
 SKILL_EFFECT_GUARD_BREAK = "guard_break"
+SKILL_EFFECT_MARK_FOR_DEATH = "mark_for_death"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
-    SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK,
+    SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK, SKILL_EFFECT_MARK_FOR_DEATH,
 ]
 
 
@@ -734,7 +751,9 @@ class PerkDef(BaseModel):
     # skill_chain_max_targets for/exclusive to "chain_lash",
     # skill_guard_break_damage/skill_guard_break_range/
     # skill_guard_break_potency/skill_guard_break_duration for/exclusive
-    # to "guard_break" (skill_effect_matches_payload below).
+    # to "guard_break", skill_mark_range/skill_mark_bonus/
+    # skill_mark_duration for/exclusive to "mark_for_death"
+    # (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -776,6 +795,14 @@ class PerkDef(BaseModel):
     skill_guard_break_range: int | None = Field(default=None, gt=0)
     skill_guard_break_potency: int | None = Field(default=None, gt=0)
     skill_guard_break_duration: int | None = Field(default=None, gt=0)
+    # A "mark_for_death" skill's own payload: how far it can reach to mark
+    # the nearest hostile, EFFECT_MARKED's own flat bonus-damage potency,
+    # and how many turns the mark lasts. No damage field - this skill
+    # deals none of its own, only the mark itself. All three required
+    # together, exclusively for this skill kind.
+    skill_mark_range: int | None = Field(default=None, gt=0)
+    skill_mark_bonus: int | None = Field(default=None, gt=0)
+    skill_mark_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -896,6 +923,21 @@ class PerkDef(BaseModel):
             raise ValueError(
                 "skill_guard_break_damage/skill_guard_break_range/skill_guard_break_potency/"
                 "skill_guard_break_duration are only meaningful when skill_effect is 'guard_break'"
+            )
+        if self.skill_effect == SKILL_EFFECT_MARK_FOR_DEATH:
+            if self.skill_mark_range is None or self.skill_mark_bonus is None or self.skill_mark_duration is None:
+                raise ValueError(
+                    "skill_effect 'mark_for_death' requires skill_mark_range, skill_mark_bonus, "
+                    "and skill_mark_duration to be set"
+                )
+        elif (
+            self.skill_mark_range is not None
+            or self.skill_mark_bonus is not None
+            or self.skill_mark_duration is not None
+        ):
+            raise ValueError(
+                "skill_mark_range/skill_mark_bonus/skill_mark_duration are only meaningful "
+                "when skill_effect is 'mark_for_death'"
             )
         return self
 

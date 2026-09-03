@@ -8225,6 +8225,92 @@ def test_guard_break_cooldown_ticks_down_each_turn_and_expires():
     assert "guard_break" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_mark_for_death_marks_the_nearest_target_and_deals_no_direct_damage():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("mark_for_death")
+    monster = make_monster(6, 4, hp=20, defense=0, ai=None)  # distance 2, range is 5
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "mark_for_death")
+
+    assert monster.fighter.hp == 20  # deals no damage of its own
+    assert monster.fighter.active_effects["marked"] == ActiveEffect(potency=2, turns_remaining=6)
+    assert player.skill_cooldowns["mark_for_death"] == 10
+    assert message == "You use Marked for Death on Rat!"
+    assert "Rat is marked for death!" in engine_.message_log.messages
+
+
+def test_marked_effect_adds_bonus_damage_from_any_attacker_not_just_the_caster():
+    """Marked for Death's whole point: the bonus applies no matter who
+    lands the hit, not just the player who cast it - verified with a
+    third entity (neither the player nor whoever marked the target)
+    landing the attack directly via resolve_attack."""
+    from engine.combat import resolve_attack
+
+    game_map = make_open_map(5, 5)
+    target = make_monster(2, 2, hp=20, defense=0, ai=None)
+    target.fighter.active_effects["marked"] = ActiveEffect(potency=2, turns_remaining=6)
+    third_party = make_monster(3, 2, hp=10, attack=3, defense=0, ai=None)
+    game_map.entities.extend([target, third_party])
+    engine = Engine(game_map, third_party, "Test Level")  # third_party isn't even the player
+
+    resolve_attack(engine, attacker=third_party, defender=target)
+
+    assert target.fighter.hp == 20 - 3 - 2  # base attack (3) plus the mark bonus (2)
+
+
+def test_marked_effect_turns_a_zero_damage_hit_into_chip_damage():
+    from engine.combat import resolve_attack
+
+    game_map = make_open_map(5, 5)
+    player = make_player(2, 2, attack=3)
+    target = make_monster(3, 2, hp=20, defense=3, ai=None)  # exactly cancels the attack
+    target.fighter.active_effects["marked"] = ActiveEffect(potency=2, turns_remaining=6)
+    game_map.entities.extend([player, target])
+    engine = Engine(game_map, player, "Test Level")
+
+    resolve_attack(engine, attacker=player, defender=target)
+
+    assert target.fighter.hp == 20 - 2  # would have been 0 damage without the mark
+
+
+def test_use_skill_mark_for_death_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, defense=0)
+    player.learned_perk_ids.add("mark_for_death")
+    villager = make_villager(6, 4)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "mark_for_death")
+
+    assert "marked" not in villager.fighter.active_effects
+    assert message == "There's nothing within range to mark."
+
+
+def test_mark_for_death_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("mark_for_death")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "mark_for_death")
+    assert player.skill_cooldowns["mark_for_death"] == 10
+
+    for _ in range(9):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["mark_for_death"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "mark_for_death" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 
