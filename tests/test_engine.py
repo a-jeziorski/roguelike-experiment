@@ -228,6 +228,15 @@ def make_second_sight_potion(x: int, y: int) -> Entity:
     )
 
 
+def make_sure_footing_potion(x: int, y: int, duration: int = 15) -> Entity:
+    return Entity(
+        x, y, "!", (150, 120, 70), "Sure-Footing Draught",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(grants_buff="sure_footed", buff_duration=duration),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -4575,6 +4584,60 @@ def test_dune_damage_can_kill_the_player():
     engine.process_turn(WaitAction())
 
     assert engine.game_state == "dead"
+
+
+def test_potion_kind_identifies_sure_footed():
+    assert potion_kind(ItemEffect(grants_buff="sure_footed", buff_duration=15)) == "sure_footed"
+
+
+def test_sure_footed_buff_grants_full_hazard_immunity():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "dunes"
+    player = make_player(1, 1, hp=30)
+    player.fighter.active_buffs["sure_footed"] = ActiveEffect(potency=0, turns_remaining=5)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30  # no damage, no message
+    assert "Wind-driven sand tears at exposed skin and eyes." not in engine.message_log.messages
+
+
+def test_use_item_action_sure_footed_grants_the_buff_and_stops_dune_damage():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "dunes"
+    player = make_player(1, 1, hp=30)
+    potion = make_sure_footing_potion(1, 1, duration=15)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "sure_footed"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    # Granted and ticked in the same turn, same "first tick lands
+    # immediately" convention every other active_buffs entry follows.
+    assert player.fighter.active_buffs["sure_footed"] == ActiveEffect(potency=0, turns_remaining=14)
+    assert player.fighter.hp == 30  # the dune tile did nothing this turn either
+    assert "You drink the Sure-Footing Draught and your footing turns certain." in engine.message_log.messages
+
+
+def test_sure_footed_expiry_restores_dune_damage():
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "dunes"
+    player = make_player(1, 1, hp=30)
+    player.fighter.active_buffs["sure_footed"] = ActiveEffect(potency=0, turns_remaining=1)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.hp == 30  # still immune this turn
+    assert "sure_footed" not in player.fighter.active_buffs
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE  # immunity expired - dune damage resumes
 
 
 def test_ashen_plains_reuses_the_same_hazard_mechanic_as_dunes():

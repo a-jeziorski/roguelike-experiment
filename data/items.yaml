@@ -67,6 +67,15 @@ bottled_second_sight:
   cost: 50
   description: A vial of liquid that never sits quite still. Drink it and the walls between you and everything else become, for a moment, only a suggestion.
 
+sure_footing_draught:
+  name: Sure-Footing Draught
+  glyph: "!"
+  color: [150, 120, 70]
+  grants_buff: sure_footed
+  buff_duration: 15
+  cost: 35
+  description: A gritty, earthy draught that settles heavy in the stomach. Drink it and the ground beneath you stops being able to hurt you, whatever it's made of.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

@@ -391,6 +391,7 @@ _BUFF_HUD_LABELS = {
     "vigor": lambda e: f"VIGOR: +{e.potency} attack/defense ({e.turns_remaining} turn(s) left)",
     "haste": lambda e: f"HASTE: {e.turns_remaining} free action(s) left",
     "shadowed": lambda e: f"SHADOWED: unseen from a distance ({e.turns_remaining} turn(s) left)",
+    "sure_footed": lambda e: f"SURE-FOOTED: immune to hazardous ground ({e.turns_remaining} turn(s) left)",
 }
 
 

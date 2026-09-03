@@ -174,13 +174,20 @@ BUFF_HASTE = "haste"
 # though both mean roughly "can't currently be seen." No intensity concept
 # either (concealed or not), same treatment as BUFF_HASTE.
 BUFF_SHADOWED = "shadowed"
-BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED]
+# Full immunity to Engine._apply_environmental_hazard's chip damage
+# (dunes/ashen_plains/blighted_forest) while active - like haste/shadowed,
+# an on/off condition with no scaling concept, so also excluded from
+# _BUFF_KINDS_WITH_POTENCY below.
+BUFF_SURE_FOOTED = "sure_footed"
+BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED]
 # Buffs with a meaningful intensity - vigor's potency is a flat attack/
-# defense bonus. Haste and shadowed have no intensity concept (an action
-# is either free or it isn't; the player is either concealed or isn't -
-# see BUFF_HASTE/BUFF_SHADOWED above), so buff_potency is required for
-# vigor and rejected for both - see ItemDef.buff_potency_matches_buff_kind
-# below, the same split _EFFECT_KINDS_WITH_POTENCY already establishes.
+# defense bonus. Haste, shadowed, and sure_footed have no intensity
+# concept (an action is either free or it isn't; the player is either
+# concealed or isn't; a hazard either hurts or it doesn't - see
+# BUFF_HASTE/BUFF_SHADOWED/BUFF_SURE_FOOTED above), so buff_potency is
+# required for vigor and rejected for the rest - see
+# ItemDef.buff_potency_matches_buff_kind below, the same split
+# _EFFECT_KINDS_WITH_POTENCY already establishes.
 _BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)
 
 # What a trinket (ItemDef.trinket_effect/trinket_bonus below, EquipSlot's

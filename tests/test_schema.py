@@ -1019,6 +1019,24 @@ def test_item_def_rejects_shadowed_with_potency():
         )
 
 
+def test_item_def_accepts_grants_buff_sure_footed_without_potency():
+    potion = ItemDef(
+        id="sure_footing_draught", name="Sure-Footing Draught", glyph="!", color=(1, 2, 3),
+        grants_buff="sure_footed", buff_duration=15,
+    )
+    assert potion.grants_buff == "sure_footed"
+    assert potion.buff_potency is None
+    assert potion.buff_duration == 15
+
+
+def test_item_def_rejects_sure_footed_with_potency():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="sure_footing_draught", name="Sure-Footing Draught", glyph="!", color=(1, 2, 3),
+            grants_buff="sure_footed", buff_potency=1, buff_duration=15,
+        )
+
+
 def test_item_def_reveals_map_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.reveals_map is False

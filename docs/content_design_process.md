@@ -3182,6 +3182,60 @@ the creature summary correctly names a distant goblin, and a second,
 separate overworld-Engine construction confirms the refusal fires and the
 potion stays in inventory, unconsumed.
 
+## 0av. Sure-Footing Draught - full immunity to terrain hazard damage (`sure_footing_draught`)
+
+The fourth `BuffKind` (§0ar/§0as/§0at's namespace), and mechanically the
+simplest of the four: a single early-return guard added to the top of the
+existing `Engine._apply_environmental_hazard` (the method behind the
+Scoured Reach's dunes and the Northern Steppe's `ashen_plains`/
+`blighted_forest` chip damage, §0p) -
+
+```python
+if BUFF_SURE_FOOTED in self.player.fighter.active_buffs:
+    return
+```
+
+- placed before the tile-kind lookup, so it skips the message log entry
+*and* the damage together: the terrain simply doesn't register as
+hazardous while the buff is active, not "still hurts, just less." No new
+choke point needed elsewhere - `_apply_environmental_hazard` was already
+the single call site for this mechanic (`process_enemy_phase`, once per
+turn, regardless of `is_overworld`), so extending it in place was enough.
+
+**Ticked the ordinary way, same as vigor and shadowed** - `sure_footed`
+needs no entry in `_tick_active_buffs`'s `BUFF_HASTE` exclusion (§0as),
+since it doesn't skip any part of the world's own turn, just makes one
+specific per-turn effect inert while active. No intensity concept either
+(hazardous ground either hurts or it doesn't, same reasoning `BUFF_HASTE`/
+`BUFF_SHADOWED` already established), so `buff_potency` is rejected for
+it via the existing `buff_potency_matches_buff_kind` split (§0as) with no
+further changes needed there - `_BUFF_KINDS_WITH_POTENCY` still names
+only `BUFF_VIGOR`.
+
+**Deliberately scoped to hazard damage only, not the Northern Steppe's
+Visitor-band random-encounter roll** (`_maybe_trigger_visitor_band_encounter`,
+`VISITOR_BAND_ENCOUNTER_CHANCE`) - a related but separate mechanic that
+also fires per-turn on `ashen_plains`/`blighted_forest`. Sure-Footing
+Draught is a terrain-damage counter, not an aggro/encounter-avoidance
+tool; folding encounter suppression into it would have blurred the line
+this round's items have otherwise kept clean (compare Vial of Shadows'
+own explicit "not the Smoke Bomb's job" scope note, §0at) and would make
+a single cheap consumable trivialize a piece of overworld tension that's
+meant to matter. A future item can own that distinction on its own terms
+if the brainstorm list calls for one.
+
+Ships one real example, `sure_footing_draught` (`data/items.yaml`,
+`grants_buff: sure_footed`, `buff_duration: 15`, no `buff_potency`,
+`cost: 35`). Verified end-to-end via direct `Engine`/`Entity` construction
+against the real catalog entry, standing on a `dunes` tile throughout: one
+turn without the buff confirms ordinary hazard damage still applies
+(30 -> 29), drinking immediately stops it for that same turn (`_apply_
+environmental_hazard` runs after `process_player_action` within the same
+turn, same immediate-effect timing Vial of Shadows already established),
+14 further turns confirm zero damage for the buff's full duration, and
+the turn immediately following its expiry shows hazard damage resuming
+exactly on schedule.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

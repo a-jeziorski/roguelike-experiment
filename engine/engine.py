@@ -26,6 +26,7 @@ from content.schema import (
     AI_VILLAGER,
     BUFF_HASTE,
     BUFF_SHADOWED,
+    BUFF_SURE_FOOTED,
     EFFECT_POISON,
     EFFECT_STUN,
     PEACEFUL_AI_TYPES,
@@ -1054,7 +1055,12 @@ class Engine:
         dungeon/settlement gate on the clock/heal below: these kinds only
         ever appear on the overworld map today, but the check is by tile
         kind, not location, so it needs no special-casing if that ever
-        changes."""
+        changes. A sure_footed buff (BUFF_SURE_FOOTED, Sure-Footing
+        Draught) makes this a complete no-op, damage and message both -
+        the terrain simply doesn't register as hazardous while it's
+        active, not a "still hurts, just less" reduction."""
+        if BUFF_SURE_FOOTED in self.player.fighter.active_buffs:
+            return
         message = ENVIRONMENTAL_HAZARD_MESSAGES.get(self.game_map.kinds[self.player.x, self.player.y])
         if message is None:
             return
