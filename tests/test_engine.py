@@ -10,6 +10,7 @@ import engine.combat
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
 from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
 from engine.actions import (
+    SMOKE_BOMB_TELEPORT_RADIUS,
     BumpAction,
     FireAction,
     PickupAction,
@@ -234,6 +235,15 @@ def make_sure_footing_potion(x: int, y: int, duration: int = 15) -> Entity:
         blocks_movement=False,
         render_priority=RENDER_PRIORITY_ITEM,
         item=ItemEffect(grants_buff="sure_footed", buff_duration=duration),
+    )
+
+
+def make_smoke_bomb(x: int, y: int, duration: int = 3) -> Entity:
+    return Entity(
+        x, y, "!", (110, 110, 120), "Smoke Bomb",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(local_teleport=True, grants_buff="shadowed", buff_duration=duration),
     )
 
 
@@ -2373,6 +2383,60 @@ def test_use_item_action_second_sight_refuses_on_the_overworld():
 
     assert potion in player.inventory  # never consumed
     assert engine.message_log.messages[-1] == "There's too much ground out here for any vision to take in."
+
+
+def test_potion_kind_identifies_smoke_bomb():
+    assert potion_kind(ItemEffect(local_teleport=True, grants_buff="shadowed", buff_duration=3)) == "smoke_bomb"
+
+
+def test_smoke_bomb_potion_kind_does_not_collide_with_plain_shadowed():
+    """A smoke bomb sets grants_buff=shadowed on itself too (see
+    ItemDef.local_teleport's own docstring) - potion_kind must still keep
+    it distinct from a plain Vial of Shadows so both can occupy separate
+    hotbar slots at once."""
+    smoke_kind = potion_kind(ItemEffect(local_teleport=True, grants_buff="shadowed", buff_duration=3))
+    shadow_kind = potion_kind(ItemEffect(grants_buff="shadowed", buff_duration=8))
+    assert smoke_kind == "smoke_bomb"
+    assert shadow_kind == "shadowed"
+
+
+def test_use_item_action_smoke_bomb_relocates_the_player_and_grants_shadowed():
+    game_map = make_open_map(11, 11)
+    player = make_player(5, 5)
+    potion = make_smoke_bomb(5, 5, duration=3)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "smoke_bomb"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert (player.x, player.y) != (5, 5)  # moved somewhere
+    assert max(abs(player.x - 5), abs(player.y - 5)) <= SMOKE_BOMB_TELEPORT_RADIUS
+    # Granted and ticked in the same turn, same "first tick lands
+    # immediately" convention every other active_buffs entry follows.
+    assert player.fighter.active_buffs["shadowed"] == ActiveEffect(potency=0, turns_remaining=2)
+    assert "You crack the Smoke Bomb and vanish in a burst of smoke." in engine.message_log.messages
+
+
+def test_use_item_action_smoke_bomb_refuses_with_nowhere_to_go():
+    game_map = GameMap(1, 1)
+    game_map.kinds[0, 0] = "floor"
+    game_map.walkable[0, 0] = True
+    game_map.transparent[0, 0] = True
+    player = make_player(0, 0)
+    potion = make_smoke_bomb(0, 0)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "smoke_bomb"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion in player.inventory  # never consumed
+    assert (player.x, player.y) == (0, 0)  # never moved
+    assert engine.message_log.messages[-1] == "The smoke has nowhere to carry you."
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

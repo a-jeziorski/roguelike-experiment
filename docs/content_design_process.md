@@ -3236,6 +3236,70 @@ turn, same immediate-effect timing Vial of Shadows already established),
 the turn immediately following its expiry shows hazard damage resuming
 exactly on schedule.
 
+## 0aw. Smoke Bomb - the melee escape Vial of Shadows explicitly left for later (`smoke_bomb`)
+
+Closes the scope gap §0at's own docs flagged when Vial of Shadows shipped:
+"a deliberate scope limit distinguishing it from the still-unbuilt Smoke
+Bomb (an 'escape + aggro break' tool)... Shadows is for slipping past
+threats at range, not escaping ones already on top of you." This is that
+tool, and it's built almost entirely out of two mechanisms this round
+already has, combined on one item rather than inventing a third: an
+instant short-range relocation (new) plus a brief `BUFF_SHADOWED` window
+(reused as-is from §0at) to keep whatever was adjacent from immediately
+closing the distance again.
+
+**The relocation, `ItemDef.local_teleport: bool`** - a plain flag like
+`is_teleport`, but deliberately not named the same or unified with it:
+`is_teleport` leaves the level entirely (`engine.wants_overworld = True`,
+resolved by `main.py`); `local_teleport` moves the player to a random
+walkable, unoccupied tile within `SMOKE_BOMB_TELEPORT_RADIUS` (5) of their
+current position on the *same* map, using the exact `nearby_walkable_tiles`
+helper `main.py`'s own Visitor-band-ambush placement already relies on -
+just centered on the player instead of an ambush arena. `UseItemAction`
+computes the candidate destination *before* removing the item from
+inventory (mirroring `teleport`/`second_sight`'s own pre-consumption
+refusal checks), so a boxed-in player with no valid nearby tile (verified
+with a literal 1x1 `GameMap`) gets `"The smoke has nowhere to carry you."`
+and keeps the bomb, unconsumed - the same "refuse before consuming, not a
+disappointing no-op" shape `is_teleport`'s overworld refusal already
+established, chosen here because a smoke bomb that goes nowhere achieved
+literally nothing, same reasoning as that refusal.
+
+**The one real wrinkle: `potion_kind` classification.** `smoke_bomb`
+also sets `grants_buff: shadowed` on itself (reusing shadowed rather than
+building a redundant "close-range concealment" buff from scratch), which
+means `potion_kind()`'s existing `if item.grants_buff == BUFF_SHADOWED:
+return "shadowed"` branch would have silently swallowed every smoke bomb
+into the *same* hotbar slot as a plain Vial of Shadows - two genuinely
+different items competing for one `POTION_KINDS` entry, unable to be
+carried side by side. Fixed by checking `item.local_teleport` **first**,
+before any `grants_buff` branch, so `local_teleport=True` always wins
+classification regardless of what buff the item also grants underneath -
+confirmed with a dedicated test constructing both an `ItemEffect` with
+just `grants_buff=shadowed` and one with `local_teleport=True,
+grants_buff=shadowed` side by side, asserting they resolve to different
+kinds.
+
+**Nothing new needed in `_tick_active_buffs`, HUD labels, or
+`engine/save.py`** - the granted buff is a real `BUFF_SHADOWED` entry,
+indistinguishable at the data level from one Vial of Shadows itself
+grants, so every mechanism §0at already built (the `_perform_ai` choke
+point, the `"SHADOWED: ..."` HUD line in both `render.py` and
+`play_llm.py`, the generic `active_buffs` save round-trip) picks it up
+for free - confirmed live rather than assumed, since the HUD line
+rendered correctly in the verification script below with zero new render
+code written this round.
+
+Ships one real example, `smoke_bomb` (`data/items.yaml`, `local_teleport:
+true`, `grants_buff: shadowed`, `buff_duration: 3`, `cost: 40` - a short
+shadowed window on purpose, just long enough to put distance behind you,
+not a general-purpose stealth tool at Vial of Shadows' own 8-turn scale).
+Verified end-to-end via direct `Engine`/`Entity` construction against the
+real catalog entry: the player relocates to a new tile within the
+configured radius, the shadowed buff appears correctly on the HUD, and a
+1x1-map construction confirms the refusal path leaves the bomb
+unconsumed and the player exactly where they started.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

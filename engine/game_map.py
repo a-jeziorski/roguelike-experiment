@@ -299,6 +299,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             buff_potency=idef.buff_potency,
             buff_duration=idef.buff_duration,
             reveals_map=idef.reveals_map,
+            local_teleport=idef.local_teleport,
             quantity=idef.quantity,
         ),
         description=idef.description,

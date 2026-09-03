@@ -76,6 +76,16 @@ sure_footing_draught:
   cost: 35
   description: A gritty, earthy draught that settles heavy in the stomach. Drink it and the ground beneath you stops being able to hurt you, whatever it's made of.
 
+smoke_bomb:
+  name: Smoke Bomb
+  glyph: "!"
+  color: [110, 110, 120]
+  local_teleport: true
+  grants_buff: shadowed
+  buff_duration: 3
+  cost: 40
+  description: A clay sphere packed with something that catches fast and burns slow. Crack it underfoot and the world goes gray for just long enough to be somewhere else.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

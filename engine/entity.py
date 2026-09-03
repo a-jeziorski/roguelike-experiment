@@ -177,13 +177,19 @@ class ItemEffect:
     # engine/actions.py's UseItemAction. A plain flag, not a buff - the map
     # stays explored permanently, there's nothing to tick down.
     reveals_map: bool = False
+    # Whether using this relocates the player to a random nearby tile on
+    # the same level and grants a short shadowed window - see potion_kind
+    # below (checked before grants_buff, so this classifies as its own
+    # "smoke_bomb" kind rather than colliding with plain "shadowed"),
+    # engine/actions.py's UseItemAction.
+    local_teleport: bool = False
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
 POTION_KINDS: tuple[str, ...] = (
     "healing", "teleport", "water_walking", "antidote", "vigor", "haste", "shadowed", "second_sight",
-    "sure_footed",
+    "sure_footed", "smoke_bomb",
 )
 
 
@@ -197,6 +203,12 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "water_walking"
     if item.cures_effects:
         return "antidote"
+    if item.local_teleport:
+        # Checked before grants_buff below: a smoke bomb also sets
+        # grants_buff=BUFF_SHADOWED on itself (see ItemDef.local_teleport's
+        # own docstring), and would otherwise misclassify as plain
+        # "shadowed" - local_teleport is what makes this its own kind.
+        return "smoke_bomb"
     if item.grants_buff == BUFF_VIGOR:
         return "vigor"
     if item.grants_buff == BUFF_HASTE:

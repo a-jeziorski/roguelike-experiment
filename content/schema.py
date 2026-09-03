@@ -464,6 +464,16 @@ class ItemDef(BaseModel):
     # Drinking this exits the current dungeon to the overworld - see
     # engine/actions.py's UseItemAction and engine/entity.py's POTION_KINDS.
     is_teleport: bool = False
+    # Using this relocates the player to a random nearby walkable tile on
+    # the SAME level (unlike is_teleport above, which leaves the level
+    # entirely) and grants a short BUFF_SHADOWED window - a break-contact
+    # tool, not a stat/terrain effect of its own, so it's a plain flag
+    # like is_teleport rather than another BuffKind: it reuses grants_buff/
+    # buff_duration for the shadowed half rather than inventing a second
+    # mechanism (see engine/actions.py's UseItemAction "smoke_bomb"
+    # branch, which checks this flag before grants_buff precisely so the
+    # combination classifies as its own potion_kind, not "shadowed").
+    local_teleport: bool = False
     # Drinking this lets the player cross deep_water/sea tiles for this many
     # turns - dungeon-only (see engine/actions.py's MovementAction, which
     # never honors it while Engine.is_overworld). Set/unset together with

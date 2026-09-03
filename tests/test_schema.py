@@ -1037,6 +1037,21 @@ def test_item_def_rejects_sure_footed_with_potency():
         )
 
 
+def test_item_def_local_teleport_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.local_teleport is False
+
+
+def test_item_def_accepts_local_teleport_combined_with_grants_buff():
+    potion = ItemDef(
+        id="smoke_bomb", name="Smoke Bomb", glyph="!", color=(1, 2, 3),
+        local_teleport=True, grants_buff="shadowed", buff_duration=3,
+    )
+    assert potion.local_teleport is True
+    assert potion.grants_buff == "shadowed"
+    assert potion.buff_duration == 3
+
+
 def test_item_def_reveals_map_defaults_false():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.reveals_map is False

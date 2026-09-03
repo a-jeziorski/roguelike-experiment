@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from content.schema import AI_MIMIC, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_VIGOR
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import DEFAULT_MIMIC_BONUS, ActiveEffect, potion_kind
+from engine.game_map import nearby_walkable_tiles
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -15,6 +16,12 @@ if TYPE_CHECKING:
     from engine.entity import Entity
 
 DEFAULT_RANGED_RANGE = 5
+
+# How far a Smoke Bomb can relocate the player - see UseItemAction's
+# "smoke_bomb" branch below. Same shuffled-candidates search
+# nearby_walkable_tiles already uses for a Visitor band ambush's own
+# placement, just centered on the player instead of an ambush arena.
+SMOKE_BOMB_TELEPORT_RADIUS = 5
 
 
 class Action:
@@ -474,6 +481,16 @@ class UseItemAction(Action):
             engine.message_log.add("There's too much ground out here for any vision to take in.")
             return
 
+        smoke_bomb_destination: tuple[int, int] | None = None
+        if kind == "smoke_bomb":
+            candidates = nearby_walkable_tiles(
+                engine.game_map, entity.x, entity.y, count=1, radius=SMOKE_BOMB_TELEPORT_RADIUS
+            )
+            if not candidates:
+                engine.message_log.add("The smoke has nowhere to carry you.")
+                return
+            smoke_bomb_destination = candidates[0]
+
         entity.inventory.remove(item_entity)
         if kind == "healing":
             heal = item_entity.item.heal_amount
@@ -543,6 +560,14 @@ class UseItemAction(Action):
                     f"You drink the {item_entity.name} and a vision floods your mind, "
                     "but nothing stirs here."
                 )
+        elif kind == "smoke_bomb":
+            entity.x, entity.y = smoke_bomb_destination
+            entity.fighter.active_buffs[BUFF_SHADOWED] = ActiveEffect(
+                potency=0, turns_remaining=item_entity.item.buff_duration
+            )
+            engine.message_log.add(
+                f"You crack the {item_entity.name} and vanish in a burst of smoke."
+            )
 
 
 class UseSkillAction(Action):
