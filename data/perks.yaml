@@ -116,3 +116,18 @@ riposte_stance:
   skill_riposte_duration: 5
   skill_cooldown_kind: turns
   skill_cooldown_amount: 10
+
+root_ground:
+  name: Root the Ground
+  description: >
+    Drive your weight down and the earth answers, tangling the footing of
+    everything close by. Roots every hostile creature within 3 tiles in
+    place for 4 turns - they can still fight if they're already close
+    enough to reach you, just can't chase, flee, or close the distance.
+    A long recovery once it fades.
+  xp_cost: 60
+  skill_effect: root_ground
+  skill_root_radius: 3
+  skill_root_duration: 4
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 8

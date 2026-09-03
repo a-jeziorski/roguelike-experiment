@@ -3574,6 +3574,78 @@ and a low-hp attacker confirms the counter can kill and award XP through
 the normal death pipeline - no special-casing needed there either, since
 `resolve_attack`'s own `_apply_damage` call already handles it.
 
+## 0bb. Root the Ground - a fourth `EffectKind`, inflicted in the opposite direction (`root_ground` perk)
+
+The third active perk, the fifth `SkillEffectKind` (`root_ground`), and
+the first new `EffectKind` since poison/stun/weaken shipped -
+`EFFECT_ROOTED = "rooted"`, added to `Fighter.active_effects` (not
+`active_buffs`, the buff-side machinery vigor/haste/shadowed/sure_footed/
+ironroot/riposte all use) because rooted is an *affliction* landing on
+someone else, the same shape poison/stun/weaken already are - it just
+happens to be the player inflicting it on a monster instead of the usual
+other way around. Nothing about `EffectKind`/`inflicts_effect`/
+`affix_effect` was ever direction-specific, so it slots into the existing
+enum rather than needing a parallel "player-inflicted afflictions" system
+- confirmed by adding it to `EntityDef.inflicts_effect`'s own accepted
+values for free, tested directly (a monster *could* inflict rooted on the
+player today, using the exact same plumbing, even though no shipped
+monster does).
+
+**Movement-blocked-but-not-action-blocked is a genuinely new distinction
+in this project** - stun blocks everything (`_consume_stun_turn`/
+`process_player_action`'s own early-return), rooted blocks only
+`MovementAction`. Rather than threading a check into every AI movement
+call site (`_chase_and_attack`'s step branch, `AI_RANGED_BASIC`'s own
+inline movement, `_flee`, `_wander`, `_return_home`), the check sits at
+the very top of `MovementAction.perform()` itself - the single call every
+one of those paths already routes through. An already-adjacent attack
+never calls `MovementAction` at all (`_chase_and_attack`'s `distance <=
+1` branch goes straight to `resolve_attack`), so this one check is
+already precisely "movement only" without needing to distinguish
+attack-attempts from move-attempts anywhere else - confirmed with two
+tests: a distant rooted monster that never closes in, and an adjacent
+rooted monster that attacks normally on the very same turn.
+
+**Ticked the ordinary way, no special-casing needed anywhere new** -
+`_tick_active_effects` already treats every kind besides poison/stun
+identically (decrement, remove at zero), so rooted just falls in next to
+weaken with a one-line docstring update; `MovementAction`'s own check
+reads `active_effects` live each call, so there's nothing to keep in
+sync between the tick and the block.
+
+**Shape borrowed directly from `aoe_damage`, not `blink_strike`** - two
+new `PerkDef` fields (`skill_root_radius`, `skill_root_duration`,
+required together, exclusive to `"root_ground"`, same two-field
+validator shape as blink_strike's own range field), and `Engine.use_skill`'s
+new branch is aoe_damage's exact structure (find every qualifying hostile
+within a Chebyshev radius, act on each one, no refusal message if the
+list comes back empty - "the skill still goes off, it just may hit
+nothing") rather than blink_strike's "pick the one best target or refuse"
+shape. The one difference from aoe_damage's own radius: root_ground's
+`skill_root_radius` is genuinely configurable (3, not aoe_damage's
+implicit hardcoded 1) since a ground-targeted crowd-control spell reaching
+only adjacent tiles would defeat its own purpose.
+
+**`_EFFECT_INFLICT_MESSAGES` (`engine/combat.py`) got a rooted entry too,
+even though this skill doesn't call `_inflict_effect` at all** - the
+skill writes `Fighter.active_effects` directly (mirroring how every
+skill/potion in this round already writes its own state directly, not
+through a shared helper), but since `EFFECT_ROOTED` is now a
+general-purpose `EffectKind` any future `inflicts_effect`/`affix_effect`
+could use, leaving that dict without an entry would have been a latent
+`KeyError` waiting for the first monster or weapon affix that ever tried.
+
+Ships one real example, `root_ground` (`data/perks.yaml`, `skill_effect:
+root_ground`, `skill_root_radius: 3`, `skill_root_duration: 4`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 8`, `xp_cost: 60`).
+Verified end-to-end via direct `Engine`/`Entity`/catalog construction
+against two live monsters: one within radius gets rooted and genuinely
+can't close the distance across three real turns of live AI resolution,
+a second placed deliberately just outside the radius is confirmed
+completely untouched - and a separate live-combat check confirms a
+rooted monster still lands its attack the instant it's already adjacent,
+proving the mechanic blocks movement, not action.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

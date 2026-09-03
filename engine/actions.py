@@ -5,7 +5,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from content.schema import AI_MIMIC, BUFF_HASTE, BUFF_IRONROOT, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_VIGOR
+from content.schema import (
+    AI_MIMIC,
+    BUFF_HASTE,
+    BUFF_IRONROOT,
+    BUFF_SHADOWED,
+    BUFF_SURE_FOOTED,
+    BUFF_VIGOR,
+    EFFECT_ROOTED,
+)
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
 from engine.entity import DEFAULT_MIMIC_BONUS, ActiveEffect, potion_kind
 from engine.game_map import nearby_walkable_tiles
@@ -229,6 +237,21 @@ class MovementAction(Action):
         self.dy = dy
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
+        # A single choke point covering every mover and every caller
+        # (AI chase/flee/wander/return-home, the player's own bump/step) -
+        # Root the Ground's entire mechanic. Rooted blocks movement only,
+        # not action: an already-adjacent attack never routes through
+        # MovementAction at all (see _chase_and_attack's distance <= 1
+        # branch), so a rooted entity can still swing if something's
+        # already next to it, just can't close distance, flee, or wander.
+        # Scoped by the effect check alone, no "not the player" special-
+        # case needed - EFFECT_ROOTED is inflicted on monsters exclusively
+        # by the Root the Ground skill in shipped content, so this never
+        # actually fires for the player today, same reasoning
+        # BUFF_SURE_FOOTED/BUFF_IRONROOT's own checks already follow.
+        if entity.fighter is not None and EFFECT_ROOTED in entity.fighter.active_effects:
+            return
+
         dest_x, dest_y = entity.x + self.dx, entity.y + self.dy
 
         required_key_id = engine.game_map.locked_doors.get((dest_x, dest_y))

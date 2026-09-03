@@ -10,6 +10,7 @@ from content.schema import (
     BUFF_IRONROOT,
     BUFF_RIPOSTE,
     EFFECT_POISON,
+    EFFECT_ROOTED,
     EFFECT_STUN,
     EFFECT_WEAKEN,
     PEACEFUL_AI_TYPES,
@@ -23,11 +24,17 @@ if TYPE_CHECKING:
 # The message logged the instant an effect is inflicted (distinct from
 # _tick_active_effects' own per-turn message, e.g. poison's "writhes from
 # poison, taking N damage") - one per EffectKind, since each reads
-# differently as a fresh affliction.
+# differently as a fresh affliction. Root the Ground's own skill (see
+# Engine.use_skill) writes EFFECT_ROOTED directly rather than going
+# through _inflict_effect below, but this entry still matters: EffectKind
+# is a general-purpose enum, not tied to that one skill, so any future
+# EntityDef.inflicts_effect/ItemDef.affix_effect using "rooted" needs a
+# message here too, the same way poison/stun/weaken already have one.
 _EFFECT_INFLICT_MESSAGES = {
     EFFECT_POISON: "{name} is poisoned!",
     EFFECT_STUN: "{name} is stunned!",
     EFFECT_WEAKEN: "{name} is weakened!",
+    EFFECT_ROOTED: "{name} is rooted in place!",
 }
 
 

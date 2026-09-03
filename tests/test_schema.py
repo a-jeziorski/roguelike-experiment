@@ -76,6 +76,23 @@ def test_entity_def_accepts_stun_effect_with_no_potency():
     assert e.inflicts_potency is None
 
 
+def test_entity_def_accepts_rooted_effect_with_no_potency():
+    e = EntityDef(
+        id="wraith", name="Wraith", glyph="Y", color=(1, 2, 3), hp=20, attack=6, defense=2,
+        inflicts_effect="rooted", inflicts_duration=2,
+    )
+    assert e.inflicts_effect == "rooted"
+    assert e.inflicts_potency is None
+
+
+def test_entity_def_rejects_rooted_with_potency():
+    with pytest.raises(ValidationError, match="no intensity concept"):
+        EntityDef(
+            id="wraith", name="Wraith", glyph="Y", color=(1, 2, 3), hp=20, attack=6, defense=2,
+            inflicts_effect="rooted", inflicts_potency=1, inflicts_duration=2,
+        )
+
+
 def test_entity_def_rejects_inflicts_effect_without_duration():
     with pytest.raises(ValidationError, match="must be set together"):
         EntityDef(
@@ -1698,6 +1715,38 @@ def test_perk_def_rejects_heal_skill_with_riposte_duration_set():
     with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'riposte_stance'"):
         PerkDef(**_perk_kwargs(
             max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_riposte_duration=5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
+def test_perk_def_accepts_a_root_ground_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="root_ground", skill_root_radius=3, skill_root_duration=4,
+        skill_cooldown_kind="turns", skill_cooldown_amount=8,
+    ))
+    assert perk.skill_effect == "root_ground"
+    assert perk.skill_root_radius == 3
+    assert perk.skill_root_duration == 4
+
+
+def test_perk_def_rejects_root_ground_skill_without_radius_or_duration():
+    with pytest.raises(ValidationError, match="requires skill_root_radius and skill_root_duration"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="root_ground", skill_root_radius=3,
+            skill_cooldown_kind="turns", skill_cooldown_amount=8,
+        ))
+    with pytest.raises(ValidationError, match="requires skill_root_radius and skill_root_duration"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="root_ground", skill_root_duration=4,
+            skill_cooldown_kind="turns", skill_cooldown_amount=8,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_root_fields_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'root_ground'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5,
+            skill_root_radius=3, skill_root_duration=4,
             skill_cooldown_kind="hours", skill_cooldown_amount=24,
         ))
 

@@ -7907,6 +7907,118 @@ def test_riposte_stance_cooldown_ticks_down_each_turn_and_expires():
     assert "riposte_stance" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_root_ground_roots_hostile_entities_within_radius():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("root_ground")
+    monster = make_monster(6, 4, hp=10, defense=0, ai=None)  # distance 2, radius is 3
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "root_ground")
+
+    assert monster.fighter.active_effects["rooted"] == ActiveEffect(potency=0, turns_remaining=4)
+    assert player.skill_cooldowns["root_ground"] == 8
+    assert message == "You use Root the Ground!"
+    assert "Rat is rooted in place!" in engine_.message_log.messages
+
+
+def test_use_skill_root_ground_ignores_targets_beyond_radius():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("root_ground")
+    monster = make_monster(8, 4, hp=10, defense=0, ai=None)  # distance 4, radius is 3
+    game_map.entities.extend([player, monster])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "root_ground")
+
+    assert "rooted" not in monster.fighter.active_effects
+
+
+def test_use_skill_root_ground_ignores_peaceful_npcs():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("root_ground")
+    villager = make_villager(6, 4)
+    game_map.entities.extend([player, villager])
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "root_ground")
+
+    assert "rooted" not in villager.fighter.active_effects
+
+
+def test_rooted_monster_cannot_close_distance():
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(6, 4, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["rooted"] = ActiveEffect(potency=0, turns_remaining=4)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert (monster.x, monster.y) == (6, 4)  # never moved closer
+    assert player.fighter.hp == 30  # never got close enough to attack
+
+
+def test_rooted_monster_still_attacks_when_already_adjacent():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    monster = make_monster(2, 1, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["rooted"] = ActiveEffect(potency=0, turns_remaining=4)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # rooted blocks movement only, not action
+    assert (monster.x, monster.y) == (2, 1)  # didn't need to move to attack
+
+
+def test_rooted_effect_ticks_down_and_expiry_restores_movement():
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4, hp=30, defense=0)
+    monster = make_monster(6, 4, hp=10, attack=4, defense=0, ai="hostile_basic")
+    monster.fighter.active_effects["rooted"] = ActiveEffect(potency=0, turns_remaining=2)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert (monster.x, monster.y) == (6, 4)
+    assert monster.fighter.active_effects["rooted"].turns_remaining == 1
+
+    engine.process_turn(WaitAction())
+    assert (monster.x, monster.y) == (6, 4)  # still rooted this turn too
+    assert "rooted" not in monster.fighter.active_effects
+
+    engine.process_turn(WaitAction())
+    assert (monster.x, monster.y) == (5, 4)  # expired for good now - closes in
+
+
+def test_root_ground_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("root_ground")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "root_ground")
+    assert player.skill_cooldowns["root_ground"] == 8
+
+    for _ in range(7):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["root_ground"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "root_ground" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

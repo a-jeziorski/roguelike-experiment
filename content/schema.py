@@ -145,11 +145,22 @@ QuestStatus = Literal["not_given", "in_progress", "completed", "failed"]
 EFFECT_POISON = "poison"
 EFFECT_STUN = "stun"
 EFFECT_WEAKEN = "weaken"
-EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN]
+# Blocks movement only, not action - unlike stun, a rooted entity can
+# still attack if already adjacent, only unable to close distance, flee,
+# or wander (see engine/actions.py's MovementAction, whose own top-of-
+# perform() check is what actually makes this "movement only, not
+# action"). Not something monsters inflict on the player in shipped
+# content today - the Root the Ground active skill inflicts it on
+# monsters instead, going the opposite direction poison/stun/weaken
+# normally do - but nothing about EffectKind was ever direction-specific,
+# so it slots into the same enum rather than needing a parallel one.
+EFFECT_ROOTED = "rooted"
+EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, EFFECT_ROOTED]
 # Effects with a meaningful intensity, not just a duration - poison's
-# potency is damage/turn, weaken's is a flat attack reduction. Stun has no
-# intensity concept (an entity either can act or can't), so inflicts_potency
-# is required for these two and rejected for stun - see
+# potency is damage/turn, weaken's is a flat attack reduction. Stun and
+# rooted both have no intensity concept (an entity either can act or
+# can't; either can move or can't), so inflicts_potency is required for
+# poison/weaken and rejected for stun/rooted - see
 # EntityDef.inflicts_potency_matches_effect_kind below.
 _EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
 
@@ -643,14 +654,17 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # percentage of max_hp, "aoe_damage" strikes every hostile entity adjacent
 # to the player for a flat amount, "blink_strike" teleports the player
 # beside the nearest hostile entity within range and lands one ordinary
-# attack, "riposte_stance" grants BUFF_RIPOSTE for a number of turns (see
-# Engine.use_skill).
+# attack, "riposte_stance" grants BUFF_RIPOSTE for a number of turns,
+# "root_ground" inflicts EFFECT_ROOTED on every hostile entity within
+# range (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
 SKILL_EFFECT_RIPOSTE_STANCE = "riposte_stance"
+SKILL_EFFECT_ROOT_GROUND = "root_ground"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
+    SKILL_EFFECT_ROOT_GROUND,
 ]
 
 
@@ -701,7 +715,8 @@ class PerkDef(BaseModel):
     # skill_heal_pct is required for/exclusive to "heal", skill_aoe_damage
     # for/exclusive to "aoe_damage", skill_blink_strike_range for/exclusive
     # to "blink_strike", skill_riposte_duration for/exclusive to
-    # "riposte_stance" (skill_effect_matches_payload below).
+    # "riposte_stance", skill_root_radius/skill_root_duration for/exclusive
+    # to "root_ground" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -717,6 +732,12 @@ class PerkDef(BaseModel):
     # counter-attack itself always uses the holder's real effective_attack,
     # nothing here scales its damage (see engine/combat.py's _maybe_riposte).
     skill_riposte_duration: int | None = Field(default=None, gt=0)
+    # A "root_ground" skill's own radius (how far from the player it
+    # reaches, same Chebyshev-distance shape as skill_aoe_damage's implicit
+    # radius=1) and how many turns EFFECT_ROOTED lasts on whatever it hits.
+    # Both required together, exclusively for this skill kind.
+    skill_root_radius: int | None = Field(default=None, gt=0)
+    skill_root_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -787,6 +808,15 @@ class PerkDef(BaseModel):
         if self.skill_effect != SKILL_EFFECT_RIPOSTE_STANCE and self.skill_riposte_duration is not None:
             raise ValueError(
                 "skill_riposte_duration is only meaningful when skill_effect is 'riposte_stance'"
+            )
+        if self.skill_effect == SKILL_EFFECT_ROOT_GROUND:
+            if self.skill_root_radius is None or self.skill_root_duration is None:
+                raise ValueError(
+                    "skill_effect 'root_ground' requires skill_root_radius and skill_root_duration to be set"
+                )
+        elif self.skill_root_radius is not None or self.skill_root_duration is not None:
+            raise ValueError(
+                "skill_root_radius/skill_root_duration are only meaningful when skill_effect is 'root_ground'"
             )
         return self
 

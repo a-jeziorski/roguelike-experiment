@@ -29,6 +29,7 @@ from content.schema import (
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     EFFECT_POISON,
+    EFFECT_ROOTED,
     EFFECT_STUN,
     PEACEFUL_AI_TYPES,
     SKILL_COOLDOWN_HOURS,
@@ -37,6 +38,7 @@ from content.schema import (
     SKILL_EFFECT_BLINK_STRIKE,
     SKILL_EFFECT_HEAL,
     SKILL_EFFECT_RIPOSTE_STANCE,
+    SKILL_EFFECT_ROOT_GROUND,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
@@ -1092,9 +1094,9 @@ class Engine:
         self.wants_visitor_band_encounter = True
 
     def _tick_active_effects(self) -> None:
-        """Ticks every active poison/weaken affliction on every entity
-        (player or monster) once - refresh semantics, no stacking, and
-        different kinds on the same entity tick independently of each
+        """Ticks every active poison/weaken/rooted affliction on every
+        entity (player or monster) once - refresh semantics, no stacking,
+        and different kinds on the same entity tick independently of each
         other (see Fighter.active_effects, engine/combat.py's
         _apply_damage). Runs once per process_enemy_phase call, strictly
         after both process_player_action (earlier this turn) and
@@ -1104,12 +1106,13 @@ class Engine:
         total ticks, the first landing the same turn as the hit, not the
         turn after.
 
-        Only poison does anything ON the tick itself (damage); weaken is
-        purely passive while active (reducing effective_attack -
-        Entity._weaken_penalty) - this method's only job for it is
-        counting turns_remaining down and removing it once it expires
-        (see ActiveEffect's own docstring on why expiry means key
-        removal, not a value left at 0).
+        Only poison does anything ON the tick itself (damage); weaken and
+        rooted are purely passive while active (reducing effective_attack -
+        Entity._weaken_penalty - or blocking movement -
+        MovementAction.perform's own top-of-method check, respectively) -
+        this method's only job for them is counting turns_remaining down
+        and removing the entry once it expires (see ActiveEffect's own
+        docstring on why expiry means key removal, not a value left at 0).
 
         Deliberately excludes EFFECT_STUN entirely - see
         _consume_stun_turn's own docstring for why stun is decremented at
@@ -1645,20 +1648,46 @@ class Engine:
             resolve_attack(self, attacker=entity, defender=target)
             return message
 
-        # SKILL_EFFECT_RIPOSTE_STANCE - grants BUFF_RIPOSTE for
-        # skill_riposte_duration turns, ticked the ordinary way by
-        # _tick_active_buffs (no BUFF_HASTE-style exclusion needed - a
-        # stance doesn't skip any part of the world's turn). The actual
-        # counter-attack lives entirely in engine/combat.py's
-        # _maybe_riposte, triggered from _apply_damage whenever a hit
-        # lands on whoever holds the buff - nothing more to do here than
-        # granting it, same "the buff IS the mechanic" shape sure_footed/
-        # ironroot already established for their own choke-point checks.
-        entity.fighter.active_buffs[BUFF_RIPOSTE] = ActiveEffect(
-            potency=0, turns_remaining=perk.skill_riposte_duration
-        )
-        message = f"You use {perk.name} and settle into a stance, ready to answer any blow."
+        if perk.skill_effect == SKILL_EFFECT_RIPOSTE_STANCE:
+            # Grants BUFF_RIPOSTE for skill_riposte_duration turns, ticked
+            # the ordinary way by _tick_active_buffs (no BUFF_HASTE-style
+            # exclusion needed - a stance doesn't skip any part of the
+            # world's turn). The actual counter-attack lives entirely in
+            # engine/combat.py's _maybe_riposte, triggered from
+            # _apply_damage whenever a hit lands on whoever holds the
+            # buff - nothing more to do here than granting it, same "the
+            # buff IS the mechanic" shape sure_footed/ironroot already
+            # established for their own choke-point checks.
+            entity.fighter.active_buffs[BUFF_RIPOSTE] = ActiveEffect(
+                potency=0, turns_remaining=perk.skill_riposte_duration
+            )
+            message = f"You use {perk.name} and settle into a stance, ready to answer any blow."
+            self.message_log.add(message)
+            return message
+
+        # SKILL_EFFECT_ROOT_GROUND - aoe_damage's exact shape, minus the
+        # damage: strikes every hostile entity within skill_root_radius
+        # (not just adjacent-1 the way aoe_damage's own untargeted radius
+        # is - root_ground's whole point is reaching a wider area) and
+        # inflicts EFFECT_ROOTED on each one directly (Fighter.
+        # active_effects, the same dict a monster's own inflicts_effect
+        # writes into - see MovementAction's own top-of-perform() check
+        # for what rooted actually does). No refusal message for zero
+        # targets, same convention aoe_damage already established - the
+        # skill still "goes off," it just may hit nothing.
+        message = f"You use {perk.name}!"
         self.message_log.add(message)
+        targets = [
+            e for e in list(self.game_map.entities)
+            if e is not entity and e.fighter is not None and e.is_alive
+            and e.ai not in PEACEFUL_AI_TYPES
+            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_root_radius
+        ]
+        for target in targets:
+            target.fighter.active_effects[EFFECT_ROOTED] = ActiveEffect(
+                potency=0, turns_remaining=perk.skill_root_duration
+            )
+            self.message_log.add(f"{target.name} is rooted in place!", category="combat")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:
