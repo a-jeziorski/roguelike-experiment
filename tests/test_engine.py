@@ -192,6 +192,15 @@ def make_antidote_potion(x: int, y: int) -> Entity:
     )
 
 
+def make_vigor_potion(x: int, y: int, potency: int = 3, duration: int = 10) -> Entity:
+    return Entity(
+        x, y, "!", (230, 130, 40), "Elixir of Vigor",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(grants_buff="vigor", buff_potency=potency, buff_duration=duration),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2075,6 +2084,49 @@ def test_use_item_action_antidote_with_nothing_to_cure_still_consumes_it():
 
     assert potion not in player.inventory
     assert engine.message_log.messages[-1] == "You drink the Antidote, but feel no different."
+
+
+def test_potion_kind_identifies_vigor():
+    assert potion_kind(ItemEffect(grants_buff="vigor", buff_potency=3, buff_duration=10)) == "vigor"
+
+
+def test_use_item_action_vigor_grants_a_buff_and_boosts_effective_stats():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, attack=5, defense=2)
+    base_attack = player.effective_attack
+    base_defense = player.effective_defense
+    potion = make_vigor_potion(1, 1, potency=3, duration=10)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "vigor"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    # Granted and ticked in the same turn, same "first tick lands
+    # immediately" convention as _tick_active_effects (see its own
+    # docstring) - buff_duration=10 means 10 total ticks, the first one
+    # this same turn, not the turn after.
+    assert player.fighter.active_buffs["vigor"] == ActiveEffect(potency=3, turns_remaining=9)
+    assert player.effective_attack == base_attack + 3
+    assert player.effective_defense == base_defense + 3
+    assert engine.message_log.messages[-1] == "You drink the Elixir of Vigor and strength floods your limbs."
+
+
+def test_vigor_buff_ticks_down_and_expires():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.fighter.active_buffs["vigor"] = ActiveEffect(potency=3, turns_remaining=2)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert player.fighter.active_buffs["vigor"].turns_remaining == 1
+
+    engine.process_turn(WaitAction())
+    assert "vigor" not in player.fighter.active_buffs
+    assert player.effective_attack == player.fighter.attack
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

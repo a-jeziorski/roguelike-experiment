@@ -344,6 +344,12 @@ _EFFECT_HUD_LABELS = {
     "weaken": lambda e: f"WEAKENED: -{e.potency} attack ({e.turns_remaining} turn(s) left)",
 }
 
+# Mirrors engine/render.py's own _BUFF_HUD_LABELS - same parallel-copy
+# reasoning as _EFFECT_HUD_LABELS above.
+_BUFF_HUD_LABELS = {
+    "vigor": lambda e: f"VIGOR: +{e.potency} attack/defense ({e.turns_remaining} turn(s) left)",
+}
+
 
 def render_hud_text(engine) -> str:
     """Mirrors engine/render.py's render_hud field-for-field, as an
@@ -371,6 +377,8 @@ def render_hud_text(engine) -> str:
     lines.append(f"HP: {fighter.hp}/{fighter.max_hp}")
     for kind, effect in fighter.active_effects.items():
         lines.append(_EFFECT_HUD_LABELS[kind](effect))
+    for kind, buff in fighter.active_buffs.items():
+        lines.append(_BUFF_HUD_LABELS[kind](buff))
     lines.append(
         f"ATK: {player.effective_attack}  DEF: {player.effective_defense}  "
         f"RANGED ATK: {player.effective_ranged_attack}"

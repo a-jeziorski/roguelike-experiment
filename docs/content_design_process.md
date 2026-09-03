@@ -2886,6 +2886,96 @@ weaken combination in one drink, correctly no-ops (but still consumes)
 with nothing active, and - the stun case above - confirmed a stunned
 player's own turn never reaches the antidote's own logic at all.
 
+## 0ar. Elixir of Vigor - a timed self-buff, and a new `BuffKind` namespace to hold it (`vigor_elixir`)
+
+The first potion in this round that boosts the player rather than curing
+or repositioning them, and it deliberately does **not** reuse
+`Fighter.active_effects`/`EffectKind` to do it. That system exists for an
+*attacker's* capability landing on a *target* (`EntityDef.inflicts_effect`,
+a weapon/armor's `affix_effect`) - poison, stun, weaken all read as
+something done *to* an entity. A self-drunk positive buff is the opposite
+shape (done *to yourself*, *by* yourself), and folding it into the same
+enum would let `inflicts_effect: vigor` type-check as a monster "inflicting"
+strength on the player it just hit - backwards, and a bug waiting to
+happen the type system should rule out rather than a comment warning
+against.
+
+So `content/schema.py` gets a parallel, structurally-identical pair:
+`BUFF_VIGOR = "vigor"` / `BuffKind = Literal[BUFF_VIGOR]`, sitting next to
+(not merged with) `EffectKind`. `ItemDef` gets `grants_buff: BuffKind |
+None`, `buff_potency`/`buff_duration: int | None` (both `gt=0`, mirroring
+`affix_potency`/`affix_duration`'s own field shape), with a
+`grants_buff_potency_and_duration_together` validator enforcing the same
+"all three or none" rule `affix_effect_duration_and_chance_together`
+already established for weapon/armor affixes. `Fighter` gets a second
+dict, `active_buffs: dict[str, ActiveEffect]` - same `ActiveEffect`
+dataclass (potency/turns_remaining), same refresh-not-stack/membership-is-
+the-state expiry convention as `active_effects`, but a genuinely separate
+dict so nothing conflates the two namespaces at runtime either.
+
+**Plumbing, in order:** `ItemEffect` gains the same three fields
+(`grants_buff`/`buff_potency`/`buff_duration`), `item_entity_from_def`
+passes them through, `potion_kind()` gets `if item.grants_buff ==
+BUFF_VIGOR: return "vigor"`, and `POTION_KINDS` gains `"vigor"` -
+identical shape to every prior potion in this round. `UseItemAction`'s new
+`elif kind == "vigor":` branch writes `entity.fighter.active_buffs[
+BUFF_VIGOR] = ActiveEffect(potency=..., turns_remaining=...)` straight
+from the item's own fields (no derived math - the item defines its own
+buff outright, same as Antidote clearing effects outright).
+
+**The bonus itself:** a new `Entity._vigor_bonus` property, shaped exactly
+like `_weaken_penalty` (reads `fighter.active_buffs.get(BUFF_VIGOR)`,
+returns its potency or 0) but *added* rather than subtracted - into both
+`effective_attack` **and** `effective_defense`. This is the one place
+Vigor's shape genuinely differs from weaken: weaken only ever touched
+`effective_attack`/`effective_ranged_attack` (`effective_defense` has no
+`_weaken_penalty` term at all - defense was never weaken's target), but
+Vigor is pitched as an all-around strength buff, so it lands on both
+offense and defense deliberately, not by accident of copying weaken's
+exact site list.
+
+**Ticking:** a new `Engine._tick_active_buffs()`, shaped like
+`_tick_active_effects()` minus the on-tick damage branch (a buff never
+does anything *on* the tick itself, purely passive while active via
+`_vigor_bonus`) - same "first tick lands the same turn it's granted"
+cadence, confirmed by a live-verify script showing `buff_duration=10`
+reads back as `turns_remaining=9` immediately after drinking within the
+same `process_turn` call. Called from `process_enemy_phase` right after
+`_tick_active_effects()`, so it ticks once per turn anywhere (dungeon or
+overworld) - a buff has no "only matters underground" restriction the way
+water-walking does, so there's no `is_overworld` gating anywhere in this
+potion's logic.
+
+**Display and persistence, both extended rather than duplicated:**
+`engine/render.py`'s `_render_active_effects` (despite its name, now the
+shared HUD-line renderer for *both* dicts) grew a second loop over
+`fighter.active_buffs` against a new `_BUFF_HUD_LABELS` dict
+(`"VIGOR: +N attack/defense (M turn(s) left)"`) - all three of its call
+sites (`render_hud`/look/target frames) picked this up for free.
+`tools/play_llm.py`'s own parallel HUD-text copy got the identical
+extension, per this project's standing "own implementation, not reaching
+into render.py's console internals" convention. `engine/save.py`'s
+`SavedPlayer` gained `active_buffs: dict[str, SavedActiveEffect]`,
+reusing `SavedActiveEffect` as-is (same potency/turns_remaining shape as
+`active_effects` already saves) rather than a new model - `capture_save`/
+`_build_player` both round-trip it the same way `active_effects` already
+does, and an old save missing the field defaults to `{}` via pydantic
+(verified with a test mirroring `test_restore_save_defaults_active_effects
+_for_an_old_format_save` exactly).
+
+Ships one real example, `vigor_elixir` (`data/items.yaml`, `grants_buff:
+vigor`, `buff_potency: 3`, `buff_duration: 10`, `cost: 40` - priced above
+Antidote's 20 and below a trinket's 60-75 for a permanent smaller bonus,
+reflecting that +3/+3 for 10 turns is a bigger but temporary swing).
+Verified end-to-end via direct `Engine`/`Entity` construction against the
+real catalog entry: `effective_attack`/`effective_defense` both jump by
+exactly 3 on drinking, the HUD line renders correctly (including through
+`tools/play_llm.py`'s `render_hud_text`), and the buff expires cleanly
+back to base stats after its full duration ticks down - no floor-clamping
+or negative-potency edge case exists here the way `_weaken_penalty`
+guards against, since a buff's potency is always additive and never drives
+`effective_attack`'s `max(0, ...)` floor into play.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -1116,6 +1116,28 @@ class Engine:
             if entity.fighter.hp <= 0:
                 self.on_entity_death(entity)
 
+    def _tick_active_buffs(self) -> None:
+        """Ticks every active self-buff (Fighter.active_buffs - "vigor"
+        today) once, same refresh/no-stack, membership-is-the-state expiry
+        convention as _tick_active_effects above, but simpler: a buff never
+        does anything ON the tick itself (no poison-style per-turn damage
+        equivalent), it's purely passive while active (Entity._vigor_bonus)
+        and this method's only job is counting turns_remaining down and
+        removing it once it expires. Deliberately a separate method/dict
+        from _tick_active_effects rather than folding buffs into it - see
+        Fighter.active_buffs' own docstring on why buffs are a distinct
+        namespace from afflictions."""
+        for entity in list(self.game_map.entities):
+            if entity.fighter is None or not entity.fighter.active_buffs:
+                continue
+            expired_kinds = []
+            for kind, buff in entity.fighter.active_buffs.items():
+                buff.turns_remaining -= 1
+                if buff.turns_remaining <= 0:
+                    expired_kinds.append(kind)
+            for kind in expired_kinds:
+                del entity.fighter.active_buffs[kind]
+
     def _tick_skill_cooldowns(self, kind: str) -> None:
         """Decrements every active-skill cooldown of the given kind
         ("turns" or "hours", see PerkDef.skill_cooldown_kind) on the
@@ -1732,6 +1754,9 @@ class Engine:
 
         if self.game_state == "playing":
             self._tick_active_effects()
+
+        if self.game_state == "playing":
+            self._tick_active_buffs()
 
         if self.game_state == "playing":
             self._tick_skill_cooldowns(SKILL_COOLDOWN_TURNS)

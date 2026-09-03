@@ -153,6 +153,18 @@ EffectKind = Literal[EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN]
 # EntityDef.inflicts_potency_matches_effect_kind below.
 _EFFECT_KINDS_WITH_POTENCY = (EFFECT_POISON, EFFECT_WEAKEN)
 
+# A player-facing timed self-buff - deliberately a separate Literal from
+# EffectKind above, not another member of it, so EntityDef.inflicts_effect/
+# ItemDef.affix_effect (both typed EffectKind) can never accidentally
+# reference one: a monster "inflicting" vigor on whatever it hits would be
+# backwards, and a type-level split rules that out rather than relying on
+# a convention nobody's forced to follow. Starts with just vigor
+# (ItemDef.grants_buff below); more potions/perks are expected to add
+# their own kind here later, same "defined once, fails loudly at
+# content-load time" reasoning as EffectKind/AIType.
+BUFF_VIGOR = "vigor"
+BuffKind = Literal[BUFF_VIGOR]
+
 # What a trinket (ItemDef.trinket_effect/trinket_bonus below, EquipSlot's
 # fourth slot) passively boosts - a percentage-point bonus applied on top
 # of the base rate, not a flat stat like attack_bonus/defense_bonus, which
@@ -438,6 +450,17 @@ class ItemDef(BaseModel):
     # duration pair - there's nothing to scale, it either cures everything
     # right now or (already effect-free) does nothing.
     cures_effects: bool = False
+    # A timed positive self-buff this item grants on use (see BuffKind,
+    # engine/entity.py's Fighter.active_buffs, engine/actions.py's
+    # UseItemAction) - all three must be set together or not at all, same
+    # shape affix_effect/affix_duration/affix_chance already establish
+    # (see grants_buff_potency_and_duration_together below). Vigor's own
+    # potency applies equally to both effective_attack and
+    # effective_defense (a single number, not two) - the simplest shape
+    # for the one buff kind that exists so far.
+    grants_buff: BuffKind | None = None
+    buff_potency: int | None = Field(default=None, gt=0)
+    buff_duration: int | None = Field(default=None, gt=0)
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).
@@ -472,6 +495,15 @@ class ItemDef(BaseModel):
     def trinket_effect_and_bonus_both_or_neither(self) -> "ItemDef":
         if (self.trinket_effect is None) != (self.trinket_bonus is None):
             raise ValueError("trinket_effect and trinket_bonus must be set together or not at all")
+        return self
+
+    @model_validator(mode="after")
+    def grants_buff_potency_and_duration_together(self) -> "ItemDef":
+        fields_set = (self.grants_buff is not None, self.buff_potency is not None, self.buff_duration is not None)
+        if len(set(fields_set)) > 1:
+            raise ValueError(
+                "grants_buff, buff_potency, and buff_duration must all be set together or not at all"
+            )
         return self
 
     @model_validator(mode="after")

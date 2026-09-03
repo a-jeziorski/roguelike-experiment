@@ -192,6 +192,11 @@ class SavedPlayer(BaseModel):
     # consistent with monster Fighter state beyond (x, y, hp) never being
     # saved today (SavedLevelState's own alive_entity_spawns).
     active_effects: dict[str, SavedActiveEffect] = Field(default_factory=dict)
+    # The player's live self-buffs, if any (see Fighter.active_buffs) -
+    # reuses SavedActiveEffect's shape (same potency/turns_remaining pair)
+    # rather than a new model, since buffs are the same runtime shape as
+    # afflictions, just a different dict on Fighter.
+    active_buffs: dict[str, SavedActiveEffect] = Field(default_factory=dict)
 
 
 class SaveGame(BaseModel):
@@ -311,6 +316,10 @@ def capture_save(
             kind: SavedActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
             for kind, effect in player.fighter.active_effects.items()
         },
+        active_buffs={
+            kind: SavedActiveEffect(potency=buff.potency, turns_remaining=buff.turns_remaining)
+            for kind, buff in player.fighter.active_buffs.items()
+        },
     )
 
     places = {
@@ -357,6 +366,10 @@ def _build_player(saved: SavedPlayer, catalog: Catalog) -> Entity:
     fighter.active_effects = {
         kind: ActiveEffect(potency=effect.potency, turns_remaining=effect.turns_remaining)
         for kind, effect in saved.active_effects.items()
+    }
+    fighter.active_buffs = {
+        kind: ActiveEffect(potency=buff.potency, turns_remaining=buff.turns_remaining)
+        for kind, buff in saved.active_buffs.items()
     }
     # Perk-derived stat totals are *derived* from learned_perk_ids at
     # restore time, never stored redundantly (see SavedPlayer.learned_perk_ids) -

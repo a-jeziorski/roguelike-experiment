@@ -929,6 +929,52 @@ def test_item_def_accepts_cures_effects():
     assert potion.cures_effects is True
 
 
+def test_item_def_grants_buff_defaults_none():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.grants_buff is None
+    assert item.buff_potency is None
+    assert item.buff_duration is None
+
+
+def test_item_def_accepts_grants_buff_with_potency_and_duration():
+    potion = ItemDef(
+        id="vigor_elixir", name="Elixir of Vigor", glyph="!", color=(1, 2, 3),
+        grants_buff="vigor", buff_potency=3, buff_duration=10,
+    )
+    assert potion.grants_buff == "vigor"
+    assert potion.buff_potency == 3
+    assert potion.buff_duration == 10
+
+
+def test_item_def_rejects_non_positive_buff_potency_or_duration():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="vigor_elixir", name="Elixir of Vigor", glyph="!", color=(1, 2, 3),
+            grants_buff="vigor", buff_potency=0, buff_duration=10,
+        )
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="vigor_elixir", name="Elixir of Vigor", glyph="!", color=(1, 2, 3),
+            grants_buff="vigor", buff_potency=3, buff_duration=0,
+        )
+
+
+def test_item_def_rejects_grants_buff_without_potency_and_duration():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="vigor_elixir", name="Elixir of Vigor", glyph="!", color=(1, 2, 3),
+            grants_buff="vigor",
+        )
+
+
+def test_item_def_rejects_buff_potency_and_duration_without_grants_buff():
+    with pytest.raises(ValidationError):
+        ItemDef(
+            id="vigor_elixir", name="Elixir of Vigor", glyph="!", color=(1, 2, 3),
+            buff_potency=3, buff_duration=10,
+        )
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

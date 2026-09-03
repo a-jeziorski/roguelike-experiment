@@ -6,7 +6,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from content.schema import AI_AMBUSHER, AI_ENRAGE, AI_MIMIC, EffectKind, FlagDialogue, PerkDef, TrinketEffectKind
+from content.schema import (
+    AI_AMBUSHER,
+    AI_ENRAGE,
+    AI_MIMIC,
+    BUFF_VIGOR,
+    BuffKind,
+    EffectKind,
+    FlagDialogue,
+    PerkDef,
+    TrinketEffectKind,
+)
 
 Color = tuple[int, int, int]
 
@@ -77,6 +87,14 @@ class Fighter:
     # duration countdown, expiry) and process_player_action/_perform_ai
     # (stun blocking an action) for where this is actually read/mutated.
     active_effects: dict[str, ActiveEffect] = field(default_factory=dict)
+    # This fighter's own live self-buffs, keyed by BuffKind ("vigor" today) -
+    # same ActiveEffect shape (potency/turns_remaining) and refresh-not-stack
+    # rule as active_effects above, but a deliberately separate dict: these
+    # are positive, self-applied (drunk, never inflicted by an attacker), and
+    # BuffKind is a type distinct from EffectKind precisely so nothing can
+    # accidentally wire a monster's inflicts_effect to a player buff. See
+    # engine/engine.py's _tick_active_buffs and Entity._vigor_bonus below.
+    active_buffs: dict[str, ActiveEffect] = field(default_factory=dict)
 
 
 def apply_perk_stat_bonus(fighter: Fighter, perk: PerkDef) -> None:
@@ -133,11 +151,18 @@ class ItemEffect:
     # Whether drinking this clears every entry in Fighter.active_effects at
     # once - see potion_kind below.
     cures_effects: bool = False
+    # Which Fighter.active_buffs entry drinking this grants, and its
+    # potency/duration - see potion_kind below, Entity._vigor_bonus,
+    # engine/engine.py's _tick_active_buffs. All three are set together or
+    # not at all (content/schema.py's grants_buff_potency_and_duration_together).
+    grants_buff: "BuffKind | None" = None
+    buff_potency: int | None = None
+    buff_duration: int | None = None
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
-POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking", "antidote")
+POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking", "antidote", "vigor")
 
 
 def potion_kind(item: ItemEffect) -> str | None:
@@ -150,6 +175,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "water_walking"
     if item.cures_effects:
         return "antidote"
+    if item.grants_buff == BUFF_VIGOR:
+        return "vigor"
     return None
 
 
@@ -438,6 +465,17 @@ class Entity:
         return weaken.potency if weaken else 0
 
     @property
+    def _vigor_bonus(self) -> int:
+        """The live attack/defense bonus from an active "vigor" buff, if
+        any - see Fighter.active_buffs, Elixir of Vigor. Added to both
+        effective_attack and effective_defense below, mirroring
+        _weaken_penalty's shape but as a bonus, not a subtraction."""
+        if self.fighter is None:
+            return 0
+        vigor = self.fighter.active_buffs.get(BUFF_VIGOR)
+        return vigor.potency if vigor else 0
+
+    @property
     def is_enraged(self) -> bool:
         """True once this entity's own hp fraction has dropped to/below
         its enrage threshold - AI_ENRAGE's whole hook (see
@@ -455,13 +493,15 @@ class Entity:
         base = self.fighter.attack if self.fighter else 0
         bonus = self.equipped_weapon.item.attack_bonus if self.equipped_weapon else None
         enrage_bonus = (self.enrage_attack_bonus or DEFAULT_ENRAGE_ATTACK_BONUS) if self.is_enraged else 0
-        return max(0, base + (bonus or 0) + enrage_bonus + self.pack_bonus_active - self._weaken_penalty)
+        return max(
+            0, base + (bonus or 0) + enrage_bonus + self.pack_bonus_active + self._vigor_bonus - self._weaken_penalty
+        )
 
     @property
     def effective_defense(self) -> int:
         base = self.fighter.defense if self.fighter else 0
         bonus = self.equipped_armor.item.defense_bonus if self.equipped_armor else None
-        return base + (bonus or 0)
+        return base + (bonus or 0) + self._vigor_bonus
 
     @property
     def effective_ranged_attack(self) -> int:

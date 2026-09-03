@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from content.schema import AI_MIMIC
+from content.schema import AI_MIMIC, BUFF_VIGOR
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
-from engine.entity import DEFAULT_MIMIC_BONUS, potion_kind
+from engine.entity import DEFAULT_MIMIC_BONUS, ActiveEffect, potion_kind
 from engine.targeting import is_valid_target
 
 if TYPE_CHECKING:
@@ -492,6 +492,13 @@ class UseItemAction(Action):
                 engine.message_log.add(f"You drink the {item_entity.name} and the afflictions lift.")
             else:
                 engine.message_log.add(f"You drink the {item_entity.name}, but feel no different.")
+        elif kind == "vigor":
+            entity.fighter.active_buffs[BUFF_VIGOR] = ActiveEffect(
+                potency=item_entity.item.buff_potency, turns_remaining=item_entity.item.buff_duration
+            )
+            engine.message_log.add(
+                f"You drink the {item_entity.name} and strength floods your limbs."
+            )
 
 
 class UseSkillAction(Action):

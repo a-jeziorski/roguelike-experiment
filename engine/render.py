@@ -381,10 +381,23 @@ _EFFECT_HUD_LABELS = {
     "weaken": lambda e: f"WEAKENED: -{e.potency} attack ({e.turns_remaining} turn(s) left)",
 }
 
+# Same shape as _EFFECT_HUD_LABELS, one HUD line per active self-buff
+# (Fighter.active_buffs) - kept as a separate dict rather than merged into
+# _EFFECT_HUD_LABELS since buffs are a distinct namespace/dataclass usage
+# from afflictions (see Fighter.active_buffs' own docstring), but rendered
+# by the same _render_active_effects call below so all three HUD call
+# sites automatically pick up both without touching them individually.
+_BUFF_HUD_LABELS = {
+    "vigor": lambda e: f"VIGOR: +{e.potency} attack/defense ({e.turns_remaining} turn(s) left)",
+}
+
 
 def _render_active_effects(console: "Console", fighter: "Fighter", y: int, width: int) -> int:
     for kind, effect in fighter.active_effects.items():
         label = _EFFECT_HUD_LABELS[kind](effect)
+        y += console.print(0, y, label, fg=HUD_FG, width=width)
+    for kind, buff in fighter.active_buffs.items():
+        label = _BUFF_HUD_LABELS[kind](buff)
         y += console.print(0, y, label, fg=HUD_FG, width=width)
     return y
 

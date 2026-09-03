@@ -326,6 +326,50 @@ def test_restore_save_defaults_active_effects_for_an_old_format_save(tmp_path):
     assert restored_fighter.active_effects == {}
 
 
+def test_round_trip_preserves_vigor_buff(tmp_path):
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+    engine.player.fighter.active_buffs["vigor"] = ActiveEffect(potency=3, turns_remaining=7)
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, _clock2, _quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    )
+
+    restored_fighter = active_engines2[active_key].player.fighter
+    assert restored_fighter.active_buffs["vigor"].potency == 3
+    assert restored_fighter.active_buffs["vigor"].turns_remaining == 7
+
+
+def test_restore_save_defaults_active_buffs_for_an_old_format_save(tmp_path):
+    """A save file written before active_buffs existed has no such field -
+    pydantic should fill in the default rather than erroring, so old saves
+    keep loading (same precedent as active_effects above)."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _prison_tower_engine(dungeon_registry, catalog, clock, quest_log)
+    active_engines = {"prison_tower": engine}
+
+    save = capture_save("prison_tower", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "old_save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["player"]["active_buffs"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, _clock2, _quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    restored_fighter = active_engines2[active_key].player.fighter
+    assert restored_fighter.active_buffs == {}
+
+
 def test_round_trip_preserves_xp_and_re_derives_learned_perk_bonuses(tmp_path):
     """learned_perk_ids is the single source of truth for perk-derived stat
     totals - _build_player must re-derive fighter.max_hp/attack/defense/

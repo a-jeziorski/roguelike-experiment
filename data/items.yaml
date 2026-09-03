@@ -31,6 +31,16 @@ antidote_potion:
   cost: 20
   description: A bitter green draught. Whatever's wrong with you right now, it isn't anymore.
 
+vigor_elixir:
+  name: Elixir of Vigor
+  glyph: "!"
+  color: [230, 130, 40]
+  grants_buff: vigor
+  buff_potency: 3
+  buff_duration: 10
+  cost: 40
+  description: A vial of something thick and amber, warm even through the glass. Drink it and feel your own strength come up to meet you.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"
