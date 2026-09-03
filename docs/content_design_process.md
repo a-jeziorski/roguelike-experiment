@@ -3507,6 +3507,73 @@ target selection among multiple candidates, peaceful-NPC exclusion, an
 out-of-range refusal, a kill case (XP awarded, entity removed), and the
 boxed-in landing failure.
 
+## 0ba. Riposte Stance - a skill that grants a BuffKind, and a new combat choke point (`riposte_stance` perk)
+
+The second active perk, the fourth `SkillEffectKind` (`riposte_stance`),
+and the sixth `BuffKind` (`BUFF_RIPOSTE`) - but the first time a *skill*,
+not an item, has granted one. Nothing about `BuffKind`/`Fighter.
+active_buffs` was ever actually potion-specific (§0ar's own docstring
+already frames it as "a timed condition on a Fighter"), so
+`Engine.use_skill`'s new branch just writes `entity.fighter.active_buffs[
+BUFF_RIPOSTE] = ActiveEffect(...)` directly, the same construction
+`UseItemAction` uses for vigor/haste/shadowed/sure_footed/ironroot - no
+new plumbing needed to let a skill be the one setting it. Ticked the
+ordinary way by `_tick_active_buffs`, same as every buff except haste.
+
+**The actual mechanic lives entirely in `engine/combat.py`, not in
+`use_skill`** - a new `_maybe_riposte(engine, attacker, defender)`,
+called from `_apply_damage`'s `if damage > 0:` block right after
+`_maybe_apply_weapon_affix`/`_maybe_apply_armor_affix`, the same "a hit
+landed" trigger those two already use. Where an armor affix retaliates
+with a status-effect proc, `_maybe_riposte` retaliates with a real
+counter-attack - `resolve_attack(engine, attacker=defender, defender=
+attacker)`, using the holder's own `effective_attack` and the *full*
+dodge/crit/weapon-affix/inflicts-effect pipeline (a countered monster can
+itself be poisoned by the counter, dodge it, etc. - nothing here is a
+scaled-down "skill damage" number, it's an ordinary attack that happens
+to trigger reactively instead of on the player's own turn). This is the
+same "reuse the real combat resolution, don't invent a parallel one"
+discipline Blink Strike's own docstring already established (§0az),
+applied to a *reactive* trigger instead of a manually-initiated one.
+
+**Scoped by the buff check alone, no `is engine.player` special-case** -
+`BUFF_RIPOSTE` is granted exclusively by a learned active skill, and only
+the player can ever learn perks, so `_maybe_riposte`'s guard (`defender.
+fighter is not None and BUFF_RIPOSTE in defender.fighter.active_buffs`)
+naturally never fires for a monster defender in shipped content, without
+needing to say so explicitly - the same reasoning `_inflict_effect`'s own
+Ironroot check already follows (§0ay). A defensive `attacker.is_alive`
+guard sits alongside it for robustness (an attacker somehow already dead
+by the time its own hit resolves shouldn't get counter-attacked), though
+nothing in the current single-hit resolution order can actually trigger
+that path - kept anyway since the cost of the check is one comparison,
+and the alternative (a `None`/dead-entity call into `resolve_attack`)
+would be a real, if currently unreachable, bug.
+
+**`use_skill`'s fourth branch needed no restructuring this time** -
+Blink Strike's own addition (§0az) already converted every branch to an
+explicit `if`, so Riposte Stance slots in as one more, cleanly, with
+nothing implicit left to trip over.
+
+**Deliberately not added to either trainer's `trainer_perks` list yet**,
+same scope boundary every item in this round has followed since Blink
+Strike (§0az) - the mechanic ships fully implemented and tested; placing
+new content into the world is a separate, later pass.
+
+Ships one real example, `riposte_stance` (`data/perks.yaml`,
+`skill_effect: riposte_stance`, `skill_riposte_duration: 5`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 10`, `xp_cost: 60`
+- a longer cooldown than duration on purpose, so the stance is never
+permanently up). Verified end-to-end via direct `Engine`/`Entity`
+construction against the real catalog entry, with a live hostile monster
+attacking the player turn by turn: the monster's own hit still lands in
+full (riposte doesn't grant any extra defense, only retaliation), the
+counter fires in the same turn using the player's real `effective_attack`,
+a 0-damage hit confirms no riposte fires when nothing actually landed,
+and a low-hp attacker confirms the counter can kill and award XP through
+the normal death pipeline - no special-casing needed there either, since
+`resolve_attack`'s own `_apply_damage` call already handles it.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

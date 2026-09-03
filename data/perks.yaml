@@ -103,3 +103,16 @@ blink_strike:
   skill_blink_strike_range: 5
   skill_cooldown_kind: turns
   skill_cooldown_amount: 6
+
+riposte_stance:
+  name: Riposte Stance
+  description: >
+    Settle your weight, watch the opening, answer every blow with one of
+    your own. For 5 turns, anything that lands a hit on you takes a full
+    counter-attack back immediately. A long recovery once the stance
+    drops - this isn't something you can hold up all fight.
+  xp_cost: 60
+  skill_effect: riposte_stance
+  skill_riposte_duration: 5
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 10

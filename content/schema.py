@@ -188,14 +188,26 @@ BUFF_SURE_FOOTED = "sure_footed"
 # Sure-Footing Draught's own encounter-avoidance scope note already
 # established (§0av).
 BUFF_IRONROOT = "ironroot"
-BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_IRONROOT]
+# Whenever an attacker lands damage on whoever holds this buff, the
+# holder immediately counter-attacks back (see engine/combat.py's
+# _maybe_riposte) - granted by the Riposte Stance active skill
+# (PerkDef.skill_effect below), not any potion, but reuses this same
+# BuffKind/active_buffs machinery rather than inventing a parallel one:
+# nothing about BuffKind was ever potion-specific, just "a timed
+# condition on a Fighter," and a skill setting one directly is exactly as
+# valid as an item doing it. No intensity concept of its own - the
+# counter always uses the holder's own effective_attack, not a scaled
+# number - so also excluded from _BUFF_KINDS_WITH_POTENCY below.
+BUFF_RIPOSTE = "riposte"
+BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_IRONROOT, BUFF_RIPOSTE]
 # Buffs with a meaningful intensity - vigor's potency is a flat attack/
-# defense bonus. Haste, shadowed, sure_footed, and ironroot have no
-# intensity concept (an action is either free or it isn't; the player is
-# either concealed or isn't; a hazard either hurts or it doesn't; a stun
-# either lands or it doesn't - see BUFF_HASTE/BUFF_SHADOWED/
-# BUFF_SURE_FOOTED/BUFF_IRONROOT above), so buff_potency is required for
-# vigor and rejected for the rest - see
+# defense bonus. Haste, shadowed, sure_footed, ironroot, and riposte have
+# no intensity concept (an action is either free or it isn't; the player
+# is either concealed or isn't; a hazard either hurts or it doesn't; a
+# stun either lands or it doesn't; a counter-attack always uses the
+# holder's real effective_attack - see BUFF_HASTE/BUFF_SHADOWED/
+# BUFF_SURE_FOOTED/BUFF_IRONROOT/BUFF_RIPOSTE above), so buff_potency is
+# required for vigor and rejected for the rest - see
 # ItemDef.buff_potency_matches_buff_kind below, the same split
 # _EFFECT_KINDS_WITH_POTENCY already establishes.
 _BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)
@@ -631,11 +643,15 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # percentage of max_hp, "aoe_damage" strikes every hostile entity adjacent
 # to the player for a flat amount, "blink_strike" teleports the player
 # beside the nearest hostile entity within range and lands one ordinary
-# attack (see Engine.use_skill).
+# attack, "riposte_stance" grants BUFF_RIPOSTE for a number of turns (see
+# Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
-SkillEffectKind = Literal[SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE]
+SKILL_EFFECT_RIPOSTE_STANCE = "riposte_stance"
+SkillEffectKind = Literal[
+    SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
+]
 
 
 class PerkDef(BaseModel):
@@ -684,7 +700,8 @@ class PerkDef(BaseModel):
     # set together or not at all (skill_fields_set_together below);
     # skill_heal_pct is required for/exclusive to "heal", skill_aoe_damage
     # for/exclusive to "aoe_damage", skill_blink_strike_range for/exclusive
-    # to "blink_strike" (skill_effect_matches_payload below).
+    # to "blink_strike", skill_riposte_duration for/exclusive to
+    # "riposte_stance" (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
     skill_cooldown_amount: int | None = Field(default=None, gt=0)
@@ -692,9 +709,14 @@ class PerkDef(BaseModel):
     skill_aoe_damage: int | None = Field(default=None, gt=0)
     # How far Engine.use_skill searches for a "blink_strike" target - the
     # player always lands *adjacent* to whatever it finds (see
-    # _adjacent_walkable_tile), regardless of this value; this only bounds
-    # how far away a target can be picked from in the first place.
+    # engine/game_map.py's nearby_walkable_tiles), regardless of this
+    # value; this only bounds how far away a target can be picked from in
+    # the first place.
     skill_blink_strike_range: int | None = Field(default=None, gt=0)
+    # How many turns a "riposte_stance" skill's BUFF_RIPOSTE lasts - the
+    # counter-attack itself always uses the holder's real effective_attack,
+    # nothing here scales its damage (see engine/combat.py's _maybe_riposte).
+    skill_riposte_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -759,6 +781,12 @@ class PerkDef(BaseModel):
         if self.skill_effect != SKILL_EFFECT_BLINK_STRIKE and self.skill_blink_strike_range is not None:
             raise ValueError(
                 "skill_blink_strike_range is only meaningful when skill_effect is 'blink_strike'"
+            )
+        if self.skill_effect == SKILL_EFFECT_RIPOSTE_STANCE and self.skill_riposte_duration is None:
+            raise ValueError("skill_effect 'riposte_stance' requires skill_riposte_duration to be set")
+        if self.skill_effect != SKILL_EFFECT_RIPOSTE_STANCE and self.skill_riposte_duration is not None:
+            raise ValueError(
+                "skill_riposte_duration is only meaningful when skill_effect is 'riposte_stance'"
             )
         return self
 

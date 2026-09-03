@@ -1676,6 +1676,32 @@ def test_perk_def_rejects_heal_skill_with_blink_strike_range_set():
         ))
 
 
+def test_perk_def_accepts_a_riposte_stance_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="riposte_stance", skill_riposte_duration=5,
+        skill_cooldown_kind="turns", skill_cooldown_amount=10,
+    ))
+    assert perk.skill_effect == "riposte_stance"
+    assert perk.skill_riposte_duration == 5
+    assert perk.skill_cooldown_kind == "turns"
+
+
+def test_perk_def_rejects_riposte_stance_skill_without_duration():
+    with pytest.raises(ValidationError, match="requires skill_riposte_duration"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="riposte_stance",
+            skill_cooldown_kind="turns", skill_cooldown_amount=10,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_riposte_duration_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'riposte_stance'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_riposte_duration=5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 

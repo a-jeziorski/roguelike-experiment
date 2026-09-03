@@ -7829,6 +7829,84 @@ def test_blink_strike_cooldown_ticks_down_each_turn_and_expires():
     assert "blink_strike" not in player.skill_cooldowns  # expired, deleted
 
 
+def test_use_skill_riposte_stance_grants_the_buff():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("riposte_stance")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "riposte_stance")
+
+    assert player.fighter.active_buffs["riposte"] == ActiveEffect(potency=0, turns_remaining=5)
+    assert player.skill_cooldowns["riposte_stance"] == 10
+    assert message == "You use Riposte Stance and settle into a stance, ready to answer any blow."
+
+
+def test_riposte_buff_counters_a_landed_hit_on_the_player():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, attack=5, defense=0)
+    player.fighter.active_buffs["riposte"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(2, 1, hp=20, attack=4, defense=0, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - 4  # the monster's own hit still landed
+    assert monster.fighter.hp == 20 - 5  # answered immediately with the player's effective_attack
+    assert "Player answers with a riposte!" in engine.message_log.messages
+
+
+def test_riposte_does_not_trigger_on_a_zero_damage_hit():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, defense=0)
+    player.fighter.active_buffs["riposte"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(2, 1, hp=20, attack=0, defense=0, ai="hostile_basic")
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster.fighter.hp == 20  # no damage dealt, so no riposte fired
+    assert "Player answers with a riposte!" not in engine.message_log.messages
+
+
+def test_riposte_can_kill_the_attacker():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30, attack=5, defense=0)
+    player.fighter.active_buffs["riposte"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(2, 1, hp=1, attack=4, defense=0, ai="hostile_basic")
+    monster.xp_reward = 5
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert monster not in game_map.entities
+    assert player.xp == 5
+
+
+def test_riposte_stance_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("riposte_stance")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "riposte_stance")
+    assert player.skill_cooldowns["riposte_stance"] == 10
+
+    for _ in range(9):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["riposte_stance"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "riposte_stance" not in player.skill_cooldowns  # expired, deleted
+
+
 # --- XP awards (kills, quests, landmark discovery) ---
 
 

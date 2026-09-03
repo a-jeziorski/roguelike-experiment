@@ -25,6 +25,7 @@ from content.schema import (
     AI_TOWN_GUARD,
     AI_VILLAGER,
     BUFF_HASTE,
+    BUFF_RIPOSTE,
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     EFFECT_POISON,
@@ -35,11 +36,12 @@ from content.schema import (
     SKILL_EFFECT_AOE_DAMAGE,
     SKILL_EFFECT_BLINK_STRIKE,
     SKILL_EFFECT_HEAL,
+    SKILL_EFFECT_RIPOSTE_STANCE,
 )
 from engine.actions import Action, MovementAction
 from engine.clock import GameClock
 from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_damage
-from engine.entity import POTION_KINDS, Entity, apply_perk_stat_bonus
+from engine.entity import POTION_KINDS, ActiveEffect, Entity, apply_perk_stat_bonus
 from engine.game_map import (
     GameMap,
     apply_dungeon_destruction,
@@ -1604,42 +1606,59 @@ class Engine:
                 resolve_skill_damage(self, entity, target, perk.skill_aoe_damage, "pounds")
             return message
 
-        # SKILL_EFFECT_BLINK_STRIKE - teleports entity adjacent to the
-        # nearest qualifying hostile within skill_blink_strike_range, then
-        # lands one ordinary attack via resolve_attack (attacker.
-        # effective_attack, full dodge/crit/affix pipeline - the same
-        # "reuse the real combat resolution, don't invent a parallel one"
-        # reasoning aoe_damage above already established). Ties broken by
-        # game_map.entities order (stable, no randomness needed) - "nearest"
-        # rarely has an exact tie in practice, and when it does either
-        # candidate is an equally reasonable pick. The landing tile itself
-        # reuses nearby_walkable_tiles(radius=1, count=1) - the exact same
-        # helper Smoke Bomb's own relocation already relies on (§0aw), just
-        # centered on the target instead of the player and shrunk to a
-        # single adjacent tile. Whiffs (no target in range, or a target
-        # with no free adjacent tile to land on) still consume the
-        # cooldown - same "a wasted attempt still costs the cooldown"
-        # precedent aoe_damage already sets for zero targets.
-        candidates = [
-            e for e in list(self.game_map.entities)
-            if e is not entity and e.fighter is not None and e.is_alive
-            and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_blink_strike_range
-        ]
-        if not candidates:
-            message = "There's nothing within range to blink to."
+        if perk.skill_effect == SKILL_EFFECT_BLINK_STRIKE:
+            # Teleports entity adjacent to the nearest qualifying hostile
+            # within skill_blink_strike_range, then lands one ordinary
+            # attack via resolve_attack (attacker.effective_attack, full
+            # dodge/crit/affix pipeline - the same "reuse the real combat
+            # resolution, don't invent a parallel one" reasoning aoe_damage
+            # above already established). Ties broken by game_map.entities
+            # order (stable, no randomness needed) - "nearest" rarely has
+            # an exact tie in practice, and when it does either candidate
+            # is an equally reasonable pick. The landing tile itself reuses
+            # nearby_walkable_tiles(radius=1, count=1) - the exact same
+            # helper Smoke Bomb's own relocation already relies on (§0aw),
+            # just centered on the target instead of the player and shrunk
+            # to a single adjacent tile. Whiffs (no target in range, or a
+            # target with no free adjacent tile to land on) still consume
+            # the cooldown - same "a wasted attempt still costs the
+            # cooldown" precedent aoe_damage already sets for zero targets.
+            candidates = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_blink_strike_range
+            ]
+            if not candidates:
+                message = "There's nothing within range to blink to."
+                self.message_log.add(message)
+                return message
+            target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+            landing_tiles = nearby_walkable_tiles(self.game_map, target.x, target.y, count=1, radius=1)
+            if not landing_tiles:
+                message = f"There's nowhere to land beside {target.name}."
+                self.message_log.add(message)
+                return message
+            entity.x, entity.y = landing_tiles[0]
+            message = f"You use {perk.name} and blink beside {target.name}!"
             self.message_log.add(message)
+            resolve_attack(self, attacker=entity, defender=target)
             return message
-        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
-        landing_tiles = nearby_walkable_tiles(self.game_map, target.x, target.y, count=1, radius=1)
-        if not landing_tiles:
-            message = f"There's nowhere to land beside {target.name}."
-            self.message_log.add(message)
-            return message
-        entity.x, entity.y = landing_tiles[0]
-        message = f"You use {perk.name} and blink beside {target.name}!"
+
+        # SKILL_EFFECT_RIPOSTE_STANCE - grants BUFF_RIPOSTE for
+        # skill_riposte_duration turns, ticked the ordinary way by
+        # _tick_active_buffs (no BUFF_HASTE-style exclusion needed - a
+        # stance doesn't skip any part of the world's turn). The actual
+        # counter-attack lives entirely in engine/combat.py's
+        # _maybe_riposte, triggered from _apply_damage whenever a hit
+        # lands on whoever holds the buff - nothing more to do here than
+        # granting it, same "the buff IS the mechanic" shape sure_footed/
+        # ironroot already established for their own choke-point checks.
+        entity.fighter.active_buffs[BUFF_RIPOSTE] = ActiveEffect(
+            potency=0, turns_remaining=perk.skill_riposte_duration
+        )
+        message = f"You use {perk.name} and settle into a stance, ready to answer any blow."
         self.message_log.add(message)
-        resolve_attack(self, attacker=entity, defender=target)
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

@@ -6,7 +6,14 @@ import math
 import random
 from typing import TYPE_CHECKING
 
-from content.schema import BUFF_IRONROOT, EFFECT_POISON, EFFECT_STUN, EFFECT_WEAKEN, PEACEFUL_AI_TYPES
+from content.schema import (
+    BUFF_IRONROOT,
+    BUFF_RIPOSTE,
+    EFFECT_POISON,
+    EFFECT_STUN,
+    EFFECT_WEAKEN,
+    PEACEFUL_AI_TYPES,
+)
 from engine.entity import ActiveEffect
 
 if TYPE_CHECKING:
@@ -132,6 +139,25 @@ def _maybe_apply_armor_affix(engine: "Engine", attacker: "Entity", defender: "En
     )
 
 
+def _maybe_riposte(engine: "Engine", attacker: "Entity", defender: "Entity") -> None:
+    """A learned Riposte Stance's own retaliation - triggers on the same
+    "a hit landed" moment as _maybe_apply_armor_affix above, but strikes
+    back with a real counter-attack (resolve_attack, defender's own
+    effective_attack, the full dodge/crit/affix pipeline) instead of a
+    status-effect proc. BUFF_RIPOSTE is granted exclusively by a learned
+    active skill (never by any item), and only the player can ever learn
+    perks, so this never actually fires for a monster defender in shipped
+    content - the active_buffs check alone is what scopes it correctly,
+    no explicit "is the player" special-case needed, same reasoning
+    _inflict_effect's own ironroot check already follows."""
+    if defender.fighter is None or BUFF_RIPOSTE not in defender.fighter.active_buffs:
+        return
+    if not attacker.is_alive:
+        return
+    engine.message_log.add(f"{defender.name} answers with a riposte!", category="combat")
+    resolve_attack(engine, attacker=defender, defender=attacker)
+
+
 def _apply_damage(
     engine: "Engine", attacker: "Entity", defender: "Entity", attack_value: int, verb: str
 ) -> None:
@@ -192,6 +218,7 @@ def _apply_damage(
             )
         _maybe_apply_weapon_affix(engine, attacker, defender)
         _maybe_apply_armor_affix(engine, attacker, defender)
+        _maybe_riposte(engine, attacker, defender)
     else:
         engine.message_log.add(
             f"{attacker.name} {verb} {defender.name} but does no damage.", category="combat"

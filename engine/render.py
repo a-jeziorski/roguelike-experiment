@@ -393,6 +393,7 @@ _BUFF_HUD_LABELS = {
     "shadowed": lambda e: f"SHADOWED: unseen from a distance ({e.turns_remaining} turn(s) left)",
     "sure_footed": lambda e: f"SURE-FOOTED: immune to hazardous ground ({e.turns_remaining} turn(s) left)",
     "ironroot": lambda e: f"IRONROOT: immune to stun ({e.turns_remaining} turn(s) left)",
+    "riposte": lambda e: f"RIPOSTE: counters any landed hit ({e.turns_remaining} turn(s) left)",
 }
 
 
