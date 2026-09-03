@@ -130,11 +130,14 @@ class ItemEffect:
     # How many turns UseItemAction grants passage over deep_water/sea for -
     # see potion_kind below, engine/game_map.py's is_walkable.
     water_walking_duration: int | None = None
+    # Whether drinking this clears every entry in Fighter.active_effects at
+    # once - see potion_kind below.
+    cures_effects: bool = False
 
 
 # Every potion kind UseItemAction can drink (see Entity.selected_potion_kind,
 # Entity.potion_slots, Engine.assign_potion_slot).
-POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking")
+POTION_KINDS: tuple[str, ...] = ("healing", "teleport", "water_walking", "antidote")
 
 
 def potion_kind(item: ItemEffect) -> str | None:
@@ -145,6 +148,8 @@ def potion_kind(item: ItemEffect) -> str | None:
         return "teleport"
     if item.water_walking_duration:
         return "water_walking"
+    if item.cures_effects:
+        return "antidote"
     return None
 
 

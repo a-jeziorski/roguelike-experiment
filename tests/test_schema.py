@@ -917,6 +917,18 @@ def test_item_def_rejects_non_positive_water_walking_duration():
         )
 
 
+def test_item_def_cures_effects_defaults_false():
+    item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
+    assert item.cures_effects is False
+
+
+def test_item_def_accepts_cures_effects():
+    potion = ItemDef(
+        id="antidote_potion", name="Antidote", glyph="!", color=(1, 2, 3), cures_effects=True,
+    )
+    assert potion.cures_effects is True
+
+
 def test_item_def_gold_amount_defaults_none():
     item = ItemDef(id="healing_potion", name="Healing Potion", glyph="!", color=(1, 2, 3))
     assert item.gold_amount is None

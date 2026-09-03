@@ -294,6 +294,7 @@ def item_entity_from_def(idef: ItemDef, x: int = 0, y: int = 0) -> Entity:
             is_ammo=idef.is_ammo,
             is_teleport=idef.is_teleport,
             water_walking_duration=idef.water_walking_duration,
+            cures_effects=idef.cures_effects,
             quantity=idef.quantity,
         ),
         description=idef.description,

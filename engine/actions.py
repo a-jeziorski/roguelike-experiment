@@ -485,6 +485,13 @@ class UseItemAction(Action):
             engine.message_log.add(
                 f"You drink the {item_entity.name} and your feet no longer sink."
             )
+        elif kind == "antidote":
+            had_effects = bool(entity.fighter.active_effects)
+            entity.fighter.active_effects.clear()
+            if had_effects:
+                engine.message_log.add(f"You drink the {item_entity.name} and the afflictions lift.")
+            else:
+                engine.message_log.add(f"You drink the {item_entity.name}, but feel no different.")
 
 
 class UseSkillAction(Action):

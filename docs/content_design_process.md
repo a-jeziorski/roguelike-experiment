@@ -2833,6 +2833,59 @@ play_llm.py` playthrough from a fresh character through both levels -
 confirming water blocks movement without the potion, the crossing works
 with it, and the buff is inert if drunk on the overworld.
 
+## 0aq. Antidote - clears every active status effect at once (`antidote_potion`)
+
+The first of a new round of consumable/active-skill ideas, and the
+simplest one in it: `ItemDef.cures_effects` is a plain bool (no potency,
+no duration - there's nothing to scale, it either clears
+`Fighter.active_effects` right now or, already effect-free, does
+nothing), threaded through `ItemEffect`/`item_entity_from_def` the exact
+same three-step path `water_walking_duration` established in §0ap
+(schema field, `ItemEffect` field, `potion_kind()` branch) - a new potion
+kind is now a genuinely small, mechanical addition, not a design
+decision each time.
+
+**Needs no new persisted state at all - the first potion in this project
+for which that's true.** `water_walking_duration` (§0ap) needed a new
+`Entity.water_walking_turns_remaining` live-state field and a
+`SavedPlayer` round-trip to go with it; Antidote just clears an
+already-persisted dict (`Fighter.active_effects`, saved via
+`SavedPlayer.active_effects` since long before this potion existed) and
+walks away. `engine/save.py` needed zero changes.
+
+**A real, if narrow, interaction found only by actually drinking one
+while stunned:** `Engine.process_player_action` blocks a stunned
+player's action outright (`EFFECT_STUN in
+self.player.fighter.active_effects` skips `action.perform()` entirely,
+same as a stunned monster's own `_perform_ai` turn) - meaning a stunned
+player can never actually trigger `UseItemAction` to drink the antidote
+that would cure that same stun, since the stun has to lapse on its own
+before any action (drinking included) reaches `perform()` again.
+`cures_effects` still clears stun along with poison/weaken when it *does*
+run - correctness and forward-compatibility cost nothing here, and
+nothing about this potion should assume today's "the player is the only
+one who ever drinks a potion" is permanent - but the practical value is
+entirely in clearing poison/weaken, which don't block acting the way
+stun does. Worth knowing before reaching for this as "the stun cure";
+it isn't one in practice, only on paper.
+
+**No refusal, same as Healing's own precedent** - drinking with nothing
+currently active still consumes the potion (`"You drink the Antidote,
+but feel no different."`), the same "always consumes, sometimes a no-op"
+shape a Healing Potion already has at full HP, rather than Teleport's
+"refuses before consuming, nothing to gain here" shape (§0z-era). Cure
+potions and "there's only one place this matters" potions read
+differently enough that they shouldn't share a refusal convention just
+because they're both potions.
+
+Ships one real example, `antidote_potion` (`data/items.yaml`,
+`cures_effects: true`, `cost: 20`) - purchasable, not just found, unlike
+the Water Walking Potion. Verified end-to-end via direct `Engine`/
+`Entity` construction against the real catalog entry: clears a poison +
+weaken combination in one drink, correctly no-ops (but still consumes)
+with nothing active, and - the stun case above - confirmed a stunned
+player's own turn never reaches the antidote's own logic at all.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

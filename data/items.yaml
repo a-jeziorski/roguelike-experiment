@@ -23,6 +23,14 @@ water_walking_potion:
   water_walking_duration: 20
   description: A vial of something the color of deep water. Drink it and your own feet forget how to sink.
 
+antidote_potion:
+  name: Antidote
+  glyph: "!"
+  color: [90, 200, 90]
+  cures_effects: true
+  cost: 20
+  description: A bitter green draught. Whatever's wrong with you right now, it isn't anymore.
+
 rusty_dagger:
   name: Rusty Dagger
   glyph: "/"

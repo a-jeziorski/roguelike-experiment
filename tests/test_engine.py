@@ -183,6 +183,15 @@ def make_water_walking_potion(x: int, y: int, duration: int = 20) -> Entity:
     )
 
 
+def make_antidote_potion(x: int, y: int) -> Entity:
+    return Entity(
+        x, y, "!", (90, 200, 90), "Antidote",
+        blocks_movement=False,
+        render_priority=RENDER_PRIORITY_ITEM,
+        item=ItemEffect(cures_effects=True),
+    )
+
+
 def make_key(x: int, y: int, key_id: str = "rusty_key", name: str = "Rusty Key") -> Entity:
     return Entity(
         x, y, "-", (200, 170, 60), name,
@@ -2029,6 +2038,43 @@ def test_water_walking_turns_remaining_ticks_down_each_turn():
 
     engine.process_turn(WaitAction())
     assert player.water_walking_turns_remaining == 0  # never goes negative
+
+
+def test_potion_kind_identifies_antidote():
+    assert potion_kind(ItemEffect(cures_effects=True)) == "antidote"
+
+
+def test_use_item_action_antidote_clears_every_active_effect():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.fighter.active_effects["poison"] = ActiveEffect(potency=2, turns_remaining=3)
+    player.fighter.active_effects["weaken"] = ActiveEffect(potency=1, turns_remaining=2)
+    potion = make_antidote_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "antidote"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert player.fighter.active_effects == {}
+    assert engine.message_log.messages[-1] == "You drink the Antidote and the afflictions lift."
+
+
+def test_use_item_action_antidote_with_nothing_to_cure_still_consumes_it():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    potion = make_antidote_potion(1, 1)
+    player.inventory.append(potion)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+    player.selected_potion_kind = "antidote"
+
+    engine.process_turn(UseItemAction())
+
+    assert potion not in player.inventory
+    assert engine.message_log.messages[-1] == "You drink the Antidote, but feel no different."
 
 
 def test_assign_potion_slot_sets_a_valid_kind():

@@ -432,6 +432,12 @@ class ItemDef(BaseModel):
     # never honors it while Engine.is_overworld). Set/unset together with
     # nothing else, same standalone shape as heal_amount/is_teleport above.
     water_walking_duration: int | None = Field(default=None, gt=0)
+    # Drinking this clears every entry in Fighter.active_effects at once
+    # (poison/stun/weaken, whatever's currently active) - see
+    # engine/actions.py's UseItemAction. A plain flag, not a potency/
+    # duration pair - there's nothing to scale, it either cures everything
+    # right now or (already effect-free) does nothing.
+    cures_effects: bool = False
     quantity: int = Field(default=1, gt=0)
     # What a shopkeeper charges for this item, in gold - a fact about the
     # item, not about any one shopkeeper (see EntityDef.shop_inventory).
