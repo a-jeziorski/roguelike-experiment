@@ -233,15 +233,29 @@ BUFF_IRONROOT = "ironroot"
 # counter always uses the holder's own effective_attack, not a scaled
 # number - so also excluded from _BUFF_KINDS_WITH_POTENCY below.
 BUFF_RIPOSTE = "riposte"
-BuffKind = Literal[BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_IRONROOT, BUFF_RIPOSTE]
+# Lets the player move through any blocking entity (monster or peaceful
+# NPC alike) as if it weren't there - see engine/actions.py's
+# BumpAction/MovementAction, both of which check for this directly.
+# Deliberately movement-only: walls/terrain still block normally
+# (is_walkable is never touched), and phasing grants no extra survivability
+# of its own - an attack that lands on the player while phasing still
+# lands exactly as it would otherwise. Scoped narrowly on purpose so it
+# reads as "glide past a crowd," not "briefly invulnerable" - the latter
+# would overlap too heavily with Riposte Stance/Ironroot's own defensive
+# territory. Granted by the Phase Through active skill.
+BUFF_PHASING = "phasing"
+BuffKind = Literal[
+    BUFF_VIGOR, BUFF_HASTE, BUFF_SHADOWED, BUFF_SURE_FOOTED, BUFF_IRONROOT, BUFF_RIPOSTE, BUFF_PHASING,
+]
 # Buffs with a meaningful intensity - vigor's potency is a flat attack/
-# defense bonus. Haste, shadowed, sure_footed, ironroot, and riposte have
-# no intensity concept (an action is either free or it isn't; the player
-# is either concealed or isn't; a hazard either hurts or it doesn't; a
-# stun either lands or it doesn't; a counter-attack always uses the
-# holder's real effective_attack - see BUFF_HASTE/BUFF_SHADOWED/
-# BUFF_SURE_FOOTED/BUFF_IRONROOT/BUFF_RIPOSTE above), so buff_potency is
-# required for vigor and rejected for the rest - see
+# defense bonus. Haste, shadowed, sure_footed, ironroot, riposte, and
+# phasing have no intensity concept (an action is either free or it
+# isn't; the player is either concealed or isn't; a hazard either hurts
+# or it doesn't; a stun either lands or it doesn't; a counter-attack
+# always uses the holder's real effective_attack; movement either passes
+# through a blocker or it doesn't - see BUFF_HASTE/BUFF_SHADOWED/
+# BUFF_SURE_FOOTED/BUFF_IRONROOT/BUFF_RIPOSTE/BUFF_PHASING above), so
+# buff_potency is required for vigor and rejected for the rest - see
 # ItemDef.buff_potency_matches_buff_kind below, the same split
 # _EFFECT_KINDS_WITH_POTENCY already establishes.
 _BUFF_KINDS_WITH_POTENCY = (BUFF_VIGOR,)
@@ -684,7 +698,8 @@ SkillCooldownKind = Literal[SKILL_COOLDOWN_HOURS, SKILL_COOLDOWN_TURNS]
 # and repeats, up to a cap, "guard_break" strikes the nearest hostile
 # within range for flat damage and, if it survives, inflicts EFFECT_EXPOSED
 # on it, "mark_for_death" inflicts EFFECT_MARKED on the nearest hostile
-# within range, dealing no direct damage of its own (see Engine.use_skill).
+# within range, dealing no direct damage of its own, "phase_through"
+# grants BUFF_PHASING for a number of turns (see Engine.use_skill).
 SKILL_EFFECT_HEAL = "heal"
 SKILL_EFFECT_AOE_DAMAGE = "aoe_damage"
 SKILL_EFFECT_BLINK_STRIKE = "blink_strike"
@@ -693,9 +708,11 @@ SKILL_EFFECT_ROOT_GROUND = "root_ground"
 SKILL_EFFECT_CHAIN_LASH = "chain_lash"
 SKILL_EFFECT_GUARD_BREAK = "guard_break"
 SKILL_EFFECT_MARK_FOR_DEATH = "mark_for_death"
+SKILL_EFFECT_PHASE_THROUGH = "phase_through"
 SkillEffectKind = Literal[
     SKILL_EFFECT_HEAL, SKILL_EFFECT_AOE_DAMAGE, SKILL_EFFECT_BLINK_STRIKE, SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND, SKILL_EFFECT_CHAIN_LASH, SKILL_EFFECT_GUARD_BREAK, SKILL_EFFECT_MARK_FOR_DEATH,
+    SKILL_EFFECT_PHASE_THROUGH,
 ]
 
 
@@ -752,7 +769,8 @@ class PerkDef(BaseModel):
     # skill_guard_break_damage/skill_guard_break_range/
     # skill_guard_break_potency/skill_guard_break_duration for/exclusive
     # to "guard_break", skill_mark_range/skill_mark_bonus/
-    # skill_mark_duration for/exclusive to "mark_for_death"
+    # skill_mark_duration for/exclusive to "mark_for_death",
+    # skill_phase_duration for/exclusive to "phase_through"
     # (skill_effect_matches_payload below).
     skill_effect: SkillEffectKind | None = None
     skill_cooldown_kind: SkillCooldownKind | None = None
@@ -803,6 +821,10 @@ class PerkDef(BaseModel):
     skill_mark_range: int | None = Field(default=None, gt=0)
     skill_mark_bonus: int | None = Field(default=None, gt=0)
     skill_mark_duration: int | None = Field(default=None, gt=0)
+    # How many turns a "phase_through" skill's BUFF_PHASING lasts - no
+    # potency field alongside it, same "an action is either free or it
+    # isn't"-style binary shape skill_riposte_duration already uses.
+    skill_phase_duration: int | None = Field(default=None, gt=0)
     # A perk tier gate - this perk can't be learned until requires_perk_id
     # is already in Entity.learned_perk_ids (see Engine.learn_perk).
     # Orthogonal to which of the three bonus shapes above this perk uses -
@@ -938,6 +960,12 @@ class PerkDef(BaseModel):
             raise ValueError(
                 "skill_mark_range/skill_mark_bonus/skill_mark_duration are only meaningful "
                 "when skill_effect is 'mark_for_death'"
+            )
+        if self.skill_effect == SKILL_EFFECT_PHASE_THROUGH and self.skill_phase_duration is None:
+            raise ValueError("skill_effect 'phase_through' requires skill_phase_duration to be set")
+        if self.skill_effect != SKILL_EFFECT_PHASE_THROUGH and self.skill_phase_duration is not None:
+            raise ValueError(
+                "skill_phase_duration is only meaningful when skill_effect is 'phase_through'"
             )
         return self
 

@@ -9,6 +9,7 @@ from content.schema import (
     AI_MIMIC,
     BUFF_HASTE,
     BUFF_IRONROOT,
+    BUFF_PHASING,
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
     BUFF_VIGOR,
@@ -231,6 +232,14 @@ class FireAction(Action):
         resolve_ranged_attack(engine, attacker=entity, defender=target)
 
 
+def _is_phasing(entity: "Entity") -> bool:
+    """Whether entity currently holds an active Phase Through buff - a
+    plain function, not a method, since both MovementAction and
+    BumpAction below need the identical check and neither class is a
+    natural home for the other's copy of it."""
+    return entity.fighter is not None and BUFF_PHASING in entity.fighter.active_buffs
+
+
 class MovementAction(Action):
     def __init__(self, dx: int, dy: int):
         self.dx = dx
@@ -281,7 +290,7 @@ class MovementAction(Action):
         )
         if not engine.game_map.is_walkable(dest_x, dest_y, water_walking):
             return
-        if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
+        if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None and not _is_phasing(entity):
             return
         entity.x, entity.y = dest_x, dest_y
         if entity is engine.player and (dest_x, dest_y) in engine.game_map.stairs:
@@ -305,7 +314,13 @@ class MeleeAction(Action):
 
 
 class BumpAction(Action):
-    """Moves into a tile, or attacks whatever is blocking it."""
+    """Moves into a tile, or attacks whatever is blocking it - or, while
+    Phase Through is active, moves straight past whatever is blocking it
+    instead of attacking (see _is_phasing above). Phasing changes the
+    *routing* decision here, not just MovementAction's own walkability
+    check below it: without this, BumpAction would still turn a step
+    toward an occupied tile into a MeleeAction before MovementAction's own
+    phasing check ever got a chance to matter."""
 
     def __init__(self, dx: int, dy: int):
         self.dx = dx
@@ -313,7 +328,7 @@ class BumpAction(Action):
 
     def perform(self, engine: "Engine", entity: "Entity") -> None:
         dest_x, dest_y = entity.x + self.dx, entity.y + self.dy
-        if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None:
+        if engine.game_map.blocking_entity_at(dest_x, dest_y) is not None and not _is_phasing(entity):
             MeleeAction(self.dx, self.dy).perform(engine, entity)
         else:
             MovementAction(self.dx, self.dy).perform(engine, entity)

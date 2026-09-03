@@ -3866,6 +3866,71 @@ would otherwise deal 2 damage (base `attack 6 - defense 4`) instead deals
 Goblin for 4 damage" message every ordinary attack already produces - no
 separate line, no special UI, just a bigger number.
 
+## 0bf. Phase Through - a seventh `BuffKind` that changes movement routing, not just a stat check (`phase_through` perk)
+
+The seventh active perk, the ninth `SkillEffectKind`, and the seventh
+`BuffKind` (`BUFF_PHASING`) - the grant itself is riposte_stance's exact
+"the buff IS the mechanic" shape (§0ba), nothing more in `use_skill` than
+writing `entity.fighter.active_buffs[BUFF_PHASING] = ActiveEffect(...)`.
+The real complexity is entirely on the read side, in
+`engine/actions.py`.
+
+**Why one flag check wasn't enough, unlike every earlier movement-related
+buff/effect:** Root the Ground's rooted check (§0bb) only needed to touch
+`MovementAction.perform()` - a single choke point, since every AI path
+that moves already routes through it. Phase Through needed a *second*
+site too, `BumpAction.perform()`, for a reason specific to the player's
+own input path: `BumpAction` decides *before* ever calling
+`MovementAction` whether a directional press should be a move or an
+attack, by checking `blocking_entity_at` itself first and routing
+straight to `MeleeAction` if something's there - `MovementAction` never
+even gets consulted for an occupied tile under normal rules. Patching
+only `MovementAction`'s own blocking check (as originally tried) would
+have been silently inert for the player: pressing toward a monster while
+phasing would still resolve as an attack, because `BumpAction` had
+already made that call upstream. Both sites needed the same check,
+factored into one small module-level function
+(`_is_phasing(entity)`) rather than duplicated inline twice.
+
+**Deliberately narrow in exactly one direction, thematically the
+opposite of what "phase" might suggest:** walls and terrain remain fully
+solid - `is_walkable` is never touched, only the `blocking_entity_at`
+check in each of the two sites. Phasing through *creatures* (a crowd-
+navigation tool) is a mobility mechanic with a bounded blast radius on
+game design; phasing through *walls* would risk letting the ability
+bypass locked doors, sequence-broken level geometry, or intentionally
+gated content - a much bigger, riskier feature nobody asked for. Verified
+directly: a phasing player still can't cross a wall tile even though it
+freely crosses an adjacent monster's tile in the same test run.
+
+**No extra survivability bundled in, on purpose** - phasing changes
+*where* the player can move, not whether they can be hit; an attack
+landing on a phasing player resolves exactly as it would otherwise
+(nothing checks `BUFF_PHASING` anywhere in `engine/combat.py`). This was
+a deliberate scope decision, not an oversight: a "can't be hit while
+phasing" version would overlap heavily with Riposte Stance/Ironroot's own
+defensive territory, and would make a Phase Through + Riposte Stance
+combo an effectively free, unhittable counter-attack machine. Keeping
+phasing pure mobility avoids that interaction entirely.
+
+**Generic by construction, not by extra effort** - `_is_phasing` checks
+`entity.fighter.active_buffs` with no reference to `engine.player`
+anywhere, so the mechanic works identically for any entity that happens
+to hold the buff, not just the player - confirmed directly with a
+monster manually given the buff walking straight through the player's
+own tile via a raw `MovementAction` call. Nothing in shipped content
+ever grants a monster this buff (only the player's own learned skill
+does), but nothing had to specifically prevent it either.
+
+Ships one real example, `phase_through` (`data/perks.yaml`,
+`skill_effect: phase_through`, `skill_phase_duration: 5`,
+`skill_cooldown_kind: turns`, `skill_cooldown_amount: 9`, `xp_cost: 55`).
+Verified end-to-end via direct `Engine`/`Entity`/catalog construction: a
+phasing player bumping toward an adjacent goblin ends up standing on the
+goblin's own tile with the goblin's hp completely untouched, and the
+same player two steps later is still stopped cold by an ordinary wall
+tile - phasing never touched, terrain still terrain.
+
 ## 1. Narrative framing
 
 Settle the throughline **before** drawing any map. The engine exposes four

@@ -25,6 +25,7 @@ from content.schema import (
     AI_TOWN_GUARD,
     AI_VILLAGER,
     BUFF_HASTE,
+    BUFF_PHASING,
     BUFF_RIPOSTE,
     BUFF_SHADOWED,
     BUFF_SURE_FOOTED,
@@ -42,6 +43,7 @@ from content.schema import (
     SKILL_EFFECT_GUARD_BREAK,
     SKILL_EFFECT_HEAL,
     SKILL_EFFECT_MARK_FOR_DEATH,
+    SKILL_EFFECT_PHASE_THROUGH,
     SKILL_EFFECT_RIPOSTE_STANCE,
     SKILL_EFFECT_ROOT_GROUND,
 )
@@ -1774,31 +1776,47 @@ class Engine:
                 self.message_log.add(f"{target.name}'s guard is broken!", category="combat")
             return message
 
-        # SKILL_EFFECT_MARK_FOR_DEATH - the same single-nearest-target
-        # shape as guard_break, but deals no direct damage of its own: it
-        # only inflicts EFFECT_MARKED on the nearest qualifying hostile
-        # within skill_mark_range. Applied unconditionally to a living
-        # target found in range - no "if target.is_alive" gate like
-        # guard_break's, since nothing here can kill the target itself.
-        # The actual bonus-damage mechanic lives entirely in
-        # engine/combat.py's _apply_damage.
-        candidates = [
-            e for e in list(self.game_map.entities)
-            if e is not entity and e.fighter is not None and e.is_alive
-            and e.ai not in PEACEFUL_AI_TYPES
-            and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_mark_range
-        ]
-        if not candidates:
-            message = "There's nothing within range to mark."
+        if perk.skill_effect == SKILL_EFFECT_MARK_FOR_DEATH:
+            # The same single-nearest-target shape as guard_break, but
+            # deals no direct damage of its own: it only inflicts
+            # EFFECT_MARKED on the nearest qualifying hostile within
+            # skill_mark_range. Applied unconditionally to a living target
+            # found in range - no "if target.is_alive" gate like
+            # guard_break's, since nothing here can kill the target
+            # itself. The actual bonus-damage mechanic lives entirely in
+            # engine/combat.py's _apply_damage.
+            candidates = [
+                e for e in list(self.game_map.entities)
+                if e is not entity and e.fighter is not None and e.is_alive
+                and e.ai not in PEACEFUL_AI_TYPES
+                and max(abs(e.x - entity.x), abs(e.y - entity.y)) <= perk.skill_mark_range
+            ]
+            if not candidates:
+                message = "There's nothing within range to mark."
+                self.message_log.add(message)
+                return message
+            target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
+            target.fighter.active_effects[EFFECT_MARKED] = ActiveEffect(
+                potency=perk.skill_mark_bonus, turns_remaining=perk.skill_mark_duration
+            )
+            message = f"You use {perk.name} on {target.name}!"
             self.message_log.add(message)
+            self.message_log.add(f"{target.name} is marked for death!", category="combat")
             return message
-        target = min(candidates, key=lambda e: max(abs(e.x - entity.x), abs(e.y - entity.y)))
-        target.fighter.active_effects[EFFECT_MARKED] = ActiveEffect(
-            potency=perk.skill_mark_bonus, turns_remaining=perk.skill_mark_duration
+
+        # SKILL_EFFECT_PHASE_THROUGH - grants BUFF_PHASING for
+        # skill_phase_duration turns, riposte_stance's exact "the buff IS
+        # the mechanic" shape (§0ba): nothing more to do here than
+        # granting it. Ticked the ordinary way by _tick_active_buffs (no
+        # BUFF_HASTE-style exclusion needed). The actual pass-through-
+        # blockers behavior lives entirely in engine/actions.py's
+        # BumpAction/MovementAction, both of which check for this buff
+        # directly.
+        entity.fighter.active_buffs[BUFF_PHASING] = ActiveEffect(
+            potency=0, turns_remaining=perk.skill_phase_duration
         )
-        message = f"You use {perk.name} on {target.name}!"
+        message = f"You use {perk.name} and your footing turns weightless, unreal."
         self.message_log.add(message)
-        self.message_log.add(f"{target.name} is marked for death!", category="combat")
         return message
 
     def assign_skill_slot(self, slot_index: int, perk_id: str | None) -> str:

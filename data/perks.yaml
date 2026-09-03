@@ -178,3 +178,17 @@ mark_for_death:
   skill_mark_duration: 6
   skill_cooldown_kind: turns
   skill_cooldown_amount: 10
+
+phase_through:
+  name: Phase Through
+  description: >
+    Let your footing go soft for a moment - the world stops being quite
+    solid enough to stop you. For 5 turns, walk straight through anything
+    blocking your path, friend, foe, or otherwise, as if it weren't
+    there. Walls and terrain are still walls and terrain. A long
+    recovery once your feet come back down.
+  xp_cost: 55
+  skill_effect: phase_through
+  skill_phase_duration: 5
+  skill_cooldown_kind: turns
+  skill_cooldown_amount: 9

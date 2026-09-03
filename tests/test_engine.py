@@ -13,6 +13,7 @@ from engine.actions import (
     SMOKE_BOMB_TELEPORT_RADIUS,
     BumpAction,
     FireAction,
+    MovementAction,
     PickupAction,
     UseItemAction,
     UsePotionSlotAction,
@@ -8309,6 +8310,112 @@ def test_mark_for_death_cooldown_ticks_down_each_turn_and_expires():
 
     engine_.process_turn(WaitAction())
     assert "mark_for_death" not in player.skill_cooldowns  # expired, deleted
+
+
+def test_use_skill_phase_through_grants_the_buff():
+    catalog = load_catalog()
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    player.learned_perk_ids.add("phase_through")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    message = engine_.use_skill(player, "phase_through")
+
+    assert player.fighter.active_buffs["phasing"] == ActiveEffect(potency=0, turns_remaining=5)
+    assert player.skill_cooldowns["phase_through"] == 9
+    assert message == "You use Phase Through and your footing turns weightless, unreal."
+
+
+def test_phasing_lets_bump_action_move_through_a_blocker_instead_of_attacking():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.active_buffs["phasing"] = ActiveEffect(potency=0, turns_remaining=5)
+    monster = make_monster(2, 1, hp=10, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (2, 1)  # moved straight onto the blocker's own tile
+    assert monster.fighter.hp == 10  # never attacked
+
+
+def test_bump_action_still_attacks_normally_without_phasing():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    monster = make_monster(2, 1, hp=10, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # did not move into the monster's tile
+    assert monster.fighter.hp < 10  # attacked instead
+
+
+def test_phasing_does_not_bypass_walls():
+    game_map = make_open_map(3, 3)
+    game_map.walkable[2, 1] = False
+    player = make_player(1, 1)
+    player.fighter.active_buffs["phasing"] = ActiveEffect(potency=0, turns_remaining=5)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(BumpAction(1, 0))
+
+    assert (player.x, player.y) == (1, 1)  # still blocked - phasing only ignores entities
+
+
+def test_phasing_is_not_player_specific():
+    """The buff is checked generically on whichever entity holds it, not
+    hardcoded to the player - a monster with the buff should pass through
+    a blocker exactly the same way."""
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1)
+    mover = make_monster(2, 1, hp=10, defense=0, ai=None)
+    mover.fighter.active_buffs["phasing"] = ActiveEffect(potency=0, turns_remaining=5)
+    game_map.entities.extend([player, mover])
+    engine = Engine(game_map, player, "Test Level")
+
+    MovementAction(-1, 0).perform(engine, mover)
+
+    assert (mover.x, mover.y) == (1, 1)  # passed straight through the player's own tile
+
+
+def test_phasing_expiry_restores_normal_bump_attack_behavior():
+    game_map = make_open_map(3, 3)
+    player = make_player(1, 1, hp=30)
+    player.fighter.active_buffs["phasing"] = ActiveEffect(potency=0, turns_remaining=1)
+    monster = make_monster(2, 1, hp=10, defense=0, ai=None)
+    game_map.entities.extend([player, monster])
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+    assert "phasing" not in player.fighter.active_buffs
+
+    engine.process_turn(BumpAction(1, 0))
+    assert (player.x, player.y) == (1, 1)  # blocked again - attacked instead
+    assert monster.fighter.hp < 10
+
+
+def test_phase_through_cooldown_ticks_down_each_turn_and_expires():
+    catalog = load_catalog()
+    game_map = make_open_map(9, 9)
+    player = make_player(4, 4)
+    player.learned_perk_ids.add("phase_through")
+    game_map.entities.append(player)
+    engine_ = Engine(game_map, player, "Test Level", catalog=catalog)
+
+    engine_.use_skill(player, "phase_through")
+    assert player.skill_cooldowns["phase_through"] == 9
+
+    for _ in range(8):
+        engine_.process_turn(WaitAction())
+    assert player.skill_cooldowns["phase_through"] == 1
+
+    engine_.process_turn(WaitAction())
+    assert "phase_through" not in player.skill_cooldowns  # expired, deleted
 
 
 # --- XP awards (kills, quests, landmark discovery) ---

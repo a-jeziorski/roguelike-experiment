@@ -1889,6 +1889,31 @@ def test_perk_def_rejects_heal_skill_with_mark_fields_set():
         ))
 
 
+def test_perk_def_accepts_a_phase_through_skill():
+    perk = PerkDef(**_perk_kwargs(
+        max_hp_bonus=None, skill_effect="phase_through", skill_phase_duration=5,
+        skill_cooldown_kind="turns", skill_cooldown_amount=9,
+    ))
+    assert perk.skill_effect == "phase_through"
+    assert perk.skill_phase_duration == 5
+
+
+def test_perk_def_rejects_phase_through_skill_without_duration():
+    with pytest.raises(ValidationError, match="requires skill_phase_duration"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="phase_through",
+            skill_cooldown_kind="turns", skill_cooldown_amount=9,
+        ))
+
+
+def test_perk_def_rejects_heal_skill_with_phase_duration_set():
+    with pytest.raises(ValidationError, match="only meaningful when skill_effect is 'phase_through'"):
+        PerkDef(**_perk_kwargs(
+            max_hp_bonus=None, skill_effect="heal", skill_heal_pct=0.5, skill_phase_duration=5,
+            skill_cooldown_kind="hours", skill_cooldown_amount=24,
+        ))
+
+
 # --- perk tiers (requires_perk_id) ---
 
 
