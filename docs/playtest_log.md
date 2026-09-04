@@ -15,6 +15,53 @@ Read this before trusting a CLI-only bug report against a monster: see
 §2026-09-04's first finding before concluding a monster-targeted skill is
 broken from a multi-command `play_llm.py` session.
 
+## Summary of open findings (updated after each session)
+
+Ranked roughly by how actionable/impactful they are. All still open -
+flagged per this repo's convention, not fixed here. See each session below
+for full detail; memory files (`[[name]]`) carry the same content for
+future sessions to build on.
+
+**High-value content gaps** (engine mechanics all verified correct; the
+gap is purely that nothing places this content anywhere reachable):
+1. [[project_perks_unreachable_in_content]] - all 10 of the newest active-
+   skill perks are taught by zero trainers. Likely the single biggest gap
+   found across every session so far.
+2. [[project_potions_unreachable_in_content]] - 9 of 11 potions are placed
+   in zero shops/dungeons.
+3. [[project_gear_unreachable_in_content]] - 7 mid/high-tier weapons and
+   armor pieces, same pattern.
+
+Together: of the "10 potions + 10 perks" brainstorm this repo's own memory
+once described as fully shipped, a real player can currently reach exactly
+1 of 20 items without a debug tool.
+
+**Real bugs, smaller scope:**
+- [[project_a_warning_worth_carrying_ungated]] - a quest fires without its
+  narrative prerequisite; likely a one-line `requires_quest_id` fix.
+
+**Rendering issues** (all confirmed real, all currently latent/not-yet-
+manifested in any shipped level - see
+[[project_glyph_collisions_and_phase_through_render_gap]] for the full,
+growing list): item/terrain, entity/entity, and entity/terrain glyph
+collisions across `data/items.yaml`/`data/entities.yaml`; Phase Through
+hides an overlapped monster from the map view.
+
+**Testing-methodology lessons** (not game bugs - read before a future
+session misreads `play_llm.py` output the same way):
+- [[feedback_cli_monster_effects_dont_survive_calls]] - a monster's status
+  effects don't survive between separate CLI calls, which can look
+  exactly like a broken skill.
+- [[feedback_repeated_message_text_not_stale_evidence]] - identical-
+  looking repeated combat messages across calls aren't proof of stale
+  state; the same event can legitimately recur with the same wording.
+
+**Thoroughly tested and confirmed working, no issues found:** the five
+newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
+ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
+(session 5), poison combat incl. the damage-gate on armor blocking it
+(session 7), Rusty Key pickup/HUD (session 8).
+
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
 Replay: `saves/playtest_20260904_080125.jsonl` (110 frames).
