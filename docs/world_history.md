@@ -158,6 +158,20 @@ without disturbing any of the region's three still-reserved locations
 (the goblin homeland, two Elder Age sites), which remain `landmark` tiles
 rather than built.
 
+A fifth expansion, connected west of the Heartlands cell (again per
+`docs/content_design_process.md` §0b's overworld cell-grid): Dust Reach,
+continuing the drier hill/badlands character this section already
+establishes within Heartlands itself, further out into genuinely unclaimed
+frontier - open plains, sparser forest, mountain thickening into a ridge
+toward its own north edge. Generated with `tools/procgen/noise_terrain.py`
+rather than hand-drawn; see `docs/region_bibles/dust_reach.md` for the full
+design and `docs/procgen_algorithms.md` for the generator itself. Ships with
+no named locations this pass - it exists to hold a short run of small test
+dungeons, one per procedural-generation algorithm, added one at a time in
+later passes. Cragspine, a near-solid mountain filler cell northwest of
+Dust Reach (the grid's remaining slot, not real explorable content), closes
+the resulting 2x2 grid.
+
 ## Current roster
 
 As of the "Populating the Sundered Realm" pass, the Goblin Horde arc,

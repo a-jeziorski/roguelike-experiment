@@ -2,9 +2,11 @@ id: overworld
 name: The Sundered Realm
 
 map: |
-  B
-  A
+  DB
+  CA
 
 legend:
   "A": heartlands
   "B": northern_steppe
+  "C": dust_reach
+  "D": cragspine

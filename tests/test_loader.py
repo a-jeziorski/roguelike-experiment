@@ -14,7 +14,7 @@ from content.loader import (
     load_overworld,
     load_sprite_manifest,
 )
-from content.schema import FlagDialogue
+from content.schema import TILE_PASSABILITY, FlagDialogue
 from engine.game_map import build_game_map
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -1934,12 +1934,14 @@ def test_load_overworld_rejects_two_cells_targeting_the_same_dungeon():
 
 def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells():
     """Regression test for the overworld cell-grid: today's real content is
-    a 1x2 grid, Northern Steppe (row 0, north) stacked on Heartlands (row 1,
-    south) - the assembled overworld's Heartlands half must be byte-for-byte
-    identical to that cell's own raw parse (offset by Northern Steppe's
-    height), proving the stitcher didn't disturb already-shipped content
-    when a second cell was added above it. Scalar facts below were captured
-    directly from the real assembled output when this pass landed."""
+    a 2x2 grid - Northern Steppe (row 0) and its western filler Cragspine
+    stacked above Heartlands (row 1) and its western neighbor Dust Reach -
+    the assembled overworld's Heartlands quadrant must be byte-for-byte
+    identical to that cell's own raw parse (offset by Cragspine/Dust
+    Reach's width and Northern Steppe/Cragspine's height), proving the
+    stitcher didn't disturb already-shipped content when new cells were
+    added around it. Scalar facts below were captured directly from the
+    real assembled output when this pass landed."""
     catalog = load_catalog()
     dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
     known_dungeon_ids = set(dungeon_registry)
@@ -1948,9 +1950,9 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
 
     assert overworld.id == "overworld"
     assert overworld.name == "The Sundered Realm"
-    assert overworld.width == 150
+    assert overworld.width == 300
     assert overworld.height == 180
-    assert overworld.player_start == (29, 136)
+    assert overworld.player_start == (179, 136)
     assert overworld.player_start_tile == "plains"
     assert len(overworld.dungeon_entrances) == 17  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post and Weeping Cistern
     assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
@@ -1959,20 +1961,24 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
         OVERWORLD_DIR / "cells" / "heartlands.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
     )
     assert cell_errors == []
-    y_offset = overworld.height - heartlands.height  # Northern Steppe's own height (row 0 of the grid)
-    assert overworld.width == heartlands.width
-    assert overworld.tiles[y_offset:] == heartlands.tiles
+    x_offset = overworld.width - heartlands.width  # Cragspine/Dust Reach's own width (column 0 of the grid)
+    y_offset = overworld.height - heartlands.height  # Northern Steppe/Cragspine's own height (row 0 of the grid)
+    for local_y, row in enumerate(heartlands.tiles):
+        assert overworld.tiles[y_offset + local_y][x_offset:] == row
     hx, hy = heartlands.player_starts[0]
-    assert overworld.player_start == (hx, hy + y_offset)
-    # Only the entrances actually inside the Heartlands portion (y >= y_offset) -
-    # the Northern Steppe now has its own first entrance (the Watch Post),
-    # which has no counterpart in heartlands.lvl and would otherwise show up
-    # as a spurious mismatch here.
-    assert {(e.x, e.y - y_offset, e.dungeon_id) for e in overworld.dungeon_entrances if e.y >= y_offset} == {
-        (e.x, e.y, e.dungeon_id) for e in heartlands.dungeon_entrances
-    }
+    assert overworld.player_start == (hx + x_offset, hy + y_offset)
+    # Only the entrances actually inside the Heartlands quadrant (x >= x_offset,
+    # y >= y_offset) - the other three cells have no entrances of their own
+    # yet, which would otherwise show up as a spurious mismatch here.
+    assert {
+        (e.x - x_offset, e.y - y_offset, e.dungeon_id)
+        for e in overworld.dungeon_entrances if e.x >= x_offset and e.y >= y_offset
+    } == {(e.x, e.y, e.dungeon_id) for e in heartlands.dungeon_entrances}
     heartlands_descriptions = {(d.x, d.y, d.text) for d in heartlands.tile_descriptions}
-    assert {(d.x, d.y - y_offset, d.text) for d in overworld.tile_descriptions} >= heartlands_descriptions
+    assert {
+        (d.x - x_offset, d.y - y_offset, d.text)
+        for d in overworld.tile_descriptions if d.x >= x_offset and d.y >= y_offset
+    } >= heartlands_descriptions
 
 
 def test_load_overworld_northern_steppe_cell_has_its_dungeons():
@@ -2004,6 +2010,63 @@ def test_load_overworld_northern_steppe_cell_has_its_dungeons():
     kinds = {tile for row in steppe.tiles for tile in row}
     assert "ashen_plains" in kinds
     assert "blighted_forest" in kinds
+
+
+def test_load_overworld_dust_reach_is_reachable_from_the_player_start():
+    """Dust Reach (data/overworld/cells/dust_reach.lvl, generated by
+    tools/procgen/noise_terrain.py) sits west of Heartlands in the 2x2
+    grid, with Cragspine - an almost entirely mountainous filler cell,
+    the same mountain spine continuing off the mapped world - filling the
+    remaining northwest slot the grid's rectangularity requires. Neither
+    cell has a dungeon_entrance of its own yet (future procgen-algorithm
+    passes place test dungeons here), but Dust Reach's walkable terrain
+    must still actually connect across the Heartlands seam - two
+    independently-authored cells juxtaposed with no automatic edge-
+    matching could easily abut into an accidental wall."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    known_dungeon_ids = set(dungeon_registry)
+
+    overworld = load_overworld(OVERWORLD_DIR, catalog, known_dungeon_ids=known_dungeon_ids)
+
+    dust_reach, dust_reach_errors = _parse_overworld_cell(
+        OVERWORLD_DIR / "cells" / "dust_reach.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
+    )
+    assert dust_reach_errors == []
+    assert (dust_reach.width, dust_reach.height) == (150, 90)
+    assert dust_reach.dungeon_entrances == []
+
+    cragspine, cragspine_errors = _parse_overworld_cell(
+        OVERWORLD_DIR / "cells" / "cragspine.lvl", catalog, known_dungeon_ids=known_dungeon_ids,
+    )
+    assert cragspine_errors == []
+    assert (cragspine.width, cragspine.height) == (150, 90)
+
+    from collections import deque
+
+    seen = {overworld.player_start}
+    queue = deque([overworld.player_start])
+    while queue:
+        x, y = queue.popleft()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nx, ny = x + dx, y + dy
+                if (
+                    0 <= nx < overworld.width and 0 <= ny < overworld.height
+                    and (nx, ny) not in seen
+                    and TILE_PASSABILITY.get(overworld.tiles[ny][nx], (True, True))[0]
+                ):
+                    seen.add((nx, ny))
+                    queue.append((nx, ny))
+
+    dust_reach_walkable_tiles = sum(
+        1 for row in dust_reach.tiles for tile in row
+        if TILE_PASSABILITY.get(tile, (True, True))[0]
+    )
+    reachable_in_dust_reach = sum(1 for (x, y) in seen if x < 150 and y >= 90)
+    assert reachable_in_dust_reach == dust_reach_walkable_tiles
 
 
 def test_load_level_rejects_dungeon_entrance_tiles():
