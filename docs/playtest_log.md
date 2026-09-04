@@ -22,8 +22,10 @@ flagged per this repo's convention, not fixed here. See each session below
 for full detail; memory files (`[[name]]`) carry the same content for
 future sessions to build on.
 
-**High-value content gaps** (engine mechanics all verified correct; the
-gap is purely that nothing places this content anywhere reachable):
+**High-value content gaps** (engine mechanics all verified correct - as of
+session 13, literally every one of the 20 brainstorm items has been
+individually live-confirmed working via `play_llm.py` - the gap is purely
+that nothing places this content anywhere reachable):
 1. [[project_perks_unreachable_in_content]] - all 10 of the newest active-
    skill perks are taught by zero trainers. Likely the single biggest gap
    found across every session so far.
@@ -65,11 +67,14 @@ newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
 ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
 (session 5), poison combat incl. the damage-gate on armor blocking it
 (session 7), Rusty Key pickup/HUD (session 8), the full quest turn-in
-flow (session 9), and all 9 [[project_potions_unreachable_in_content]]
-potions' actual effects (Vigor/Swiftness session 4, Antidote/Clarity
-session 10, Sure-Footing/Second Sight/Shadows/Smoke Bomb session 11,
-Ironroot session 12) - every one mechanically correct, none placed
-anywhere a real player could ever find them.
+flow (session 9), and **all 9 potions + all 10 perks** from
+[[project_potions_unreachable_in_content]]/[[project_perks_unreachable_in_content]]
+(potions: Vigor/Swiftness session 4, Antidote/Clarity session 10,
+Sure-Footing/Second Sight/Shadows/Smoke Bomb session 11, Ironroot session
+12; perks: Marked for Death/Phase Through/Vengeful Strike/War Horn/
+Bloodletter session 1, Blink Strike/Riposte Stance/Root the Ground/Chain
+Lash/Guard Break session 13) - every one of the 20 mechanically correct,
+none placed anywhere a real player could ever find them.
 
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
@@ -773,3 +778,44 @@ have now been live-verified through `play_llm.py`** across sessions 4, 10,
 anywhere a real player could ever find them. Stopped the session at 12/30
 HP (two Stone Sentinels fought through to get here) rather than push
 further, same judgment call as session 8.
+
+## 2026-09-04 (13) - the last four perks, and Guard Break, both checklists closed
+
+Replay: `saves/playtest_20260904_151418.jsonl` (27 frames), Broken Watch.
+Session 1 live-tested 5 of the 10 [[project_perks_unreachable_in_content]]
+perks (`mark_for_death`, `phase_through`, `vengeful_strike`, `war_horn`,
+`bloodletter`); this session closes out the remaining five
+(`blink_strike`, `riposte_stance`, `root_ground`, `chain_lash`,
+`guard_break`) via `testbuild --perk`. All five confirmed correct.
+
+- **Blink Strike**: targeted a Rat 4 tiles away - position jumped from
+  `(2, 13)` to `(7, 12)` (adjacent to where the Rat had been) in the same
+  action that landed the hit. A real teleport-then-attack, not a
+  disguised ranged attack.
+- **Chain Lash**: hit 2 of 3 nearby hostiles in one cast (`Player lashes
+  Giant Rat for 3 damage.` / `Player lashes Bandit for 2 damage.`,
+  damage correctly reduced by each target's own defense) - the third
+  (a Vulture) was out of the 4-tile chain range, consistent with "up to
+  3 hits," not guaranteed 3.
+- **Riposte Stance**: every hit landed on the player for its 5-turn
+  duration triggered a full counter-attack, confirmed against two
+  different attackers in the same turn (`Player answers with a riposte!`
+  followed by a real damage hit, twice, once per attacker) - correctly
+  killed both a Giant Rat and a Bandit over the following turns via
+  counters alone.
+- **Root the Ground**: cast with a Vulture sitting exactly 3 tiles away
+  (in range, not adjacent) - `"Vulture is rooted in place!"`, and
+  confirmed via `entities` that its position genuinely didn't change over
+  the following turn despite two nearby kills (its own AI's usual
+  approach-and-scavenge trigger), unlike its normal behavior.
+- **Guard Break**: `"Bandit's guard is broken!"` fired correctly alongside
+  the direct damage hit, matching session 1's existing coverage of the
+  Exposed debuff.
+
+**With this, all 10 perks from [[project_perks_unreachable_in_content]]
+are also now live-verified** - combined with session 12's potions, every
+one of the 20 "brainstorm" items ([[potions_perks_brainstorm_complete]])
+has now had its actual in-game mechanic confirmed correct via
+`play_llm.py`, despite none of them being reachable by a real player
+without a debug tool. Both checklists this whole playtest effort's two
+biggest findings implied are now closed.
