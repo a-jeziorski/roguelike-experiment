@@ -293,3 +293,91 @@ spawns a `town_guard`) for `forest` tiles - none currently use any, so like
 the `entities.yaml` collisions from the previous session, this one is
 latent/unshipped rather than live. Recording it there rather than starting
 a fourth separate note for the same pattern.
+
+## 2026-09-04 (4) - the 20 items nobody can ever reach
+
+Replay: `saves/playtest_20260904_095843.jsonl` (7 frames) - short, since the
+headline finding here is a content-placement gap discovered by reading
+`data/items.yaml` and grepping content, not by playing through a level. A
+hand-edited save (`saves/potion_test.json`, not part of the recorded replay
+sequence) was used afterward to confirm the drinking mechanics themselves
+still work correctly once a potion is actually in inventory.
+
+Focus: potions. Only Healing, Teleportation, and Water Walking had been
+exercised by any session so far (out of 11 total `*_potion`/`*_elixir`/
+`*_draught`/smoke bomb/bezoar items in `data/items.yaml`).
+
+### Finding - 9 of the game's 11 potions are placed nowhere in shipped content
+
+`data/items.yaml` fully defines Antidote, Elixir of Vigor, Draught of
+Swiftness, Vial of Shadows, Bottled Second Sight, Sure-Footing Draught,
+Smoke Bomb, Bezoar of Clarity, and Ironroot Draught - each with a real
+mechanical effect (`grants_buff`, `cures_effects`, `reveals_map`,
+`resets_skill_cooldowns`) and their own flavor text. Grepped every
+`data/dungeons/*/levels/*.lvl` for `item: <id>` and every entity's
+`shop_inventory:` in `data/entities.yaml` for all nine: **zero matches, for
+any of them.** No dungeon floor drop, no shop stock, no quest reward
+anywhere in the repo. Only Healing Potion, Teleportation Potion, and Water
+Walking Potion are actually placeable/obtainable - the other 9 are complete,
+tested, and entirely unreachable by a real player.
+
+This directly narrows [[potions_perks_brainstorm_complete]] - "shipped"
+there evidently meant "defined in `data/items.yaml` with working engine
+mechanics," not "placed anywhere a player can find them." The engine side
+genuinely is fine (see below); this is purely a missing-content gap, likely
+the single highest-value thing to fix out of everything found across these
+four sessions - potions are core kit and 9 of 11 might as well not exist.
+
+### Finding - all 10 of the newest perks are also unteachable by any trainer (bigger than the potions gap)
+
+Following the same thread: checked whether the six skills from sessions 1
+and the other four from the same "brainstorm" batch (Blink Strike, Riposte
+Stance, Root the Ground, Chain Lash, plus Guard Break/Marked for Death/
+Phase Through/Vengeful Strike/War Horn/Bloodletter - 10 total) are
+learnable in real play. `data/entities.yaml` has exactly two trainer NPCs,
+`millhaven_trainer` and `wayford_trainer`, and both teach the *identical*
+9-perk list (`toughness_1`, `toughness_2`, `weapon_training_1`,
+`shield_training_1`, `marksman_training_1`, `steady_aim`, `light_feet`,
+`second_wind`, `ground_pound`) - an entirely different, older set. None of
+the 10 newer perks appear in either trainer's list, or anywhere else
+(`learn_perk` via the `learn` action is the only non-debug way to gain a
+perk; checked `data/quests.yaml`/`engine/engine.py` for any other grant
+path - none). So of the whole 20-item "10 potions + 10 perks" brainstorm
+this repo's memory describes as fully shipped, a real player can currently
+reach **1 of 20** (just Water Walking Potion) without a debug tool. Every
+skill tested live in session 1 of this log (Marked for Death, Phase
+Through, Vengeful Strike, War Horn, Bloodletter) was only reachable there
+via `testbuild --perk`.
+
+### Positive confirmations - drinking mechanics work correctly once obtainable
+
+Hand-edited a save file's inventory to add three of the nine
+otherwise-unreachable potions, then drank them live through
+`tools/play_llm.py` to confirm the CLI path (not just the unit tests) works:
+
+- **Elixir of Vigor**: Attack 9→12, Defense 2→5 (+3 to *both*, matching
+  `buff_potency: 3`). Initially looked like a bug (defense changing from an
+  "attack" elixir), but `engine/entity.py`'s `_vigor_bonus` docstring
+  confirms this is deliberate - vigor is a combined attack+defense buff, not
+  attack-only. Worth remembering so a future session doesn't re-flag this.
+- **Draught of Swiftness**: drank cleanly, correct flavor message. Didn't
+  fully verify the free-action mechanic live (would need a monster nearby
+  to observe a turn not costing the enemy a move) - the underlying
+  `_consume_haste_action` logic already has dedicated unit test coverage,
+  didn't re-derive it here.
+- Both potions' `use_potion_slot`/`bind_potion` plumbing worked exactly like
+  the already-tested Healing/Water Walking potions.
+
+### Supplementary glyph-collision data point
+
+8 of these 9 unreachable potions (everything except Water Walking, which
+already collides with `deep_water`/`sea`) share glyph `!` with Healing
+Potion too - 9 items on one symbol, the largest collision found across all
+four sessions. Checked every level placing 2+ `!`-glyph items for whether
+any two are actually *different* potion types (vs. two copies of the same
+one) - none are: every multi-potion level only ever places duplicate
+Healing Potions. So even this, the widest collision found, is currently
+latent rather than live - noted in
+[[project_glyph_collisions_and_phase_through_render_gap]] rather than a new
+entry. If the content gap above ever gets fixed by scattering these potions
+into real levels, this collision stops being theoretical fast.
