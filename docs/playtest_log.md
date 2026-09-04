@@ -245,3 +245,51 @@ level, not because it's broken today.
 - The Sentry NPC has a proper small building (matches
   [[feedback_stationary_npcs_need_buildings]] - nothing standing exposed in
   open plains here).
+
+## 2026-09-04 (3) - shop, trainer, and ranged combat
+
+Replay: `saves/playtest_20260904_092328.jsonl` (55 frames).
+
+Focus: `buy`, `learn`, and `fire` - three core CLI commands none of the
+first two sessions had exercised. Used Millhaven's Shopkeeper and Old
+Drillmaster trainer for the first two, then a fresh `testbuild` into Broken
+Watch with a Hunting Bow equipped for ranged combat against its existing
+monster roster.
+
+### Positive confirmations - all three systems work correctly
+
+- **`buy healing_potion`** at Millhaven's Shopkeeper: charged exactly 25
+  gold (100 → 75), added the potion. Refuses cleanly ("The shop is
+  unavailable.") when not actually adjacent to a shopkeeper.
+- **`learn ground_pound`** at the Old Drillmaster: deducted exactly the
+  perk's `xp_cost: 50` (110 → 60 XP), auto-bound it to an empty skill slot,
+  confirmed via `character`.
+- **`fire 6 11`** (Hunting Bow, `ranged_attack_bonus: 3`) on a 6 HP/0 DEF
+  Rat: dealt exactly 8 damage (base ranged 5 + bow's 3), killed it,
+  consumed exactly 1 arrow (10 → 9 ammo shown in the HUD). Firing at a
+  target beyond range/LOS refused cleanly with "No clear target there.",
+  no turn spent.
+
+### Minor - `goto` won't route around a single blocking peaceful NPC
+
+Asked `goto shopkeeper` from across Millhaven's square; it announced a
+16-step path, then immediately reported "Stopped early: blocked by Town
+Guard (peaceful) at (24, 4)" at step 0/16 - the geometrically shortest path
+ran straight through the guard's tile, and `goto` gave up entirely rather
+than trying an alternate route, even though sidestepping one tile and
+re-issuing the same `goto` succeeded immediately. Consistent with
+`tools/play_llm.py --help`'s documented "never treats a blocking entity as
+safe" rule (so refusing outright is correct/safe behavior, not a bug), but
+the help text doesn't mention that a single stray peaceful NPC on the
+direct line can require a manual sidestep-and-retry. Minor CLI ergonomics
+note, not a functional bug.
+
+### Supplementary glyph-collision data point
+
+`town_guard`'s glyph `T` also collides with the `forest` terrain kind's `T`
+(see the running list in [[project_glyph_collisions_and_phase_through_render_gap]]).
+Checked Millhaven/Stonebridge/Wayford's level files (every dungeon that
+spawns a `town_guard`) for `forest` tiles - none currently use any, so like
+the `entities.yaml` collisions from the previous session, this one is
+latent/unshipped rather than live. Recording it there rather than starting
+a fourth separate note for the same pattern.
