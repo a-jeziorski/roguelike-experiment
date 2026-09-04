@@ -381,3 +381,50 @@ latent rather than live - noted in
 [[project_glyph_collisions_and_phase_through_render_gap]] rather than a new
 entry. If the content gap above ever gets fixed by scattering these potions
 into real levels, this collision stops being theoretical fast.
+
+## 2026-09-04 (5) - death and restart
+
+Replay: `saves/playtest_20260904_103315.jsonl` (17 frames), using a
+dedicated hand-edited save (`saves/death_test.json`, HP set to 1 to force a
+quick, controlled death rather than grinding one out).
+
+Focus: the death → `restart` flow, never exercised by any prior session,
+and with real history here - [[feedback_restart_resets_global_state]]
+documents an earlier bug where restart left stale shared state behind.
+Wanted to confirm that fix still holds.
+
+### Positive confirmations - death/restart is clean, no bugs found
+
+- Dying (a Rat's hit dropped HP 1→0 mid-`goto`) correctly set `game_state`
+  to dead: HUD showed `YOU HAVE DIED. Use 'restart' to play again.`, and
+  further commands (`wait`) silently no-op rather than erroring or
+  corrupting state.
+- `restart` after death gave a genuinely clean slate: HP 30/30, gold 0, XP
+  0, no weapon/armor/trinket, no learned perks, hotbar slots back to
+  defaults (Healing/Teleport/empty) - matches
+  [[feedback_restart_resets_global_state]]'s fix, still holding.
+- Calling `restart` again while *alive* (with real, non-fresh state - HP
+  damaged to 27/30 from live combat, non-spawn position) changed nothing:
+  HP and position both carried forward unchanged. `restart --help` says
+  "Only works once dead," and this confirms it's actually enforced, just
+  as a silent no-op rather than an explicit refusal message - the same
+  quiet-no-op pattern already seen with `wait` while dead. Worth noting
+  only because my first pass at this test was inconclusive (compared two
+  identical fresh-spawn states and couldn't tell if `restart` had silently
+  done nothing or genuinely re-run) - a future session re-checking this
+  should compare against *live, non-fresh* state like this one did, not
+  two resets in a row.
+- `restart`'s reset position/level was the debug dungeon (`broken_watch`,
+  wherever `testbuild` was pointed), not the true game's canonical intro -
+  confirmed this is correct, not a bug: `testbuild` builds its own Engine
+  with `starting_level` set to whatever dungeon was requested, and
+  `restart()` always returns to *that* Engine's own `starting_level` by
+  design (see `Engine.restart`'s docstring) - exactly the right behavior
+  for a debug/balance-testing session (keep testing the same dungeon after
+  dying), not something a real player would ever see.
+
+### Bonus check - trinket bonus math
+
+Equipped Lucky Charm (`trinket_bonus: 0.1` on `crit_chance`) via
+`testbuild --trinket lucky_charm`: `character` showed Crit chance 10%→20%,
+correct.
