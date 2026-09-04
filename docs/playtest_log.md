@@ -819,3 +819,47 @@ has now had its actual in-game mechanic confirmed correct via
 `play_llm.py`, despite none of them being reachable by a real player
 without a debug tool. Both checklists this whole playtest effort's two
 biggest findings implied are now closed.
+
+## 2026-09-04 (14) - Sunken Mine: a clean crawl, and a locked-door pattern confirmed
+
+Replay: `saves/playtest_20260904_154816.jsonl` (76 frames) - the first
+session in a while to just play a fresh, previously-unvisited dungeon
+rather than chase a specific mechanic. No bugs found; everything below is
+a positive confirmation or a design-pattern note.
+
+### Positive confirmations
+
+- Cleared a good spread of Sunken Mine's roster (Kobold, Kobold Shaman,
+  Rat, Goblin) across both explored levels with no combat-math surprises -
+  damage, dodges, and crits all matched expected formulas throughout.
+- The `ranged_basic` Kobold Shaman correctly falls back to a normal melee
+  `"hits"` (not `"shoots"`) once already adjacent, rather than trying to
+  fire point-blank - sensible behavior, confirmed by the verb in the
+  combat log matching `engine/combat.py`'s `resolve_attack`/
+  `resolve_ranged_attack` split.
+- An item and a monster can occupy the same tile before the monster's
+  killed (a Rat sitting exactly on a Rusty Key) - picking it up after
+  killing the Rat worked cleanly once standing on the tile.
+
+### Design pattern, not a bug: locked doors keep gating side rooms, not the main path
+
+Tried a second time (after session 8's Prison Tower) to deliberately walk
+into a locked door and watch the unlock fire live. Failed again the same
+way: `goto`/`walk` toward the door's approximate coordinates ended up
+finding the dungeon's actual stairs-down route instead, past a locked door
+this level's map shows guarding a different, dead-end-looking side room.
+Two dungeons in a row, same shape - reinforces session 8's conclusion that
+this is a deliberate content convention (locked doors gate optional loot,
+never the critical path), not something worth re-chasing a third time.
+The mechanism itself stays covered by
+`tests/test_engine.py::test_locked_door_unlocks_and_consumes_matching_key`.
+
+### Note to self
+
+Misread a goblin's actual direction relative to the player twice in a row
+(assumed "south" from the map glyph layout without rechecking `entities`'
+exact coordinates first) - wasted two `attack` calls hitting a wall while
+the goblin got free hits in. No game bug; just a reminder to check
+`entities`/`Position` before an `attack <direction>` call rather than
+eyeballing the ASCII map, especially right after a `goto` that may have
+landed at an unexpected angle.
