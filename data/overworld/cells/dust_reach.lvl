@@ -47,7 +47,7 @@ map: |
   TTTTTTT^^^TTTTTTTTTTTTTTTTT,TTTTTTT^^TTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTT^^^^^^^^^^^^^^^^^TTTTTTTTTTTT^^^^^^^
   ,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT^^TTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTT^^^^^^^^^^^^^^^^TTTTTTTTTTT^^^^^^^^^
   ,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTT^^^^^^^^^^^^^^^TTTTTT^^^^^^^^^^^^^^
-  ,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTT^^^^^^^^^^^^^TTT^^^^^^^^^^^^^^^^^^^
+  ,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,P,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTT^^^^^^^^^^^^^TTT^^^^^^^^^^^^^^^^^^^
   ,,TTTTTTTTTTTTTTTTTTTTTT^^^^^^^^^TTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTT^^^^^^^^^^^^TTT^^^^^^^^^^^^^^^^^^^^
   ,,,TTTTTTTTTTTTTTTTTTTT^^^^^^^^^^TTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTT^^^^^^^^^^^TTT^^^^^^^^^^^^^^^^^^^^^
   ,,,TTTTTTTTTTTTTTTTTTT^^^^^^^^^^^TTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTT^^^^^^^^^^^TTT^^^^^^^^^^^^^^^^^^^^^
@@ -97,3 +97,4 @@ legend:
   ",": plains
   "T": forest
   "^": mountain
+  "P": { dungeon_entrance: fallen_colonnade }

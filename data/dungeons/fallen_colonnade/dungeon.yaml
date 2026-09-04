@@ -1,0 +1,13 @@
+id: fallen_colonnade
+name: The Fallen Colonnade
+starting_level: level_01
+description: >
+  An Old Kingdom hall out on Dust Reach, its roof long gone but its floor
+  still an even grid of standing pillars - proof it was built, not carved.
+  No one from Millhaven, Wayford, or any other present-day settlement has
+  ever mapped this stretch of ground, so nothing has claimed it since
+  whatever the Sundering left standing finished falling. Generated with
+  tools/procgen/wave_function_collapse.py, one of a short run of small
+  test dungeons proving out the procedural generation library - see
+  docs/dungeon_bibles/fallen_colonnade.md and docs/procgen_algorithms.md.
+inspect_text: A colonnade of standing pillars, open to the sky, older than anything currently living in this stretch of country.

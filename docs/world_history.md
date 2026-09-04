@@ -191,6 +191,10 @@ are shipped. Each is placed here for quick cross-reference - see
   `drowned_waystation` (flooded by the Sundering), `sunken_mine`
   (collapsed, reuses the existing monster roster rather than adding new
   ones).
+- **Fallen Old Kingdom infrastructure, unclaimed**: `fallen_colonnade`
+  (Dust Reach's first dungeon - a pillared hall out on genuinely
+  unmapped ground, empty rather than squatted, since nobody's found it
+  yet; see `docs/dungeon_bibles/fallen_colonnade.md`).
 - **Settlers**: `millhaven`, `wayford` (the largest, a crossroads hub),
   `stonebridge` (fortified, near `broken_watch`), `saltmarsh` (coastal,
   near `drowned_waystation`), `grey_valley_monastery` (settlers occupying

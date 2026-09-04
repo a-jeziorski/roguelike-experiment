@@ -79,3 +79,40 @@ grid's remaining northwest slot) reuses the same generator with a heavily
 mountain-weighted threshold (seed 10, `thresholds=[0.15, 0.3]`, ~94%
 mountain) to read as unmapped high country rather than real content. See
 `docs/region_bibles/dust_reach.md` for the full design reasoning.
+
+## Wave function collapse (`tools/procgen/wave_function_collapse.py`)
+
+A general small constraint-propagation solver, not a fixed algorithm with
+tunable parameters like the others here - the caller supplies a `tileset`
+(`dict[str, TileSpec]`, each `TileSpec` a collapse `weight` plus, per
+direction (`N`/`S`/`E`/`W`), the set of tile names allowed immediately in
+that direction) and gets a grid where every adjacency obeys those rules
+everywhere, not just locally (lowest-entropy-cell-first collapse, worklist
+constraint propagation to neighbors, bounded retries on contradiction, a
+non-strict best-effort fallback if every retry contradicts so it always
+terminates). This is the one algorithm here whose real value is entirely
+in the tileset a caller brings - `DEFAULT_TILESET` (two tiles, `floor` and
+`wall`, with the hard rule that no two `wall` tiles may ever be adjacent)
+is a minimal, always-satisfiable demo, not the interesting case.
+
+**Fits bible language like**: "obeys a specific visual rule everywhere,"
+"never two of X touching," "a repeating motif with hard adjacency rules" -
+anything where local placement has to satisfy a *global* pattern
+constraint a purely local algorithm (cellular automata's neighbor-count
+rule, a random walk) can't guarantee. A real dungeon-specific use means
+authoring a real tileset (more than two tile names, meaningful per-
+direction adjacency) to match that bible's own vocabulary - the built-in
+default is a working example of the shape, not a template to keep reusing
+as-is.
+
+**Signature**: `generate(seed, width, height, tileset=None, max_retries=20)`.
+`tileset` defaults to `DEFAULT_TILESET`; adjacency should be authored
+symmetrically (see `TileSpec`'s docstring) or contradictions become
+common and `max_retries` gets burned rediscovering the same asymmetry
+every attempt.
+
+**Worked example**: `data/dungeons/fallen_colonnade/levels/level_01.lvl`
+(45x30, `DEFAULT_TILESET`, seed 5) - an Old Kingdom hall on Dust Reach, an
+even scatter of isolated single-tile pillars across open floor, entrance
+placed via `docs/dungeon_bibles/fallen_colonnade.md`. Its
+`dungeon_entrance` sits at (75, 45) in `data/overworld/cells/dust_reach.lvl`.
