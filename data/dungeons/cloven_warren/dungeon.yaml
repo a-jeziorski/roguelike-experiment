@@ -1,0 +1,14 @@
+id: cloven_warren
+name: The Cloven Warren
+starting_level: level_01
+description: >
+  A warren of small, oddly regular chambers out on Dust Reach, each one
+  walled off from its neighbors and linked by narrow, deliberate
+  passages - too evenly partitioned to be a cave, too old and strange to
+  be anything the Old Kingdom's own records would explain. Nobody who's
+  looked at it has ventured a guess about who divided the ground this
+  way, or why. Generated with tools/procgen/voronoi_regions.py, one of a
+  short run of small test dungeons proving out the procedural generation
+  library - see docs/dungeon_bibles/cloven_warren.md and
+  docs/procgen_algorithms.md.
+inspect_text: A warren of small chambers, each walled off from the next by hand - or by something that built like a hand would.

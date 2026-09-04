@@ -149,3 +149,33 @@ the network's own center and a terminal `stairs_up` "gate" placed at
 whichever road tile ended up farthest from center. See
 `docs/dungeon_bibles/dust_crossing.md`. Its `dungeon_entrance` sits at
 (30, 20) in `data/overworld/cells/dust_reach.lvl`.
+
+## Voronoi region partitioning (`tools/procgen/voronoi_regions.py`)
+
+Scatters `num_regions` seed points, raster-assigns every cell to its
+nearest one (brute-force distance - no computational-geometry library, none
+is in requirements.txt, and it's fast enough at level-grid sizes), then
+erodes a `wall_margin`-tile buffer around every region boundary to `wall`.
+What survives per region reads as a distinct room; every pair of regions
+whose cells actually touch gets a corridor between their seed points, so
+the whole layout stays one connected graph. Produces a warren of
+irregularly-shaped, walled-off chambers - visually distinct from both
+BSP's rectangular rooms and cellular automata's smooth cave blobs.
+
+**Fits bible language like**: "a warren of small chambers," "oddly
+regular, too deliberate to be natural" (a good mechanical match for an
+Elder Age site's usual vagueness - organic-looking boundaries that are
+nonetheless too evenly divided to be a real cave), "a district of
+distinct rooms" for a settlement or multi-biome dungeon at larger scale.
+
+**Signature**: `generate(seed, width, height, num_regions=8,
+wall_margin=2)`. More regions means smaller, more numerous chambers; a
+larger `wall_margin` means thicker walls and less floor area overall (see
+`tests/test_procgen_voronoi_regions.py`'s
+`test_more_regions_produce_more_floor_area_than_a_single_region`).
+
+**Worked example**: `data/dungeons/cloven_warren/levels/level_01.lvl`
+(45x30, seed 1, `num_regions=9, wall_margin=1`) - an Elder Age warren of
+small partitioned chambers on Dust Reach, no guardian or explanation
+attached. See `docs/dungeon_bibles/cloven_warren.md`. Its
+`dungeon_entrance` sits at (130, 15) in `data/overworld/cells/dust_reach.lvl`.

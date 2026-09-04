@@ -183,7 +183,10 @@ are shipped. Each is placed here for quick cross-reference - see
 - **The Old Kingdom's remnants**: `prison_tower`.
 - **The Elder Age**: `forgotten_ruins` (buried beneath an Old Kingdom
   manor), `elder_cairn` (a standalone site, unrelated to Forgotten Ruins -
-  same era, no shared location).
+  same era, no shared location), `cloven_warren` (Dust Reach's third
+  dungeon - a warren of small chambers too regularly partitioned to be a
+  cave, no guardian or explanation attached; see
+  `docs/dungeon_bibles/cloven_warren.md`).
 - **Opportunists**: `broken_watch` (a fallen Old Kingdom garrison),
   `the_windrest` (a fallen Old Kingdom waystation, held for its shelter
   rather than any strategic value).
