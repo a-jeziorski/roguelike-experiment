@@ -41,6 +41,12 @@ once described as fully shipped, a real player can currently reach exactly
 **Real bugs, smaller scope:**
 - [[project_a_warning_worth_carrying_ungated]] - a quest fires without its
   narrative prerequisite; likely a one-line `requires_quest_id` fix.
+- `forgotten_ruins`' `level_02a`/`level_02b` branch-fairness gap
+  (pre-existing finding, [[bible_reconciliation_sweep_findings]]) - live-
+  played in session 15 and confirmed worse than the static finding
+  suggested: the disadvantaged branch's opening room is also a genuinely
+  dangerous twin-flank fight, and killed a `testbuild` character playing
+  it as intended (no weapon, default potions).
 - `pin`/`QuestLog.set_active_quest` has no id validation and silently
   blanks the quest HUD line on a bad id (session 9) - not reachable by a
   real player (the graphical client only pins from a closed menu), but a
@@ -863,3 +869,41 @@ the goblin got free hits in. No game bug; just a reminder to check
 `entities`/`Position` before an `attack <direction>` call rather than
 eyeballing the ASCII map, especially right after a `goto` that may have
 landed at an unexpected angle.
+
+## 2026-09-04 (15) - Forgotten Ruins: the branch-fairness gap has real teeth, and a real death
+
+Replay: `saves/playtest_20260904_162347.jsonl` (68 frames). Picked up an
+existing, previously-*static*-only finding:
+[[bible_reconciliation_sweep_findings]] flagged (2026-08-30, never played
+out) that `forgotten_ruins`' `level_02a` branch leaves the player without
+the `iron_sword` the sibling `level_02b` branch hands out directly, with
+the "fairness" compensation (an `iron_sword` on `level_04`) sitting behind
+an optional locked door - not actually guaranteed. Wanted to see what that
+actually feels like to play, not just read in the data.
+
+Confirmed the data is unchanged (`level_02a` has no `iron_sword`;
+`level_02b` does; `level_04`'s copy is still behind `door: rusty_key`).
+Then deliberately took the disadvantaged `level_02a` branch with a
+`testbuild` character carrying no weapon (base ATK 5), to play the exact
+scenario the bible's fairness claim is about.
+
+**level_02a's opening room killed the character.** Two `sleeping_guard`
+Skeletons (16 HP, ATK 5/DEF 2 each) flank the first corridor from both
+sides - waking both at once sandwiches the player with no way to retreat
+that breaks adjacency from both simultaneously (Chebyshev/diagonal
+adjacency means a single step off the corridor's centerline is still
+adjacent to whichever skeleton is on that side). Burned both healing
+potions just surviving the opening exchanges, killed one skeleton at 1 HP
+remaining, and died to the second's counter-hit at 2 HP. `restart` worked
+cleanly afterward (same [[feedback_restart_resets_global_state]] flow
+session 5 already confirmed).
+
+**Why this matters beyond confirming the door/key claim**: this wasn't
+just "the disadvantaged branch is missing a nice weapon upgrade" - it's
+measurably *harder* too (a genuinely dangerous, hard-to-escape twin-flank
+opening, fought here with less than the intended kit). The branch that's
+supposed to be fairness-compensated is both worse-equipped *and* a rougher
+fight, which is a stronger version of the concern the existing memory
+already flagged. Not fixing this here, per the existing "left unfixed by
+user choice" note on that memory - just adding a live data point that
+sharpens the case if this ever gets revisited.
