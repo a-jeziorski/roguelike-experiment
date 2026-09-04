@@ -203,6 +203,8 @@ millhaven_trainer:
   trainer_perks: [
     toughness_1, toughness_2, weapon_training_1, shield_training_1, marksman_training_1,
     steady_aim, light_feet, second_wind, ground_pound,
+    blink_strike, riposte_stance, root_ground, chain_lash, guard_break,
+    mark_for_death, phase_through, vengeful_strike, war_horn, bloodletter,
   ]
 
 millhaven_debtor:
@@ -291,6 +293,8 @@ wayford_trainer:
   trainer_perks: [
     toughness_1, toughness_2, weapon_training_1, shield_training_1, marksman_training_1,
     steady_aim, light_feet, second_wind, ground_pound,
+    blink_strike, riposte_stance, root_ground, chain_lash, guard_break,
+    mark_for_death, phase_through, vengeful_strike, war_horn, bloodletter,
   ]
 
 saltmarsh_witch:

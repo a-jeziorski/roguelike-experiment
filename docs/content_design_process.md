@@ -4123,7 +4123,33 @@ and a new outcome-reading pattern for bloodletter's lifesteal. Nothing
 further is queued from this brainstorm; the next content pass starts
 fresh.
 
-## 1. Narrative framing
+## 0bj. The deferred placement pass - all twenty brainstorm items, plus the mid-tier gear, actually placed
+
+Every §0az-§0bi perk was shipped with an explicit "deliberately not added
+to either trainer's `trainer_perks` list yet... placing new content into
+the world is being treated as a separate, later pass" note (§0az/§0ba).
+The potions carried the same deferral. This is that later pass, prompted
+by a `play_llm.py` playtest sweep that found the gap had gone
+unaddressed long enough to become a real problem: of the twenty brainstorm
+items, a real player could reach exactly **one** (Water Walking Potion)
+without a debug tool - the mechanics were all correct, but nothing placed
+any of the other nineteen anywhere reachable. A parallel gap turned up in
+the same sweep for seven mid/high-tier weapons and armor pieces
+(`broadsword`, `battle_axe`, `war_hammer`, `studded_leather_armor`,
+`orcish_bow`, `crossbow`, `elder_bow`) that were never explicitly deferred
+in writing anywhere - just never placed.
+
+**Perks**: all ten (`blink_strike` through `bloodletter`) added to both
+`millhaven_trainer` and `wayford_trainer`'s `trainer_perks` lists,
+alongside the existing nine (`toughness_1/2`, `weapon_training_1`,
+`shield_training_1`, `marksman_training_1`, `steady_aim`, `light_feet`,
+`second_wind`, `ground_pound`). Both trainers already taught an identical
+list before this change - no existing asymmetry to preserve or new one to
+invent, so this keeps them identical rather than splitting the roster
+between the two towns. Live-verified against the real catalog: a
+non-debug `testbuild` character walked up to Millhaven's Old Drillmaster
+and learned Marked for Death and War Horn through the ordinary `learn`
+action, no `--perk` injection involved.
 
 Settle the throughline **before** drawing any map. The engine exposes four
 story surfaces to the player: a level's `name` (shown in the HUD), an
