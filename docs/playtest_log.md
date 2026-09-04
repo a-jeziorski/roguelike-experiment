@@ -5,7 +5,10 @@ Findings from periodic testing sessions driven through `tools/play_llm.py`
 it's a state-snapshot recorder, not an action-replay one). Each session is
 appended below in chronological order. Replays are saved under `saves/`
 (gitignored - local artifacts only) with a `playtest_<timestamp>.jsonl` name
-so consecutive sessions don't clobber each other; watch one back with
+per session so consecutive sessions don't clobber each other, and also
+mirrored to `saves/latest_session.jsonl` (the standing one-off-recording
+convention, so a session looking for "the most recent test recording"
+without a timestamp still finds it there). Watch either back with
 `python tools/replay.py saves/<file>.jsonl`.
 
 Read this before trusting a CLI-only bug report against a monster: see
