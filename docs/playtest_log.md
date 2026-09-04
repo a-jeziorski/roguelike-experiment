@@ -484,3 +484,58 @@ made it into actual level/shop placement. Recorded as its own memory
 potions one, since it's items.yaml but a different category (equipment,
 not consumables) with a different likely fix location (dungeon loot
 tables, not necessarily shops).
+
+## 2026-09-04 (7) - poison combat, and a near-miss false bug report
+
+Replay: `saves/playtest_20260904_114020.jsonl` (90 frames), Silver Mountain
+Caves (Silversilk Caves) - a dungeon no prior session had entered, chosen
+specifically to reach `cave_spider`, the only early-game monster that
+inflicts poison.
+
+### Positive confirmation - poison only lands on damage, and expires correctly
+
+Confirmed `combat.py`'s `if damage > 0:` gate: a Cave Spider bite fully
+absorbed by Chain Mail ("hits Player but does no damage") correctly applies
+*no* poison - armor stopping the bite stops the venom too. Only once a
+weaker build let the bite land for real damage did poison actually apply,
+with the documented "first tick lands the same turn as the hit" behavior
+(`Cave Spider hits Player for 2 damage.` → `Player is poisoned!` →
+`Player writhes from poison, taking 1 damage.`, all in one exchange).
+
+### A near-miss: I almost reported a false bug here
+
+Standing adjacent to the spider and calling `wait` repeatedly, HP kept
+dropping by 3/turn while the HUD's `POISONED: ... (2 turn(s) left)` line
+and the "Recent messages" text looked *frozen* - same "2 turns left", same
+three combat lines, call after call. Read literally, that looks exactly
+like the [[feedback_cli_monster_effects_dont_survive_calls]] pattern from
+session 1: HP draining from something the log isn't explaining. Almost
+wrote this up as a new instance of that bug.
+
+Before doing so, reproduced it in a minimal in-memory script (bypassing
+`play_llm.py`/save-reload entirely, using the same `make_open_map`/
+`make_player`/`make_monster` helpers `tests/test_engine.py` uses) - and it
+reproduced identically, which immediately ruled out a save/reload issue.
+Printing the actual message list (not just eyeballing repeated-looking CLI
+text) showed the truth: **every turn genuinely does log a fresh
+`Cave Spider hits Player...` / `Player is poisoned!` / `Player writhes...`
+triplet** - it's not stale, it's real, new, identical-looking text each
+time. Because the spider hits me *every* turn I stand there, and
+`_inflict_effect` unconditionally re-applies (refreshes, per its own
+"never stacks" contract) the full 3-turn poison duration on every
+successful bite, poison's `turns_remaining` never gets a chance to
+actually reach 0 - it's re-topped-up to 3, ticks once to 2, forever, for
+as long as I keep standing next to the spider taking free hits. Correct,
+intentional refresh-not-stack semantics working exactly as designed - not
+a bug, just a genuinely nasty (accurately nasty) "don't melee a poisonous
+enemy indefinitely" lesson.
+
+**Process lesson for future sessions**: identical-looking repeated message
+text in `play_llm.py`'s "Recent messages" tail is *not* evidence of stale
+state on its own - the same event can legitimately recur turn after turn
+with the exact same wording. Before concluding something is frozen/stale
+(the way [[feedback_cli_monster_effects_dont_survive_calls]] genuinely
+was), check the actual message *count*/sequence across calls, or better,
+reproduce in a minimal in-memory script the way `tests/test_engine.py`
+does - it's fast, and it's the only way to fully rule out a save/reload
+artifact versus a real behavioral loop.
