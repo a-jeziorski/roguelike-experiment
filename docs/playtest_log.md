@@ -65,10 +65,11 @@ newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
 ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
 (session 5), poison combat incl. the damage-gate on armor blocking it
 (session 7), Rusty Key pickup/HUD (session 8), the full quest turn-in
-flow (session 9), 8 of the 9 [[project_potions_unreachable_in_content]]
+flow (session 9), and all 9 [[project_potions_unreachable_in_content]]
 potions' actual effects (Vigor/Swiftness session 4, Antidote/Clarity
-session 10, Sure-Footing/Second Sight/Shadows/Smoke Bomb session 11 - only
-Ironroot Draught still untested, see session 11's holdout note).
+session 10, Sure-Footing/Second Sight/Shadows/Smoke Bomb session 11,
+Ironroot session 12) - every one mechanically correct, none placed
+anywhere a real player could ever find them.
 
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
@@ -750,3 +751,25 @@ a reasonable number of moves - stopped rather than keep burning turns on
 navigation. Left for a future session: `testbuild elder_cairn`, then
 `map`/`entities` immediately to actually orient before moving, rather than
 guessing directions blind the way this session did.
+
+## 2026-09-04 (12) - Ironroot Draught, the last potion, confirmed
+
+Replay: `saves/playtest_20260904_144009.jsonl` (40 frames). Picked up
+session 11's holdout: `testbuild elder_cairn`, immediately checked `map`
+this time instead of guessing directions - the entrance was one tile
+south, found and entered in a single move.
+
+Fought through to Elder Cairn's `wraith` (level 2, "The Heart of the
+Cairn") - a `sleeping_guard` that doesn't attack until alerted, giving a
+clean window to drink Ironroot *before* it woke up. Once it did:
+`"You drink the Ironroot Draught and your stance sets like rooted
+stone."`, then `Wraith hits Player for 6 damage. Critical hit!` followed
+immediately by `"Player shrugs off the stun."` - the exact
+`engine/combat.py::_inflict_effect` stun-immunity path, confirmed live.
+
+**With this, all 9 potions from [[project_potions_unreachable_in_content]]
+have now been live-verified through `play_llm.py`** across sessions 4, 10,
+11, and 12 - every one of them mechanically correct, none of them placed
+anywhere a real player could ever find them. Stopped the session at 12/30
+HP (two Stone Sentinels fought through to get here) rather than push
+further, same judgment call as session 8.
