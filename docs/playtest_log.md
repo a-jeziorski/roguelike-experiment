@@ -995,3 +995,37 @@ pattern touches nearly every dungeon exit that lacks a custom
 `main.py`) a way to carry a pending message across the engine swap - e.g.
 an optional message parameter on `arrive_player` appended *after* its own
 reset, rather than added to the departing engine's log before the swap.
+
+## 2026-09-04 (17) - cataloging the exit-message bug's exact blast radius
+
+Replay: `saves/playtest_20260904_173929.jsonl` (9 frames) - short, since
+the point here was a static audit plus one live spot-check, not a full
+playthrough.
+
+Grepped every `data/dungeons/*/levels/*.lvl` for `next_level: null` exit
+tiles and split them by whether the tile carries its own
+`description`+`announce: true` override (which masks
+[[project_dungeon_exit_message_lost]] by showing its own flavor text
+instead, even though the generic message underneath is still silently
+lost):
+
+- **9 exit tiles across 7 dungeons have no override** - the bug is
+  directly visible there, exiting to nothing but "You enter
+  &lt;overworld region&gt;.": `drowned_waystation` (both levels' exits),
+  `forgotten_ruins` (`level_01` and `level_05`), `prison_tower` (`level_01`
+  and `level_04`), `sunken_mine` (`level_03`), `weeping_cistern` (both
+  levels' exits, including the one session 1 originally flagged).
+- **16 exits across 14 dungeons have an override** and read fine to a
+  player today, though the same underlying message loss is happening
+  underneath in every one of them too - just invisible unless that
+  override is ever removed.
+
+**Live-verified one of the 9** (`drowned_waystation`, previously
+untouched by any session): entered, immediately walked back out via its
+`next_level: null` exit stairs, and the recorded frame's message list
+confirmed exactly the predicted outcome - `["You enter The Sundered
+Realm."]`, nothing else. Matches the static audit precisely.
+
+Not fixing this here, per [[project_dungeon_exit_message_lost]]'s
+suggested-follow-up note - this session's job was scoping the blast
+radius accurately, which is now on record for whoever picks up the fix.
