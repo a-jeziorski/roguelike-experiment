@@ -65,7 +65,8 @@ newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
 ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
 (session 5), poison combat incl. the damage-gate on armor blocking it
 (session 7), Rusty Key pickup/HUD (session 8), the full quest turn-in
-flow (session 9).
+flow (session 9), Antidote and Bezoar of Clarity's potion effects
+(session 10, alongside Vigor/Swiftness from session 4).
 
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
@@ -681,3 +682,31 @@ error, which could itself be misread as "the quest system broke" rather
 than "bad input." A cheap improvement, if anyone's touching this code
 later: have `pin`/`set_active_quest` refuse an unknown id with a clear
 message instead of accepting anything.
+
+## 2026-09-04 (10) - the last two untested potions
+
+Replay: `saves/playtest_20260904_132918.jsonl` (30 frames), using a
+hand-edited save (`saves/potion_test2.json`) to reach Antidote and Bezoar
+of Clarity - the two [[project_potions_unreachable_in_content]] potions
+session 4 hadn't yet drunk live. Both confirmed working correctly.
+
+- **Antidote** (`cures_effects: true`): drunk while poisoned (2 turns
+  left) - `"You drink the Antidote and the afflictions lift."`, and the
+  HUD's `POISONED: ...` line disappeared immediately. (Got re-poisoned the
+  very same turn by the adjacent spider's counter-attack - drinking still
+  costs a turn, so an adjacent enemy still gets to act. Not a bug, just a
+  positioning lesson: retreat before curing, don't cure while still being
+  bitten.)
+- **Bezoar of Clarity** (`resets_skill_cooldowns: true`): put Marked for
+  Death on its 10-turn cooldown, drank the Bezoar -
+  `"...your mind sharpens - every skill feels ready again."` - and the
+  skill HUD line immediately flipped from `9t` back to `ready`.
+
+With this, 4 of the 9 potions from [[project_potions_unreachable_in_content]]
+have now been live-verified through `play_llm.py` (Vigor, Swiftness from
+session 4; Antidote, Clarity here) despite none of them being reachable in
+actual shipped content - the remaining five (Vial of Shadows, Bottled
+Second Sight, Sure-Footing Draught, Smoke Bomb, Ironroot Draught, the last
+of which was injected in session 4 but never actually drunk there) are
+still only covered by `tests/test_engine.py`'s generic `ItemEffect`-based
+tests, not a live CLI drink.
