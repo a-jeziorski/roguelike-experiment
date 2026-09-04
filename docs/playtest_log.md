@@ -39,6 +39,15 @@ once described as fully shipped, a real player can currently reach exactly
 1 of 20 items without a debug tool.
 
 **Real bugs, smaller scope:**
+- [[project_dungeon_exit_message_lost]] - the generic dungeon-exit
+  farewell message (`on_player_reach_stairs`' `"You leave the dungeon
+  behind."` / `on_player_reach_map_edge`'s `open_boundary_message`) is
+  *always* silently lost to a message-log reset during the overworld
+  transition - confirmed real for actual players, not a CLI artifact.
+  Touches nearly every dungeon exit that lacks a custom tile-level
+  `description`/`announce: true` override. Retroactively explains
+  session 1's Flooded Vault finding, previously (incorrectly) written off
+  as "just missing flavor polish."
 - [[project_a_warning_worth_carrying_ungated]] - a quest fires without its
   narrative prerequisite; likely a one-line `requires_quest_id` fix.
 - `forgotten_ruins`' `level_02a`/`level_02b` branch-fairness gap
@@ -228,9 +237,13 @@ one-glyph-per-cell reason, though not verified here.
   `description`/`announce`) drops you straight back to the overworld with
   only the generic "You enter The Sundered Realm" message - no flavor text,
   unlike most other dungeons' `next_level: null` exits which have a custom
-  `description` + `announce: true`. Confirmed this is the intended exit
-  mechanic (not a bug - `next_level: null` is the established convention
-  used by ~15 other dungeons), just missing the usual flavor polish.
+  `description` + `announce: true`. Originally written off here as "just
+  missing the usual flavor polish, not a bug" - **corrected by session 16**:
+  it wasn't polish that was missing, it's a real, systemic bug
+  ([[project_dungeon_exit_message_lost]]) - this exit tile's own
+  `on_player_reach_stairs` farewell message ("You leave the dungeon
+  behind.") gets silently swallowed by a message-log reset on every
+  dungeon exit that lacks a custom tile-level override, this one included.
 
 ## 2026-09-04 (2) - Northern Steppe recon hook (The Watch Post)
 
@@ -907,3 +920,78 @@ fight, which is a stronger version of the concern the existing memory
 already flagged. Not fixing this here, per the existing "left unfixed by
 user choice" note on that memory - just adding a live data point that
 sharpens the case if this ever gets revisited.
+
+## 2026-09-04 (16) - a real bug: the dungeon-exit farewell message is silently swallowed, always
+
+Replay: `saves/playtest_20260904_170127.jsonl` (66 frames). Started by
+picking up [[bible_reconciliation_sweep_findings]]'s other unfixed item -
+`goblin_ambush`'s missing chokepoint - and ended up finding something more
+significant along the way.
+
+### First, the intended target: the ambush encounter mechanism itself works correctly
+
+Re-completed `goblin_warning` (session 15's `restart` had wiped session
+9's progress - a reminder that `restart` resets *all* shared quest state,
+not just the current run's own), picked up `spreading_the_warning` from
+the Village Chief, then left Millhaven for the overworld. Confirmed
+`QuestLog.armed_encounters` recorded the exact due time
+(`data/encounters.yaml`'s `delay_hours: 3`), and three `wait`s later the
+encounter fired precisely on schedule: `"You enter The Narrows."` /
+`"Goblins break from the treeline ahead - they were waiting for you, not
+just anyone on this road."` - end-to-end confirmation of the arm/timer/
+redirect machinery, never previously exercised live. The missing
+chokepoint is real (open field, confirmed via `entities` - all 3 goblins
+converge with nothing to bottleneck them), but a well-geared
+`testbuild` character (Iron Sword) killed each goblin in 1-2 hits before
+the group ever converged, so this run didn't reproduce the pincer danger
+itself - that risk is specifically for an early-game player with weaker
+gear, which this run's build wasn't.
+
+### Then, testing the escape: `open_boundary`'s farewell message never appears
+
+Walked to the encounter level's forest edge to test its
+`open_boundary_message` (`"You break off and put the trees behind you,
+back toward the open road."`). It never showed - only the generic
+`"You enter The Sundered Realm."` did. Traced why: `on_player_reach_map_edge`
+adds the custom message to `self.message_log` and sets
+`wants_overworld = True`, but `main.py`'s `resolve_transition` then calls
+either a brand-new `Engine(...)` or a cached one's `arrive_player(...)` to
+actually switch to the overworld - and *both* paths reset the message log
+fresh before adding their own `"You enter {level_name}."` line
+(`arrive_player`'s own docstring: `"Resets message_log first..."`). The
+farewell message is written to an engine object that's immediately
+replaced or reset; nothing ever carries it across the transition. Neither
+`depart_player` nor `arrive_player` takes a message parameter - there's no
+mechanism to forward it.
+
+**This isn't CLI-specific** - traced the same render path `main.py` uses
+and found no special handling that would let the graphical client see the
+old engine's final message before switching either. Confirmed the bug is
+real for actual players, not a `play_llm.py` artifact.
+
+**Bigger than just `open_boundary` - this is the same bug as the*generic*
+dungeon-exit message, always**: `on_player_reach_stairs(None, ...)` (a
+normal stairs-up/down tile with `next_level: null` - used by nearly every
+dungeon in the game) does the exact same thing:
+`self.message_log.add(f"You {verb}.")` (e.g. `"You leave the dungeon
+behind."`) then `wants_overworld = True` - lost to the identical reset.
+**This retroactively explains and corrects session 1's Flooded Vault
+finding**, which concluded the missing flavor text there was "just
+missing the usual flavor polish, not a bug" - it wasn't polish that was
+missing, it was this generic message that *should* have appeared and got
+silently swallowed. Most dungeon exits happen to also carry a custom
+`description`+`announce: true` on the tile itself (a *separate*,
+unaffected mechanism - `_log_newly_seen_tile_announcements`, read by the
+*new* engine after its own reset), which is why this has been easy to
+miss throughout this whole testing project: it only becomes visible on an
+exit tile with no such override, like the Flooded Vault's or `open_boundary`
+exits like this one. Two dungeons use `open_boundary: true`
+(`goblin_ambush`, `visitor_band_ambush`); the wider `next_level: null`
+pattern touches nearly every dungeon exit that lacks a custom
+`description`.
+
+**Suggested follow-up (not fixed here)**: give `depart_player`/
+`arrive_player` (or the `wants_overworld`/stairs-transition path in
+`main.py`) a way to carry a pending message across the engine swap - e.g.
+an optional message parameter on `arrive_player` appended *after* its own
+reset, rather than added to the departing engine's log before the swap.
