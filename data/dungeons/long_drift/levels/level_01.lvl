@@ -1,0 +1,40 @@
+id: level_01
+name: The Long Drift
+
+map: |
+  #############################################
+  ###########################FF#FF#>FFFFFF#####
+  ###########################FFFF###F##FFFF####
+  ##########################FFFFF######FFFF####
+  ##########################FFFFF######FFFFF###
+  ###########################FFFFF#####F#FFF###
+  ############################F#FF#####F#FFF###
+  ###########################FF##FF#F##F#FFF###
+  ###########################FF#FFFFFFFFFFFF###
+  ##########################FFFFFFF#FFFFFFF####
+  ############################FFFFF#F##FFF#####
+  ###########################FFFFFFFFF#########
+  #########F###################FFFFFFFF########
+  ########FF###########FF######FFFFFF##########
+  ########FF###########FFF#####FFFFFF##########
+  ########FFF#########FFFF####FFFFFF###########
+  #######FFFF##########FFFF###FFFFFF###########
+  #FFFFFFFFFFF######FFFFFFFFFFF###FF###########
+  #FFFFFFFFFFF######FFFFFFFFFFF################
+  #FF####FF##F###########FFFFFF################
+  #FF########@F######FFFFFFFFFFF###############
+  #FFFFFF############FFFFFFFFFFF###############
+  #FFFFFFF##F#######FFFFFF#FFFFF###############
+  #FFFFFFF##FFF##FFFFFFFFFFF#FF################
+  #FFFFFF#FFFFF#FFFFFFFFFFFFFFF################
+  #FFFFFFFFFFFFFFFF#FFFFFFFFFF#################
+  #FFFFFFFFFFFFFFFFF#######F###################
+  #FFFFFFFFFFFFFF#F#######FF###################
+  #FFFFFFFFFFFFFF##########F###################
+  #############################################
+
+legend:
+  "#": wall
+  "F": floor
+  "@": player_start
+  ">": { tile: stairs_down, next_level: null, description: "Daylight, and the way back out to Dust Reach.", announce: true }

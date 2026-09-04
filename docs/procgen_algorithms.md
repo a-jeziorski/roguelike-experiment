@@ -297,3 +297,33 @@ num_attempts=300`) - an Opportunists' camp on Dust Reach, built rather
 than squatted since there was nothing here to squat, since abandoned. See
 `docs/dungeon_bibles/ragged_camp.md`. Its `dungeon_entrance` sits at
 (145, 55) in `data/overworld/cells/dust_reach.lvl`.
+
+## Drunkard's walk (`tools/procgen/drunkards_walk.py`)
+
+The simplest generator here: one or more random walkers, 4-directional,
+carving floor at every step. The first walker starts at the grid's
+center; every later one starts from a random already-carved floor tile,
+so the whole result stays one connected component by construction no
+matter how many walkers run. Produces narrow, winding, purely organic
+tunnels - no straight walls (unlike BSP/room accretion/maze), no
+branching dendrite structure (unlike DLA), no smooth rounded blobs
+(unlike cellular automata, next up).
+
+**Fits bible language like**: "a tunnel that wanders rather than runs
+straight," "narrow, winding, no straight walls," "the way a mined seam
+actually follows ground rather than a surveyor's line" - naturally-worn
+or hand-dug-by-following-something passages, not a built or excavated-
+on-purpose structure.
+
+**Signature**: `generate(seed, width, height, fill_fraction=0.4,
+walker_count=1, max_steps_per_walker=50000, brush_radius=0)`. A walker's
+random walk isn't capped the way DLA's spawn point is, so it can reach
+the true grid edge on its own - **`frame_border` matters more here than
+for most other algorithms in this run**.
+
+**Worked example**: `data/dungeons/long_drift/levels/level_01.lvl`
+(45x30, seed 5, `fill_fraction=0.32, walker_count=3, brush_radius=0`) -
+an unclaimed Old Kingdom mining tunnel on Dust Reach, a different seam
+from `sunken_mine` and unrelated to it. See
+`docs/dungeon_bibles/long_drift.md`. Its `dungeon_entrance` sits at
+(5, 15) in `data/overworld/cells/dust_reach.lvl`.

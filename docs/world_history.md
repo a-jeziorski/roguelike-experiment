@@ -202,7 +202,10 @@ are shipped. Each is placed here for quick cross-reference - see
 - **Fallen Old Kingdom infrastructure, unclaimed**: `fallen_colonnade`
   (Dust Reach's first dungeon - a pillared hall out on genuinely
   unmapped ground, empty rather than squatted, since nobody's found it
-  yet; see `docs/dungeon_bibles/fallen_colonnade.md`).
+  yet; see `docs/dungeon_bibles/fallen_colonnade.md`), `long_drift`
+  (Dust Reach's seventh dungeon - a winding mining tunnel, a different
+  seam from `sunken_mine`, unrelated and equally forgotten; see
+  `docs/dungeon_bibles/long_drift.md`).
 - **Settlers, not yet settled**: `dust_crossing` (Dust Reach's second
   dungeon - a road network with no buildings yet, the leading edge of
   present-day traffic reaching this far out rather than an actual

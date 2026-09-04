@@ -1,0 +1,13 @@
+id: long_drift
+name: The Long Drift
+starting_level: level_01
+description: >
+  An Old Kingdom mining tunnel out on Dust Reach - narrow, winding,
+  never running straight for long, the way a shaft actually wanders
+  when it's following a seam rather than a surveyor's line. Unrelated
+  to the collapsed workings at Sunken Mine; a different vein, a
+  different crew, forgotten the same way. Nobody currently claims it.
+  Generated with tools/procgen/drunkards_walk.py, one of a short run of
+  small test dungeons proving out the procedural generation library -
+  see docs/dungeon_bibles/long_drift.md and docs/procgen_algorithms.md.
+inspect_text: A narrow tunnel that wanders rather than runs straight, the way a mined seam actually does.
