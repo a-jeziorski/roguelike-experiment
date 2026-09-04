@@ -327,3 +327,38 @@ an unclaimed Old Kingdom mining tunnel on Dust Reach, a different seam
 from `sunken_mine` and unrelated to it. See
 `docs/dungeon_bibles/long_drift.md`. Its `dungeon_entrance` sits at
 (5, 15) in `data/overworld/cells/dust_reach.lvl`.
+
+## Cellular automata caves (`tools/procgen/cellular_automata.py`)
+
+The one algorithm in this library with a direct in-project precedent:
+this formalizes the exact technique originally applied by hand for
+Silversilk Caves' own levels 03-05 (`docs/content_design_process.md`
+§0ae) into reusable code. Random noise fill (`fill_prob` chance each tile
+starts as floor), then `smoothing_passes` iterations of the classic 4-5
+rule (a tile becomes wall if it was already wall and >=4 of its 8
+neighbors are wall, or if it was floor and >=5 of its 8 neighbors are
+wall - out-of-bounds counts as wall), rounding raw noise into smooth,
+organic cave shapes. **Unlike every other generator in this library,
+`generate()` calls `keep_largest_component` internally** rather than
+leaving it to the caller - matching the original technique's own three-
+step definition (noise, smoothing, largest-component extraction) rather
+than treating it as generic post-processing.
+
+**Fits bible language like**: "rounded, water-worn walls," "a natural
+cave, no ruin beneath it," "smooth and organic, not angular" - the
+default choice for a natural cave whenever the bible doesn't call for
+DLA's branching asymmetry or Voronoi's walled chambers instead.
+
+**Signature**: `generate(seed, width, height, fill_prob=0.45,
+smoothing_passes=4)`. Result size and shape are sensitive to both `seed`
+and `fill_prob` in ways that aren't obvious without rendering - preview
+several seeds before picking one for real content (see the worked example
+below, which needed several seed/param attempts before landing on one
+with a good, well-spread cave rather than a small isolated pocket).
+
+**Worked example**: `data/dungeons/sister_hollow/levels/level_01.lvl`
+(45x30, seed 9, `fill_prob=0.48, smoothing_passes=4`) - a natural cave on
+Dust Reach shaped by the same slow process as Silversilk Caves, explicitly
+unrelated to it beyond that shared technique. See
+`docs/dungeon_bibles/sister_hollow.md`. Its `dungeon_entrance` sits at
+(20, 70) in `data/overworld/cells/dust_reach.lvl`.

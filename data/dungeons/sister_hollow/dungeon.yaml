@@ -1,0 +1,16 @@
+id: sister_hollow
+name: The Sister Hollow
+starting_level: level_01
+description: >
+  A natural cave out on Dust Reach, its walls rounded and smooth the way
+  water and time actually shape stone - no ruin beneath it, nothing the
+  Old Kingdom ever touched. Unrelated to Silversilk Caves' own tunnels
+  further east, but shaped by the same slow, patient process; whatever
+  carved this one has long since moved on or dried up. Generated with
+  tools/procgen/cellular_automata.py, which formalizes the same random-
+  noise-and-smoothing technique first used by hand for Silversilk Caves'
+  own deeper levels - see docs/content_design_process.md §0ae. One of a
+  short run of small test dungeons proving out the procedural generation
+  library - see docs/dungeon_bibles/sister_hollow.md and
+  docs/procgen_algorithms.md.
+inspect_text: A cave with rounded, water-worn walls, the same slow shaping that carved Silversilk Caves, just further west.

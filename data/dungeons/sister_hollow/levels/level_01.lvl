@@ -1,0 +1,40 @@
+id: level_01
+name: The Sister Hollow
+
+map: |
+  #############################################
+  ###@FF################FF#####################
+  ##FFFFF###########FFFFFFF############F##FF###
+  ##FFFFF##########FFFFFFFF###########FFFFFF>##
+  ##FFFF###########FFFFFFFF##########FFFFFFFF##
+  #FFFFF###########FFFFFFF##########FFFFFFFF###
+  #FFFFF###########FFFFFFF########FFFFFFFFFF###
+  #FFFFF###########FFFFFFFF###FFFFFFFFFFFFF####
+  #FFFFF###########FFFFFFFFFFFFFFFFFFFFFFFF####
+  ##FFFF###########FFFFFFFFFFFFFFFFFFFFFFFF####
+  ##FFFF###########FFFFFF##FFFFFFFFFFFFFFFF####
+  ##FFFF############FFFF#########FFFF##FFF#####
+  ##FFFFF##FFFF######FFFF########FFFF##########
+  #FFFFFFFFFFFFF#####FFFFF####FFFFFFF##########
+  #FFFFFFFFFFFFFF####FFFFFF##FFFFFFFF##########
+  #FFFFFFFF###FFFFFFFFFFFFFFFFFFFFFFF##########
+  #FFFFFFF#####FFFFFFFFFFFFFFFFFFFFFF##########
+  ##FFFFF#######FFFFFFFFFFFFFFFFFFFFF##########
+  ###############FFFFFFFFFFFFFFFFFFF###########
+  ###############FFFFFFFFFFFFFFFFFF############
+  #################FFFFFFFFFFFFFFF#############
+  #################FFFFF###FFFFF###############
+  ##################FFF########################
+  ###################F#########################
+  #############################################
+  #############################################
+  #############################################
+  #############################################
+  #############################################
+  #############################################
+
+legend:
+  "#": wall
+  "F": floor
+  "@": player_start
+  ">": { tile: stairs_down, next_level: null, description: "Daylight, and the way back out to Dust Reach.", announce: true }

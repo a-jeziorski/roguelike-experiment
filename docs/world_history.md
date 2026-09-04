@@ -234,7 +234,10 @@ are shipped. Each is placed here for quick cross-reference - see
   of the `dark` level flag, see `docs/content_design_process.md` §0q),
   `rootfall_hollow` (Dust Reach's fourth dungeon - a hollow that branches
   outward like roots or mineral veins rather than anything dug; see
-  `docs/dungeon_bibles/rootfall_hollow.md`).
+  `docs/dungeon_bibles/rootfall_hollow.md`), `sister_hollow` (Dust
+  Reach's eighth dungeon - a cave shaped by the same slow process as
+  Silversilk Caves, unrelated to it beyond that; see
+  `docs/dungeon_bibles/sister_hollow.md`).
 
 New monster types introduced this pass, all in `data/entities.yaml`:
 `bandit`/`bandit_captain` (Opportunists), `drowned_wretch` (Drowned
