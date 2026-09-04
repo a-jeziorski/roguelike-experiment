@@ -1,0 +1,39 @@
+id: level_01
+name: The Tangle Lock
+
+map: |
+  #############################################
+  #>FFFF#FFFFFFFFFFFFFFFFF#FFFFF#FFFFF#FFFFFFF#
+  #####F#F#########F#####F#F###F###F###F#F###F#
+  #FFF#F#F#FFFFFFF#FFFFF#FFF#F#FFF#FFFFF#F#F#F#
+  #F#F#F#F#F#####F###F#F#####F###F#F#####F#F#F#
+  #F#FFF#F#FFFFF#FFF#F#FFF#FFF#FFFFF#FFF#F#FFF#
+  #F#######F###F###F#F###F#F###F#####F#F#F#F###
+  #F#FFFFF#FFFFF#FFF#F#F#F#FFFFF#FFF#F#FFF#FFF#
+  #F###F#F###F###F###F#F#F###F###F#F#F#######F#
+  #FFFFF#FFFFF#F#F#F#FFF#FFF#FFFFF#FFF#FFF#FFF#
+  #############F#F#F###F###F###########F###F###
+  #FFFFFFFFFFF#FFF#FFFFFFF#F#FFF#FFFFFFFFFFF#F#
+  #F#F###F###F#F#########F#F###F#F###########F#
+  #F#F#FFF#F#F#F#FFFFF#FFF#FFF#F#F#FFFFF#FFFFF#
+  #F#F#F###F#F#F#F###F#####F#F#F#F###F###F###F#
+  #FFF#F#FFFFF#F#FFF#FFFFF#F#F#F#FFF#FFFFF#FFF#
+  #F###F#F#####F#F#F#####F###F#F###F#F###F#F#F#
+  #F#FFF#F#FFFFF#F#F#FFF#FFFFF#FFFFF#FFFFF#F#F#
+  #F#F###F#F#######F#F#F#######F###########F#F#
+  #F#F#FFF#FFFFFFF#FFF#F#FFF#FFF#FFFFFFFFFFF#F#
+  #F#F#F#########F#####F###F#F#######F#######F#
+  #F#F#FFFFFFFFF#FFF#FFF#FFF#F#FFFFFFF#FFF#FFF#
+  #F#F#######F#####F#F###F###F#F#######F#F#F###
+  #F#FFF#FFFFF#FFF#F#F#FFF#FFF#F#FFFFFFF#@#FFF#
+  #F###F#######F#F#F#F###F#F###F#F###########F#
+  #FFF#FFF#FFF#F#FFF#FFF#FFF#FFF#FFF#FFFFFFFFF#
+  ###F###F#F#F#F#######F#F#####F#F#F#F#########
+  #FFFFF#FFF#FFFFFFFFFFF#FFFFFFF#F#FFFFFFFFFFF#
+  #############################################
+
+legend:
+  "#": wall
+  "F": floor
+  "@": player_start
+  ">": { tile: stairs_down, next_level: null, description: "Daylight, and the way back out to Dust Reach.", announce: true }

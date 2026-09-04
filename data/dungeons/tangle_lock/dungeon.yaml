@@ -1,0 +1,13 @@
+id: tangle_lock
+name: The Tangle Lock
+starting_level: level_01
+description: >
+  An Old Kingdom security maze out on Dust Reach - walls laid out on
+  purpose to confuse anyone who didn't already know the way through,
+  the same discipline Prison Tower's own wardens would have recognized.
+  Whatever it once guarded is long gone, and whoever built it left no
+  ledger explaining what. Generated with tools/procgen/maze.py, one of
+  a short run of small test dungeons proving out the procedural
+  generation library - see docs/dungeon_bibles/tangle_lock.md and
+  docs/procgen_algorithms.md.
+inspect_text: A maze of deliberate corridors, laid out to confuse rather than to shelter.

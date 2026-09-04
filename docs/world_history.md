@@ -180,7 +180,9 @@ are shipped. Each is placed here for quick cross-reference - see
 `data/dungeons/<id>/dungeon.yaml` for its actual
 `description`/`inspect_text`.
 
-- **The Old Kingdom's remnants**: `prison_tower`.
+- **The Old Kingdom's remnants**: `prison_tower`, `tangle_lock` (Dust
+  Reach's fifth dungeon - a deliberately-laid-out security maze, what it
+  once guarded left unstated; see `docs/dungeon_bibles/tangle_lock.md`).
 - **The Elder Age**: `forgotten_ruins` (buried beneath an Old Kingdom
   manor), `elder_cairn` (a standalone site, unrelated to Forgotten Ruins -
   same era, no shared location), `cloven_warren` (Dust Reach's third

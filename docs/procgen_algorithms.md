@@ -234,3 +234,36 @@ and stick right at the true boundary) - a natural, no-era hollow on Dust
 Reach that grew rather than was dug. See
 `docs/dungeon_bibles/rootfall_hollow.md`. Its `dungeon_entrance` sits at
 (100, 80) in `data/overworld/cells/dust_reach.lvl`.
+
+## Maze generation (`tools/procgen/maze.py`)
+
+A recursive-backtracker random walk over a doubled-coordinate cell grid:
+logical maze cells sit at odd tile coordinates two tiles apart, and
+visiting an unvisited neighbor cell carves the tile between as a
+corridor, backtracking via a stack when a cell has no unvisited neighbor
+left. By default (`braid=0`) this produces a *perfect* maze - exactly one
+path between any two cells, no loops, every corridor purposeful. A
+`braid` pass afterward knocks some dead ends into loops (see the
+algorithm's own docstring for the exact rule), trading maze purity for a
+less punishing, less backtrack-heavy layout. **Note**: unlike every other
+generator here, `width`/`height` still describe the *returned grid's*
+tile dimensions (consistent with the rest of the library) - but only
+`(width - 1) // 2` maze cells actually fit along that axis, so pass an
+odd width/height to use the grid fully.
+
+**Fits bible language like**: "a labyrinth," "deliberately confusing, not
+natural," "exactly one way through" (braid=0) or "a maze with a few
+shortcuts worn into it" (braid>0) - a built, purposeful structure (a
+security maze, a puzzle vault), never a cave or ruin.
+
+**Signature**: `generate(seed, width, height, braid=0.0)`. Already
+enclosed by construction for an odd width/height (a solid wall column/row
+survives past the last cell on each axis) - `frame_border` is still
+called at the end regardless, for consistency with the rest of the
+library rather than because this algorithm specifically needs it.
+
+**Worked example**: `data/dungeons/tangle_lock/levels/level_01.lvl`
+(45x29, seed 3, `braid=0.15`) - an Old Kingdom security maze on Dust
+Reach, what it once guarded left unstated. See
+`docs/dungeon_bibles/tangle_lock.md`. Its `dungeon_entrance` sits at
+(60, 10) in `data/overworld/cells/dust_reach.lvl`.
