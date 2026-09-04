@@ -1,0 +1,40 @@
+id: level_01
+name: The Ragged Camp
+
+map: |
+  #############################################
+  #####################################FFFF####
+  ###################FFFFFF############FFFF####
+  ###FFFFF##FFFFFF###FFFFFF############FFFFF###
+  ###FFFFF##FFFFFF###FFFFFF############FFFFF###
+  ###FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF###
+  ###FFFFF#FFFFFFF###FFFFFF################F###
+  ###FFFFF#FFFFFFF###FFFFFF###FFFFFF#######F###
+  #####F###FFFFFFF###FFFFFF###FFFFFF#######F###
+  ###FFFF##F###F##############FFFFFF#######F###
+  ###FFFF##F###F#################F#########F###
+  ###@FFF##F###FFFFFFFF##########F#######FFFFF#
+  #########F###FFFFFFFF##########F######FFFFFF#
+  ##FFF####F###FFFFFFFF##########F######FFFFFF#
+  ##FFF####F###FFFFFFFF######FFFFFFF####F######
+  ##FFF####F###FFFFFFFF######FFFFFFF#FFFF######
+  ##FFF####F###FFFFFFFF######FFFFFFFFFFFF######
+  ##FFFFFFFF###FFFFFFFF######FFFFFFF#FFFF######
+  ##FFF#FFFFFF###############F##F#######F######
+  ##FFF#FFFFFF##############FFF#F#######F######
+  ##FFF#FFFFFF##############FFF#F#######F######
+  ######FFFFFF#######FFFF###FFF#F#######F######
+  ######FFFFFF#FFF###FFFF###FFF#F#######F##>FF#
+  #########F###FFF###FFFFFFFFFFFF######FFF#FFF#
+  #######FFFF##FFF###FFFF#####FFFF#####FFF#FFF#
+  ###FFF#FFFF##FFF###FFFF#####FFFFFFFFFFFFFFFF#
+  ###FFF#FFFFFFFFFFFFFFF######FFFF#####FFF#FFF#
+  ###FFFFFFFF#################FFFF#####FFF#FFF#
+  ###FFF#FFFF#################FFFF#########FFF#
+  #############################################
+
+legend:
+  "#": wall
+  "F": floor
+  "@": player_start
+  ">": { tile: stairs_down, next_level: null, description: "Daylight, and the way back out to Dust Reach.", announce: true }

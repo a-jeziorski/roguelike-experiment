@@ -1,0 +1,15 @@
+id: ragged_camp
+name: The Ragged Camp
+starting_level: level_01
+description: >
+  A scatter of rooms out on Dust Reach, walled off from each other and
+  linked by narrow cut-throughs - nothing planned, nothing matched, just
+  whatever got claimed and connected as it was needed. The same practical,
+  take-what's-offered instinct that holds a bandit watchtower elsewhere in
+  the Heartlands, out here with no garrison to squat in - so they built
+  their own, however roughly. Whoever held it has since moved on or
+  scattered; the rooms are empty now. Generated with
+  tools/procgen/room_accretion.py, one of a short run of small test
+  dungeons proving out the procedural generation library - see
+  docs/dungeon_bibles/ragged_camp.md and docs/procgen_algorithms.md.
+inspect_text: A scatter of walled rooms, none of them matching, linked by cut-throughs somebody dug in a hurry.

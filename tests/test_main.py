@@ -1387,7 +1387,7 @@ def test_overworld_has_all_sixteen_shipped_entrances_mutually_reachable():
     catalog, dungeon_registry, overworld_level = _world()
 
     assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry) - ENCOUNTER_ONLY_DUNGEON_IDS
-    assert len(overworld_level.dungeon_entrances) == 22
+    assert len(overworld_level.dungeon_entrances) == 23
 
     game_map, _ = build_game_map(overworld_level, catalog)
 

@@ -57,7 +57,7 @@ map: |
   ,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,,TTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT^^
   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,TTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,TTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,TTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTTTTTTTTTT,,,,,,,,,,,,,,,,,,TTTT
+  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,TTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TTTTTTTTTTTTTT,,,,,,,,,,,,,,,,,NTTTT
   TTTTTTTTTTTTTTTTTT^TTTTTTTTTTTTTTTTTTTTTTTTTT,,,,,,TTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TT,,,TTTTTT,,,,,,,,,,,,,,,,,,,,,,,TT
   TTTTTTTTTTTTTTTT^^^^^TTTTTTTTTTTTTTTT,,,,TTT,,,,,,,TTTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,TT,,,,,TTT,,,,,,,,,,,,,,,,,,,,,,,,,,
   TTTTTTTTTTTTTTT^^^^^^^^^^TTTTTTTTT,,,,,,,,,,,,,,,,,TTTTTTTTTTTT,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -102,3 +102,4 @@ legend:
   "Y": { dungeon_entrance: cloven_warren }
   "Z": { dungeon_entrance: rootfall_hollow }
   "K": { dungeon_entrance: tangle_lock }
+  "N": { dungeon_entrance: ragged_camp }

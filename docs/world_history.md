@@ -191,7 +191,10 @@ are shipped. Each is placed here for quick cross-reference - see
   `docs/dungeon_bibles/cloven_warren.md`).
 - **Opportunists**: `broken_watch` (a fallen Old Kingdom garrison),
   `the_windrest` (a fallen Old Kingdom waystation, held for its shelter
-  rather than any strategic value).
+  rather than any strategic value), `ragged_camp` (Dust Reach's sixth
+  dungeon - no ready-made shelter to squat out here, so its holders built
+  their own scattered rooms instead, since abandoned; see
+  `docs/dungeon_bibles/ragged_camp.md`).
 - **Fallen Old Kingdom infrastructure, present-day squatters**:
   `drowned_waystation` (flooded by the Sundering), `sunken_mine`
   (collapsed, reuses the existing monster roster rather than adding new

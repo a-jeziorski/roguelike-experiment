@@ -267,3 +267,33 @@ library rather than because this algorithm specifically needs it.
 Reach, what it once guarded left unstated. See
 `docs/dungeon_bibles/tangle_lock.md`. Its `dungeon_entrance` sits at
 (60, 10) in `data/overworld/cells/dust_reach.lvl`.
+
+## Room accretion (`tools/procgen/room_accretion.py`)
+
+Rejection sampling, not a partition: repeatedly proposes a random-sized
+rectangular room at a random position, accepting it only if it doesn't
+overlap any already-placed room plus a `buffer`-tile gap, then corridor-
+connects each accepted room to whichever already-placed room is nearest
+(center to center, via `carve_l_corridor`). Unlike BSP (rooms derived from
+a recursive partition tree) or Voronoi (rooms derived from a raster
+diagram), placement here has no underlying structure at all - rooms land
+wherever they happen to fit, so spacing and arrangement read as genuinely
+irregular rather than following a hidden geometric rule.
+
+**Fits bible language like**: "a scatter of rooms, none of them
+matching," "built rather than found, but unplanned," "irregular spacing,
+no underlying pattern" - a practical, improvised structure (a camp, a
+squatted-and-expanded ruin) rather than anything laid out on purpose the
+way a maze or a formal building would be.
+
+**Signature**: `generate(seed, width, height, min_room_size=4,
+max_room_size=10, buffer=1, num_attempts=200)`. Most attempts near the
+end of a run fail as the grid fills up - that's expected, not a bug;
+`num_attempts` is a budget, not a guaranteed room count.
+
+**Worked example**: `data/dungeons/ragged_camp/levels/level_01.lvl`
+(45x30, seed 4, `min_room_size=3, max_room_size=8, buffer=1,
+num_attempts=300`) - an Opportunists' camp on Dust Reach, built rather
+than squatted since there was nothing here to squat, since abandoned. See
+`docs/dungeon_bibles/ragged_camp.md`. Its `dungeon_entrance` sits at
+(145, 55) in `data/overworld/cells/dust_reach.lvl`.
