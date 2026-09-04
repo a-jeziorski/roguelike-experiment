@@ -1,0 +1,13 @@
+id: ledger_hall
+name: The Ledger Hall
+starting_level: level_01
+description: >
+  An Old Kingdom administrative building out on Dust Reach - straight
+  walls, rectangular rooms, corridors that turn at right angles rather
+  than wander, the way something gets built when a plan came before the
+  first stone did. Whatever records or ledgers it once kept are long
+  gone with whoever kept them. Generated with tools/procgen/bsp_rooms.py,
+  the last of a short run of small test dungeons proving out the
+  procedural generation library - see docs/dungeon_bibles/ledger_hall.md
+  and docs/procgen_algorithms.md.
+inspect_text: A building laid out on a plan, not grown or dug - straight walls, rooms in rows, nothing left to read in it now.

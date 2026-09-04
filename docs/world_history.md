@@ -182,7 +182,11 @@ are shipped. Each is placed here for quick cross-reference - see
 
 - **The Old Kingdom's remnants**: `prison_tower`, `tangle_lock` (Dust
   Reach's fifth dungeon - a deliberately-laid-out security maze, what it
-  once guarded left unstated; see `docs/dungeon_bibles/tangle_lock.md`).
+  once guarded left unstated; see `docs/dungeon_bibles/tangle_lock.md`),
+  `ledger_hall` (Dust Reach's ninth and final procgen-pass dungeon - a
+  planned administrative building, straight walls and rooms in rows,
+  whatever records it kept long gone; see
+  `docs/dungeon_bibles/ledger_hall.md`).
 - **The Elder Age**: `forgotten_ruins` (buried beneath an Old Kingdom
   manor), `elder_cairn` (a standalone site, unrelated to Forgotten Ruins -
   same era, no shared location), `cloven_warren` (Dust Reach's third

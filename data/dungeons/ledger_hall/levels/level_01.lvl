@@ -1,0 +1,40 @@
+id: level_01
+name: The Ledger Hall
+
+map: |
+  #############################################
+  #################FFFF###FFFF##########FFFFF@#
+  #################FFFF###FFFF###FFFFF##FFFFFF#
+  #FFFF####FFFFFF##FFFF###FFFF###FFFFF##FFFFFF#
+  #FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFFFFFFFF##FFFF###FFFFFFFFFFFF##FFFFFF#
+  #FFFF####FFFFFF##FFFF###FFFF###FFFFF##FFFFFF#
+  #FFFF####FFFFFF################FFFFF##FFFFFF#
+  ###F#########################################
+  ###F#########################################
+  ###F###########FFFF##FFFFF##FFFFF####FFFFFFF#
+  ##FFFFFFFFFF###FFFF##FFFFF##FFFFF####FFFFFFF#
+  ##FFFFFFFFFFFFFFFFF##FFFFF##FFFFF####FFFFFFF#
+  ##FFFFFFFFFFFFFFFFFFFFFFFF##FFFFF####FFFFFFF#
+  ##FFFFFFFFFF###FFFF##FFFFFFFFFFFFFFFFFFFFFFF#
+  ######F##############FFFFFF#FFFFF####FFFFFFF#
+  ######F##############FFFFFF#FFFFF####FFFFFFF#
+  #FFFFFFFFFF##FFFFFF##FFFFFF#FFFFF####FFFFFFF#
+  #FFFFFFFFFF##FFFFFF#######F##################
+  #FFFFFFFFFFFFFFFFFF#######F##################
+  #FFFFFFFFFF##FFFFFF###FFFFFFFFF##############
+  ######F######FFFFFF###FFFFFFFFF##FFFFFFFFFF>#
+  ######F###############FFFFFFFFF##FFFFFFFFFFF#
+  ######F###############FFFFFFFFF##FFFFFFFFFFF#
+  #FFFFFFFF#############FFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFF##FFFFFFFF###FFFFFFFFF##FFFFFFFFFFF#
+  #FFFFFFFFFFFFFFFFFF###FFFFFFFFF##FFFFFFFFFFF#
+  #FFFFFFFF##FFFFFFFF###FFFFFFFFF##FFFFFFFFFFF#
+  #FFFFFFFF##FFFFFFFF###FFFFFFFFF##############
+  #############################################
+
+legend:
+  "#": wall
+  "F": floor
+  "@": player_start
+  ">": { tile: stairs_down, next_level: null, description: "Daylight, and the way back out to Dust Reach.", announce: true }

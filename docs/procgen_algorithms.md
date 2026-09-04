@@ -362,3 +362,45 @@ Dust Reach shaped by the same slow process as Silversilk Caves, explicitly
 unrelated to it beyond that shared technique. See
 `docs/dungeon_bibles/sister_hollow.md`. Its `dungeon_entrance` sits at
 (20, 70) in `data/overworld/cells/dust_reach.lvl`.
+
+## BSP tree rooms & corridors (`tools/procgen/bsp_rooms.py`)
+
+The classic Rogue-style dungeon, and the last of this library's ten
+algorithms: recursively partitions the grid into rectangles down to a
+minimum leaf size (`min_leaf_size` on either axis - a leaf larger than
+`2 * min_leaf_size` on some axis always splits further, randomly choosing
+which axis when both qualify), carves one room per leaf inset by
+`room_margin` tiles from its own partition cell's boundary, and connects
+every pair of sibling partitions with a real 90-degree-bend corridor
+(`carve_l_corridor`) as the recursion unwinds - always one connected
+component by construction. Straight walls, rectangular rooms, right-
+angled turns throughout - the only algorithm here whose rooms come from a
+strict recursive partition, distinct from Voronoi's raster diagram and
+room accretion's unstructured rejection sampling.
+
+**Fits bible language like**: "straight walls, rooms in rows," "planned
+before the first stone was laid," "corridors that turn at right angles
+rather than wander" - any deliberately, formally built structure (an
+administrative building, a fortress, a barracks) where the layout itself
+should read as *designed*, not grown, dug, or scattered.
+
+**Signature**: `generate(seed, width, height, min_leaf_size=8,
+room_margin=1)`. A grid smaller than `2 * min_leaf_size` on both axes
+never splits at all - the whole grid becomes a single room, which is
+correct behavior (not an error) for a small enough request.
+
+**Worked example**: `data/dungeons/ledger_hall/levels/level_01.lvl`
+(45x30, seed 1, `min_leaf_size=7, room_margin=1`) - a planned Old Kingdom
+administrative building on Dust Reach, whatever records it kept long
+gone. See `docs/dungeon_bibles/ledger_hall.md`. Its `dungeon_entrance`
+sits at (90, 10) in `data/overworld/cells/dust_reach.lvl`.
+
+---
+
+With this, all ten algorithms originally scoped for `tools/procgen/` are
+implemented, tested, and each has a real, shipped test dungeon in Dust
+Reach (`docs/region_bibles/dust_reach.md`) - noise_terrain (Dust Reach
+itself), wave_function_collapse (Fallen Colonnade), road_network (Dust
+Crossing), voronoi_regions (Cloven Warren), dla (Rootfall Hollow), maze
+(Tangle Lock), room_accretion (Ragged Camp), drunkards_walk (Long Drift),
+cellular_automata (Sister Hollow), and bsp_rooms (Ledger Hall).
