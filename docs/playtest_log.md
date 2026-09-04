@@ -65,8 +65,10 @@ newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
 ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
 (session 5), poison combat incl. the damage-gate on armor blocking it
 (session 7), Rusty Key pickup/HUD (session 8), the full quest turn-in
-flow (session 9), Antidote and Bezoar of Clarity's potion effects
-(session 10, alongside Vigor/Swiftness from session 4).
+flow (session 9), 8 of the 9 [[project_potions_unreachable_in_content]]
+potions' actual effects (Vigor/Swiftness session 4, Antidote/Clarity
+session 10, Sure-Footing/Second Sight/Shadows/Smoke Bomb session 11 - only
+Ironroot Draught still untested, see session 11's holdout note).
 
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
@@ -710,3 +712,41 @@ Second Sight, Sure-Footing Draught, Smoke Bomb, Ironroot Draught, the last
 of which was injected in session 4 but never actually drunk there) are
 still only covered by `tests/test_engine.py`'s generic `ItemEffect`-based
 tests, not a live CLI drink.
+
+## 2026-09-04 (11) - four more potions confirmed, one holdout remains
+
+Replay: `saves/playtest_20260904_140214.jsonl` (74 frames). Same
+hand-injection technique as sessions 4/10, aimed at the four potions
+session 10 left untested. All four confirmed working correctly.
+
+- **Sure-Footing Draught** (hazard immunity): stepped onto `ashen_plains`
+  unbuffed first - `"Ash-choked ground scrapes at exposed skin..."`, net
+  -1 HP (the documented `-2` hazard damage partially offset by
+  `_advance_world_clock`'s own `+1`/hour passive heal). Drank the potion
+  *while standing on the hazard tile* and took zero damage that same turn
+  (net +1, just the passive heal) - the buff blocks the hazard starting
+  immediately, not just from the next tile onward.
+- **Bottled Second Sight** (instant map reveal): refused cleanly on the
+  overworld (`"There's too much ground out here for any vision to take
+  in."` - a real, deliberate refusal path in `engine/actions.py`, not a
+  bug), then correctly revealed all of Silver Mountain Caves' level 1 in
+  one `map` call once drunk inside the dungeon.
+- **Vial of Shadows**: drank cleanly (`"...fade into the shadows."`);
+  didn't isolate the detection-radius mechanic itself from CLI black-box
+  testing (that's already covered by `tests/test_engine.py`'s generic
+  buff tests), just confirmed the drink and grant work.
+- **Smoke Bomb**: used while adjacent to a Cave Spider - teleported 5
+  tiles away instantly (`(7, 20) → (12, 20)`) and granted the HUD's
+  `SHADOWED: unseen from a distance (2 turn(s) left)` buff in the same
+  action, exactly as documented (`local_teleport` + `grants_buff:
+  shadowed` together).
+
+**One holdout**: Ironroot Draught (stun immunity) needs the game's only
+two stun-inflicting monsters, `wraith` (Elder Cairn level 2) or
+`excavation_warden` (still unplaced per [[northern_steppe_bestiary]]).
+Spent real time trying to reach the Elder Cairn entrance via `testbuild`
+and couldn't find the actual entrance tile from the spawn position within
+a reasonable number of moves - stopped rather than keep burning turns on
+navigation. Left for a future session: `testbuild elder_cairn`, then
+`map`/`entities` immediately to actually orient before moving, rather than
+guessing directions blind the way this session did.
