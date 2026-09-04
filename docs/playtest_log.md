@@ -428,3 +428,59 @@ Wanted to confirm that fix still holds.
 Equipped Lucky Charm (`trinket_bonus: 0.1` on `crit_chance`) via
 `testbuild --trinket lucky_charm`: `character` showed Crit chance 10%→20%,
 correct.
+
+## 2026-09-04 (6) - reachability audit: everything else unreferenced
+
+No replay - this session extended the previous one's "grep every level/shop
+for references" method from potions/perks to the whole entity and item
+catalog, rather than playing a live session. Wrote a script cross-
+referencing every `data/entities.yaml`/`data/items.yaml` id against every
+`entity:`/`item:` in `data/dungeons/*/levels/*.lvl` plus every
+`shop_inventory:`/`trainer_perks:` list.
+
+### False-positive check, worth recording as a methodology note
+
+The raw script flagged 13 "unreferenced" entities. Before treating any of
+them like the potions/perks finding, checked each one - most turned out to
+already be accounted for, just not by static level placement:
+
+- **6 are placed dynamically, not statically**: `ash_bound_husk`,
+  `bound_eye`, `stitched_vanguard`, `hollow_chanter`, `bound_crawler`,
+  `charnel_colossus` are all spawned by `engine/engine.py`'s
+  `FRAYED_EDGE_BAND`/`CINDER_MARCHES_BAND`/`HOLLOW_REACH_BAND` random-
+  encounter tables (the `visitor_band_ambush` mechanism -
+  [[northern_steppe_bestiary]] already documents this), which a level-file
+  grep can never see. A grep-only reachability check has this blind spot -
+  worth remembering before repeating this kind of audit.
+- **6 more (`slime`, `bone_caller`, `boar`, `cave_bear`, `lurker`,
+  `mimic_flask`) plus `excavation_warden`** are genuinely unplaced, but
+  that's already fully documented, intentional, in-progress work -
+  `docs/content_design_process.md` §0ag-§0am walks through each one as
+  "define now, place later," one new AI behavior showcased at a time,
+  reviewed before placement. Not a new finding; correctly flagged by the
+  script, correctly *not* worth reporting as a bug.
+
+### Finding - 7 mid/high-tier weapons and armor pieces are also unreferenced, and this one doesn't look intentional
+
+`broadsword` (atk+5), `battle_axe` (atk+6), `war_hammer` (atk+7),
+`studded_leather_armor` (def+2), `orcish_bow`, `crossbow`, and `elder_bow`
+all appear in `data/items.yaml` with real stats but zero placements in any
+dungeon level or shop - same pattern as the potions/perks finding, and
+unlike the monster list above, **nothing documents these as deliberately
+staged**. The only mention of any of them in `docs/content_design_process.md`
+is as a hypothetical "mid-upper gear tier" used to calibrate the Northern
+Steppe bestiary's target stats, not as content actually meant to ship.
+None of the seven have a `cost` field, consistent with being intended as
+dungeon floor loot (like the already-placed `iron_sword`/`chain_mail`,
+which also lack `cost`) rather than shop stock - so the natural fix
+location is scattering them into higher-tier dungeons' item placements,
+the same shape as the potions fix.
+
+This sits alongside [[project_potions_unreachable_in_content]] and
+[[project_perks_unreachable_in_content]] as a third instance of the same
+underlying pattern: a fair amount of this game's implemented content never
+made it into actual level/shop placement. Recorded as its own memory
+([[project_gear_unreachable_in_content]]) rather than folded into the
+potions one, since it's items.yaml but a different category (equipment,
+not consumables) with a different likely fix location (dungeon loot
+tables, not necessarily shops).
