@@ -539,3 +539,50 @@ was), check the actual message *count*/sequence across calls, or better,
 reproduce in a minimal in-memory script the way `tests/test_engine.py`
 does - it's fast, and it's the only way to fully rule out a save/reload
 artifact versus a real behavioral loop.
+
+## 2026-09-04 (8) - Prison Tower: keys, locked doors, and a real close call
+
+Replay: `saves/playtest_20260904_121924.jsonl` (73 frames) - Prison Tower,
+untouched by any prior session, chosen specifically to reach one of the
+game's six `door: rusty_key` locked-door placements.
+
+### Positive confirmation - key pickup and the "Keys: N" HUD counter
+
+Picked up a Rusty Key on level 2 (The Guard Barracks); the HUD's
+`Keys: 1` counter updated correctly and stayed accurate through several
+subsequent fights.
+
+### Investigation - a `goto` call skipped the locked door entirely, and why that's correct
+
+Aimed `goto 17 10` (a rough guess at "near the door") to head toward level
+2's exit; it ended up two levels deeper (into "The Lower Cellblock," level
+3) without ever logging `engine/actions.py`'s
+`"You use the {key} to unlock the door."` message, and the key was still
+in inventory afterward, unconsumed - looked at first like the door/key
+mechanic was silently bypassed or broken.
+
+Reading `data/dungeons/prison_tower/levels/level_02.lvl`'s full map
+explained it cleanly: the locked door only gates a *dead-end* side room
+(iron sword, chest, barrel - optional loot), not the path to the stairs
+down, which sit behind a separate, ordinary (non-locked) opening on the
+level's south side. My guessed coordinate happened to route through that
+legitimate southern passage, never touching the locked door at all - so
+no unlock ever should have fired. Confirmed the actual unlock+consume
+mechanic is correctly implemented via
+`tests/test_engine.py::test_locked_door_unlocks_and_consumes_matching_key`
+(passes) rather than re-verifying live, since the character was down to
+5/30 HP by this point and backtracking through two already-cleared levels
+to deliberately walk into the door wasn't worth the death risk for a
+mechanic already covered by a real, targeted test.
+
+### A genuine close call, not a bug
+
+HP dropped from 30 to 5 over three real fights (a Guard hitting for 3 a
+turn, a Crossbow Guard sniping from range, a second Guard) with zero
+healing potions on hand (`testbuild`'s default). Every individual exchange
+resolved correctly (damage math, crits, dodges all consistent with what
+prior sessions already verified) - this was just a legitimately dangerous
+dungeon crawl on thin resources, the kind of risk/reward tension
+[[feedback_retreat_to_heal_is_a_balance_lever]] already documents as
+intended. Stopped the session here rather than pushing a 5-HP character
+further, same judgment call a real player would make.
