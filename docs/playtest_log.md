@@ -39,6 +39,10 @@ once described as fully shipped, a real player can currently reach exactly
 **Real bugs, smaller scope:**
 - [[project_a_warning_worth_carrying_ungated]] - a quest fires without its
   narrative prerequisite; likely a one-line `requires_quest_id` fix.
+- `pin`/`QuestLog.set_active_quest` has no id validation and silently
+  blanks the quest HUD line on a bad id (session 9) - not reachable by a
+  real player (the graphical client only pins from a closed menu), but a
+  trap for any other direct API caller, `play_llm.py` sessions included.
 
 **Rendering issues** (all confirmed real, all currently latent/not-yet-
 manifested in any shipped level - see
@@ -60,7 +64,8 @@ session misreads `play_llm.py` output the same way):
 newest skills' core mechanics (session 1), shop/`buy`, trainer/`learn`,
 ranged `fire` (session 3), death/`restart` (session 5), trinket bonuses
 (session 5), poison combat incl. the damage-gate on armor blocking it
-(session 7), Rusty Key pickup/HUD (session 8).
+(session 7), Rusty Key pickup/HUD (session 8), the full quest turn-in
+flow (session 9).
 
 ## 2026-09-04 - new skills smoke test (Weeping Cistern, Broken Watch)
 
@@ -633,3 +638,46 @@ dungeon crawl on thin resources, the kind of risk/reward tension
 [[feedback_retreat_to_heal_is_a_balance_lever]] already documents as
 intended. Stopped the session here rather than pushing a 5-HP character
 further, same judgment call a real player would make.
+
+## 2026-09-04 (9) - quest turn-in, and pin's missing validation
+
+Replay: `saves/playtest_20260904_125555.jsonl` (22 frames), Millhaven -
+finally turning in `goblin_warning`, active since the very first session
+but never actually delivered to its target NPC until now.
+
+### Positive confirmation - the full quest turn-in flow works correctly
+
+`talk`ing to the Village Chief (the quest's `target_entity_id`) with
+`goblin_warning` active correctly fired the completion dialogue, awarded
+the documented 15 XP, and flipped the quest to `completed` with its
+`completed_description` flavor text - all exactly as designed, confirmed
+via `quests`.
+
+### Finding - `pin` has no input validation and silently blanks the quest HUD line
+
+`pin not_a_real_quest` produced no error, but the HUD's `Quest: ...` line
+- present a moment earlier as `Quest: The Goblin Warning - completed` -
+vanished entirely afterward. Confirmed the cause precisely: re-issuing
+`pin goblin_warning` immediately restored the line. Root cause in
+`engine/quest.py`: `QuestLog.set_active_quest(quest_id)` is
+`self.active_quest_id = quest_id` with zero validation that the id exists
+in `self.quests`; `active_quest()` then does `self.quests.get(...)`,
+returning `None` for a bad id, and the HUD apparently only renders the
+line when that lookup succeeds.
+
+**Not reachable by a real player**: `main.py:303` only ever calls
+`set_active_quest(quests[selected].id)` from an actual index into the
+player's own displayed quest list (`engine/input_handlers.py`'s pin
+menu) - always a real id, never a free-text string. So this is purely a
+`tools/play_llm.py`-and-beyond-only edge case, since the CLI's `pin`
+takes a raw string for testing convenience where the real game only
+offers a closed menu.
+
+**Still worth a note**: this means `QuestLog` trusts its caller completely
+for a valid id, which is fine for the one real caller today but is a trap
+for any other direct API user - including a `play_llm.py` testing session
+that fat-fingers a quest id and gets a silently blanked HUD instead of an
+error, which could itself be misread as "the quest system broke" rather
+than "bad input." A cheap improvement, if anyone's touching this code
+later: have `pin`/`set_active_quest` refuse an unknown id with a clear
+message instead of accepting anything.
