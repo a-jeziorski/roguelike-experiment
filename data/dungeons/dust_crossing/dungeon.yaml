@@ -3,13 +3,15 @@ name: Dust Crossing
 starting_level: level_01
 requires_stairs_down: false
 description: >
-  A crossroads out on Dust Reach - no walls, no buildings yet, just a
-  network of packed-dirt roads someone started walking often enough that
-  they stayed roads instead of fading back to plain ground. Nobody's
-  settled here in any lasting way; it reads as the very first mark of
-  present-day people finding their way this far out, not a real
-  settlement yet. Generated with tools/procgen/road_network.py, one of a
-  short run of small test dungeons proving out the procedural generation
-  library - see docs/dungeon_bibles/dust_crossing.md and
-  docs/procgen_algorithms.md.
-inspect_text: A crossroads of packed-dirt tracks, worn by feet and cart wheels but leading nowhere built yet.
+  A crossroads out on Dust Reach, ringed by a rough dry-stone boundary
+  wall with a single gap for a gate - and nothing else. No buildings, no
+  people living behind that wall; just a network of packed-dirt roads
+  someone started walking often enough that they stayed roads instead of
+  fading back to plain ground, and enough stone stacked around the
+  perimeter to mark the spot as claimed without anyone actually settling
+  it. It reads as the very first mark of present-day people finding
+  their way this far out, not a real settlement yet. Generated with
+  tools/procgen/road_network.py, one of a short run of small test
+  dungeons proving out the procedural generation library - see
+  docs/dungeon_bibles/dust_crossing.md and docs/procgen_algorithms.md.
+inspect_text: A crossroads of packed-dirt tracks behind a low dry-stone wall, leading nowhere built yet.

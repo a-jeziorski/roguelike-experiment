@@ -10,6 +10,7 @@ from tools.procgen.base import (
     carve_room,
     connected_component,
     farthest_pair,
+    frame_border,
     is_walkable,
     keep_largest_component,
     to_lvl_yaml,
@@ -78,6 +79,18 @@ def test_carve_l_corridor_connects_both_endpoints():
     carve_l_corridor(grid, 1, 1, 8, 8, random.Random(0))
     comp = connected_component(grid, (1, 1))
     assert (8, 8) in comp
+
+
+def test_frame_border_walls_off_every_edge():
+    grid = Grid.filled(6, 4, "floor")
+    frame_border(grid)
+    for x in range(6):
+        assert grid.get(x, 0) == "wall"
+        assert grid.get(x, 3) == "wall"
+    for y in range(4):
+        assert grid.get(0, y) == "wall"
+        assert grid.get(5, y) == "wall"
+    assert grid.get(2, 1) == "floor"  # interior untouched
 
 
 def test_to_lvl_yaml_round_trips_through_the_real_loader(tmp_path):

@@ -22,7 +22,13 @@ discipline. Every algorithm shares the same shape:
   component extraction, entry/exit chosen to maximize graph distance"
   discipline first used ad hoc for Silver Mountain Caves levels 03-05, see
   `docs/content_design_process.md` §0ae, now reusable), corridor carving
-  (`carve_room`, `carve_l_corridor` for real 90-degree bends), and
+  (`carve_room`, `carve_l_corridor` for real 90-degree bends), `frame_border`
+  (overwrites the outer ring with wall - a hand-authored level is always
+  enclosed on every side, e.g. `data/dungeons/millhaven/levels/level_01.lvl`,
+  but plenty of these algorithms' raw output isn't, so **call
+  `frame_border` before `keep_largest_component`/`farthest_pair` as a
+  standard last step whenever assembling a real dungeon file**, even for
+  an algorithm that mostly keeps clear of the edge on its own), and
   `to_lvl_yaml` (renders a Grid + overlays as a real `.lvl` file's text).
 - Tested in `tests/test_procgen_<name>.py`: seed determinism, bounds
   respected, and connectivity/invariant checks - never exact tile-by-tile
@@ -112,8 +118,10 @@ common and `max_retries` gets burned rediscovering the same asymmetry
 every attempt.
 
 **Worked example**: `data/dungeons/fallen_colonnade/levels/level_01.lvl`
-(45x30, `DEFAULT_TILESET`, seed 5) - an Old Kingdom hall on Dust Reach, an
-even scatter of isolated single-tile pillars across open floor, entrance
+(45x30, `DEFAULT_TILESET`, seed 5, framed with `frame_border` since the
+tileset has no concept of an edge and would otherwise leave floor sitting
+on the map's own boundary) - an Old Kingdom hall on Dust Reach, an even
+scatter of isolated single-tile pillars across open floor, entrance
 placed via `docs/dungeon_bibles/fallen_colonnade.md`. Its
 `dungeon_entrance` sits at (75, 45) in `data/overworld/cells/dust_reach.lvl`.
 
@@ -123,19 +131,23 @@ An agent-based generator, not a grid-fill: four walkers start at the
 grid's center, one heading each cardinal direction, each stepping forward
 and carving `road` over a `plains` field, occasionally turning
 (`turn_chance`) and occasionally spawning a branch walker
-(`branch_chance`, capped by `max_branches`). No buildings, no walls -
-this is purely the road skeleton half of laying out a settlement; building
-footprints are a later, bible-driven authoring pass on top, per the
-project's "draw roads first" settlement-layout convention.
+(`branch_chance`, capped by `max_branches`). No buildings - this is purely
+the road skeleton half of laying out a settlement; building footprints are
+a later, bible-driven authoring pass on top, per the project's "draw
+roads first" settlement-layout convention. The generator's own output has
+no wall anywhere (roads/plains reach every edge); a real dungeon built
+from it should still call `frame_border` afterward and punch one gap
+through for a gate, the same way a real settlement is walled with a
+single entrance (see `data/dungeons/millhaven`).
 
 **Fits bible language like**: "a crossroads," "roads worn into the
 ground before anything's been built," "the leading edge of present-day
 traffic reaching somewhere new" - an outdoor, peaceful, non-progression
 place (`requires_stairs_down: false` on the `dungeon.yaml`, matching
-`data/dungeons/millhaven`'s shape) rather than a combat dungeon. Since the
-whole field is walkable `plains`, roads are a purely visual/flavor
-distinction, not a navigation constraint - there's no "getting lost off
-the road" mechanic here.
+`data/dungeons/millhaven`'s shape) rather than a combat dungeon. Inside
+the boundary, the whole field is walkable `plains`, so roads there are a
+purely visual/flavor distinction, not a navigation constraint - there's
+no "getting lost off the road" mechanic here.
 
 **Signature**: `generate(seed, width, height, turn_chance=0.06,
 branch_chance=0.03, max_branches=10, max_segment_length=300,
@@ -143,10 +155,11 @@ base_kind="plains", road_kind="road")`. Every walker stops at the grid
 edge or after `max_segment_length` steps, whichever comes first.
 
 **Worked example**: `data/dungeons/dust_crossing/levels/level_01.lvl`
-(45x30, seed 2, `turn_chance=0.05, branch_chance=0.04, max_branches=8`) -
-a crossroads on Dust Reach with no settlement built yet, `player_start` at
-the network's own center and a terminal `stairs_up` "gate" placed at
-whichever road tile ended up farthest from center. See
+(45x30, seed 2, `turn_chance=0.05, branch_chance=0.04, max_branches=8`,
+framed with `frame_border` then a single gap punched through the wall
+next to a road tile that originally reached the edge) - a crossroads on
+Dust Reach with no settlement built yet, `player_start` at the network's
+own center and a terminal `stairs_up` "gate" at that gap. See
 `docs/dungeon_bibles/dust_crossing.md`. Its `dungeon_entrance` sits at
 (30, 20) in `data/overworld/cells/dust_reach.lvl`.
 
@@ -175,10 +188,12 @@ larger `wall_margin` means thicker walls and less floor area overall (see
 `test_more_regions_produce_more_floor_area_than_a_single_region`).
 
 **Worked example**: `data/dungeons/cloven_warren/levels/level_01.lvl`
-(45x30, seed 1, `num_regions=9, wall_margin=1`) - an Elder Age warren of
-small partitioned chambers on Dust Reach, no guardian or explanation
-attached. See `docs/dungeon_bibles/cloven_warren.md`. Its
-`dungeon_entrance` sits at (130, 15) in `data/overworld/cells/dust_reach.lvl`.
+(45x30, seed 1, `num_regions=9, wall_margin=1`, framed with `frame_border`
+since a region right at the raster's edge can otherwise reach the map's
+own boundary unwalled) - an Elder Age warren of small partitioned
+chambers on Dust Reach, no guardian or explanation attached. See
+`docs/dungeon_bibles/cloven_warren.md`. Its `dungeon_entrance` sits at
+(130, 15) in `data/overworld/cells/dust_reach.lvl`.
 
 ## Diffusion-limited aggregation (`tools/procgen/dla.py`)
 
@@ -211,7 +226,11 @@ is why the worked example below uses 60x40 rather than the 45x30 the
 other algorithms' test dungeons use).
 
 **Worked example**: `data/dungeons/rootfall_hollow/levels/level_01.lvl`
-(60x40, seed 8, `fill_fraction=0.18, spawn_margin=14, max_attempts=40000`) -
-a natural, no-era hollow on Dust Reach that grew rather than was dug. See
+(60x40, seed 8, `fill_fraction=0.18, spawn_margin=14, max_attempts=40000`,
+still framed with `frame_border` even though the interior-radius cap
+mostly keeps growth off the edge already - a walker's random walk isn't
+itself confined the way its spawn point is, so it can occasionally reach
+and stick right at the true boundary) - a natural, no-era hollow on Dust
+Reach that grew rather than was dug. See
 `docs/dungeon_bibles/rootfall_hollow.md`. Its `dungeon_entrance` sits at
 (100, 80) in `data/overworld/cells/dust_reach.lvl`.

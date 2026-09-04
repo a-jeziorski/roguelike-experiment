@@ -36,10 +36,16 @@ for a player to visit beyond curiosity.
 
 ## Layout notes
 
+- The generated grid is framed with `tools.procgen.base.frame_border`
+  before anything else - `wave_function_collapse`'s default tileset has
+  no concept of an edge, so its raw output otherwise leaves floor sitting
+  right at the map's array boundary, which reads as an unenclosed level
+  rather than a real hall.
 - `player_start` and the single terminal `stairs_down` are placed at the
   two floor tiles `tools.procgen.base.farthest_pair` found furthest apart
   (by 8-directional graph distance) within the level's largest connected
-  component - the same entry/exit placement discipline every other
+  component (computed *after* framing, so neither ever lands on the
+  border) - the same entry/exit placement discipline every other
   procgen-sourced level in this project uses.
 - No `next_level` - reaching the stairs leaves the dungeon and returns
   directly to Dust Reach, the same terminal-stairway pattern

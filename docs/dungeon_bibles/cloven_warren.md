@@ -32,11 +32,14 @@ generator and the content pipeline, not a combat encounter.
 
 ## Layout notes
 
+- The generated grid is framed with `tools.procgen.base.frame_border`
+  before anything else - a region's raster boundary can otherwise reach
+  the map's own array edge, leaving that edge unwalled.
 - `player_start` and the single terminal `stairs_down` sit at the two
   floor tiles `tools.procgen.base.farthest_pair` found furthest apart (by
   8-directional graph distance) within the level's largest connected
-  component, the same placement discipline every other procgen-sourced
-  level in this project uses.
+  component (computed *after* framing), the same placement discipline
+  every other procgen-sourced level in this project uses.
 - Every pair of regions whose raster cells actually touch got a corridor
   between their seed points during generation - the whole warren is
   guaranteed one connected graph, never isolated chambers a player

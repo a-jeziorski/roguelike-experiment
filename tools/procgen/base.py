@@ -148,6 +148,30 @@ def farthest_pair(
     return a, b
 
 
+def frame_border(grid: Grid, tile: str = DEFAULT_WALL) -> None:
+    """Overwrites the outermost ring of the grid with `tile`. Several
+    generators (Voronoi regions, wave function collapse, road networks -
+    anything that doesn't itself guarantee its output stays clear of the
+    edge) can otherwise leave floor sitting right at row/col 0 or
+    width-1/height-1, which reads as an unenclosed level rather than a
+    real bounded space (a hand-authored level is always walled on every
+    side - see e.g. data/dungeons/millhaven/levels/level_01.lvl). Call
+    this - before `keep_largest_component`/`farthest_pair`, so entry/exit
+    placement never lands on a tile this is about to overwrite - as a
+    standard last step whenever assembling a real dungeon file from a
+    generated Grid, unless the algorithm already guarantees an enclosed
+    result on its own (diffusion-limited aggregation's interior-radius
+    cap mostly does, though a walker can still wander to the true edge
+    during its random walk before sticking - so even DLA output should
+    still be framed to be safe)."""
+    for x in range(grid.width):
+        grid.set(x, 0, tile)
+        grid.set(x, grid.height - 1, tile)
+    for y in range(grid.height):
+        grid.set(0, y, tile)
+        grid.set(grid.width - 1, y, tile)
+
+
 def carve_room(grid: Grid, x: int, y: int, w: int, h: int, tile: str = DEFAULT_FLOOR) -> None:
     for yy in range(y, y + h):
         for xx in range(x, x + w):

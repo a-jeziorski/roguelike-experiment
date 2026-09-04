@@ -28,10 +28,16 @@ the generator and the content pipeline, not a combat encounter.
 
 ## Layout notes
 
+- The generated grid is framed with `tools.procgen.base.frame_border`
+  before anything else - the interior-radius cap keeps most of DLA's
+  growth away from the true edge, but a walker's random walk (as opposed
+  to where it spawns) isn't itself confined to that interior, so it can
+  still occasionally reach and stick right at the map's array boundary;
+  framing guarantees the level stays enclosed regardless.
 - `player_start` and the single terminal `stairs_down` sit at the two
   floor tiles `tools.procgen.base.farthest_pair` found furthest apart (by
   8-directional graph distance) within the level's largest connected
-  component.
+  component (computed *after* framing).
 - No `next_level` - reaching the stairs leaves the dungeon and returns
   directly to Dust Reach, the same terminal-stairway pattern
   `fallen_colonnade` and `cloven_warren` both use.
