@@ -223,7 +223,10 @@ are shipped. Each is placed here for quick cross-reference - see
   `sunless_hollow` (a natural,
   sunlight-starved depression south of the mountains, denned by wolves
   since long before Farrow's Stake existed to care - the map's first use
-  of the `dark` level flag, see `docs/content_design_process.md` §0q).
+  of the `dark` level flag, see `docs/content_design_process.md` §0q),
+  `rootfall_hollow` (Dust Reach's fourth dungeon - a hollow that branches
+  outward like roots or mineral veins rather than anything dug; see
+  `docs/dungeon_bibles/rootfall_hollow.md`).
 
 New monster types introduced this pass, all in `data/entities.yaml`:
 `bandit`/`bandit_captain` (Opportunists), `drowned_wretch` (Drowned

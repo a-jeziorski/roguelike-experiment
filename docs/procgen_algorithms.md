@@ -179,3 +179,39 @@ larger `wall_margin` means thicker walls and less floor area overall (see
 small partitioned chambers on Dust Reach, no guardian or explanation
 attached. See `docs/dungeon_bibles/cloven_warren.md`. Its
 `dungeon_entrance` sits at (130, 15) in `data/overworld/cells/dust_reach.lvl`.
+
+## Diffusion-limited aggregation (`tools/procgen/dla.py`)
+
+A single floor tile seeds the grid's center; random walkers spawn near
+the aggregate's current frontier (a square `spawn_margin` tiles beyond its
+farthest floor tile so far - spawning further out, right on the literal
+grid border, causes a saturation artifact, see `_spawn_on_square`'s
+docstring) and take a 4-directional random walk until they touch existing
+floor, at which point they stick. Growth is asymmetric and branching -
+the structure thickens wherever walkers happen to stick more, the way
+roots, cracks, or mineral veins actually grow - visually distinct from
+cellular automata's smooth, evenly-rounded blobs and from Voronoi's
+straight-walled rooms.
+
+**Fits bible language like**: "branches outward like roots or veins,"
+"grew this way rather than being carved," "asymmetric, no two arms alike"
+- a natural, no-era-or-faction site (the same category
+`silver_mountain_caves` belongs to) where the shape itself is the whole
+premise, not a ruin or a built structure.
+
+**Signature**: `generate(seed, width, height, fill_fraction=0.35,
+max_walker_steps=2000, max_attempts=20000, spawn_margin=6)`. Note: the
+aggregate can only grow within a region kept strictly inside the grid
+(`max_interior_radius`, computed from the grid's own dimensions) - on a
+small or very non-square grid this caps how much of `fill_fraction` is
+actually reachable before generation exhausts `max_attempts` and stops
+early; a larger, closer-to-square grid gives the branching structure more
+room to read as branching rather than saturating into a dense blob (this
+is why the worked example below uses 60x40 rather than the 45x30 the
+other algorithms' test dungeons use).
+
+**Worked example**: `data/dungeons/rootfall_hollow/levels/level_01.lvl`
+(60x40, seed 8, `fill_fraction=0.18, spawn_margin=14, max_attempts=40000`) -
+a natural, no-era hollow on Dust Reach that grew rather than was dug. See
+`docs/dungeon_bibles/rootfall_hollow.md`. Its `dungeon_entrance` sits at
+(100, 80) in `data/overworld/cells/dust_reach.lvl`.

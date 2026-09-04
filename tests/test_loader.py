@@ -1476,6 +1476,7 @@ SHIPPED_DUNGEON_IDS = {
     "fallen_colonnade",
     "dust_crossing",
     "cloven_warren",
+    "rootfall_hollow",
 }
 
 COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern"]
@@ -1957,7 +1958,7 @@ def test_load_overworld_real_shipped_content_is_a_pure_stitch_of_its_two_cells()
     assert overworld.height == 180
     assert overworld.player_start == (179, 136)
     assert overworld.player_start_tile == "plains"
-    assert len(overworld.dungeon_entrances) == 20  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post and Weeping Cistern + Dust Reach's Fallen Colonnade, Dust Crossing, and Cloven Warren
+    assert len(overworld.dungeon_entrances) == 21  # heartlands' 15 (windbreak_hold retired, folded into farrows_stake) + Northern Steppe's Watch Post and Weeping Cistern + Dust Reach's Fallen Colonnade, Dust Crossing, Cloven Warren, and Rootfall Hollow
     assert len(overworld.tile_descriptions) == 6  # heartlands' 3 signposts + Northern Steppe's 3 remaining landmarks
 
     heartlands, cell_errors = _parse_overworld_cell(
@@ -2043,6 +2044,7 @@ def test_load_overworld_dust_reach_is_reachable_from_the_player_start():
         (75, 45, "fallen_colonnade"),
         (30, 20, "dust_crossing"),
         (130, 15, "cloven_warren"),
+        (100, 80, "rootfall_hollow"),
     }
 
     cragspine, cragspine_errors = _parse_overworld_cell(
