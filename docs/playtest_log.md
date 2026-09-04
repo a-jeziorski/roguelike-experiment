@@ -164,3 +164,84 @@ one-glyph-per-cell reason, though not verified here.
   `description` + `announce: true`. Confirmed this is the intended exit
   mechanic (not a bug - `next_level: null` is the established convention
   used by ~15 other dungeons), just missing the usual flavor polish.
+
+## 2026-09-04 (2) - Northern Steppe recon hook (The Watch Post)
+
+Replay: `saves/playtest_20260904_084812.jsonl` (23 frames).
+
+Focus: `northern_watch_post` - per memory the current end of the main story
+chain, not yet playtested via the CLI. `testbuild` into the dungeon
+(deliberately "no hostile roster" per its own `dungeon.yaml` description),
+talked to its NPCs, and checked the quest wiring `docs/region_bibles/
+northern_steppe.md` describes for this location.
+
+### Finding - `a_warning_worth_carrying` has no prerequisite gate, unlike its sibling quest
+
+Talking to the Sentry immediately granted **A Warning Worth Carrying**
+(`questgiver_entity_id: watch_post_sentry` in `data/quests.yaml`) even
+though **Word from the North** - the quest that's supposed to actually send
+the player here (`target_dungeon_id: northern_watch_post`, itself gated
+`requires_quest_id: spreading_the_warning`) - had never been given or
+completed. Confirmed via `quests`: `word_from_the_north` doesn't even
+appear in the log, while `a_warning_worth_carrying` shows as active,
+carrying dialogue ("The Sentry's watched this road long enough to know
+Millhaven's closer to whatever's coming...") that presupposes context
+(the horde, the ash-scarred land north of here) the player was never given.
+
+Checked `data/quests.yaml`: of every quest in the file, only two use
+`requires_quest_id` at all (`a_wall_worth_holding`→`goblin_warning` and
+`word_from_the_north`→`spreading_the_warning`) - `a_warning_worth_carrying`
+has no such field, so simply talking to the Sentry grants it regardless of
+prior quest state. The region bible is explicit that the intended path is
+"Reached via `word_from_the_north` ... and `a_warning_worth_carrying`" (a
+sequential pair), so this looks like a real gap rather than an intentional
+ungated NPC.
+
+**How reachable is this normally (not via `testbuild`)?** Checked
+`data/overworld/cells.lvl` and `cells/northern_steppe.lvl` for any
+flag/quest-conditional gating on the overworld connection or the dungeon
+entrance tile itself - found none (no `flag`/`gate`/`require` references at
+all), consistent with how every other dungeon entrance in this game works
+(a static, always-walkable tile). So this isn't purely a `testbuild`
+artifact: a player who physically walks to the Northern Steppe before ever
+picking up `spreading_the_warning` could reach the Sentry and pick up this
+quest out of order in real, non-`testbuild` play too - just a much less
+likely path than the intended one, since reaching the region at all
+presumes a lot of prior travel. Didn't fully verify there's no *other*
+soft gate (e.g. distance/danger alone discouraging early arrival) beyond
+what's checked here.
+
+**Suggested follow-up (not fixed here):** add
+`requires_quest_id: word_from_the_north` (or `spreading_the_warning`) to
+`a_warning_worth_carrying` in `data/quests.yaml`, matching how its sibling
+quest is already gated - one-line fix if confirmed worth making.
+
+### Finding - hostile/peaceful entity glyph collisions exist at the data level, but none currently ship together
+
+Ran the same glyph-collision check from the previous session's Finding 2
+against `data/entities.yaml` (65 entity defs) instead of items. Found
+several *hostile vs. peaceful* pairs sharing a glyph: `villager`
+(peaceful) / `vulture` (hostile) both `v`; `bandit` (hostile) /
+`millhaven_debtor` (peaceful) both `b`; `drowned_wretch` (hostile) /
+`millhaven_trainer` (peaceful) both `d`; `wolf` (hostile) /
+`grey_valley_weaver` (peaceful) both `w`; `warden` (hostile) /
+`saltmarsh_witch` (peaceful) both `W`; plus a three-way collision on `c`
+and `s`. Unlike the item/terrain collisions found last session, **none of
+these actually co-occur in any single shipped dungeon level** - checked
+every `.lvl` file each colliding id appears in and confirmed no overlap
+(e.g. `vulture` only ever spawns in `broken_watch/level_01`, `villager`
+never does). So this doesn't manifest as a live bug in anything currently
+shipped - it's a latent risk for whoever places new content later (a new
+level combining, say, wolves and a villager NPC would silently create the
+exact "can't tell hostile from peaceful by glyph alone" problem already
+seen with items). Noting it now so it's on record before it bites a future
+level, not because it's broken today.
+
+### Positive confirmations
+
+- The Watch Post's `dungeon.yaml` claim ("no hostile roster here at all")
+  checked out: `entities` listed only a Sentry and two Villagers, all
+  peaceful.
+- The Sentry NPC has a proper small building (matches
+  [[feedback_stationary_npcs_need_buildings]] - nothing standing exposed in
+  open plains here).
