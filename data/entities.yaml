@@ -308,7 +308,11 @@ saltmarsh_witch:
   stationary: true
   description: Brews potions for the townsfolk. They tolerate her eccentricity in exchange.
   dialogue: Step right up deary. Have I got brews for you!
-  shop_inventory: [healing_potion, teleportation_potion, shadow_cloak_pin]
+  shop_inventory: [
+    healing_potion, teleportation_potion, shadow_cloak_pin,
+    antidote_potion, vigor_elixir, swiftness_draught, shadow_vial, bottled_second_sight,
+    sure_footing_draught, smoke_bomb, bezoar_of_clarity, ironroot_draught,
+  ]
 
 saltmarsh_elder:
   name: Elder

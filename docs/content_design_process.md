@@ -4151,6 +4151,23 @@ non-debug `testbuild` character walked up to Millhaven's Old Drillmaster
 and learned Marked for Death and War Horn through the ordinary `learn`
 action, no `--perk` injection involved.
 
+**Potions**: all nine (`antidote_potion` through `ironroot_draught`)
+added to `saltmarsh_witch`'s `shop_inventory` - the one existing shop
+whose own flavor text ("Brews potions for the townsfolk... Have I got
+brews for you!") already made it the obvious, narratively-fitting home,
+rather than splitting them arbitrarily across the four shops. All nine
+already carried real `cost` values (20-55 gold) that nothing had ever
+used, unlike `iron_sword`/`chain_mail`-style dungeon floor loot, which
+don't - a signal the original design already intended shop placement over
+scattering them onto dungeon floors. Shop inventory is a name-driven list,
+never rendered as a map glyph, so this sidesteps
+[[project_glyph_collisions_and_phase_through_render_gap]]'s "8 of 9 share
+`!` with Healing Potion" concern entirely - nothing about this placement
+puts two different `!`-glyph items on the same visible tile. Live-verified:
+a non-debug `testbuild` character bought an Elixir of Vigor and a Bezoar
+of Clarity from the Witch for the correct gold amounts (40 and 50) through
+the ordinary `buy` action.
+
 Settle the throughline **before** drawing any map. The engine exposes four
 story surfaces to the player: a level's `name` (shown in the HUD), an
 entity/item's `description`, a per-legend-entry `description` that
