@@ -116,3 +116,36 @@ every attempt.
 even scatter of isolated single-tile pillars across open floor, entrance
 placed via `docs/dungeon_bibles/fallen_colonnade.md`. Its
 `dungeon_entrance` sits at (75, 45) in `data/overworld/cells/dust_reach.lvl`.
+
+## Road network (`tools/procgen/road_network.py`)
+
+An agent-based generator, not a grid-fill: four walkers start at the
+grid's center, one heading each cardinal direction, each stepping forward
+and carving `road` over a `plains` field, occasionally turning
+(`turn_chance`) and occasionally spawning a branch walker
+(`branch_chance`, capped by `max_branches`). No buildings, no walls -
+this is purely the road skeleton half of laying out a settlement; building
+footprints are a later, bible-driven authoring pass on top, per the
+project's "draw roads first" settlement-layout convention.
+
+**Fits bible language like**: "a crossroads," "roads worn into the
+ground before anything's been built," "the leading edge of present-day
+traffic reaching somewhere new" - an outdoor, peaceful, non-progression
+place (`requires_stairs_down: false` on the `dungeon.yaml`, matching
+`data/dungeons/millhaven`'s shape) rather than a combat dungeon. Since the
+whole field is walkable `plains`, roads are a purely visual/flavor
+distinction, not a navigation constraint - there's no "getting lost off
+the road" mechanic here.
+
+**Signature**: `generate(seed, width, height, turn_chance=0.06,
+branch_chance=0.03, max_branches=10, max_segment_length=300,
+base_kind="plains", road_kind="road")`. Every walker stops at the grid
+edge or after `max_segment_length` steps, whichever comes first.
+
+**Worked example**: `data/dungeons/dust_crossing/levels/level_01.lvl`
+(45x30, seed 2, `turn_chance=0.05, branch_chance=0.04, max_branches=8`) -
+a crossroads on Dust Reach with no settlement built yet, `player_start` at
+the network's own center and a terminal `stairs_up` "gate" placed at
+whichever road tile ended up farthest from center. See
+`docs/dungeon_bibles/dust_crossing.md`. Its `dungeon_entrance` sits at
+(30, 20) in `data/overworld/cells/dust_reach.lvl`.

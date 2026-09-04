@@ -195,6 +195,10 @@ are shipped. Each is placed here for quick cross-reference - see
   (Dust Reach's first dungeon - a pillared hall out on genuinely
   unmapped ground, empty rather than squatted, since nobody's found it
   yet; see `docs/dungeon_bibles/fallen_colonnade.md`).
+- **Settlers, not yet settled**: `dust_crossing` (Dust Reach's second
+  dungeon - a road network with no buildings yet, the leading edge of
+  present-day traffic reaching this far out rather than an actual
+  settlement; see `docs/dungeon_bibles/dust_crossing.md`).
 - **Settlers**: `millhaven`, `wayford` (the largest, a crossroads hub),
   `stonebridge` (fortified, near `broken_watch`), `saltmarsh` (coastal,
   near `drowned_waystation`), `grey_valley_monastery` (settlers occupying
