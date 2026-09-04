@@ -28,7 +28,7 @@ map: |
   ###########FFFF##########F##FFmjF##FF####FFF##
   ##F#########FF##########FFFFFFFFF##FFF##FFFF##
   #FFF########FF#########mFFFFFFFFF##FmFFFFFF###
-  #FFFFFFFFFFFFFF########FFFFFFFFF####FFFFFF####
+  #FFFFFFFnFFFFFF########FFFFFFFFF####FFFFFF####
   #FFFFFFFFFFFFFF########FFFFFFFF######FFFFFF###
   #FFFFFFFFFFFFFF#########FFFFFF########FFFFF###
   ##FFFFFF###FFF#######################FFFkFFF##
@@ -54,3 +54,4 @@ legend:
   "j": { tile: floor, item: healing_potion }
   "l": { tile: floor, decoration: cobwebs }
   "m": { tile: floor, decoration: rubble }
+  "n": { tile: floor, item: battle_axe }

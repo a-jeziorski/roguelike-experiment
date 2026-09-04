@@ -16,11 +16,11 @@ map: |
   #FFFdFFFeFFFFFF####FFFF#######
   ##FFFFFFFFFFFFFF#FFFFFFF######
   ##FFFFFFFFFFFFFFFFFFjFFF######
-  ##FFFFFFFFfFFFFFFFFFFFFFF#####
+  ##FFFFFFFFfFFFFFFFFFlFFFF#####
   ##FFFFFFFFFFFFFFFFFFFgFFjF####
   ###FFFFFFFFFFFFhFFFFFFFFFFF###
   ####FFFFFFiFFFFFFFFFFFFFFFFF##
-  ####FFFFFjFFFF##FFFFFFFFFFFFF#
+  ####kFFFFjFFFF##FFFFFFFFFFFFF#
   ###FFFFFFFFFF#########FFFFFFF#
   ####FFFFFFF###############FF##
   ##############################
@@ -42,3 +42,5 @@ legend:
   "b": { tile: floor, item: healing_potion }
   "e": { tile: floor, item: healing_potion }
   "j": { tile: floor, decoration: bones }
+  "k": { tile: floor, item: broadsword }
+  "l": { tile: floor, item: studded_leather_armor }

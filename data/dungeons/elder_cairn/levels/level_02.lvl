@@ -9,8 +9,8 @@ map: |
   ###########FF###########
   #########FFFbFF#########
   #########FFFcFF#########
-  #######FFFFFFFFFF#######
-  #######FFFFFFFFFF#######
+  #######FFFiFFFFFF#######
+  #######FFFjFFFFFF#######
   #######FFFFFFFFFF#######
   #FFF#######FF#######FFF#
   #FdF####FFFFFFFF####FeF#
@@ -37,3 +37,5 @@ legend:
   "d": { tile: floor, item: bone_plate }
   "e": { tile: floor, item: healing_potion }
   "h": { tile: floor, decoration: bones }
+  "i": { tile: floor, item: war_hammer }
+  "j": { tile: floor, item: elder_bow }

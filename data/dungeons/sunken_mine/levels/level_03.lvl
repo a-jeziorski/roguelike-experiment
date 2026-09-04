@@ -10,7 +10,7 @@ map: |
   ###F#############FcccccF#
   #FFFFFFFFFFFF####pFFdFFF#
   #FFeFFFFFfFFF####FFFFFFp#
-  #FFFFogohFFFFFFiFFFFjFFF#
+  #FFFFogohFsFFFFiFFFFjFFF#
   #FqFFFFFFFFrF####FFFkFFF#
   #FFFlFFFFFmFF####FFFFFFF#
   #FFFFFFFFFFFF####FFnFFFF#
@@ -42,3 +42,4 @@ legend:
   "p": { tile: floor, decoration: rubble }
   "q": { tile: floor, decoration: barrel }
   "r": { tile: floor, decoration: crate }
+  "s": { tile: floor, item: orcish_bow }

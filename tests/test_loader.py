@@ -1574,7 +1574,7 @@ def test_prison_tower_level_04_content():
     level = load_level(PRISON_TOWER_LEVELS_DIR / "level_04.lvl", catalog)
 
     item_names = sorted(s.item.name for s in level.item_spawns)
-    assert item_names == ["Gold Stash"]
+    assert item_names == ["Crossbow", "Gold Stash"]
 
 
 def test_sunken_mine_gold_placements():

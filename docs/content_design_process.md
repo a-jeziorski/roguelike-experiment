@@ -4168,6 +4168,28 @@ a non-debug `testbuild` character bought an Elixir of Vigor and a Bezoar
 of Clarity from the Witch for the correct gold amounts (40 and 50) through
 the ordinary `buy` action.
 
+**Gear**: all seven (`broadsword`, `battle_axe`, `war_hammer`,
+`studded_leather_armor`, `orcish_bow`, `crossbow`, `elder_bow`) added as
+dungeon floor loot, one new legend entry plus one map-tile edit each,
+following the existing `iron_sword`/`chain_mail`-style placement (no
+`cost` field on any of them, same as those two, so shop stock was never
+the intended fit). Placed with a light thematic pass rather than
+arbitrarily: `war_hammer` and `elder_bow` both went into Elder Cairn's
+"Heart of the Cairn" - a hammer against stone constructs, and a bow whose
+own flavor text ("older than whoever last strung it") matches a dungeon
+literally named for its own age; `crossbow` into Prison Tower's Gatehouse,
+which already spawns a `crossbow_guard`; `orcish_bow` into Sunken Mine
+(goblins on every level); `broadsword` and `studded_leather_armor` into
+Sunless Hollow, a wolf-den level with almost no existing loot;
+`battle_axe` into Silver Mountain Caves' `level_03`, similarly light on
+loot relative to its neighbors. Full test suite passes (1611 tests,
+including an updated content-snapshot assertion for Prison Tower's
+`level_04` that now expects the Crossbow). Live-verified via `entities`
+in Elder Cairn: both War Hammer and Elder Bow appear as real, spawned
+item entities at their placed coordinates.
+
+## 1. Narrative framing
+
 Settle the throughline **before** drawing any map. The engine exposes four
 story surfaces to the player: a level's `name` (shown in the HUD), an
 entity/item's `description`, a per-legend-entry `description` that

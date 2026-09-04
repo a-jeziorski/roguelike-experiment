@@ -3,7 +3,7 @@ name: The Gatehouse
 
 map: |
   ########################
-  #FFFFFFFFFFFFFFFFFFFFFF#
+  #FFFFFFFkFFFFFFFFFFFFFF#
   #@iFjFFFFFFFFFFFFFFFFFF#
   #FFFFFFFFFFFFFFFFFFFFFF#
   #FFFFFF##FFFF##FFFFFFFF#
@@ -31,3 +31,4 @@ legend:
   "h": { tile: floor, decoration: chest }
   "i": { tile: floor, decoration: barrel }
   "j": { tile: floor, decoration: crate }
+  "k": { tile: floor, item: crossbow }
