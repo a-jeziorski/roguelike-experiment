@@ -15,28 +15,24 @@ Read this before trusting a CLI-only bug report against a monster: see
 §2026-09-04's first finding before concluding a monster-targeted skill is
 broken from a multi-command `play_llm.py` session.
 
-## Summary of open findings (updated after each session)
+## Summary of findings (updated after each session)
 
-Ranked roughly by how actionable/impactful they are. All still open -
-flagged per this repo's convention, not fixed here. See each session below
-for full detail; memory files (`[[name]]`) carry the same content for
+Ranked roughly by how actionable/impactful they were. See each session
+below for full detail; memory files (`[[name]]`) carry the same content for
 future sessions to build on.
 
-**High-value content gaps** (engine mechanics all verified correct - as of
-session 13, literally every one of the 20 brainstorm items has been
-individually live-confirmed working via `play_llm.py` - the gap is purely
-that nothing places this content anywhere reachable):
-1. [[project_perks_unreachable_in_content]] - all 10 of the newest active-
-   skill perks are taught by zero trainers. Likely the single biggest gap
-   found across every session so far.
-2. [[project_potions_unreachable_in_content]] - 9 of 11 potions are placed
-   in zero shops/dungeons.
-3. [[project_gear_unreachable_in_content]] - 7 mid/high-tier weapons and
-   armor pieces, same pattern.
-
-Together: of the "10 potions + 10 perks" brainstorm this repo's own memory
-once described as fully shipped, a real player can currently reach exactly
-1 of 20 items without a debug tool.
+**FIXED (2026-09-04, at the user's request, after the testing loop ended)**
+- all three content-reachability gaps below were closed in one follow-up
+pass: [[project_perks_unreachable_in_content]] (all 10 perks added to both
+trainers' curricula), [[project_potions_unreachable_in_content]] (all 9
+potions added to `saltmarsh_witch`'s shop), and
+[[project_gear_unreachable_in_content]] (all 7 gear items placed as
+dungeon floor loot across 5 dungeons). Each live-verified via the ordinary
+`learn`/`buy`/`entities` actions, full test suite passing. See
+`docs/content_design_process.md` §0bj for the write-up. Of the "10 potions
++ 10 perks" brainstorm this repo's own memory once described as fully
+shipped, a real player could reach exactly 1 of 20 items without a debug
+tool before this fix - now all 20.
 
 **Real bugs, smaller scope:**
 - [[project_dungeon_exit_message_lost]] - the generic dungeon-exit
