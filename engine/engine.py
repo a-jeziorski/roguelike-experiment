@@ -135,22 +135,27 @@ ENVIRONMENTAL_HAZARD_MESSAGES: dict[str, str] = {
     "dunes": "Wind-driven sand tears at exposed skin and eyes.",
     "ashen_plains": "Ash-choked ground scrapes at exposed skin with every step.",
     "blighted_forest": "Something in the blighted air burns to breathe here.",
+    # A corrupted road - added per explicit user feedback (2026-09-05):
+    "ashen_road": "The road's still underfoot, but the air over it burns the same as the ash to either side.",
 }
 
 # Random-encounter chance (Engine._maybe_trigger_visitor_band_encounter)
-# checked every turn spent on ashen_plains/blighted_forest - a second, more
-# dramatic way the Northern Steppe's corruption stands out from an ordinary
-# hazard tile like dunes (the user's own framing), on top of the shared
-# chip damage above. Modeled on the same "pull the player off the
-# overworld into a dedicated encounter dungeon" shape as goblin_ambush
-# (data/encounters.yaml, docs/content_design_process.md §0g) rather than
-# spawning monsters directly onto the overworld map - see main.py's
-# VISITOR_BAND_AMBUSH_DUNGEON_ID/_redirect_into_visitor_band for the actual
-# handoff, and roll_visitor_band below for the random band itself.
-# Deliberately NOT extended to dunes: the Scoured Reach isn't the
-# Visitor's territory, so nothing in this roster belongs there.
+# checked every turn spent on ashen_plains/blighted_forest/ashen_road - a
+# second, more dramatic way the Northern Steppe's corruption stands out
+# from an ordinary hazard tile like dunes (the user's own framing), on top
+# of the shared chip damage above. Modeled on the same "pull the player
+# off the overworld into a dedicated encounter dungeon" shape as
+# goblin_ambush (data/encounters.yaml, docs/content_design_process.md
+# §0g) rather than spawning monsters directly onto the overworld map -
+# see main.py's VISITOR_BAND_AMBUSH_DUNGEON_ID/_redirect_into_visitor_band
+# for the actual handoff, and roll_visitor_band below for the random band
+# itself. Deliberately NOT extended to dunes: the Scoured Reach isn't the
+# Visitor's territory, so nothing in this roster belongs there. `ashen_road`
+# is included - a corrupted road that stayed a safe, encounter-free lane
+# through otherwise-dangerous ground would undercut the whole mechanic
+# (explicit user feedback, 2026-09-05).
 VISITOR_BAND_ENCOUNTER_CHANCE = 0.1
-VISITOR_BAND_TILE_KINDS = frozenset({"ashen_plains", "blighted_forest"})
+VISITOR_BAND_TILE_KINDS = frozenset({"ashen_plains", "blighted_forest", "ashen_road"})
 
 # Row bands within the Northern Steppe cell
 # (data/overworld/cells/northern_steppe.lvl) that a rolled band's
@@ -1379,16 +1384,21 @@ class Engine:
         _apply_region_corruption_phase.
 
         Separately from applying the phase, flags pending_corruption_transition
-        when the player is within *that phase's own radius* of the
-        epicenter - the same Chebyshev measure the tile remap itself just
-        used, not a separate "is the player in this cell" check (which
-        would need per-cell bounding-box bookkeeping this engine has no
-        other reason to keep). Deliberately not set by
-        _apply_region_corruption_phase itself, since that method is also
-        used to replay already-applied phases on save load (see
-        engine/save.py's restore_save) - a reloaded save should never
-        queue a fade transition for something the player didn't just
-        watch happen live."""
+        when the player is within roughly *that phase's own radius* of the
+        epicenter - a plain Euclidean-distance check, not the exact
+        noise-perturbed boundary apply_corruption_radius itself uses (this
+        is a "was the player probably just affected" signal for a fade
+        transition, not a pixel-perfect match - close enough that a
+        player right at the noisy edge might occasionally get a fade for
+        a tile that didn't actually flip, or miss one that did, which is
+        harmless for a cosmetic cue). Not a separate "is the player in
+        this cell" check either (which would need per-cell bounding-box
+        bookkeeping this engine has no other reason to keep). Deliberately
+        not set by _apply_region_corruption_phase itself, since that
+        method is also used to replay already-applied phases on save load
+        (see engine/save.py's restore_save) - a reloaded save should
+        never queue a fade transition for something the player didn't
+        just watch happen live."""
         for corruption in self.region_corruption_defs:
             applied = self.quest_log.corruption_phase.get(corruption.cell_id, 0)
             starting_applied = applied
@@ -1399,7 +1409,8 @@ class Engine:
                 self._apply_region_corruption_phase(corruption, phase)
                 applied += 1
                 ex, ey = corruption.epicenter
-                if max(abs(self.player.x - ex), abs(self.player.y - ey)) <= phase.radius:
+                dx, dy = self.player.x - ex, self.player.y - ey
+                if dx * dx + dy * dy <= phase.radius * phase.radius:
                     self.pending_corruption_transition = corruption.cell_id
             # Only write back when something actually applied - keeps a
             # cell with nothing due yet absent from the dict entirely

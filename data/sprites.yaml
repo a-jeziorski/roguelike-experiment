@@ -177,6 +177,7 @@ tile_kinds:
   ashen_plains:     {sheet: kenney_roguelike, col: 7,  row: 0}   # scorched grey ground, same "biome texture" style as plains/dunes/road above
   blighted_forest:  {sheet: kenney_roguelike, col: 27, row: 9, backdrop: ashen_plains}   # a bare, leafless tree - forest's dead counterpart
   scoured_ground:   {sheet: kenney_roguelike, col: 7,  row: 0}   # identical sprite to ashen_plains, deliberately - see engine/render.py's TILE_VISUALS comment
+  ashen_road:       {sheet: kenney_roguelike, col: 7,  row: 0}   # a corrupted road - same sprite as ashen_plains/scoured_ground, see engine/game_map.py's _CORRUPTIBLE_TILE_REMAP
 
 # Per-dungeon overworld entrance icons - keyed by dungeon registry id, not
 # tile kind, since every dungeon_entrance cell shares one TileType but

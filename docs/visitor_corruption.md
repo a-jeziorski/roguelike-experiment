@@ -175,17 +175,21 @@ Applying a phase does up to three things, in a fixed order:
 
 1. **Tile remap** (`apply_corruption_radius`, new function in
    `engine/game_map.py`, generalizing `apply_dungeon_destruction`'s tile
-   swap to many tiles at once): iterate the bounding box
-   `epicenter ± radius` (not the whole map - cheap even at the largest
-   radius used here), and for every `(x, y)` within that Chebyshev
-   distance whose *current* kind is `plains` or `forest` (i.e., still
-   pristine - already-corrupted tiles from an earlier phase or
+   swap to many tiles at once): iterate a bounding box around the
+   epicenter (padded a little past `radius` - cheap even at the largest
+   radius used here), and for every `(x, y)` within (roughly - see below)
+   that distance whose *current* kind is `plains`/`forest`/`road` (i.e.,
+   still pristine - already-corrupted tiles from an earlier phase or
    hand-authored at ship time are a no-op, and structural tiles -
-   `road`, `dungeon_entrance`, `landmark`, `stairs` - are never touched),
-   swap `plains -> ashen_plains` / `forest -> blighted_forest` via the
-   same `TILE_PASSABILITY`-driven walkable/transparent update
-   `apply_dungeon_destruction` already uses. Idempotent and safe to
-   replay from save.
+   `dungeon_entrance`, `landmark`, `stairs`, walls - are never touched),
+   swap `plains -> ashen_plains` / `forest -> blighted_forest` /
+   `road -> ashen_road` via the same `TILE_PASSABILITY`-driven
+   walkable/transparent update `apply_dungeon_destruction` already uses.
+   Idempotent and safe to replay from save. **"Roughly" that distance,
+   not exactly** - see the "Resolved" note near the end of this document
+   (2026-09-05): the boundary is Euclidean distance plus a deterministic,
+   per-tile organic wobble, not a clean circle or (as first shipped) a
+   Chebyshev square.
 2. **Raze**, if this phase carries `raze_dungeon_id`: call
    `self.destroy_dungeon(raze_dungeon_id)` **unmodified** - already
    idempotent, already fails/voids the right quests via
@@ -435,7 +439,9 @@ Small, independently testable/committable steps, in dependency order:
      radii 30/50/65 across days 80/110/140 were chosen so the day-140
      raze phase's radius (65) just clears that distance, making the
      visible corruption front and the razing feel connected rather than
-     coincidental.
+     coincidental. **Superseded 2026-09-05** - the metric changed from
+     Chebyshev to Euclidean (see "Resolved from real playtesting" below),
+     making the real distance ~68.7 and the shipped radius 72, not 65.
    - **Only 3 of the eventual 4 phases are authored.** The final phase
      (day 170, "maximum corruption" + uncovering the two Elder Age
      landmarks) needs `elder_dig_site_a`/`elder_dig_site_b` to exist as
@@ -574,3 +580,63 @@ Small, independently testable/committable steps, in dependency order:
   Silver-Mountain-scale footprints, per the "Content still to author"
   item 2 rewrite above), not the short shells the first draft assumed -
   the single biggest scope change since the first draft.
+
+## Resolved from real playtesting (2026-09-05)
+
+The user actually explored the mechanic in-game after step 4 shipped and
+found two real problems, both fixed the same session. **Every earlier
+mention in this document of "Chebyshev distance" or a square/clipped-box
+boundary describes the pre-fix behavior** - kept as-written rather than
+silently edited, the same "a past pass's own reasoning stays as written"
+convention this project already follows elsewhere, but superseded by
+what's below wherever the two disagree.
+
+- **The corruption boundary was a perfect rectangle and read as
+  industrially paved, not organic.** `apply_corruption_radius`
+  (`engine/game_map.py`) originally used Chebyshev distance - a clipped
+  square by construction, with perfectly straight edges and sharp
+  corners. Fixed by switching to Euclidean distance *and* layering a
+  deterministic, per-tile organic "wobble" on top
+  (`_corruption_edge_noise`/`_corruption_noise_amplitude`): coarse-grained
+  smooth value noise (an 8-tile noise cell, bilinearly interpolated),
+  seeded from the epicenter, that shifts each tile's effective inclusion
+  threshold by up to 6 tiles either way once the radius is large enough
+  for that to matter (a linear ramp from 0 wobble at radius <= 5 up to
+  the full 6-tile cap by radius ~17, so small radii - the kind unit tests
+  use for exact-coverage assertions - stay a clean, predictable circle).
+  **The load-bearing constraint this had to preserve**: the noise is a
+  pure function of `(tile, epicenter)` alone, never of `radius` or call
+  history, which is what keeps `apply_corruption_radius`'s
+  idempotency/replay-safety guarantee intact (a growing-radius replay on
+  save load must still land on exactly the same tiles as one direct call
+  at the final radius - re-verified with a dedicated test after the
+  change). Real content's radii needed re-tuning as a consequence: the
+  Watch Post's razing phase (`data/overworld/cells/northern_steppe.corruption.yaml`)
+  moved from radius 65 (just enough under the old Chebyshev metric) to
+  72 (enough to clear the new Euclidean distance of ~68.7, verified
+  against the real noise value at that exact tile, plus a few tiles of
+  margin - a radius chosen to exactly graze a target coordinate is
+  fragile by construction and shouldn't be repeated).
+- **Roads had no corrupted variant, so a road running through corrupted
+  ground stayed a "safe lane"** - no chip damage, no `visitor_band_ambush`
+  risk, an unintended (if mechanically interesting) side effect the user
+  explicitly didn't want. Fixed with a new `TileType`, `ashen_road`
+  (`content/schema.py`) - `road`'s own glyph, recolored to match
+  `ashen_plains`/`scoured_ground`'s palette and reusing their sprite
+  (`data/sprites.yaml`), added to `_CORRUPTIBLE_TILE_REMAP`
+  (`engine/game_map.py`), `Engine.ENVIRONMENTAL_HAZARD_MESSAGES`, and
+  `Engine.VISITOR_BAND_TILE_KINDS` (`engine/engine.py`) - the same three
+  places `ashen_plains`/`blighted_forest` are already registered, so a
+  corrupted road now carries identical chip damage and ambush risk to
+  the ground around it.
+- Tests: `tests/test_game_map.py` rewritten for the new circular-not-
+  square shape (a radius-1 circle covers the center plus its 4 orthogonal
+  neighbors, not the old full 3x3 square) plus new tests proving genuine
+  irregularity (a tile well outside the nominal radius gets included in
+  one direction while a tile exactly *at* the nominal radius is excluded
+  in another) and pinning the idempotency guarantee still holds. New
+  `ashen_road` tests added alongside the existing `ashen_plains`/
+  `blighted_forest` ones in `tests/test_engine.py` (hazard damage, ambush
+  arming) and `tests/test_game_map.py` (the remap itself). Two existing
+  `tests/test_engine.py` tests that asserted the old square coverage were
+  updated to the new circular one. Full suite: 1669 passed.

@@ -555,58 +555,137 @@ def apply_dungeon_destruction(
 
 
 # The Visitor's corruption remap table (see apply_corruption_radius below,
-# docs/visitor_corruption.md) - only these two tile kinds ever corrupt.
+# docs/visitor_corruption.md) - only these three tile kinds ever corrupt.
 # Every other kind, including an already-corrupted ashen_plains/
-# blighted_forest (whether hand-authored at ship time or remapped by an
-# earlier phase), is left untouched - see apply_corruption_radius's own
-# docstring for why that's what makes it idempotent/replay-safe.
+# blighted_forest/ashen_road (whether hand-authored at ship time or
+# remapped by an earlier phase), is left untouched - see
+# apply_corruption_radius's own docstring for why that's what makes it
+# idempotent/replay-safe. `road` is included (not left as an untouched
+# "safe lane" through corrupted ground, per explicit user feedback
+# 2026-09-05) - `ashen_road` carries the same hazard/encounter treatment
+# as ashen_plains/blighted_forest (Engine.ENVIRONMENTAL_HAZARD_MESSAGES/
+# VISITOR_BAND_TILE_KINDS), it just keeps road's own glyph so it still
+# reads as a path.
 _CORRUPTIBLE_TILE_REMAP: dict[str, str] = {
     "plains": "ashen_plains",
     "forest": "blighted_forest",
+    "road": "ashen_road",
 }
+
+
+# How far apply_corruption_radius's boundary "wobble" (see
+# _corruption_edge_noise) can push the effective radius in or out, at the
+# largest radii this project's content ever uses - a flat cap rather than
+# a fraction of radius, so a huge radius (saturating most of a region)
+# gets the same organic-looking fringe width as a modest one, not an
+# ever-thicker one. Ramped up to over _CORRUPTION_NOISE_RAMP_START tiles
+# (below) rather than applied from radius 0, so a small radius (the kind
+# unit tests use for exact-coverage assertions) still corrupts a plain,
+# predictable circle - the ramp only matters once a radius is already
+# large enough for irregularity to read as organic rather than as "this
+# tiny area is oddly shaped."
+_CORRUPTION_NOISE_MAX_AMPLITUDE = 6.0
+# Radius below which there's no wobble at all; the amplitude ramps
+# linearly from 0 at this radius up to the cap above by
+# _CORRUPTION_NOISE_MAX_AMPLITUDE / _CORRUPTION_NOISE_RAMP_RATE tiles past it.
+_CORRUPTION_NOISE_RAMP_START = 5.0
+_CORRUPTION_NOISE_RAMP_RATE = 0.5
+
+
+def _corruption_noise_amplitude(radius: int) -> float:
+    return max(0.0, min(_CORRUPTION_NOISE_MAX_AMPLITUDE, (radius - _CORRUPTION_NOISE_RAMP_START) * _CORRUPTION_NOISE_RAMP_RATE))
+
+
+def _corruption_edge_noise(x: int, y: int, epicenter: tuple[int, int]) -> float:
+    """Deterministic smooth value noise in [-1, 1] at map coordinate
+    (x, y), seeded from `epicenter` - every RegionCorruptionDef gets its
+    own fixed, irregular boundary "wobble" that's a pure function of
+    (x, y, epicenter) alone, with **no dependency on radius or call
+    history**. That purity is load-bearing: apply_corruption_radius's own
+    idempotency (a growing-radius replay must match one direct call at
+    the final radius, see its docstring) only holds if a given tile's
+    noise value never changes between calls - only the radius it's
+    compared against does.
+
+    Coarse-grained (an 8-tile noise cell, bilinearly interpolated with a
+    smoothstep easing curve) so the boundary reads as an organic
+    coastline nature is visibly giving way along, not per-tile static -
+    the actual complaint this function exists to fix (2026-09-05): a
+    plain distance check produces a perfectly smooth, "industrially
+    paved" edge instead of something that looks like it's spreading."""
+    ex, ey = epicenter
+    seed = (ex * 374761393 + ey * 668265263) & 0xFFFFFFFF
+
+    def _hash(a: int, b: int) -> float:
+        n = (a * 374761393 + b * 668265263 + seed) & 0xFFFFFFFF
+        n = (n ^ (n >> 13)) & 0xFFFFFFFF
+        n = (n * 1274126177) & 0xFFFFFFFF
+        return (n & 0xFFFF) / 0xFFFF
+
+    cell = 8.0
+    gx, gy = x / cell, y / cell
+    x0, y0 = math.floor(gx), math.floor(gy)
+    fx, fy = gx - x0, gy - y0
+    v00, v10 = _hash(x0, y0), _hash(x0 + 1, y0)
+    v01, v11 = _hash(x0, y0 + 1), _hash(x0 + 1, y0 + 1)
+    sx = fx * fx * (3 - 2 * fx)
+    sy = fy * fy * (3 - 2 * fy)
+    top = v00 + sx * (v10 - v00)
+    bottom = v01 + sx * (v11 - v01)
+    return (top + sy * (bottom - top)) * 2 - 1
 
 
 def apply_corruption_radius(game_map: GameMap, epicenter: tuple[int, int], radius: int) -> None:
     """The many-tile generalization of apply_dungeon_destruction's
-    single-tile swap: remaps every still-pristine plains/forest tile
-    within Chebyshev distance `radius` of `epicenter` to its corrupted
-    counterpart (ashen_plains/blighted_forest respectively, per
+    single-tile swap: remaps every still-pristine plains/forest/road tile
+    within (roughly) `radius` of `epicenter` to its corrupted counterpart
+    (ashen_plains/blighted_forest/ashen_road respectively, per
     _CORRUPTIBLE_TILE_REMAP), updating walkable/transparent in lockstep
     via TILE_PASSABILITY - the same "kind + walkable/transparent change
     together" pattern every tile mutation in this module already follows.
     See docs/visitor_corruption.md for the full design this implements
     step 2 of.
 
-    A Chebyshev ball of radius `radius` around (ex, ey) is exactly the
-    square [ex-radius, ex+radius] x [ey-radius, ey+radius] clipped to the
-    map - no separate distance check is needed once the loop bounds are
-    clipped that way, so this only ever visits the tiles it actually
-    changes (or definitely doesn't), never the whole map. Cheap even at
-    the largest radius this project's content ever uses.
+    "Roughly" because the boundary is deliberately irregular, not a clean
+    circle or square (2026-09-05, per explicit user feedback that an
+    exact-radius boundary "looks silly," reading as industrially paved
+    ground rather than corruption nature is giving way to): each tile's
+    Euclidean distance from the epicenter is compared against
+    `radius + wobble`, where `wobble` is `_corruption_edge_noise`'s
+    deterministic per-tile value scaled by `_corruption_noise_amplitude`.
+    The loop's own bounding box is padded by the largest amplitude the
+    noise could ever contribute, so a tile the wobble pulls inside the
+    boundary from just outside the nominal radius is never missed.
 
     Deliberately narrow about what it touches:
-    - Only plains/forest are ever remapped. An already-corrupted tile is
-      left alone (a no-op re-visit), which is what makes calling this
-      more than once - with a growing radius, across successive
+    - Only plains/forest/road are ever remapped. An already-corrupted
+      tile is left alone (a no-op re-visit), which is what makes calling
+      this more than once - with a growing radius, across successive
       corruption phases - safe and idempotent: replaying every phase up
       to a saved index against a freshly rebuilt GameMap (the same
       "rebuild from the static level file, then redo every one-time
       mutation" pattern engine/save.py's restore_save already uses for
       destroyed_dungeon_ids) produces the same result as applying them
       live, one at a time, as the clock actually crosses each threshold.
-    - Every other tile kind - road, wall, dungeon_entrance, landmark,
-      stairs, mountain, sea, town, and so on - is never touched
-      regardless of distance. Corruption spreads across open ground, not
-      through structures or landmarks.
-
-    Not yet called from anywhere - Engine._check_region_corruption (step
-    3 of docs/visitor_corruption.md's implementation sequence) is this
-    function's first real caller."""
+      This holds *because* the noise itself never depends on radius -
+      only the comparison threshold does, so a tile's fate at a given
+      radius is always the same regardless of how that radius was
+      reached.
+    - Every other tile kind - wall, dungeon_entrance, landmark, stairs,
+      mountain, sea, town, and so on - is never touched regardless of
+      distance. Corruption spreads across open ground and roads, not
+      through structures or landmarks."""
     ex, ey = epicenter
-    x_min, x_max = max(0, ex - radius), min(game_map.width - 1, ex + radius)
-    y_min, y_max = max(0, ey - radius), min(game_map.height - 1, ey + radius)
+    amplitude = _corruption_noise_amplitude(radius)
+    reach = int(radius + amplitude) + 1
+    x_min, x_max = max(0, ex - reach), min(game_map.width - 1, ex + reach)
+    y_min, y_max = max(0, ey - reach), min(game_map.height - 1, ey + reach)
     for x in range(x_min, x_max + 1):
         for y in range(y_min, y_max + 1):
+            distance = math.hypot(x - ex, y - ey)
+            wobble = _corruption_edge_noise(x, y, epicenter) * amplitude
+            if distance > radius + wobble:
+                continue
             new_kind = _CORRUPTIBLE_TILE_REMAP.get(game_map.kinds[x, y])
             if new_kind is None:
                 continue

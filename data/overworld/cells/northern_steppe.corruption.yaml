@@ -14,12 +14,26 @@
 # corrupted cell at a non-zero grid offset would need one; not built yet,
 # see docs/visitor_corruption.md.)
 #
-# Radius is Chebyshev distance (a clipped square, not a circle - see
-# engine/game_map.py's apply_corruption_radius) and only ever remaps
-# still-pristine plains/forest tiles - the region's existing hand-
+# Radius is Euclidean distance, with an organic, irregular edge layered
+# on top (deterministic per-tile noise, capped at 6 tiles either way past
+# radius 5 - see engine/game_map.py's apply_corruption_radius/
+# _corruption_edge_noise) - not a clean circle, and deliberately not the
+# clipped-square shape an earlier draft of this mechanic used (that read
+# as industrially paved ground instead of corruption nature was giving
+# way to, per explicit user feedback 2026-09-05). Only ever remaps
+# still-pristine plains/forest/road tiles - the region's existing hand-
 # authored Hollow Reach/Cinder Marches corruption is left untouched
 # either way, so these radii describe how far the *new*, moving
 # corruption front has spread, not a redraw of what's already there.
+#
+# The Watch Post's own overworld entrance (75, 72) is Euclidean distance
+# ~68.7 from the epicenter - phase 3's radius (72) clears that with a
+# small margin even accounting for the noise's worst case at that exact
+# tile (verified directly: the noise value there shrinks the effective
+# radius by about 1.2 tiles, nowhere near enough to matter at this
+# margin). Picking a radius for a specific real-content target like this
+# should always leave a few tiles of headroom past the raw distance,
+# rather than landing exactly on it, for the same reason.
 #
 # Only 3 of the eventual 4 phases are authored so far (through the
 # Watch Post's razing) - the final phase (day 170, "maximum corruption" -
@@ -40,5 +54,5 @@ phases:
     radius: 50
   - after_year: 87
     after_day: 140
-    radius: 65
+    radius: 72
     raze_dungeon_id: northern_watch_post

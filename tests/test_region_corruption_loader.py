@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from content.loader import ContentValidationError, load_catalog, load_dungeon_registry, load_region_corruption
+from engine.game_map import GameMap, apply_corruption_radius
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DUNGEONS_DIR = DATA_DIR / "dungeons"
@@ -142,13 +143,21 @@ def test_load_region_corruption_loads_the_real_shipped_northern_steppe_file():
     assert corruption.epicenter == (100, 8)
     assert len(corruption.phases) == 3
     assert corruption.phases[-1].raze_dungeon_id == "northern_watch_post"
-    # Radii only grow, and the razing phase's radius must actually reach
-    # the Watch Post's own overworld entrance (75, 72) from the epicenter -
-    # otherwise the corruption mechanic and the raze it triggers would be
-    # visually disconnected (see the .yaml file's own comments for the
-    # Chebyshev-distance reasoning).
+    # Radii only grow.
     radii = [p.radius for p in corruption.phases]
     assert radii == sorted(radii)
+
+    # The razing phase's radius must actually reach the Watch Post's own
+    # overworld entrance (75, 72) from the epicenter - otherwise the
+    # corruption mechanic and the raze it triggers would be visually
+    # disconnected. Checked by running the real, noisy
+    # apply_corruption_radius against that exact tile (not a hand-derived
+    # distance formula, which would drift from the actual algorithm -
+    # the boundary is deliberately irregular, see the .yaml file's own
+    # comments) - a fresh GameMap with only that one tile as "plains" so
+    # the assertion is unambiguous.
+    game_map = GameMap(76, 73)
+    game_map.kinds[75, 72] = "plains"
     raze_phase = corruption.phases[-1]
-    ex, ey = corruption.epicenter
-    assert max(abs(75 - ex), abs(72 - ey)) <= raze_phase.radius
+    apply_corruption_radius(game_map, corruption.epicenter, raze_phase.radius)
+    assert game_map.kinds[75, 72] == "ashen_plains"

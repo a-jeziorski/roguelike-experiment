@@ -16,7 +16,7 @@ TileType = Literal[
     "wall", "floor", "stairs_down", "stairs_up", "player_start", "door",
     "dungeon_entrance", "mountain", "sea", "forest", "road", "plains", "town",
     "landmark", "dunes", "ashen_plains", "blighted_forest", "scoured_ground",
-    "deep_water",
+    "deep_water", "ashen_road",
 ]
 
 # Purely cosmetic map dressing (furniture indoors, plants outdoors) - a
@@ -223,7 +223,8 @@ BUFF_HASTE = "haste"
 # either (concealed or not), same treatment as BUFF_HASTE.
 BUFF_SHADOWED = "shadowed"
 # Full immunity to Engine._apply_environmental_hazard's chip damage
-# (dunes/ashen_plains/blighted_forest) while active - like haste/shadowed,
+# (dunes/ashen_plains/blighted_forest/ashen_road) while active - like
+# haste/shadowed,
 # an on/off condition with no scaling concept, so also excluded from
 # _BUFF_KINDS_WITH_POTENCY below.
 BUFF_SURE_FOOTED = "sure_footed"
@@ -1918,14 +1919,18 @@ class RegionCorruptionPhase(BaseModel):
 
     after_year: int
     after_day: int
-    # Chebyshev distance from RegionCorruptionDef.epicenter within which
-    # a still-pristine plains/forest tile gets remapped to
-    # ashen_plains/blighted_forest once this phase applies (see
-    # docs/visitor_corruption.md's "Engine mechanics" - the many-tile
+    # Roughly the Euclidean distance from RegionCorruptionDef.epicenter
+    # within which a still-pristine plains/forest/road tile gets remapped
+    # to ashen_plains/blighted_forest/ashen_road once this phase applies
+    # (see docs/visitor_corruption.md's "Engine mechanics" - the many-tile
     # generalization of engine/game_map.py's apply_dungeon_destruction).
-    # Already-corrupted tiles (from a hand-authored baseline or an
-    # earlier phase) and structural tiles (road/dungeon_entrance/
-    # landmark/stairs) are left alone regardless of radius.
+    # "Roughly" - the actual boundary is deliberately irregular, not a
+    # clean circle (engine/game_map.py's apply_corruption_radius/
+    # _corruption_edge_noise), so it reads as corruption nature is giving
+    # way to rather than industrially paved ground. Already-corrupted
+    # tiles (from a hand-authored baseline or an earlier phase) and
+    # structural tiles (dungeon_entrance/landmark/stairs/walls) are left
+    # alone regardless of radius.
     radius: int = Field(gt=0)
     # Razes this dungeon's overworld entrance the instant this phase
     # applies, by deferring entirely to the existing

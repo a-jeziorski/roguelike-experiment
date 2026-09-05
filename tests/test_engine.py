@@ -4853,6 +4853,20 @@ def test_blighted_forest_reuses_the_same_hazard_mechanic_as_dunes():
     assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
 
 
+def test_ashen_road_reuses_the_same_hazard_mechanic_as_dunes():
+    """A corrupted road must not become a safe lane through otherwise-
+    hazardous ground - explicit user feedback (2026-09-05)."""
+    game_map = make_open_map(3, 3)
+    game_map.kinds[1, 1] = "ashen_road"
+    player = make_player(1, 1, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "Test Level")
+
+    engine.process_turn(WaitAction())
+
+    assert player.fighter.hp == 30 - ENVIRONMENTAL_HAZARD_DAMAGE
+
+
 def test_scoured_ground_looks_corrupted_but_deals_no_damage():
     """scoured_ground shares ashen_plains' exact look (engine/render.py's
     TILE_VISUALS, data/sprites.yaml) but is deliberately absent from
@@ -4871,7 +4885,7 @@ def test_scoured_ground_looks_corrupted_but_deals_no_damage():
     assert player.fighter.hp == 30
 
 
-# --- Visitor band ambush encounters (ashen_plains/blighted_forest only) ---
+# --- Visitor band ambush encounters (ashen_plains/blighted_forest/ashen_road) ---
 # See tests/test_main.py for the actual redirect-into-a-dungeon mechanics
 # (goblin_ambush's own shape) - these only cover the mailbox flag Engine
 # sets for main.py's resolve_transition to act on.
@@ -4931,6 +4945,22 @@ def test_visitor_band_encounter_arms_on_ashen_plains_when_the_roll_succeeds(monk
 def test_visitor_band_encounter_arms_on_blighted_forest_too(monkeypatch):
     game_map = make_open_map(11, 11)
     game_map.kinds[5, 5] = "blighted_forest"
+    player = make_player(5, 5, hp=30)
+    game_map.entities.append(player)
+    engine = Engine(game_map, player, "The Overworld", is_overworld=True)
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+
+    engine._maybe_trigger_visitor_band_encounter()
+
+    assert engine.wants_visitor_band_encounter is True
+
+
+def test_visitor_band_encounter_arms_on_ashen_road_too(monkeypatch):
+    """A corrupted road must carry the same ambush risk as ashen_plains/
+    blighted_forest - otherwise it's a safe lane through otherwise-
+    dangerous ground, per explicit user feedback (2026-09-05)."""
+    game_map = make_open_map(11, 11)
+    game_map.kinds[5, 5] = "ashen_road"
     player = make_player(5, 5, hp=30)
     game_map.entities.append(player)
     engine = Engine(game_map, player, "The Overworld", is_overworld=True)
@@ -5161,9 +5191,16 @@ def test_check_region_corruption_applies_a_due_phase_and_advances_the_count():
 
     engine.process_turn(WaitAction())  # crosses into STARTING_DAY
 
-    for x in range(1, 4):
-        for y in range(1, 4):
-            assert game_map.kinds[x, y] == "ashen_plains", (x, y)
+    # apply_corruption_radius uses Euclidean distance with no noise this
+    # close to the epicenter (radius 1 is well below the noise ramp-start -
+    # see engine/game_map.py's _corruption_noise_amplitude), so this is a
+    # plain circle: center plus its 4 orthogonal neighbors, not a full 3x3
+    # square (the diagonal corners are Euclidean distance sqrt(2) > 1).
+    assert game_map.kinds[2, 2] == "ashen_plains"
+    for x, y in [(1, 2), (3, 2), (2, 1), (2, 3)]:
+        assert game_map.kinds[x, y] == "ashen_plains", (x, y)
+    for x, y in [(1, 1), (1, 3), (3, 1), (3, 3)]:
+        assert game_map.kinds[x, y] == "plains", (x, y)
     assert quest_log.corruption_phase == {"test_cell": 1}
 
 
@@ -5225,7 +5262,10 @@ def test_check_region_corruption_applies_every_due_phase_in_one_call():
 
     engine.process_turn(WaitAction())
 
-    assert game_map.kinds[0, 0] == "ashen_plains"  # only reachable at the second phase's radius
+    # (3, 0) is Euclidean distance exactly 3 from epicenter (3, 3) - only
+    # reachable at the second phase's radius (the first phase's radius 1
+    # doesn't reach it).
+    assert game_map.kinds[3, 0] == "ashen_plains"
     assert quest_log.corruption_phase == {"test_cell": 2}
 
 
@@ -5301,7 +5341,7 @@ def test_check_region_corruption_sets_pending_transition_when_player_is_within_r
 
 def test_check_region_corruption_leaves_pending_transition_none_when_player_is_far_away():
     game_map = make_plains_map(10, 10)
-    player = make_player(9, 9)  # Chebyshev distance 7 from epicenter (2, 2) - outside radius 1
+    player = make_player(9, 9)  # Euclidean distance ~9.9 from epicenter (2, 2) - outside radius 1
     game_map.entities.append(player)
     quest_log = QuestLog()
     clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)

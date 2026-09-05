@@ -96,6 +96,15 @@ TILE_VISUALS = {
     # data/dungeons/visitor_band_ambush - a monster encounter is already
     # the danger there, the ground doesn't need to be too).
     "scoured_ground": {"glyph": ";", "dark": (42, 45, 47), "light": (140, 150, 155)},
+    # A corrupted road - kept road's own "." glyph (still reads as a worn
+    # path, not open ground) but recolored to match ashen_plains'/
+    # scoured_ground's palette, since it shares their sprite in
+    # data/sprites.yaml. Added so a road running through corrupted ground
+    # doesn't read as an untouched safe lane - see engine/game_map.py's
+    # _CORRUPTIBLE_TILE_REMAP and Engine.ENVIRONMENTAL_HAZARD_MESSAGES/
+    # VISITOR_BAND_TILE_KINDS, which apply the same hazard/encounter
+    # treatment to it as ashen_plains/blighted_forest.
+    "ashen_road": {"glyph": ".", "dark": (42, 45, 47), "light": (140, 150, 155)},
 }
 
 TILE_DESCRIPTIONS = {
@@ -116,6 +125,7 @@ TILE_DESCRIPTIONS = {
     "ashen_plains": "Grassland burned down to grey ash, the ground still warm underfoot. Nothing grows here anymore.",
     "blighted_forest": "Dead, blackened trees, bare in every season. The air itself feels wrong to breathe.",
     "scoured_ground": "Ash-grey ground, same as the corrupted stretches further out - whatever burned through here already did its work and moved on.",
+    "ashen_road": "A worn dirt road, the ground to either side of it long gone to ash. Still the easiest way through, for whatever that's worth.",
 }
 
 HUD_FG = (220, 220, 220)
