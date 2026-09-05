@@ -1474,9 +1474,10 @@ SHIPPED_DUNGEON_IDS = {
     "northern_watch_post",
     "weeping_cistern",
     "elder_dig_site_b",
+    "elder_dig_site_a",
 }
 
-COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern", "elder_dig_site_b"]
+COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern", "elder_dig_site_b", "elder_dig_site_a"]
 SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "farrows_stake", "northern_watch_post"]
 
 
@@ -1506,16 +1507,23 @@ def test_new_combat_dungeon_content(dungeon_id):
     assert len(all_entities) > 0
 
 
-def test_elder_dig_site_b_has_five_levels_escalating_to_a_solo_warden():
-    """Regression net for docs/dungeon_bibles/elder_dig_site_b.md's
-    structure table - Silver-Mountain-Caves-scale (5 levels), no new
-    monsters (every entity here is already in data/entities.yaml,
-    calibrated for the Northern Steppe's own reference build), and
-    excavation_warden placed exactly once, alone, on the final level -
-    the "solo, rare, nothing else drawing attention in the same
-    encounter" stun-lock discipline its own catalog entry requires."""
+ELDER_DIG_SITE_IDS = ["elder_dig_site_b", "elder_dig_site_a"]
+
+
+@pytest.mark.parametrize("dungeon_id", ELDER_DIG_SITE_IDS)
+def test_elder_dig_site_has_five_levels_escalating_to_a_solo_warden(dungeon_id):
+    """Regression net for the two Elder Age dig-site bibles' shared
+    structure table (docs/dungeon_bibles/elder_dig_site_b.md/
+    elder_dig_site_a.md - deliberately identical roster/escalation, only
+    the geometry technique differs between them) - Silver-Mountain-Caves-
+    scale (5 levels), no new monsters (every entity here is already in
+    data/entities.yaml, calibrated for the Northern Steppe's own
+    reference build), and excavation_warden placed exactly once, alone,
+    on the final level - the "solo, rare, nothing else drawing attention
+    in the same encounter" stun-lock discipline its own catalog entry
+    requires."""
     catalog = load_catalog()
-    dungeon = load_dungeon(DUNGEONS_DIR / "elder_dig_site_b", catalog)
+    dungeon = load_dungeon(DUNGEONS_DIR / dungeon_id, catalog)
 
     assert set(dungeon.levels) == {"level_01", "level_02", "level_03", "level_04", "level_05"}
 

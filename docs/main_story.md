@@ -158,15 +158,19 @@ picture of what's genuinely new versus what already exists:
   aimed at one finale instead of one town's own ambition.
 
 **Genuinely new, needing their own design pass:**
-- **Region-scale overworld corruption** ("overworld cells"): a named
-  region of the overworld map that can have its terrain bulk-transformed
-  when the Visitor occupies or leaves it - generalizes
-  `Engine.destroy_dungeon`'s single-tile mutation pattern to many tiles
-  at once. Open question: hand-authored alternate terrain per region
-  (matches this project's authoring ethos, expensive to scale to "most
-  of the map") versus a programmatic kind-remap table (`plains ->
-  ashen_plains`, etc.) with a few hand-placed exceptions per region
-  (cheaper, less bespoke). Needs new `TileType` values either way.
+- **Region-scale overworld corruption** - **built (2026-09-05), see
+  `docs/visitor_corruption.md` for the full design.** A programmatic
+  kind-remap table (`plains -> ashen_plains`, `forest -> blighted_forest`,
+  `road -> ashen_road`), spread outward from a per-region epicenter with
+  a growing, organically-irregular radius (`engine/game_map.py`'s
+  `apply_corruption_radius`) - the cheaper, less-bespoke option this
+  bullet originally left open, chosen over hand-authoring alternate
+  terrain per region. Generalizes `Engine.destroy_dungeon`'s single-tile
+  mutation pattern to many tiles at once, exactly as this bullet
+  anticipated. Shipped against the Northern Steppe: a 4-phase timeline
+  razes the Watch Post and uncovers both of the region's reserved Elder
+  Age landmarks (`elder_dig_site_a`/`elder_dig_site_b`, both full
+  5-level dungeons) as the Visitor's occupation there runs its course.
 - **A real endgame confrontation mechanic.** "Immeasurably powerful,
   barely beatable" needs more than a large stat block - a multi-phase
   fight, environmental hazards, or a non-combat ritual/banishment
@@ -215,7 +219,5 @@ picture of what's genuinely new versus what already exists:
 - Which NPCs/organizations exist to deliver the scholarly
   Visitor-explaining content mid-game, and are any of them new, or drawn
   from towns already in the game?
-- Hand-authored vs. programmatic region corruption (see above) - a real
-  cost/quality tradeoff, not yet chosen.
 - Exact shape of the final confrontation (combat, ritual, hybrid) - not
   yet chosen.

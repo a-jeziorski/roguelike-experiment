@@ -1,0 +1,16 @@
+id: elder_dig_site_a
+name: The Leaning Stone
+starting_level: level_01
+description: >
+  An Elder Age site on the Northern Steppe, dug around rather than dug
+  for - "a stone shape half-swallowed by the ash, its lines too
+  deliberate to be natural. Something has been digging around its base,
+  recently" (see docs/region_bibles/northern_steppe.md). Uncovered from a
+  reserved overworld landmark once the region's corruption reaches its
+  final phase (docs/visitor_corruption.md). Five levels, all
+  cellular-automata caves throughout - unlike its sibling site
+  (elder_dig_site_b, an active dig that only breaks into natural stone
+  partway down), nothing here was ever built, so nothing here should
+  ever read as cut or planned. Elder Age site; the disturbance, not the
+  origin, is what this dungeon actually shows.
+inspect_text: A stone shape half-swallowed by the ash, its lines too deliberate to be natural. Something has been digging around its base, recently.

@@ -533,24 +533,79 @@ Small, independently testable/committable steps, in dependency order:
      has a placed overworld entrance" check, since this one's entrance
      doesn't exist until a corruption phase adds it at runtime. Full
      suite: 1663 passed.
-   - **`elder_dig_site_a` not yet built.** Per the plan's own
-     differentiation call: organic cellular-automata caves at every
-     level (not just 3-5) - "grown, not built," matching
-     `world_history.md`'s Elder Age masonry description - rather than
-     `elder_dig_site_b`'s built-then-broken-through structure. Same
-     seven-monster roster, different pacing/mood, its own bible first.
-   - **The corruption file's 4th phase (day 170, radius saturating the
-     cell, `uncover` for both sites) is still not authored** - waits on
-     `elder_dig_site_a` existing too, per `load_region_corruption`'s
-     `known_dungeon_ids` cross-check.
-   - Full CLI playthrough from before-corruption through after-uncover
-     still pending both dungeons + the phase-4 wiring, per
-     `[[feedback_full_cli_playthroughs_find_real_bugs]]`.
-6. Fade-to-black in the graphical client - screenshot-verify per
+   - **`elder_dig_site_a` done (2026-09-05)**: `docs/dungeon_bibles/elder_dig_site_a.md`
+     + 5 real levels (`data/dungeons/elder_dig_site_a/`) - per the plan's
+     own differentiation call, organic cellular-automata caves at *every*
+     level (not just 3-5), "grown, not built," matching `world_history.md`'s
+     Elder Age masonry description, rather than `elder_dig_site_b`'s
+     built-then-broken-through structure. Identical roster and escalation
+     to its sibling (deliberately - the two sites are the same threat in
+     two different physical shapes, not one harder than the other),
+     `excavation_warden` solo on `level_05` only. Verified the same three
+     ways as `elder_dig_site_b`: real loader (loads clean), `tools/preview.py`
+     (all 5 levels render, connected), direct-`Engine` combat check with
+     variance off (matches already-accepted precedent for the shared stat
+     blocks). New test: `test_elder_dig_site_has_five_levels_escalating_to_a_solo_warden`
+     parametrized over both dungeon ids (`tests/test_loader.py`), plus
+     both ids added to `SHIPPED_DUNGEON_IDS`/`COMBAT_DUNGEON_IDS`/
+     `UNCOVERED_LATER_DUNGEON_IDS`.
+   - **The corruption file's 4th phase is done too**: day 170, `uncover`
+     for both sites (`elder_dig_site_a` at `(45, 12)` - legend `3`;
+     `elder_dig_site_b` at the epicenter itself, `(100, 8)` - legend `4`).
+     Radius **80**, chosen empirically rather than by formula: it's the
+     largest radius that still corrupts not one Heartlands tile (the
+     assembled overworld's row 90+, immediately south of Northern Steppe)
+     even at the noise's worst-case southward bulge - verified directly
+     by running `apply_corruption_radius` at each candidate radius
+     against the real two-cell-tall map and checking the corrupted
+     tiles' own max `y`, not by reasoning about the noise formula in the
+     abstract (radius 81 reaches Northern Steppe's own southernmost row
+     with no bleed; 82 is the first radius that leaks into Heartlands).
+     Both dig sites were already well within every earlier phase's
+     radius by the time they're uncovered (`elder_dig_site_a` is
+     Euclidean distance ~55 from the epicenter, inside phase 3's radius
+     72 already) - being "in range" never matters for a landmark tile
+     regardless, since `apply_corruption_radius` only ever touches
+     plains/forest/road, never landmarks, so nothing opens early.
+   - **Full CLI playthrough - done, and it found one real thing worth
+     recording** (not a bug, a scope note): `tools/play_llm.py`'s `goto`
+     stops after every single step that costs HP, and the freshly-
+     corrupted ground between an ordinary starting position and either
+     dig site is now hazardous almost the whole way - a real player
+     crossing it will stop-and-resume many times over dozens of turns,
+     which is fine in real play but made interactively `goto`-ing the
+     full distance during this verification impractical. Verified the
+     mechanic itself instead via a direct save-file position edit
+     (teleporting adjacent to the entrance, still through the real
+     `tools/play_llm.py` CLI) plus the automated end-to-end test
+     `test_real_region_corruption_uncovers_both_elder_dig_sites_and_they_are_enterable`
+     (`tests/test_main.py`), which drives the real `main.py` functions
+     (`load_region_corruption`, `Engine._check_region_corruption`,
+     `resolve_transition`) against the real overworld map - confirmed
+     live: `"You enter The Terraces."` on stepping onto the newly-opened
+     `elder_dig_site_b` entrance, monsters and items present exactly as
+     authored. One cosmetic loose end noticed and deliberately left
+     alone: `uncover_landmark` doesn't update `tile_descriptions`, so a
+     look-mode inspection of an uncovered site still shows its original
+     landmark flavor text rather than an "uncovered" variant - harmless
+     here (the existing text - "a wide, terraced scar... far from
+     finished" - still reads fine post-uncover) but worth a real fix if
+     a future site's landmark text wouldn't age as gracefully.
+   - Full suite: 1672 passed. **This closes the corruption+uncover arc
+     for the Northern Steppe end to end** - progressing corruption,
+     settlement razing, and both Elder Age dungeons opening, all wired
+     and verified.
+6. Fade-to-black in the graphical client - **not yet built**. Purely
+   cosmetic (the `pending_corruption_transition` flag Engine already
+   sets is unconsumed by any renderer); screenshot-verify per
    `[[feedback_settlement_layout_needs_road_network_and_screenshots]]`'s
-   "don't trust ASCII, capture a real frame" lesson, applied here to
-   verify the fade actually renders rather than just not-crashing.
-7. Bible/doc reconciliation (item 4 above).
+   "don't trust ASCII, capture a real frame" lesson once it is.
+7. Bible/doc reconciliation - **done incrementally as each step
+   shipped** rather than deferred to the end: `docs/dungeon_bibles/northern_watch_post.md`
+   and `docs/region_bibles/northern_steppe.md` were updated in step 4;
+   `docs/main_story.md`'s "Genuinely new" bullet and "Open questions"
+   list were updated once this arc closed (2026-09-05) to reflect the
+   region-corruption design question as resolved and built, not open.
 
 ## Resolved since the first draft (2026-09-04)
 

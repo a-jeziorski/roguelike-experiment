@@ -35,14 +35,25 @@
 # should always leave a few tiles of headroom past the raw distance,
 # rather than landing exactly on it, for the same reason.
 #
-# Only 3 of the eventual 4 phases are authored so far (through the
-# Watch Post's razing) - the final phase (day 170, "maximum corruption" -
-# see docs/visitor_corruption.md's resolved day-threshold notes)
-# additionally uncovers the two Hollow Reach Elder Age landmarks (legend
-# "3"/"4") into real dungeons, which don't exist yet
-# (docs/visitor_corruption.md's implementation step 5). Adding that
-# phase now would fail load_region_corruption's known_dungeon_ids
-# cross-check against dungeon ids that aren't real yet.
+# Phase 4 (day 170, "maximum corruption" - see docs/visitor_corruption.md's
+# resolved day-threshold notes, the point the Visitor finishes here and
+# moves on) uncovers both Hollow Reach Elder Age landmarks into real
+# dungeons: elder_dig_site_a (legend "3", at (45, 12) - Euclidean
+# distance ~55 from the epicenter, already well inside every earlier
+# phase's radius, so it's already surrounded by corrupted ground by the
+# time it opens) and elder_dig_site_b (legend "4", at the epicenter
+# itself, (100, 8) - distance 0, trivially always "in range"). Radius 80
+# was chosen empirically, not by formula: it's the largest radius that
+# still corrupts not one Heartlands tile (the assembled overworld's row
+# 90+, south of this cell) even at the noise's worst-case southward
+# bulge - radius 81 already reaches Northern Steppe's own southernmost
+# row (89) with no bleed; 82 is the first radius that bleeds into
+# Heartlands by one row. Verified directly by running
+# apply_corruption_radius at each candidate radius against a full
+# two-cell-tall map and checking the corrupted tiles' own max y, not by
+# reasoning about the noise formula in the abstract - a maximum-
+# corruption radius picked by formula could plausibly still leak into a
+# neighboring cell that's supposed to stay untouched.
 cell_id: northern_steppe
 epicenter: [100, 8]
 phases:
@@ -56,3 +67,11 @@ phases:
     after_day: 140
     radius: 72
     raze_dungeon_id: northern_watch_post
+  - after_year: 87
+    after_day: 170
+    radius: 80
+    uncover:
+      - coord: [45, 12]
+        dungeon_id: elder_dig_site_a
+      - coord: [100, 8]
+        dungeon_id: elder_dig_site_b

@@ -141,8 +141,11 @@ def test_load_region_corruption_loads_the_real_shipped_northern_steppe_file():
     assert set(defs) == {"northern_steppe"}
     corruption = defs["northern_steppe"]
     assert corruption.epicenter == (100, 8)
-    assert len(corruption.phases) == 3
-    assert corruption.phases[-1].raze_dungeon_id == "northern_watch_post"
+    assert len(corruption.phases) == 4
+    raze_phase = corruption.phases[2]
+    final_phase = corruption.phases[3]
+    assert raze_phase.raze_dungeon_id == "northern_watch_post"
+    assert {u.dungeon_id for u in final_phase.uncover} == {"elder_dig_site_a", "elder_dig_site_b"}
     # Radii only grow.
     radii = [p.radius for p in corruption.phases]
     assert radii == sorted(radii)
@@ -158,6 +161,23 @@ def test_load_region_corruption_loads_the_real_shipped_northern_steppe_file():
     # the assertion is unambiguous.
     game_map = GameMap(76, 73)
     game_map.kinds[75, 72] = "plains"
-    raze_phase = corruption.phases[-1]
     apply_corruption_radius(game_map, corruption.epicenter, raze_phase.radius)
     assert game_map.kinds[75, 72] == "ashen_plains"
+
+    # The final phase's radius must never reach into the neighboring
+    # heartlands cell (the assembled overworld's row 90+, south of
+    # Northern Steppe) - a "maximum corruption" radius picked without
+    # checking this could plausibly leak into a region that's supposed
+    # to stay untouched. Checked against the real two-cell-tall map size,
+    # not a hand-picked small one, since the noise's own effect depends
+    # on absolute tile coordinates.
+    full_map = GameMap(150, 180)
+    for x in range(150):
+        for y in range(180):
+            full_map.kinds[x, y] = "plains"
+    apply_corruption_radius(full_map, corruption.epicenter, final_phase.radius)
+    max_corrupted_y = max(
+        (y for x in range(150) for y in range(180) if full_map.kinds[x, y] == "ashen_plains"),
+        default=-1,
+    )
+    assert max_corrupted_y < 90

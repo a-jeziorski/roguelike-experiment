@@ -1401,7 +1401,7 @@ ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush", "visitor_band_ambush"}
 # that a DungeonDef never needs a placed entrance at load time. Also carved
 # out of the check below, same reasoning as ENCOUNTER_ONLY_DUNGEON_IDS - both
 # sets describe "reachable some other way," just a different other way.
-UNCOVERED_LATER_DUNGEON_IDS = {"elder_dig_site_b"}
+UNCOVERED_LATER_DUNGEON_IDS = {"elder_dig_site_b", "elder_dig_site_a"}
 
 
 def test_overworld_has_all_sixteen_shipped_entrances_mutually_reachable():
@@ -1573,6 +1573,54 @@ def test_real_region_corruption_razes_the_watch_post_and_voids_its_carry_quest()
     # but-walkable ruins interior just as well as a populated one, so it
     # must never need voided_by_dungeon_id: northern_watch_post.
     assert quest_defs["word_from_the_north"].voided_by_dungeon_id == "wayford"
+
+
+def test_real_region_corruption_uncovers_both_elder_dig_sites_and_they_are_enterable():
+    """End-to-end check that the real
+    data/overworld/cells/northern_steppe.corruption.yaml's final phase
+    (day 170, "maximum corruption") actually adds both Elder Age
+    landmarks as real dungeon_entrances - not just that the file
+    validates against the two dungeons' ids, but that
+    Engine._check_region_corruption's uncover_landmark call actually
+    fires against the real overworld map, and that the resulting
+    entrance really does hand the player off into that dungeon via
+    resolve_transition (main.py's own real production path), the same
+    way any other overworld dungeon_entrance would."""
+    catalog, dungeon_registry, overworld_level = _world()
+    region_corruption_defs = list(load_region_corruption(
+        OVERWORLD_DIR,
+        known_cell_ids={p.stem for p in (OVERWORLD_DIR / "cells").glob("*.lvl")},
+        known_dungeon_ids=set(dungeon_registry),
+    ).values())
+    quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+    quest_log = create_quest_log(quest_defs)
+    clock = GameClock(year=STARTING_YEAR, day=170, hour=0)
+
+    overworld_engine = _overworld_engine(
+        catalog, dungeon_registry, overworld_level, player_y=0,
+        clock=clock, quest_log=quest_log, region_corruption_defs=region_corruption_defs,
+    )
+    overworld_engine.player.x = 0
+
+    overworld_engine.process_turn(WaitAction())
+
+    assert quest_log.corruption_phase == {"northern_steppe": 4}
+    for coord, dungeon_id in [((45, 12), "elder_dig_site_a"), ((100, 8), "elder_dig_site_b")]:
+        assert overworld_engine.game_map.dungeon_entrances[coord] == dungeon_id
+        assert overworld_engine.game_map.kinds[coord] == "dungeon_entrance"
+
+    # A newly-uncovered entrance must actually work as a real one -
+    # walk the player onto it and confirm resolve_transition hands them
+    # into the dungeon, exactly as it would for any load-time-placed
+    # entrance.
+    active_engines = {OVERWORLD_KEY: overworld_engine}
+    overworld_engine.pending_dungeon_entry = "elder_dig_site_b"
+    active_key, dig_site_engine = resolve_transition(
+        OVERWORLD_KEY, overworld_engine, active_engines, dungeon_registry, overworld_level, catalog,
+        clock=clock, quest_log=quest_log,
+    )
+    assert active_key == "elder_dig_site_b"
+    assert dig_site_engine.current_level_id == "level_01"
 
 
 def test_real_shipped_content_has_known_flags_for_every_flag_dialogue_reference():
