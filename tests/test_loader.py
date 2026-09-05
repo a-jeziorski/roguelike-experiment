@@ -1473,9 +1473,10 @@ SHIPPED_DUNGEON_IDS = {
     "visitor_band_ambush",
     "northern_watch_post",
     "weeping_cistern",
+    "elder_dig_site_b",
 }
 
-COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern"]
+COMBAT_DUNGEON_IDS = ["broken_watch", "drowned_waystation", "elder_cairn", "sunken_mine", "the_windrest", "sunless_hollow", "weeping_cistern", "elder_dig_site_b"]
 SETTLEMENT_DUNGEON_IDS = ["wayford", "stonebridge", "saltmarsh", "grey_valley_monastery", "farrows_stake", "northern_watch_post"]
 
 
@@ -1503,6 +1504,47 @@ def test_new_combat_dungeon_content(dungeon_id):
 
     all_entities = [s.entity.name for level in dungeon.levels.values() for s in level.entity_spawns]
     assert len(all_entities) > 0
+
+
+def test_elder_dig_site_b_has_five_levels_escalating_to_a_solo_warden():
+    """Regression net for docs/dungeon_bibles/elder_dig_site_b.md's
+    structure table - Silver-Mountain-Caves-scale (5 levels), no new
+    monsters (every entity here is already in data/entities.yaml,
+    calibrated for the Northern Steppe's own reference build), and
+    excavation_warden placed exactly once, alone, on the final level -
+    the "solo, rare, nothing else drawing attention in the same
+    encounter" stun-lock discipline its own catalog entry requires."""
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "elder_dig_site_b", catalog)
+
+    assert set(dungeon.levels) == {"level_01", "level_02", "level_03", "level_04", "level_05"}
+
+    warden_levels = [
+        level_id for level_id, level in dungeon.levels.items()
+        for s in level.entity_spawns if s.entity.name == "Excavation Warden"
+    ]
+    assert warden_levels == ["level_05"]
+    level_05_entities = [s.entity.name for s in dungeon.levels["level_05"].entity_spawns]
+    assert level_05_entities == ["Excavation Warden"]
+
+    all_entity_names = {
+        s.entity.name for level in dungeon.levels.values() for s in level.entity_spawns
+    }
+    assert all_entity_names == {
+        "Ash-Bound Husk", "Bound Eye", "Stitched Vanguard", "Hollow Chanter",
+        "Bound Crawler", "Charnel Colossus", "Excavation Warden",
+    }
+
+    # Every level must actually link to the next (or terminate) - a stale
+    # next_level id here would silently strand the player, since
+    # load_level's own validation only confirms *some* known level id, not
+    # that this specific dungeon's chain is unbroken end to end.
+    order = ["level_01", "level_02", "level_03", "level_04", "level_05"]
+    for level_id, next_id in zip(order, order[1:]):
+        down_targets = {s.next_level for s in dungeon.levels[level_id].stairs if s.kind == "stairs_down"}
+        assert next_id in down_targets, f"{level_id} has no stairs_down leading to {next_id}"
+        up_targets = {s.next_level for s in dungeon.levels[next_id].stairs if s.kind == "stairs_up"}
+        assert level_id in up_targets, f"{next_id} has no stairs_up leading back to {level_id}"
 
 
 @pytest.mark.parametrize("dungeon_id", SETTLEMENT_DUNGEON_IDS)

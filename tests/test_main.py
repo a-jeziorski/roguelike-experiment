@@ -1394,17 +1394,30 @@ def test_resolve_transition_visitor_band_ambush_is_freshly_rebuilt_each_time():
 # check below.
 ENCOUNTER_ONLY_DUNGEON_IDS = {"goblin_ambush", "visitor_band_ambush"}
 
+# Dungeons with no placed overworld entrance at load time on purpose - see
+# docs/visitor_corruption.md: a RegionCorruptionPhase's uncover entry adds
+# their entrance at *runtime*, once its phase applies (Engine._uncover_landmark/
+# engine.game_map.uncover_landmark), confirmed via content/loader.py tracing
+# that a DungeonDef never needs a placed entrance at load time. Also carved
+# out of the check below, same reasoning as ENCOUNTER_ONLY_DUNGEON_IDS - both
+# sets describe "reachable some other way," just a different other way.
+UNCOVERED_LATER_DUNGEON_IDS = {"elder_dig_site_b"}
+
 
 def test_overworld_has_all_sixteen_shipped_entrances_mutually_reachable():
     """Every dungeon_entrance on the real overworld map must be reachable from
     player_start via ordinary 8-directional movement, and vice versa - a
     location an entrance leads to that nothing can walk to would be shippable
     content nobody could ever reach. Every registered dungeon must have a
-    matching entrance, except ENCOUNTER_ONLY_DUNGEON_IDS - those are reached
-    through a scripted redirect instead, never by walking there."""
+    matching entrance, except ENCOUNTER_ONLY_DUNGEON_IDS (reached through a
+    scripted redirect, never by walking there) and UNCOVERED_LATER_DUNGEON_IDS
+    (no entrance exists until a region-corruption phase adds one at runtime)."""
     catalog, dungeon_registry, overworld_level = _world()
 
-    assert {e.dungeon_id for e in overworld_level.dungeon_entrances} == set(dungeon_registry) - ENCOUNTER_ONLY_DUNGEON_IDS
+    assert (
+        {e.dungeon_id for e in overworld_level.dungeon_entrances}
+        == set(dungeon_registry) - ENCOUNTER_ONLY_DUNGEON_IDS - UNCOVERED_LATER_DUNGEON_IDS
+    )
     assert len(overworld_level.dungeon_entrances) == 17
 
     game_map, _ = build_game_map(overworld_level, catalog)

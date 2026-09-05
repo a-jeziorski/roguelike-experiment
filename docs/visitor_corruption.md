@@ -489,14 +489,57 @@ Small, independently testable/committable steps, in dependency order:
      corruption swap mechanic" bullet updated to say the mechanic now
      exists) are current as of this step.
 5. The two Elder Age dungeons + wire `uncover` into the final phase.
-   Given the revised Silver-Mountain-scale sizing, treat this as two
-   sub-passes (bible + geometry + balance per site, likely each its own
-   session given `silver_mountain_caves`' own precedent of a dedicated
-   pass for its 3-level Depths extension alone) rather than one step -
+   Given the revised Silver-Mountain-scale sizing, treated as two
+   sub-passes (bible + geometry + balance per site) rather than one step -
    only wire `uncover` into the corruption phase once both are fully
-   built and internally playtested on their own. Full CLI playthrough
-   from before-corruption through after-uncover once both are wired, per
-   `[[feedback_full_cli_playthroughs_find_real_bugs]]`.
+   built and internally playtested on their own.
+   - **`elder_dig_site_b` done (2026-09-05)**: `docs/dungeon_bibles/elder_dig_site_b.md`
+     + 5 real levels (`data/dungeons/elder_dig_site_b/`) - `level_01`/
+     `level_02` are room+corridor geometry (an excavation's cut trenches
+     and terraces read as *built*, unlike an organic cave), `level_03`-
+     `level_05` are cellular-automata caves (the dig breaking through
+     into natural stone the diggers didn't make), matching
+     `silver_mountain_caves.md`'s Depths methodology exactly - random
+     noise, wall/floor smoothing passes, largest-connected-component
+     extraction, entry/exit chosen by farthest-pair BFS distance, the
+     climactic chamber deliberately widened. No new monsters: the same
+     seven already-shipped Visitor creatures, escalating by level,
+     `excavation_warden` placed exactly once, alone, on `level_05` (the
+     stun-lock discipline its own catalog entry requires). Verified via
+     `content/loader.py` (loads clean, no validation errors), `tools/preview.py`
+     (all 5 levels render, connected, reachable), and a direct-`Engine`
+     combat check with `COMBAT_VARIANCE_ENABLED` off (not `testbuild` -
+     this dungeon deliberately has no overworld entrance yet, so
+     `tools/play_llm.py testbuild` can't target it): a reference-tier
+     player (broadsword/bone_plate/two Toughness perks) cleanly wins
+     against the challenging tier (`Bound Eye`) and loses in an
+     unmitigated stand-and-trade against the very-dangerous-and-up tiers
+     (`Stitched Vanguard`/`Charnel Colossus`/`Excavation Warden`) -
+     exactly the already-documented, already-accepted behavior for these
+     exact stat blocks (nothing new to balance-verify, since no stats
+     changed). New regression tests:
+     `test_elder_dig_site_b_has_five_levels_escalating_to_a_solo_warden`
+     (roster/level-chain integrity) in `tests/test_loader.py`, plus
+     `elder_dig_site_b` added to `SHIPPED_DUNGEON_IDS`/`COMBAT_DUNGEON_IDS`
+     there and a new `UNCOVERED_LATER_DUNGEON_IDS` set in
+     `tests/test_main.py` (parallel to the existing
+     `ENCOUNTER_ONLY_DUNGEON_IDS`) carving it out of the "every dungeon
+     has a placed overworld entrance" check, since this one's entrance
+     doesn't exist until a corruption phase adds it at runtime. Full
+     suite: 1663 passed.
+   - **`elder_dig_site_a` not yet built.** Per the plan's own
+     differentiation call: organic cellular-automata caves at every
+     level (not just 3-5) - "grown, not built," matching
+     `world_history.md`'s Elder Age masonry description - rather than
+     `elder_dig_site_b`'s built-then-broken-through structure. Same
+     seven-monster roster, different pacing/mood, its own bible first.
+   - **The corruption file's 4th phase (day 170, radius saturating the
+     cell, `uncover` for both sites) is still not authored** - waits on
+     `elder_dig_site_a` existing too, per `load_region_corruption`'s
+     `known_dungeon_ids` cross-check.
+   - Full CLI playthrough from before-corruption through after-uncover
+     still pending both dungeons + the phase-4 wiring, per
+     `[[feedback_full_cli_playthroughs_find_real_bugs]]`.
 6. Fade-to-black in the graphical client - screenshot-verify per
    `[[feedback_settlement_layout_needs_road_network_and_screenshots]]`'s
    "don't trust ASCII, capture a real frame" lesson, applied here to

@@ -1,0 +1,14 @@
+id: elder_dig_site_b
+name: The Excavation
+starting_level: level_01
+description: >
+  The Visitor's own excavation epicenter on the Northern Steppe - "a wide,
+  terraced scar in the earth... dug with a patience nothing living seems
+  to have" (see docs/region_bibles/northern_steppe.md). Uncovered from a
+  reserved overworld landmark once the region's corruption reaches its
+  final phase (docs/visitor_corruption.md). Five levels, escalating from
+  the dig's outer terraces through cut trenches into the natural stone
+  the excavation finally broke into, ending at whatever the Visitor's
+  been guarding for months. Elder Age site; the Visitor's methods, not
+  its origin, are what this dungeon actually shows.
+inspect_text: A wide, terraced scar in the earth - not a quarry, not a mine, dug with a patience nothing living seems to have.
