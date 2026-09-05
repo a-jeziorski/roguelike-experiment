@@ -1,13 +1,22 @@
 # Progressing Overworld Corruption — Design Plan
 
-*Resolves the open question `docs/main_story.md`'s "Mechanical grounding"
-section flags as genuinely new ("region-scale overworld corruption... not
-yet chosen") and the thing `docs/region_bibles/northern_steppe.md`
-explicitly declines to build ("Not a 'region corruption swap' mechanic...
-this region does not build that - it's hand-authored as a single static
-snapshot"). This document is the design pass main_story.md asks for. It is
-a plan, not yet implemented - no code or content in this document has
-shipped.*
+**Status (2026-09-05): shipped end to end.** All 7 implementation steps
+below are done - schema/loader, the tile-remap/uncover engine mechanics,
+save wiring, real content (Watch Post razing, both Elder Age dungeons,
+all 4 corruption phases), and the graphical client's fade-to-black. This
+document is kept as both the design record (read it before touching this
+mechanic) and the step-by-step log of what actually shipped and when,
+including the real-playtesting fixes and mid-course corrections found
+along the way - not rewritten into a clean "as if we knew this from the
+start" spec.
+
+*Originally: resolves the open question `docs/main_story.md`'s "Mechanical
+grounding" section flagged as genuinely new ("region-scale overworld
+corruption... not yet chosen") and the thing
+`docs/region_bibles/northern_steppe.md` explicitly declined to build
+("Not a 'region corruption swap' mechanic... this region does not build
+that - it's hand-authored as a single static snapshot"). This document
+was the design pass main_story.md asked for.*
 
 ## Decisions made before drafting this plan
 
@@ -595,11 +604,40 @@ Small, independently testable/committable steps, in dependency order:
      for the Northern Steppe end to end** - progressing corruption,
      settlement razing, and both Elder Age dungeons opening, all wired
      and verified.
-6. Fade-to-black in the graphical client - **not yet built**. Purely
-   cosmetic (the `pending_corruption_transition` flag Engine already
-   sets is unconsumed by any renderer); screenshot-verify per
+6. **Done (2026-09-05).** Fade-to-black in the graphical client - built
+   as a fade-*in* from black, not a fade-out-then-in: the world state
+   has already changed synchronously by the time `Engine.process_turn`
+   returns (Engine has no concept of animation frames), so there's no
+   "before" frame left to show - `main.py`'s new `animate_corruption_fade`
+   renders the already-changed map once, snapshots that as the fade's
+   target, then re-presents it at increasing brightness
+   (`CORRUPTION_FADE_STEPS = 8` steps, `CORRUPTION_FADE_FRAME_SECONDS =
+   0.05`s each, ~0.4s total) by rescaling `console.rgb["fg"]`/`["bg"]`
+   from that saved snapshot each frame (never from the console's own
+   already-dimmed state, which would compound rounding error and drift).
+   Wired into both of `main.py`'s `dispatch_action` call sites, checked
+   right after `play_queued_sounds` and before `resolve_transition`
+   (so it plays on the *pre-transition* engine - the one
+   `Engine._check_region_corruption` actually ran on this turn - even in
+   the rare case the same turn also hands the player to a different
+   `Engine`). `Engine._check_region_corruption` also gained a short
+   flavor message logged alongside the flag unconditionally, so a CLI
+   player (who has no fade to watch) still gets *some* signal that the
+   ground around them just changed - the only client-visible difference
+   between the two front ends, exactly as the original design called for.
+   **Verified with real rendered frames**, per
    `[[feedback_settlement_layout_needs_road_network_and_screenshots]]`'s
-   "don't trust ASCII, capture a real frame" lesson once it is.
+   "don't trust ASCII, capture a real frame" discipline: a headless
+   `tcod.context.new` harness built a real overworld `Engine`, called
+   `animate_corruption_fade` directly, and captured screenshots plus a
+   per-frame brightness measurement - frame 0 is pixel-black (245-byte
+   PNG), brightness increases smoothly and roughly linearly across all 9
+   frames, and the final frame is bit-for-bit identical to a plain,
+   un-faded `render_all` call at the same region. New tests: the two
+   existing `pending_corruption_transition` tests in `tests/test_engine.py`
+   now also assert the flavor message is (or isn't) logged alongside the
+   flag. Full suite: 1672 passed (unchanged - both new assertions
+   extended existing tests rather than adding new ones).
 7. Bible/doc reconciliation - **done incrementally as each step
    shipped** rather than deferred to the end: `docs/dungeon_bibles/northern_watch_post.md`
    and `docs/region_bibles/northern_steppe.md` were updated in step 4;

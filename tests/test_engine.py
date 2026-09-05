@@ -5337,6 +5337,10 @@ def test_check_region_corruption_sets_pending_transition_when_player_is_within_r
     engine.process_turn(WaitAction())
 
     assert engine.pending_corruption_transition == "test_cell"
+    # The CLI's only signal - the graphical client also gets the fade
+    # (main.py's animate_corruption_fade), but Engine has no notion of
+    # which client is running, so this is always logged alongside the flag.
+    assert any("crept closer" in m for m in engine.message_log.messages)
 
 
 def test_check_region_corruption_leaves_pending_transition_none_when_player_is_far_away():
@@ -5353,6 +5357,9 @@ def test_check_region_corruption_leaves_pending_transition_none_when_player_is_f
     engine.process_turn(WaitAction())
 
     assert quest_log.corruption_phase == {"test_cell": 1}  # the phase still applied...
+    # ...but with no player nearby, neither the fade-transition flag nor
+    # its accompanying message should fire.
+    assert not any("crept closer" in m for m in engine.message_log.messages)
     assert engine.pending_corruption_transition is None  # ...just no fade signal
 
 

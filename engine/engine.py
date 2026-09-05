@@ -1398,7 +1398,17 @@ class Engine:
         method is also used to replay already-applied phases on save load
         (see engine/save.py's restore_save) - a reloaded save should
         never queue a fade transition for something the player didn't
-        just watch happen live."""
+        just watch happen live.
+
+        Also logs a short flavor message alongside the flag - the CLI
+        client has no fade to mask the reveal with (see
+        main.py's animate_corruption_fade, the graphical client's own
+        consumer of pending_corruption_transition), so this is the only
+        signal a CLI player ever gets that the ground around them just
+        changed. Logged unconditionally alongside the flag (not gated on
+        which client is running - Engine has no notion of that), so the
+        graphical client sees both the message and the fade together,
+        which reinforce rather than conflict."""
         for corruption in self.region_corruption_defs:
             applied = self.quest_log.corruption_phase.get(corruption.cell_id, 0)
             starting_applied = applied
@@ -1412,6 +1422,10 @@ class Engine:
                 dx, dy = self.player.x - ex, self.player.y - ey
                 if dx * dx + dy * dy <= phase.radius * phase.radius:
                     self.pending_corruption_transition = corruption.cell_id
+                    self.message_log.add(
+                        "The ash underfoot feels fresher than it did a moment ago - "
+                        "whatever's spreading here just crept closer."
+                    )
             # Only write back when something actually applied - keeps a
             # cell with nothing due yet absent from the dict entirely
             # (0 is already its implicit default, per QuestLog.corruption_phase's

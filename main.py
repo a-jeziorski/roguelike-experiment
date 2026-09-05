@@ -7,6 +7,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import tcod
 import tcod.event
 
@@ -115,6 +116,14 @@ CONSOLE_ROWS = 42
 
 PROJECTILE_FRAME_SECONDS = 0.035
 IMPACT_FLASH_SECONDS = 0.09
+# Engine.pending_corruption_transition's fade-in (see
+# animate_corruption_fade below, docs/visitor_corruption.md) - deliberately
+# a handful more, slower steps than a combat flash (IMPACT_FLASH_SECONDS):
+# this is meant to read as the world settling into a changed state, not a
+# snappy hit reaction. 8 steps * 0.05s = 0.4s total, short enough to never
+# feel like the game hung.
+CORRUPTION_FADE_STEPS = 8
+CORRUPTION_FADE_FRAME_SECONDS = 0.05
 
 FONT_CANDIDATES = [
     Path(os.environ.get("SystemRoot", r"C:\Windows")) / "Fonts" / "consola.ttf",
@@ -555,6 +564,45 @@ def animate_combat_feedback(
 ) -> None:
     animate_melee_attacks(console, context, engine)
     animate_ranged_attacks(console, context, engine)
+
+
+def animate_corruption_fade(
+    console: tcod.console.Console, context: tcod.context.Context, engine: Engine
+) -> None:
+    """Masks the moment Engine._check_region_corruption visibly changes
+    the map around the player (docs/visitor_corruption.md) with a quick
+    fade-in from black, rather than an abrupt cut straight to the
+    already-changed tiles. The world state has already changed
+    synchronously by the time this runs - Engine has no concept of
+    animation frames, same "pure visual flavor layered on top of
+    already-final game state" shape as animate_melee_attacks/
+    animate_ranged_attacks above - so this never blocks or delays
+    anything mechanically, it only masks the reveal.
+
+    Caller's responsibility to check engine.pending_corruption_transition
+    and clear it afterward - this function only draws, it doesn't touch
+    the flag, the same "animate, don't decide" split
+    animate_combat_feedback's own callers already follow for
+    melee_attack_events/ranged_attack_events (though those two drain
+    their own mailbox directly, since nothing else ever needs to
+    distinguish "was there an event" from "did the caller consume it";
+    pending_corruption_transition's own value - which region - might
+    matter to a future caller, so it's left for main() to clear)."""
+    render_all(console, engine)
+    # Snapshot the fully-rendered "target" frame once, then repeatedly
+    # rescale *from that snapshot* (never from the console's own
+    # already-dimmed state) at each step - rescaling from the live
+    # console would compound rounding error frame over frame and the
+    # fade would drift rather than land exactly back on the real render.
+    target_fg = console.rgb["fg"].copy()
+    target_bg = console.rgb["bg"].copy()
+    for step in range(CORRUPTION_FADE_STEPS + 1):
+        factor = step / CORRUPTION_FADE_STEPS
+        console.rgb["fg"] = (target_fg.astype(np.float32) * factor).astype(np.uint8)
+        console.rgb["bg"] = (target_bg.astype(np.float32) * factor).astype(np.uint8)
+        context.present(console)
+        if step < CORRUPTION_FADE_STEPS:
+            time.sleep(CORRUPTION_FADE_FRAME_SECONDS)
 
 
 def play_queued_sounds(engine: Engine, sound_manager: SoundManager) -> None:
@@ -1188,6 +1236,9 @@ def main() -> int:
                                 )
                                 animate_combat_feedback(console, context, engine)
                                 play_queued_sounds(engine, sound_manager)
+                                if engine.pending_corruption_transition is not None:
+                                    animate_corruption_fade(console, context, engine)
+                                    engine.pending_corruption_transition = None
                                 active_key, engine = resolve_transition(
                                     active_key, engine, active_engines,
                                     dungeon_registry, overworld_level, catalog,
@@ -1212,6 +1263,9 @@ def main() -> int:
                     return 0
                 animate_combat_feedback(console, context, engine)
                 play_queued_sounds(engine, sound_manager)
+                if engine.pending_corruption_transition is not None:
+                    animate_corruption_fade(console, context, engine)
+                    engine.pending_corruption_transition = None
                 active_key, engine = resolve_transition(
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
