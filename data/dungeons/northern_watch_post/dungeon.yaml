@@ -11,3 +11,11 @@ description: >
   the first real destination in the Northern Steppe, deliberately safe -
   no hostile roster here at all.
 inspect_text: A lean-to roof, still standing, and someone under it who never stopped watching the road south.
+ruined_tile: floor
+ruined_description: >
+  The lean-to's down to bare timber and a cold hearth, same as the fence
+  line and the last standing wall. What's missing is the people - no
+  bodies among the wreckage, nothing here to bury at all. Whatever came
+  down from the north doesn't leave remains behind; it doesn't waste
+  anything it can still use.
+ruined_starting_level: level_01_ruins

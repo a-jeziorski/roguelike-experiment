@@ -29,6 +29,7 @@ from content.schema import (
     LevelDef,
     PerkDef,
     QuestDef,
+    RegionCorruptionDef,
     SpriteManifestDef,
     SpriteRef,
     SpriteSheetDef,
@@ -1276,6 +1277,70 @@ def load_overworld(overworld_dir: Path, catalog: Catalog, known_dungeon_ids: set
         open_boundary_message="",
         dark=False,
     )
+
+
+def load_region_corruption(
+    overworld_dir: Path, known_cell_ids: set[str] | None = None,
+    known_dungeon_ids: set[str] | None = None,
+) -> dict[str, RegionCorruptionDef]:
+    """Loads and validates every `<cell_id>.corruption.yaml` file under
+    `overworld_dir/cells/` (see content/schema.py's RegionCorruptionDef) -
+    one optional sibling file per cell `.lvl`, present only for a cell the
+    Visitor is actively corrupting. `known_cell_ids`/`known_dungeon_ids`
+    cross-check `cell_id`/`raze_dungeon_id`/`uncover[].dungeon_id` the
+    same way load_quests' `known_dungeon_ids` does - pass None for either
+    to skip that particular cross-check (e.g. a test not loading the full
+    overworld/dungeon registry).
+
+    Not yet called from tools/play_llm.py's or main.py's load_content() -
+    docs/visitor_corruption.md's implementation sequence wires this in
+    (together with cell-bounds-checking epicenter/uncover coordinates,
+    which needs each cell's actual width/height and so waits for that
+    same wiring step) once a real `.corruption.yaml` file exists to load."""
+    paths = sorted(overworld_dir.glob("cells/*.corruption.yaml"))
+
+    defs: dict[str, RegionCorruptionDef] = {}
+    errors: list[str] = []
+    for path in paths:
+        raw = _load_yaml(path) or {}
+        try:
+            corruption = RegionCorruptionDef(**raw)
+        except ValidationError as e:
+            errors.append(f"{path}: {e}")
+            continue
+
+        if corruption.cell_id in defs:
+            errors.append(
+                f"{path}: duplicate corruption def for cell '{corruption.cell_id}' "
+                f"(already defined by another file)"
+            )
+            continue
+
+        if known_cell_ids is not None and corruption.cell_id not in known_cell_ids:
+            errors.append(
+                f"{path}: cell_id references unknown overworld cell '{corruption.cell_id}'"
+            )
+
+        if known_dungeon_ids is not None:
+            for phase in corruption.phases:
+                if phase.raze_dungeon_id is not None and phase.raze_dungeon_id not in known_dungeon_ids:
+                    errors.append(
+                        f"{path}: raze_dungeon_id references unknown dungeon "
+                        f"'{phase.raze_dungeon_id}'"
+                    )
+                for entry in phase.uncover:
+                    if entry.dungeon_id not in known_dungeon_ids:
+                        errors.append(
+                            f"{path}: uncover dungeon_id references unknown dungeon "
+                            f"'{entry.dungeon_id}'"
+                        )
+
+        defs[corruption.cell_id] = corruption
+
+    if errors:
+        raise ContentValidationError(str(overworld_dir), errors)
+
+    return defs
 
 
 def load_levels(

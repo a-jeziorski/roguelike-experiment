@@ -81,6 +81,7 @@ from content.loader import (
     load_encounters,
     load_overworld,
     load_quests,
+    load_region_corruption,
 )
 from content.schema import PEACEFUL_AI_TYPES
 from engine.actions import (
@@ -110,6 +111,7 @@ from main import (
     QUESTS_PATH,
     _check_destroyable_dungeons_have_ruin_content,
     _check_flag_dialogue_references_known_flags,
+    _check_region_corruption_raze_targets_have_ruin_content,
     dispatch_action,
     fresh_start,
     resolve_transition,
@@ -571,7 +573,7 @@ def _resolve_goto_target(engine, target_tokens: list[str]) -> tuple[tuple[int, i
 def _execute_walk(
     engine, steps: list[tuple[int, int]], active_key: str, active_engines: dict,
     clock, quest_log, dungeon_registry: dict, overworld_level, catalog, encounter_registry,
-    on_step=None,
+    region_corruption_defs=None, on_step=None,
 ) -> tuple[str, object, list[str]]:
     """Executes up to len(steps) BumpAction moves ((dx, dy) tuples),
     stopping before spending a turn on any step _peek_step flags unsafe,
@@ -609,6 +611,7 @@ def _execute_walk(
             active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
             clock=clock, quest_log=quest_log, sprite_codepoints=None,
             encounter_registry=encounter_registry,
+            region_corruption_defs=region_corruption_defs,
         )
         executed += 1
         entered_new_area = new_active_key != active_key
@@ -651,7 +654,7 @@ def _execute_walk(
 def apply_command(
     args: argparse.Namespace, active_key: str, active_engines: dict, engine,
     clock, quest_log, dungeon_registry: dict, overworld_level, catalog, encounter_registry,
-    on_step=None,
+    region_corruption_defs=None, on_step=None,
 ) -> tuple[str, object, bool, list[str]]:
     """Applies one non-query command; returns the possibly-updated
     (active_key, engine, full_map, notes) - resolve_transition can hand
@@ -673,7 +676,7 @@ def apply_command(
         active_key, engine, notes = _execute_walk(
             engine, steps, active_key, active_engines, clock, quest_log,
             dungeon_registry, overworld_level, catalog, encounter_registry,
-            on_step=on_step,
+            region_corruption_defs=region_corruption_defs, on_step=on_step,
         )
         return active_key, engine, full_map, notes
 
@@ -691,7 +694,7 @@ def apply_command(
         active_key, engine, walk_notes = _execute_walk(
             engine, path, active_key, active_engines, clock, quest_log,
             dungeon_registry, overworld_level, catalog, encounter_registry,
-            on_step=on_step,
+            region_corruption_defs=region_corruption_defs, on_step=on_step,
         )
         notes.extend(walk_notes)
         return active_key, engine, full_map, notes
@@ -736,6 +739,7 @@ def apply_command(
             active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
             clock=clock, quest_log=quest_log, sprite_codepoints=None,
             encounter_registry=encounter_registry,
+            region_corruption_defs=region_corruption_defs,
         )
         if cmd in ("move", "attack"):
             post_pos = (engine.player.x, engine.player.y)
@@ -856,14 +860,21 @@ def load_content():
     quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
     _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)
     _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)
+    region_corruption_defs = list(load_region_corruption(
+        OVERWORLD_DIR,
+        known_cell_ids={p.stem for p in (OVERWORLD_DIR / "cells").glob("*.lvl")},
+        known_dungeon_ids=set(dungeon_registry),
+    ).values())
+    _check_region_corruption_raze_targets_have_ruin_content(region_corruption_defs, dungeon_registry)
     encounter_registry = load_encounters(
         ENCOUNTERS_PATH, known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
     )
-    return catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry
+    return catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, region_corruption_defs
 
 
 def test_build_start(
     args: argparse.Namespace, catalog, dungeon_registry: dict, overworld_level, quest_defs: dict,
+    region_corruption_defs=None,
 ) -> tuple[str, dict, GameClock, object]:
     """Debug-only alternative to load_state/fresh_start for the `testbuild`
     command: a brand-new overworld state with the player spawned adjacent
@@ -944,6 +955,7 @@ def test_build_start(
         game_map, player, overworld_level.name,
         catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
         dungeon_ruin_data=dungeon_ruin_data, starting_level=overworld_level,
+        region_corruption_defs=region_corruption_defs,
         clock=clock, quest_log=quest_log, sprite_codepoints=None,
     )
     active_engines = {OVERWORLD_KEY: engine}
@@ -957,7 +969,10 @@ def test_build_start(
     return OVERWORLD_KEY, active_engines, clock, quest_log
 
 
-def load_state(save_path: Path, force_new: bool, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry):
+def load_state(
+    save_path: Path, force_new: bool, catalog, dungeon_registry, overworld_level, quest_defs,
+    encounter_registry, region_corruption_defs=None,
+):
     if not force_new and save_path.exists():
         save = load_from_path(save_path)
         if save is not None:
@@ -965,6 +980,7 @@ def load_state(save_path: Path, force_new: bool, catalog, dungeon_registry, over
                 return restore_save(
                     save, catalog, dungeon_registry, overworld_level, quest_defs,
                     encounter_registry, None, OVERWORLD_KEY,
+                    region_corruption_defs=region_corruption_defs,
                 )
             except (KeyError, ValueError):
                 pass
@@ -1019,7 +1035,9 @@ def main(argv: list[str] | None = None) -> int:
     call_argv = _strip_session_flags(list(argv) if argv is not None else sys.argv[1:])
 
     try:
-        catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = load_content()
+        catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, region_corruption_defs = (
+            load_content()
+        )
     except ContentValidationError as e:
         print(str(e), file=sys.stderr)
         return 1
@@ -1027,11 +1045,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "testbuild":
         active_key, active_engines, clock, quest_log = test_build_start(
             args, catalog, dungeon_registry, overworld_level, quest_defs,
+            region_corruption_defs=region_corruption_defs,
         )
     else:
         active_key, active_engines, clock, quest_log = load_state(
             save_path, args.command == "new", catalog, dungeon_registry, overworld_level,
-            quest_defs, encounter_registry,
+            quest_defs, encounter_registry, region_corruption_defs,
         )
     engine = active_engines[active_key]
 
@@ -1058,7 +1077,7 @@ def main(argv: list[str] | None = None) -> int:
     active_key, engine, full_map, notes = apply_command(
         args, active_key, active_engines, engine, clock, quest_log,
         dungeon_registry, overworld_level, catalog, encounter_registry,
-        on_step=on_step,
+        region_corruption_defs, on_step=on_step,
     )
 
     save = capture_save(active_key, active_engines, clock, quest_log, overworld_level)

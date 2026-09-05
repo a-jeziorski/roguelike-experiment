@@ -18,6 +18,7 @@ from content.loader import (
     load_levels,
     load_overworld,
     load_quests,
+    load_region_corruption,
 )
 from content.schema import EncounterDef
 from engine.actions import BumpAction, EscapeAction, FireAction, RestartAction, WaitAction
@@ -32,14 +33,16 @@ from engine.entity import (
     ItemEffect,
 )
 from engine.game_map import GameMap, build_game_map
-from engine.quest import Quest, QuestLog
+from engine.quest import Quest, QuestLog, create_quest_log
 from main import (
     DUNGEONS_DIR,
     OVERWORLD_DIR,
     OVERWORLD_KEY,
+    QUESTS_PATH,
     STARTING_DUNGEON_ID,
     _check_destroyable_dungeons_have_ruin_content,
     _check_flag_dialogue_references_known_flags,
+    _check_region_corruption_raze_targets_have_ruin_content,
     build_initial_state,
     dispatch_action,
     fire_mode_gate,
@@ -1289,13 +1292,28 @@ def test_resolve_transition_ambush_resumes_the_same_cached_engine_after_a_restar
 # --- Visitor band ambush (Engine.wants_visitor_band_encounter) ---
 
 
-def _overworld_engine(catalog, dungeon_registry, overworld_level, *, player_y=None, clock=None, quest_log=None):
+def _overworld_engine(
+    catalog, dungeon_registry, overworld_level, *, player_y=None, clock=None, quest_log=None,
+    region_corruption_defs=None,
+):
     overworld_map, overworld_player = build_game_map(overworld_level, catalog)
     if player_y is not None:
         overworld_player.y = player_y
+    # Built unconditionally (not just when a test cares about razing) so
+    # this helper matches every real production overworld-Engine
+    # construction site (main.py's resolve_transition/fresh_start,
+    # tools/play_llm.py's equivalents) - Engine.destroy_dungeon silently
+    # no-ops without it, which used to make any _overworld_engine-based
+    # razing test look like it worked right up until it actually checked
+    # quest_log.destroyed_dungeon_ids.
+    dungeon_ruin_data = {
+        d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
+        for d_id, d in dungeon_registry.items() if d.ruined_tile
+    }
     engine = Engine(
         overworld_map, overworld_player, overworld_level.name,
         catalog=catalog, is_overworld=True, clock=clock, quest_log=quest_log,
+        dungeon_ruin_data=dungeon_ruin_data, region_corruption_defs=region_corruption_defs,
     )
     return engine
 
@@ -1444,6 +1462,104 @@ def test_check_destroyable_dungeons_have_ruin_content_accepts_ruins_present():
     dungeon_registry = {"wayford": SimpleNamespace(ruined_tile="road")}
 
     _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)  # must not raise
+
+
+def test_real_shipped_content_has_ruin_content_for_every_region_corruption_raze_target():
+    """The real data/overworld/cells/*.corruption.yaml must never ship a
+    phase with a raze_dungeon_id pointing at a dungeon with no
+    ruined_tile/ruined_description authored - Engine.destroy_dungeon
+    would have nothing to show. Regression net for
+    northern_steppe.corruption.yaml/northern_watch_post, the sibling of
+    test_real_shipped_content_has_ruin_content_for_every_destroyable_dungeon
+    above for corruption's own raze trigger."""
+    catalog = load_catalog()
+    dungeon_registry = load_dungeon_registry(DUNGEONS_DIR, catalog)
+    region_corruption_defs = list(load_region_corruption(
+        OVERWORLD_DIR,
+        known_cell_ids={p.stem for p in (OVERWORLD_DIR / "cells").glob("*.lvl")},
+        known_dungeon_ids=set(dungeon_registry),
+    ).values())
+    _check_region_corruption_raze_targets_have_ruin_content(  # must not raise
+        region_corruption_defs, dungeon_registry,
+    )
+
+
+def test_check_region_corruption_raze_targets_have_ruin_content_rejects_a_dungeon_with_no_ruins():
+    from types import SimpleNamespace
+
+    region_corruption_defs = [
+        SimpleNamespace(
+            cell_id="test_cell",
+            phases=[SimpleNamespace(raze_dungeon_id="wayford")],
+        ),
+    ]
+    dungeon_registry = {"wayford": SimpleNamespace(ruined_tile=None)}
+
+    with pytest.raises(ContentValidationError, match="raze_dungeon_id"):
+        _check_region_corruption_raze_targets_have_ruin_content(region_corruption_defs, dungeon_registry)
+
+
+def test_check_region_corruption_raze_targets_have_ruin_content_accepts_ruins_present():
+    from types import SimpleNamespace
+
+    region_corruption_defs = [
+        SimpleNamespace(
+            cell_id="test_cell",
+            phases=[SimpleNamespace(raze_dungeon_id="wayford")],
+        ),
+    ]
+    dungeon_registry = {"wayford": SimpleNamespace(ruined_tile="road")}
+
+    # must not raise
+    _check_region_corruption_raze_targets_have_ruin_content(region_corruption_defs, dungeon_registry)
+
+
+def test_real_region_corruption_razes_the_watch_post_and_voids_its_carry_quest():
+    """End-to-end check that the real
+    data/overworld/cells/northern_steppe.corruption.yaml actually reaches
+    and razes the Watch Post by day 140 - not just that the file loads,
+    but that Engine._check_region_corruption drives it through
+    Engine.destroy_dungeon against the real overworld map. Also checks
+    the specific quest-voiding gap
+    [[feedback_quest_deadline_consequences_include_not_given]] flags as
+    previously shipped as a real bug: a_warning_worth_carrying's
+    questgiver (watch_post_sentry) dies with the post, so its still-
+    not_given copy must fail. word_from_the_north deliberately has no
+    matching voided_by_dungeon_id (it's voided by Wayford instead, and
+    completes on dungeon arrival alone, which still works against a
+    razed-but-walkable ruins interior) - checked as a static content
+    fact below, not a live status, since by day 140 Wayford's own much-
+    earlier deadline chain has unrelatedly already resolved it too."""
+    catalog, dungeon_registry, overworld_level = _world()
+    region_corruption_defs = list(load_region_corruption(
+        OVERWORLD_DIR,
+        known_cell_ids={p.stem for p in (OVERWORLD_DIR / "cells").glob("*.lvl")},
+        known_dungeon_ids=set(dungeon_registry),
+    ).values())
+    quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
+    quest_log = create_quest_log(quest_defs)
+    clock = GameClock(year=STARTING_YEAR, day=140, hour=0)
+    entrance_coord = _entrance_for(overworld_level, "northern_watch_post")
+
+    overworld_engine = _overworld_engine(
+        catalog, dungeon_registry, overworld_level, player_y=89,  # far south of the epicenter
+        clock=clock, quest_log=quest_log, region_corruption_defs=region_corruption_defs,
+    )
+
+    overworld_engine.process_turn(WaitAction())
+
+    assert "northern_watch_post" in quest_log.destroyed_dungeon_ids
+    assert overworld_engine.game_map.dungeon_entrances[entrance_coord] == "northern_watch_post"
+    assert overworld_engine.game_map.kinds[entrance_coord] == "floor"
+    assert quest_log.quests["a_warning_worth_carrying"].status == "failed"
+    # word_from_the_north's own deadline-cascade quests (spreading_the_warning
+    # et al) have long since resolved by day 140 regardless of anything this
+    # test does, so its live status isn't a clean signal here - the actual
+    # invariant this guards is that it stays tied to Wayford, not the Watch
+    # Post: its dungeon-arrival completion trigger works against a razed-
+    # but-walkable ruins interior just as well as a populated one, so it
+    # must never need voided_by_dungeon_id: northern_watch_post.
+    assert quest_defs["word_from_the_north"].voided_by_dungeon_id == "wayford"
 
 
 def test_real_shipped_content_has_known_flags_for_every_flag_dialogue_reference():

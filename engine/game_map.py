@@ -552,3 +552,89 @@ def apply_dungeon_destruction(
     game_map.walkable[x, y] = walkable
     game_map.transparent[x, y] = transparent
     game_map.tile_descriptions[coord] = ruined_description
+
+
+# The Visitor's corruption remap table (see apply_corruption_radius below,
+# docs/visitor_corruption.md) - only these two tile kinds ever corrupt.
+# Every other kind, including an already-corrupted ashen_plains/
+# blighted_forest (whether hand-authored at ship time or remapped by an
+# earlier phase), is left untouched - see apply_corruption_radius's own
+# docstring for why that's what makes it idempotent/replay-safe.
+_CORRUPTIBLE_TILE_REMAP: dict[str, str] = {
+    "plains": "ashen_plains",
+    "forest": "blighted_forest",
+}
+
+
+def apply_corruption_radius(game_map: GameMap, epicenter: tuple[int, int], radius: int) -> None:
+    """The many-tile generalization of apply_dungeon_destruction's
+    single-tile swap: remaps every still-pristine plains/forest tile
+    within Chebyshev distance `radius` of `epicenter` to its corrupted
+    counterpart (ashen_plains/blighted_forest respectively, per
+    _CORRUPTIBLE_TILE_REMAP), updating walkable/transparent in lockstep
+    via TILE_PASSABILITY - the same "kind + walkable/transparent change
+    together" pattern every tile mutation in this module already follows.
+    See docs/visitor_corruption.md for the full design this implements
+    step 2 of.
+
+    A Chebyshev ball of radius `radius` around (ex, ey) is exactly the
+    square [ex-radius, ex+radius] x [ey-radius, ey+radius] clipped to the
+    map - no separate distance check is needed once the loop bounds are
+    clipped that way, so this only ever visits the tiles it actually
+    changes (or definitely doesn't), never the whole map. Cheap even at
+    the largest radius this project's content ever uses.
+
+    Deliberately narrow about what it touches:
+    - Only plains/forest are ever remapped. An already-corrupted tile is
+      left alone (a no-op re-visit), which is what makes calling this
+      more than once - with a growing radius, across successive
+      corruption phases - safe and idempotent: replaying every phase up
+      to a saved index against a freshly rebuilt GameMap (the same
+      "rebuild from the static level file, then redo every one-time
+      mutation" pattern engine/save.py's restore_save already uses for
+      destroyed_dungeon_ids) produces the same result as applying them
+      live, one at a time, as the clock actually crosses each threshold.
+    - Every other tile kind - road, wall, dungeon_entrance, landmark,
+      stairs, mountain, sea, town, and so on - is never touched
+      regardless of distance. Corruption spreads across open ground, not
+      through structures or landmarks.
+
+    Not yet called from anywhere - Engine._check_region_corruption (step
+    3 of docs/visitor_corruption.md's implementation sequence) is this
+    function's first real caller."""
+    ex, ey = epicenter
+    x_min, x_max = max(0, ex - radius), min(game_map.width - 1, ex + radius)
+    y_min, y_max = max(0, ey - radius), min(game_map.height - 1, ey + radius)
+    for x in range(x_min, x_max + 1):
+        for y in range(y_min, y_max + 1):
+            new_kind = _CORRUPTIBLE_TILE_REMAP.get(game_map.kinds[x, y])
+            if new_kind is None:
+                continue
+            game_map.kinds[x, y] = new_kind
+            walkable, transparent = TILE_PASSABILITY.get(new_kind, (True, True))
+            game_map.walkable[x, y] = walkable
+            game_map.transparent[x, y] = transparent
+
+
+def uncover_landmark(game_map: GameMap, coord: tuple[int, int], dungeon_id: str) -> None:
+    """The mirror image of apply_dungeon_destruction: turns a landmark (or
+    any other) tile into a real, enterable dungeon_entrance the instant its
+    owning RegionCorruptionPhase applies (see
+    content.schema.RegionCorruptionUncover, docs/visitor_corruption.md).
+    Registers `coord` in game_map.dungeon_entrances the same way
+    build_game_map already does for every ordinary, load-time-placed
+    entrance - nothing downstream (MovementAction, look mode,
+    Engine.destroy_dungeon) can tell an uncovered entrance apart from one
+    that was always there.
+
+    Idempotent/replay-safe the same way apply_dungeon_destruction is:
+    re-applying to an already-uncovered coordinate just re-sets the same
+    kind/walkable/transparent/entrance values, which is harmless and
+    exactly what engine/save.py's restore_save needs when replaying every
+    already-applied phase against a freshly rebuilt GameMap."""
+    x, y = coord
+    game_map.kinds[x, y] = "dungeon_entrance"
+    walkable, transparent = TILE_PASSABILITY.get("dungeon_entrance", (True, True))
+    game_map.walkable[x, y] = walkable
+    game_map.transparent[x, y] = transparent
+    game_map.dungeon_entrances[coord] = dungeon_id

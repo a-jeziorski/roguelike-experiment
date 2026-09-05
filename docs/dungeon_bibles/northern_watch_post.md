@@ -162,6 +162,56 @@ to the overworld (not `open_boundary`; this is a real, finished
 destination to stand in and talk, not a fight to be able to flee).
 `requires_stairs_down: false`.
 
+## After: the Razing (`level_01_ruins`)
+
+**Added 2026-09-05, per `docs/visitor_corruption.md`.** The Watch Post is
+no longer safe from ruin forever - `data/overworld/cells/northern_steppe.corruption.yaml`
+razes it (`RegionCorruptionPhase.raze_dungeon_id`, day 140 of year 87
+P.S.) once the Visitor's corruption front, spreading south from its
+Hollow Reach epicenter, reaches this far down the map. This is a
+deliberate, flagged departure from this bible's original "no ruin
+content... nothing currently threatens this specific post" line above -
+not a contradiction to quietly resolve, the same posture Wayford's own
+bible takes toward its own razing.
+
+**Total loss - no survivors, unlike Wayford.** Wayford's own ruins kept
+two survivors alive for specific in-character reasons (one sheltered
+underground, one who fought and won). The Watch Post gets none: to the
+Visitor, a settlement's people are raw material for more necrocrafts
+(`docs/main_story.md`'s "Necromancy at scale" - "expendable labor...
+drawn from whoever and whatever the Visitor's arrival kills"), not
+collateral damage worth sparing anyone from. The Sentry and both
+villagers are gone entirely - no bodies, no survivors, nothing to find.
+`level_01_ruins` ships with zero entity spawns.
+
+**Same footprint, scoured population** - the same "recognizable, not a
+different ruin wearing this name" discipline Wayford's own razing
+established. `level_01_ruins`'s map is `level_01`'s ASCII grid copied
+verbatim; only the legend changes. Every `,` (plains) becomes
+`scoured_ground` (reusing `ashen_plains`'s sprite, no hazard damage - the
+same vetted choice Wayford's own ruins use); the lean-to's fireplace and
+bed become `rubble`, as does the barrel/crate pairing beside the
+already-"collapsed structure" wall block the pristine bible describes -
+this location's whole cast and its meager furnishings both gone, not a
+mix of pristine and ruined pockets the way a settlement with survivors
+would have. The one worn path (gate to lean-to) stays `road` - paved
+ground outlives the people who wore it smooth.
+
+**The exit's own flavor text changes too**: "Back out onto open,
+wind-scoured ground. The road south is still there. Nobody's left here
+to watch it" - answering the pristine text's "the road south is still
+there, for now" with what "for now" turned out to mean.
+
+**`a_warning_worth_carrying` (`voided_by_dungeon_id: northern_watch_post`)
+force-fails** the instant the razing fires, `not_given` or `in_progress`
+alike - its questgiver (`watch_post_sentry`) is gone, so there's no one
+left to have given or to still be carrying the word from. Failure
+message: "Whatever word the Sentry meant to send south, there's no one
+left up there to have meant it." `word_from_the_north` needs no matching
+change - it's voided by Wayford, not the Watch Post, and its
+dungeon-arrival completion trigger works identically against a razed-
+but-walkable ruins interior.
+
 ## Explicitly out of scope
 
 - No loot, no reward item from this dungeon itself - both quests reward
@@ -170,10 +220,7 @@ destination to stand in and talk, not a fight to be able to flee).
 - No hostile roster, no `balance_reference_xp` - nothing here to
   balance-test (same reasoning `windbreak_hold`/`farrows_stake` already
   established for a pure settlement).
-- No ruin content (`ruined_tile`/`ruined_description`) - nothing
-  currently threatens this specific post the way Wayford or Stonebridge
-  are threatened; revisit if a future pass gives the Frayed Edge its own
-  escalating danger to this location specifically.
 - No Elder Age or Visitor exposition - see the pitch above. This
   location's whole job is establishing that something is *wrong*, not
-  explaining *what*.
+  explaining *what*. The ruined_description above keeps to this too -
+  it never names the Visitor, only what it left behind.

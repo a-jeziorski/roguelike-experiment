@@ -1883,6 +1883,157 @@ class DungeonDef(BaseModel):
         return self
 
 
+class RegionCorruptionUncover(BaseModel):
+    """One landmark tile that becomes a real, enterable dungeon_entrance
+    the moment its owning RegionCorruptionPhase applies (see
+    docs/visitor_corruption.md, Engine._uncover_landmark - not yet built).
+    The mirror image of DungeonDef.ruined_tile/ruined_starting_level:
+    instead of an entrance collapsing into a ruin, a landmark opens into a
+    dungeon. `coord` is in the same local cell coordinates as
+    RegionCorruptionDef.epicenter - converted to the assembled overworld's
+    global coordinates the same way content/loader.py's load_overworld
+    already offsets every dungeon_entrance/tile_description/player_start,
+    once this is wired into that pipeline."""
+
+    coord: tuple[int, int]
+    dungeon_id: str
+
+    @field_validator("coord")
+    @classmethod
+    def coord_is_non_negative(cls, v: tuple[int, int]) -> tuple[int, int]:
+        if v[0] < 0 or v[1] < 0:
+            raise ValueError(f"coord {v} must have non-negative x and y")
+        return v
+
+
+class RegionCorruptionPhase(BaseModel):
+    """One step in a region's corruption timeline (see
+    RegionCorruptionDef.phases). Applies at most once, the moment
+    GameClock reaches (after_year, after_day) - the same field-naming
+    convention as QuestDef.available_after_year/day, deliberately, not a
+    new vocabulary. One-directional like a quest deadline: once applied,
+    a phase never un-applies, and RegionCorruptionDef's own cross-phase
+    validators (below) enforce that later phases only ever cover more
+    ground, never less."""
+
+    after_year: int
+    after_day: int
+    # Chebyshev distance from RegionCorruptionDef.epicenter within which
+    # a still-pristine plains/forest tile gets remapped to
+    # ashen_plains/blighted_forest once this phase applies (see
+    # docs/visitor_corruption.md's "Engine mechanics" - the many-tile
+    # generalization of engine/game_map.py's apply_dungeon_destruction).
+    # Already-corrupted tiles (from a hand-authored baseline or an
+    # earlier phase) and structural tiles (road/dungeon_entrance/
+    # landmark/stairs) are left alone regardless of radius.
+    radius: int = Field(gt=0)
+    # Razes this dungeon's overworld entrance the instant this phase
+    # applies, by deferring entirely to the existing
+    # Engine.destroy_dungeon (unmodified - see docs/visitor_corruption.md).
+    # Cross-checked against a known dungeon id at load time, the same way
+    # WorldConsequence.destroy_dungeon_id already is (content/loader.py's
+    # load_quests).
+    raze_dungeon_id: str | None = None
+    # Landmark tiles that become real dungeon_entrances the instant this
+    # phase applies - see RegionCorruptionUncover above.
+    uncover: list[RegionCorruptionUncover] = Field(default_factory=list)
+
+
+class RegionCorruptionDef(BaseModel):
+    """The Visitor's progressing corruption of one overworld cell over
+    in-game time - see docs/visitor_corruption.md for the full design.
+    Lives at data/overworld/cells/<cell_id>.corruption.yaml, a sibling to
+    that cell's own <cell_id>.lvl (same "manifest next to its content"
+    shape as DungeonDef sitting beside a dungeon's levels/ directory). A
+    cell with no corruption file simply never corrupts - most cells (e.g.
+    heartlands) are never expected to have one."""
+
+    cell_id: str
+    # LOCAL cell coordinates (matching every other coordinate in that
+    # cell's own .lvl file) - the point every phase's radius is measured
+    # from. Doubles, narratively, as the Visitor's necroship's own
+    # position (see docs/visitor_corruption.md's "Resolved" notes) -
+    # not enforced here, just the reason this is a single point rather
+    # than a per-phase list of them.
+    epicenter: tuple[int, int]
+    # Must be strictly increasing in (after_year, after_day) and have
+    # non-decreasing radius - validated below. A region only ever
+    # corrupts further as time passes, never un-corrupts.
+    phases: list[RegionCorruptionPhase]
+
+    @field_validator("epicenter")
+    @classmethod
+    def epicenter_is_non_negative(cls, v: tuple[int, int]) -> tuple[int, int]:
+        if v[0] < 0 or v[1] < 0:
+            raise ValueError(f"epicenter {v} must have non-negative x and y")
+        return v
+
+    @field_validator("phases")
+    @classmethod
+    def phases_non_empty(cls, v: list[RegionCorruptionPhase]) -> list[RegionCorruptionPhase]:
+        if not v:
+            raise ValueError("phases must not be empty - a corruption def with no phases does nothing")
+        return v
+
+    @model_validator(mode="after")
+    def phases_strictly_increasing_in_time(self) -> "RegionCorruptionDef":
+        for prev, nxt in zip(self.phases, self.phases[1:]):
+            if (nxt.after_year, nxt.after_day) <= (prev.after_year, prev.after_day):
+                raise ValueError(
+                    "phases must be strictly increasing in (after_year, after_day) - "
+                    f"phase at ({nxt.after_year}, {nxt.after_day}) does not come strictly "
+                    f"after the previous phase at ({prev.after_year}, {prev.after_day})"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def radius_never_shrinks(self) -> "RegionCorruptionDef":
+        for prev, nxt in zip(self.phases, self.phases[1:]):
+            if nxt.radius < prev.radius:
+                raise ValueError(
+                    f"phase radius must never shrink - the phase at ({nxt.after_year}, "
+                    f"{nxt.after_day}) has radius {nxt.radius}, less than the previous "
+                    f"phase's radius {prev.radius}"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def raze_dungeon_id_used_at_most_once(self) -> "RegionCorruptionDef":
+        seen: set[str] = set()
+        for phase in self.phases:
+            if phase.raze_dungeon_id is None:
+                continue
+            if phase.raze_dungeon_id in seen:
+                raise ValueError(
+                    f"raze_dungeon_id '{phase.raze_dungeon_id}' appears in more than one "
+                    "phase - Engine.destroy_dungeon is idempotent so this wouldn't break "
+                    "anything at runtime, but it almost certainly indicates a copy-paste "
+                    "mistake in this file"
+                )
+            seen.add(phase.raze_dungeon_id)
+        return self
+
+    @model_validator(mode="after")
+    def uncover_targets_used_at_most_once(self) -> "RegionCorruptionDef":
+        seen_dungeon_ids: set[str] = set()
+        seen_coords: set[tuple[int, int]] = set()
+        for phase in self.phases:
+            for entry in phase.uncover:
+                if entry.dungeon_id in seen_dungeon_ids:
+                    raise ValueError(
+                        f"uncover dungeon_id '{entry.dungeon_id}' appears in more than one "
+                        "phase - a landmark can only be uncovered once"
+                    )
+                if entry.coord in seen_coords:
+                    raise ValueError(
+                        f"uncover coord {entry.coord} appears in more than one phase - "
+                        "a tile can only be uncovered once"
+                    )
+                seen_dungeon_ids.add(entry.dungeon_id)
+                seen_coords.add(entry.coord)
+        return self
+
+
 class SpriteSheetDef(BaseModel):
     """One source image referenced by data/sprites.yaml, addressed either by
     a name->index JSON (RLTiles-style - a sheet with a published tile-name

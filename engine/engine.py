@@ -57,17 +57,19 @@ from engine.combat import resolve_attack, resolve_ranged_attack, resolve_skill_d
 from engine.entity import POTION_KINDS, ActiveEffect, Entity, apply_perk_stat_bonus
 from engine.game_map import (
     GameMap,
+    apply_corruption_radius,
     apply_dungeon_destruction,
     build_game_map,
     entity_from_def,
     item_entity_from_def,
     nearby_walkable_tiles,
+    uncover_landmark,
 )
 from engine.quest import Quest, QuestLog
 
 if TYPE_CHECKING:
     from content.loader import Catalog, ParsedLevel
-    from content.schema import TightenDeadline
+    from content.schema import RegionCorruptionDef, RegionCorruptionPhase, TightenDeadline
     from engine.sprites import SpriteCodepoints
 
 # Fallbacks when a monster doesn't specify its own alert_radius/flee_hp_pct/
@@ -257,6 +259,7 @@ class Engine:
         is_overworld: bool = False,
         dungeon_inspect_text: dict[str, str] | None = None,
         dungeon_ruin_data: dict[str, tuple[str, str, str | None]] | None = None,
+        region_corruption_defs: "list[RegionCorruptionDef] | None" = None,
         clock: GameClock | None = None,
         quest_log: QuestLog | None = None,
         sprite_codepoints: "SpriteCodepoints | None" = None,
@@ -299,6 +302,23 @@ class Engine:
         # overworld Engine" restriction as dungeon_inspect_text above -
         # destroy_dungeon is only ever called while is_overworld is True.
         self.dungeon_ruin_data = dungeon_ruin_data or {}
+        # Every RegionCorruptionDef whose corruption timeline this Engine
+        # should check (see _check_region_corruption,
+        # docs/visitor_corruption.md) - same "only ever populated for the
+        # overworld Engine" restriction as dungeon_inspect_text/
+        # dungeon_ruin_data above, for the same reason: GameClock only
+        # advances while is_overworld, so nothing else ever needs these.
+        self.region_corruption_defs = region_corruption_defs or []
+        # Set by _check_region_corruption for the one turn a corruption
+        # phase actually applies while the player is standing within that
+        # phase's own radius of its epicenter - the presentation layer
+        # (not yet built; see docs/visitor_corruption.md's fade-to-black
+        # design) is meant to consume this once (a short fade animation in
+        # the graphical client, a flavor message.log line in the CLI) and
+        # clear it, the same "read once, then reset" shape as any other
+        # one-shot render signal in this codebase. None the rest of the
+        # time - most turns, nothing corruption-related happens at all.
+        self.pending_corruption_transition: str | None = None
         # Needed to resolve a stairway's destination id into content when
         # descending; only required if the dungeon actually branches/continues.
         self.catalog = catalog
@@ -1341,6 +1361,78 @@ class Engine:
             if was_in_progress and quest.failure_message:
                 self.message_log.add(quest.failure_message)
 
+    def _check_region_corruption(self) -> None:
+        """Sibling to _check_quest_deadlines, called the same turn (see
+        process_enemy_phase) and under the same is_overworld guard -
+        self.game_map is guaranteed to be the overworld's own map here.
+        See docs/visitor_corruption.md for the full design.
+
+        For each RegionCorruptionDef, applies every phase whose
+        (after_year, after_day) the clock has already reached, in order,
+        via _apply_region_corruption_phase - a `while`, not an `if`, so a
+        clock that somehow advances past more than one threshold between
+        checks (nothing does today; a future bulk time-skip action might)
+        still catches up fully in one call rather than silently stalling
+        on the first one forever. quest_log.corruption_phase is only ever
+        advanced here, one application at a time, and only after each
+        phase's own effects have actually been applied - see
+        _apply_region_corruption_phase.
+
+        Separately from applying the phase, flags pending_corruption_transition
+        when the player is within *that phase's own radius* of the
+        epicenter - the same Chebyshev measure the tile remap itself just
+        used, not a separate "is the player in this cell" check (which
+        would need per-cell bounding-box bookkeeping this engine has no
+        other reason to keep). Deliberately not set by
+        _apply_region_corruption_phase itself, since that method is also
+        used to replay already-applied phases on save load (see
+        engine/save.py's restore_save) - a reloaded save should never
+        queue a fade transition for something the player didn't just
+        watch happen live."""
+        for corruption in self.region_corruption_defs:
+            applied = self.quest_log.corruption_phase.get(corruption.cell_id, 0)
+            starting_applied = applied
+            while applied < len(corruption.phases):
+                phase = corruption.phases[applied]
+                if (self.clock.year, self.clock.day) < (phase.after_year, phase.after_day):
+                    break
+                self._apply_region_corruption_phase(corruption, phase)
+                applied += 1
+                ex, ey = corruption.epicenter
+                if max(abs(self.player.x - ex), abs(self.player.y - ey)) <= phase.radius:
+                    self.pending_corruption_transition = corruption.cell_id
+            # Only write back when something actually applied - keeps a
+            # cell with nothing due yet absent from the dict entirely
+            # (0 is already its implicit default, per QuestLog.corruption_phase's
+            # own docstring), rather than pre-populating every known cell
+            # with a 0 entry the instant any Engine with this def exists.
+            if applied != starting_applied:
+                self.quest_log.corruption_phase[corruption.cell_id] = applied
+
+    def _apply_region_corruption_phase(
+        self, corruption: "RegionCorruptionDef", phase: "RegionCorruptionPhase",
+    ) -> None:
+        """The actual world-mutation for one already-due
+        RegionCorruptionPhase: the tile remap always happens; raze/uncover
+        only if this phase carries them. Deliberately has no
+        pending_corruption_transition side effect (see
+        _check_region_corruption, which sets that itself for the live
+        path only) - that's what makes this method safe to call from
+        engine/save.py's restore_save too, replaying every phase up to a
+        saved corruption_phase count against a freshly rebuilt overworld
+        GameMap without spuriously queuing a fade transition for a reload.
+
+        raze_dungeon_id defers entirely to the existing, unmodified
+        destroy_dungeon (already idempotent, already voids the right
+        quests, already handles a not_given quest correctly) - no new
+        raze logic needed here. uncover_landmark is this phase's mirror
+        image for a landmark tile instead of a dungeon entrance."""
+        apply_corruption_radius(self.game_map, corruption.epicenter, phase.radius)
+        if phase.raze_dungeon_id is not None:
+            self.destroy_dungeon(phase.raze_dungeon_id)
+        for entry in phase.uncover:
+            uncover_landmark(self.game_map, entry.coord, entry.dungeon_id)
+
     def _is_currently_peaceful(self, entity: Entity) -> bool:
         """Whether `entity` is still meaningfully peaceful right now - a
         villager already hurt (fleeing) or a town guard while
@@ -2173,6 +2265,7 @@ class Engine:
         if self.game_state == "playing" and self.is_overworld:
             self._advance_world_clock()
             self._check_quest_deadlines()
+            self._check_region_corruption()
 
         self.game_map.update_fov((self.player.x, self.player.y))
         self._log_newly_seen_tile_announcements()

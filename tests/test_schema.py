@@ -10,6 +10,9 @@ from content.schema import (
     LevelDef,
     PerkDef,
     QuestDef,
+    RegionCorruptionDef,
+    RegionCorruptionPhase,
+    RegionCorruptionUncover,
     SpriteRef,
     SpriteSheetDef,
     TightenDeadline,
@@ -2039,3 +2042,141 @@ def test_perk_def_requires_perk_id_defaults_none():
 def test_perk_def_accepts_requires_perk_id():
     perk = PerkDef(**_perk_kwargs(id="toughness_2", requires_perk_id="toughness_1"))
     assert perk.requires_perk_id == "toughness_1"
+
+
+def _phase_kwargs(**overrides):
+    kwargs = dict(after_year=87, after_day=80, radius=5)
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_region_corruption_phase_defaults_no_raze_and_empty_uncover():
+    phase = RegionCorruptionPhase(**_phase_kwargs())
+    assert phase.raze_dungeon_id is None
+    assert phase.uncover == []
+
+
+def test_region_corruption_phase_rejects_nonpositive_radius():
+    with pytest.raises(ValidationError):
+        RegionCorruptionPhase(**_phase_kwargs(radius=0))
+
+
+def test_region_corruption_uncover_rejects_negative_coord():
+    with pytest.raises(ValidationError, match="non-negative"):
+        RegionCorruptionUncover(coord=(-1, 4), dungeon_id="elder_dig_site_a")
+
+
+def test_region_corruption_def_valid_single_phase():
+    corruption = RegionCorruptionDef(
+        cell_id="northern_steppe", epicenter=(75, 10), phases=[_phase_kwargs()],
+    )
+    assert corruption.cell_id == "northern_steppe"
+    assert corruption.epicenter == (75, 10)
+    assert len(corruption.phases) == 1
+
+
+def test_region_corruption_def_valid_multi_phase_with_raze_and_uncover():
+    corruption = RegionCorruptionDef(
+        cell_id="northern_steppe",
+        epicenter=(75, 10),
+        phases=[
+            _phase_kwargs(after_day=80, radius=5),
+            _phase_kwargs(after_day=110, radius=10),
+            _phase_kwargs(after_day=140, radius=15, raze_dungeon_id="northern_watch_post"),
+            _phase_kwargs(
+                after_day=170, radius=20,
+                uncover=[
+                    {"coord": (60, 5), "dungeon_id": "elder_dig_site_a"},
+                    {"coord": (75, 10), "dungeon_id": "elder_dig_site_b"},
+                ],
+            ),
+        ],
+    )
+    assert corruption.phases[2].raze_dungeon_id == "northern_watch_post"
+    assert [u.dungeon_id for u in corruption.phases[3].uncover] == [
+        "elder_dig_site_a", "elder_dig_site_b",
+    ]
+
+
+def test_region_corruption_def_rejects_negative_epicenter():
+    with pytest.raises(ValidationError, match="non-negative"):
+        RegionCorruptionDef(cell_id="northern_steppe", epicenter=(-1, 10), phases=[_phase_kwargs()])
+
+
+def test_region_corruption_def_rejects_empty_phases():
+    with pytest.raises(ValidationError, match="must not be empty"):
+        RegionCorruptionDef(cell_id="northern_steppe", epicenter=(75, 10), phases=[])
+
+
+def test_region_corruption_def_rejects_non_increasing_phase_days():
+    with pytest.raises(ValidationError, match="strictly increasing"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[_phase_kwargs(after_day=110), _phase_kwargs(after_day=110)],
+        )
+
+
+def test_region_corruption_def_rejects_decreasing_phase_days():
+    with pytest.raises(ValidationError, match="strictly increasing"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[_phase_kwargs(after_day=140), _phase_kwargs(after_day=110)],
+        )
+
+
+def test_region_corruption_def_rejects_shrinking_radius():
+    with pytest.raises(ValidationError, match="never shrink"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[
+                _phase_kwargs(after_day=80, radius=10),
+                _phase_kwargs(after_day=110, radius=5),
+            ],
+        )
+
+
+def test_region_corruption_def_accepts_equal_radius_across_phases():
+    corruption = RegionCorruptionDef(
+        cell_id="northern_steppe", epicenter=(75, 10),
+        phases=[_phase_kwargs(after_day=80, radius=10), _phase_kwargs(after_day=110, radius=10)],
+    )
+    assert corruption.phases[1].radius == 10
+
+
+def test_region_corruption_def_rejects_duplicate_raze_dungeon_id():
+    with pytest.raises(ValidationError, match="appears in more than one phase"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[
+                _phase_kwargs(after_day=80, raze_dungeon_id="northern_watch_post"),
+                _phase_kwargs(after_day=110, radius=10, raze_dungeon_id="northern_watch_post"),
+            ],
+        )
+
+
+def test_region_corruption_def_rejects_duplicate_uncover_dungeon_id():
+    with pytest.raises(ValidationError, match="can only be uncovered once"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[
+                _phase_kwargs(after_day=80, uncover=[{"coord": (1, 1), "dungeon_id": "elder_dig_site_a"}]),
+                _phase_kwargs(
+                    after_day=110, radius=10,
+                    uncover=[{"coord": (2, 2), "dungeon_id": "elder_dig_site_a"}],
+                ),
+            ],
+        )
+
+
+def test_region_corruption_def_rejects_duplicate_uncover_coord():
+    with pytest.raises(ValidationError, match="tile can only be uncovered once"):
+        RegionCorruptionDef(
+            cell_id="northern_steppe", epicenter=(75, 10),
+            phases=[
+                _phase_kwargs(after_day=80, uncover=[{"coord": (1, 1), "dungeon_id": "elder_dig_site_a"}]),
+                _phase_kwargs(
+                    after_day=110, radius=10,
+                    uncover=[{"coord": (1, 1), "dungeon_id": "elder_dig_site_b"}],
+                ),
+            ],
+        )

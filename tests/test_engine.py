@@ -8,7 +8,14 @@ from pathlib import Path
 
 import engine.combat
 from content.loader import load_catalog, load_level, load_levels, load_overworld, load_quests
-from content.schema import FlagDialogue, TightenDeadline, WorldConsequence
+from content.schema import (
+    FlagDialogue,
+    RegionCorruptionDef,
+    RegionCorruptionPhase,
+    RegionCorruptionUncover,
+    TightenDeadline,
+    WorldConsequence,
+)
 from engine.actions import (
     SMOKE_BOMB_TELEPORT_RADIUS,
     BumpAction,
@@ -5118,6 +5125,212 @@ def test_destroy_dungeon_seals_the_entrance_and_updates_the_tile():
     assert bool(game_map.walkable[2, 0]) is True
     assert game_map.tile_descriptions[(2, 0)] == "Ash and quiet."
     assert "wayford" in engine.quest_log.destroyed_dungeon_ids
+
+
+# --- _check_region_corruption ---
+
+
+def make_plains_map(width: int, height: int) -> GameMap:
+    """Same shape as make_open_map, but every tile starts "plains" - the
+    corruptible baseline apply_corruption_radius actually remaps, unlike
+    make_open_map's "floor" (used everywhere else in this file, since
+    ordinary combat/action tests don't care about corruption at all)."""
+    game_map = make_open_map(width, height)
+    for x in range(width):
+        for y in range(height):
+            game_map.kinds[x, y] = "plains"
+    return game_map
+
+
+def make_corruption_def(cell_id="test_cell", epicenter=(2, 2), phases=None) -> RegionCorruptionDef:
+    if phases is None:
+        phases = [RegionCorruptionPhase(after_year=STARTING_YEAR, after_day=STARTING_DAY, radius=1)]
+    return RegionCorruptionDef(cell_id=cell_id, epicenter=epicenter, phases=phases)
+
+
+def test_check_region_corruption_applies_a_due_phase_and_advances_the_count():
+    game_map = make_plains_map(5, 5)
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())  # crosses into STARTING_DAY
+
+    for x in range(1, 4):
+        for y in range(1, 4):
+            assert game_map.kinds[x, y] == "ashen_plains", (x, y)
+    assert quest_log.corruption_phase == {"test_cell": 1}
+
+
+def test_check_region_corruption_does_not_apply_before_its_day():
+    game_map = make_plains_map(5, 5)
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 5, hour=0)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert game_map.kinds[2, 2] == "plains"
+    assert quest_log.corruption_phase == {}
+
+
+def test_check_region_corruption_does_not_reapply_an_already_applied_phase():
+    game_map = make_plains_map(5, 5)
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())
+    assert quest_log.corruption_phase == {"test_cell": 1}
+
+    engine.process_turn(WaitAction())  # a later turn - the sole phase is already applied
+
+    assert quest_log.corruption_phase == {"test_cell": 1}
+
+
+def test_check_region_corruption_applies_every_due_phase_in_one_call():
+    game_map = make_plains_map(7, 7)
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    # Far past both phases' thresholds at once - exercises the `while`
+    # (not `if`) in _check_region_corruption.
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY + 100, hour=0)
+    corruption = make_corruption_def(
+        epicenter=(3, 3),
+        phases=[
+            RegionCorruptionPhase(after_year=STARTING_YEAR, after_day=STARTING_DAY, radius=1),
+            RegionCorruptionPhase(after_year=STARTING_YEAR, after_day=STARTING_DAY + 50, radius=3),
+        ],
+    )
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[corruption],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert game_map.kinds[0, 0] == "ashen_plains"  # only reachable at the second phase's radius
+    assert quest_log.corruption_phase == {"test_cell": 2}
+
+
+def test_check_region_corruption_applies_raze_dungeon_id():
+    game_map = make_plains_map(5, 5)
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    game_map.dungeon_entrances[(4, 4)] = "test_dungeon"
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    corruption = make_corruption_def(
+        phases=[
+            RegionCorruptionPhase(
+                after_year=STARTING_YEAR, after_day=STARTING_DAY, radius=1,
+                raze_dungeon_id="test_dungeon",
+            ),
+        ],
+    )
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[corruption],
+        dungeon_ruin_data={"test_dungeon": ("road", "Ash and quiet.", None)},
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert (4, 4) not in game_map.dungeon_entrances
+    assert game_map.kinds[4, 4] == "road"
+    assert "test_dungeon" in quest_log.destroyed_dungeon_ids
+
+
+def test_check_region_corruption_applies_uncover():
+    game_map = make_plains_map(5, 5)
+    game_map.kinds[0, 4] = "landmark"
+    player = make_player(0, 0)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    corruption = make_corruption_def(
+        phases=[
+            RegionCorruptionPhase(
+                after_year=STARTING_YEAR, after_day=STARTING_DAY, radius=1,
+                uncover=[RegionCorruptionUncover(coord=(0, 4), dungeon_id="elder_dig_site_a")],
+            ),
+        ],
+    )
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[corruption],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert game_map.kinds[0, 4] == "dungeon_entrance"
+    assert game_map.dungeon_entrances[(0, 4)] == "elder_dig_site_a"
+
+
+def test_check_region_corruption_sets_pending_transition_when_player_is_within_radius():
+    game_map = make_plains_map(5, 5)
+    player = make_player(2, 2)  # standing at the epicenter itself
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert engine.pending_corruption_transition == "test_cell"
+
+
+def test_check_region_corruption_leaves_pending_transition_none_when_player_is_far_away():
+    game_map = make_plains_map(10, 10)
+    player = make_player(9, 9)  # Chebyshev distance 7 from epicenter (2, 2) - outside radius 1
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY - 1, hour=HOURS_PER_DAY - 1)
+    engine = Engine(
+        game_map, player, "The Overworld", is_overworld=True, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert quest_log.corruption_phase == {"test_cell": 1}  # the phase still applied...
+    assert engine.pending_corruption_transition is None  # ...just no fade signal
+
+
+def test_check_region_corruption_never_runs_outside_the_overworld():
+    game_map = make_plains_map(5, 5)
+    player = make_player(2, 2)
+    game_map.entities.append(player)
+    quest_log = QuestLog()
+    clock = GameClock(year=STARTING_YEAR, day=STARTING_DAY, hour=0)  # already past the phase's day
+    engine = Engine(
+        game_map, player, "Test Level", is_overworld=False, clock=clock, quest_log=quest_log,
+        region_corruption_defs=[make_corruption_def()],
+    )
+
+    engine.process_turn(WaitAction())
+
+    assert game_map.kinds[2, 2] == "plains"
+    assert quest_log.corruption_phase == {}
 
 
 def test_build_game_map_spawns_an_inert_decoration_entity():

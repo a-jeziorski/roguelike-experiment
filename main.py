@@ -18,6 +18,7 @@ from content.loader import (
     load_encounters,
     load_overworld,
     load_quests,
+    load_region_corruption,
     load_sprite_manifest,
 )
 from engine.actions import (
@@ -712,6 +713,7 @@ def resolve_transition(
     quest_log: QuestLog | None = None,
     sprite_codepoints=None,
     encounter_registry=None,
+    region_corruption_defs=None,
 ) -> tuple[str, Engine]:
     """After a dispatch, checks the active engine's transition mailbox
     (Engine.wants_overworld / Engine.pending_dungeon_entry) and performs the
@@ -746,6 +748,14 @@ def resolve_transition(
     (covering a delay that's already elapsed the instant it's set). `None`
     (the default) disables the feature entirely - every existing
     caller/test that doesn't pass it keeps behaving exactly as before.
+
+    `region_corruption_defs` (content.schema.RegionCorruptionDef list) is
+    forwarded to the lazily-constructed overworld Engine below, the same
+    "only ever populated for the overworld Engine" pattern
+    dungeon_ruin_data already follows - see
+    Engine._check_region_corruption, docs/visitor_corruption.md. `None`
+    (the default) means no corruption defs, same "existing callers keep
+    working unchanged" convention as encounter_registry above.
     """
     if engine.game_state != "playing":
         return active_key, engine
@@ -779,6 +789,7 @@ def resolve_transition(
                 game_map, player, overworld_level.name,
                 catalog=catalog, is_overworld=True, dungeon_inspect_text=dungeon_inspect_text,
                 dungeon_ruin_data=dungeon_ruin_data, starting_level=overworld_level,
+                region_corruption_defs=region_corruption_defs,
                 clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             )
             active_engines[OVERWORLD_KEY] = target
@@ -954,9 +965,39 @@ def _check_flag_dialogue_references_known_flags(quest_defs: dict, dungeon_regist
         raise ContentValidationError(str(DUNGEONS_DIR), errors)
 
 
+def _check_region_corruption_raze_targets_have_ruin_content(
+    region_corruption_defs: list, dungeon_registry: dict,
+) -> None:
+    """A RegionCorruptionPhase.raze_dungeon_id (see content.schema, this
+    dungeon's whole corruption timeline racing toward Engine.destroy_dungeon
+    the moment its phase applies) is only useful if the dungeon it names
+    actually has ruined_tile/ruined_description authored - the exact same
+    gap _check_destroyable_dungeons_have_ruin_content already catches for
+    a quest's on_fail destroy_dungeon_id, just for corruption's own
+    trigger instead. Neither load_region_corruption nor
+    load_dungeon_registry can catch this alone (each only sees one side),
+    so it's checked here, right after both are loaded."""
+    errors: list[str] = []
+    for corruption in region_corruption_defs:
+        for phase in corruption.phases:
+            dungeon_id = phase.raze_dungeon_id
+            if dungeon_id is None:
+                continue
+            dungeon = dungeon_registry.get(dungeon_id)
+            if dungeon is not None and dungeon.ruined_tile is None:
+                errors.append(
+                    f"region corruption '{corruption.cell_id}': raze_dungeon_id "
+                    f"'{dungeon_id}' has no ruined_tile/ruined_description set in "
+                    "its dungeon.yaml - Engine.destroy_dungeon would have nothing to show"
+                )
+    if errors:
+        raise ContentValidationError(str(OVERWORLD_DIR), errors)
+
+
 def build_initial_state(
     catalog, dungeon_registry: dict, overworld_level, quest_defs: dict, encounter_registry,
     sprite_codepoints, console: tcod.console.Console, context: tcod.context.Context, save_path: Path,
+    region_corruption_defs=None,
 ) -> tuple[str, dict[str, Engine], GameClock, QuestLog]:
     """Either restores save_path (if it exists, is readable, and the player
     confirms via prompt_continue_saved_game) or falls back to fresh_start -
@@ -975,6 +1016,7 @@ def build_initial_state(
                 return restore_save(
                     save, catalog, dungeon_registry, overworld_level, quest_defs,
                     encounter_registry, sprite_codepoints, OVERWORLD_KEY,
+                    region_corruption_defs=region_corruption_defs,
                 )
             except (KeyError, ValueError):
                 pass
@@ -991,6 +1033,12 @@ def main() -> int:
         quest_defs = load_quests(QUESTS_PATH, catalog, known_dungeon_ids=set(dungeon_registry))
         _check_destroyable_dungeons_have_ruin_content(quest_defs, dungeon_registry)
         _check_flag_dialogue_references_known_flags(quest_defs, dungeon_registry)
+        region_corruption_defs = list(load_region_corruption(
+            OVERWORLD_DIR,
+            known_cell_ids={p.stem for p in (OVERWORLD_DIR / "cells").glob("*.lvl")},
+            known_dungeon_ids=set(dungeon_registry),
+        ).values())
+        _check_region_corruption_raze_targets_have_ruin_content(region_corruption_defs, dungeon_registry)
         encounter_registry = load_encounters(
             ENCOUNTERS_PATH,
             known_dungeon_ids=set(dungeon_registry), known_quest_ids=set(quest_defs),
@@ -1023,6 +1071,7 @@ def main() -> int:
         active_key, active_engines, clock, quest_log = build_initial_state(
             catalog, dungeon_registry, overworld_level, quest_defs,
             encounter_registry, sprite_codepoints, console, context, SAVE_PATH,
+            region_corruption_defs=region_corruption_defs,
         )
         engine = active_engines[active_key]
         log_scroll_offset = 0
@@ -1145,6 +1194,7 @@ def main() -> int:
                                     clock=clock, quest_log=quest_log,
                                     sprite_codepoints=sprite_codepoints,
                                     encounter_registry=encounter_registry,
+                                    region_corruption_defs=region_corruption_defs,
                                 )
                                 sync_music(engine, sound_manager)
                     continue
@@ -1166,6 +1216,7 @@ def main() -> int:
                     active_key, engine, active_engines, dungeon_registry, overworld_level, catalog,
                     clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
                     encounter_registry=encounter_registry,
+                    region_corruption_defs=region_corruption_defs,
                 )
                 sync_music(engine, sound_manager)
 

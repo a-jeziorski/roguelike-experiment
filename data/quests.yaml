@@ -435,10 +435,15 @@ a_warning_worth_carrying:
     one at all. The Chief didn't look surprised, just tired, the way
     people get when a warning confirms something they'd already started
     to suspect.
+  failed_description: >
+    The Watch Post is gone, same as everyone who kept it. Whatever the
+    Sentry meant for Millhaven to hear died with them, up there.
   completion_message: Millhaven's been warned again - this time about what's coming from farther off than a wandering horde.
+  failure_message: "Whatever word the Sentry meant to send south, there's no one left up there to have meant it."
   given_message: "New quest: A Warning Worth Carrying - the Sentry wants Millhaven told what's happening on the Northern Steppe, since nobody at the post is in a position to carry the word there themselves."
   questgiver_done_dialogue: Millhaven knows now. That's one more town that isn't waiting to find out the hard way.
   target_done_dialogue: North of Wayford, is it. First the goblins ran from something, now you're telling me what it was doing to the land. I'll have Millhaven keep its own watch up, for whatever good that does us this far from it.
   questgiver_entity_id: watch_post_sentry
   target_entity_id: village_chief
+  voided_by_dungeon_id: northern_watch_post
   reward_xp_amount: 15

@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 
 from content.loader import load_catalog, load_dungeon_registry, load_encounters, load_overworld, load_quests
+from content.schema import RegionCorruptionDef, RegionCorruptionPhase
+from engine.actions import WaitAction
 from engine.clock import GameClock
 from engine.engine import Engine
 from engine.entity import ActiveEffect
@@ -79,13 +81,17 @@ def _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_l
     )
 
 
-def _round_trip(save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry):
+def _round_trip(
+    save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+    region_corruption_defs=None,
+):
     path = tmp_path / "save.json"
     save_to_path(save, path)
     loaded = load_from_path(path)
     assert loaded is not None
     return restore_save(
         loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+        region_corruption_defs=region_corruption_defs,
     )
 
 
@@ -683,6 +689,82 @@ def test_round_trip_preserves_a_razed_and_entered_wayford(tmp_path):
     assert engine2.current_level_id == "level_01_ruins"
     assert engine2.level_name == "Wayford's Ruins"
     assert bool(engine2.game_map.explored[explored_coord])
+
+
+def _find_coord_of_kind(game_map, width, height, kind):
+    for x in range(width):
+        for y in range(height):
+            if game_map.kinds[x, y] == kind:
+                return (x, y)
+    raise AssertionError(f"no '{kind}' tile found in a {width}x{height} map")
+
+
+def test_round_trip_replays_a_region_corruption_phase(tmp_path):
+    """The gap this closes: build_game_map always rebuilds the overworld
+    from the static, unmodified level file - without restore_save
+    replaying every already-applied RegionCorruptionPhase (see
+    Engine._check_region_corruption, docs/visitor_corruption.md), a save
+    made after a corruption phase applied would silently un-corrupt the
+    map on reload, the same class of gap
+    test_round_trip_preserves_a_destroyed_dungeon already closes for
+    destroy_dungeon. Uses a synthetic RegionCorruptionDef (not real
+    Northern Steppe content, which doesn't exist yet) targeting a real
+    plains tile from the actual shipped overworld, per
+    docs/visitor_corruption.md's step 3 - "wired to a test-only fixture
+    first"."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+    plains_coord = _find_coord_of_kind(
+        engine.game_map, overworld_level.width, overworld_level.height, "plains",
+    )
+    corruption = RegionCorruptionDef(
+        cell_id="test_cell", epicenter=plains_coord,
+        phases=[RegionCorruptionPhase(after_year=clock.year, after_day=clock.day, radius=1)],
+    )
+    engine.region_corruption_defs = [corruption]
+
+    engine.process_turn(WaitAction())
+    assert engine.game_map.kinds[plains_coord] == "ashen_plains"
+    assert quest_log.corruption_phase == {"test_cell": 1}
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    active_key, active_engines2, clock2, quest_log2 = _round_trip(
+        save, tmp_path, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry,
+        region_corruption_defs=[corruption],
+    )
+    engine2 = active_engines2[active_key]
+
+    assert quest_log2.corruption_phase == {"test_cell": 1}
+    assert engine2.game_map.kinds[plains_coord] == "ashen_plains"
+
+
+def test_round_trip_of_an_old_save_with_no_corruption_phase_field_defaults_to_empty(tmp_path):
+    """An old save predates corruption_phase entirely - SavedQuestLogState's
+    default ({}) must round-trip correctly rather than erroring, same
+    "an old save just gets the field's default" guarantee every other
+    save-schema addition in this project already provides."""
+    catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry = _world()
+    clock = GameClock()
+    quest_log = create_quest_log(quest_defs)
+    engine = _overworld_engine(dungeon_registry, catalog, overworld_level, clock, quest_log)
+    active_engines = {"overworld": engine}
+
+    save = capture_save("overworld", active_engines, clock, quest_log, overworld_level)
+    path = tmp_path / "save.json"
+    save_to_path(save, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    del raw["quest_log"]["corruption_phase"]
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_from_path(path)
+    active_key, active_engines2, clock2, quest_log2 = restore_save(
+        loaded, catalog, dungeon_registry, overworld_level, quest_defs, encounter_registry, None, OVERWORLD_KEY,
+    )
+
+    assert quest_log2.corruption_phase == {}
 
 
 def test_round_trip_preserves_world_flags(tmp_path):

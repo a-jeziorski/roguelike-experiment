@@ -29,6 +29,7 @@ reconstructing purely from a catalog entity_id would silently lose it.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -43,11 +44,16 @@ from engine.game_map import (
     PLAYER_DEFENSE,
     PLAYER_MAX_HP,
     GameMap,
+    apply_corruption_radius,
     apply_dungeon_destruction,
     build_game_map,
     item_entity_from_def,
+    uncover_landmark,
 )
 from engine.quest import QuestLog, create_quest_log
+
+if TYPE_CHECKING:
+    from content.schema import RegionCorruptionDef
 
 # The one dict key used for the overworld's single level-state entry within
 # SavedPlace.levels - the overworld has no multi-level structure (Engine.levels
@@ -149,6 +155,12 @@ class SavedQuestLogState(BaseModel):
     # default), which is exactly correct for a save made before this
     # field existed - nothing was ever tightened.
     deadline_days: dict[str, int] = Field(default_factory=dict)
+    # cell_id -> how many RegionCorruptionPhases have already applied (see
+    # QuestLog.corruption_phase, Engine._check_region_corruption,
+    # docs/visitor_corruption.md). An old save missing this field just gets
+    # {} (the default) - correct for a save made before this field
+    # existed, since no region had ever corrupted at that point either.
+    corruption_phase: dict[str, int] = Field(default_factory=dict)
 
 
 class SavedPlayer(BaseModel):
@@ -339,6 +351,7 @@ def capture_save(
         armed_encounters=dict(quest_log.armed_encounters),
         destroyed_dungeon_ids=sorted(quest_log.destroyed_dungeon_ids),
         world_flags=sorted(quest_log.world_flags),
+        corruption_phase=dict(quest_log.corruption_phase),
         deadline_days={
             qid: quest.deadline_day for qid, quest in quest_log.quests.items()
             if quest.deadline_day is not None
@@ -454,6 +467,7 @@ def restore_save(
     encounter_registry,
     sprite_codepoints,
     overworld_key: str,
+    region_corruption_defs: "list[RegionCorruptionDef] | None" = None,
 ) -> tuple[str, dict[str, Engine], GameClock, QuestLog]:
     """The load-time counterpart to capture_save - rebuilds exactly the
     (active_key, active_engines, clock, quest_log) tuple a fresh start
@@ -476,6 +490,7 @@ def restore_save(
     quest_log.armed_encounters = dict(save.quest_log.armed_encounters)
     quest_log.destroyed_dungeon_ids = set(save.quest_log.destroyed_dungeon_ids)
     quest_log.world_flags = set(save.quest_log.world_flags)
+    quest_log.corruption_phase = dict(save.quest_log.corruption_phase)
     for quest_id, day in save.quest_log.deadline_days.items():
         if quest_id in quest_log.quests:
             quest_log.quests[quest_id].deadline_day = day
@@ -486,6 +501,7 @@ def restore_save(
         d_id: (d.ruined_tile, d.ruined_description, d.ruined_starting_level)
         for d_id, d in dungeon_registry.items() if d.ruined_tile
     }
+    region_corruption_defs = region_corruption_defs or []
 
     active_engines: dict[str, Engine] = {}
     for key, place in save.places.items():
@@ -529,6 +545,20 @@ def restore_save(
                 ruin_data = dungeon_ruin_data.get(dungeon_id)
                 if ruin_data is not None:
                     apply_dungeon_destruction(game_map, dungeon_id, *ruin_data)
+            # Replays every already-applied RegionCorruptionPhase against
+            # this freshly rebuilt overworld GameMap - build_game_map
+            # always rebuilds from the static, unmodified level file, so
+            # (like the destroyed-dungeon replay above) every one-time
+            # mutation has to be redone here, not just applied once live.
+            # raze_dungeon_id needs no separate replay: Engine.destroy_dungeon
+            # already recorded it in quest_log.destroyed_dungeon_ids the
+            # moment it first fired, so the loop above already re-razes it.
+            for corruption in region_corruption_defs:
+                applied = quest_log.corruption_phase.get(corruption.cell_id, 0)
+                for phase in corruption.phases[:applied]:
+                    apply_corruption_radius(game_map, corruption.epicenter, phase.radius)
+                    for entry in phase.uncover:
+                        uncover_landmark(game_map, entry.coord, entry.dungeon_id)
 
         engine = Engine(
             game_map, player, level.name,
@@ -536,6 +566,7 @@ def restore_save(
             current_level_id=current_state_key if not is_overworld else None,
             is_overworld=is_overworld,
             dungeon_inspect_text=dungeon_inspect_text if is_overworld else None,
+            region_corruption_defs=region_corruption_defs if is_overworld else None,
             dungeon_ruin_data=dungeon_ruin_data if is_overworld else None,
             clock=clock, quest_log=quest_log, sprite_codepoints=sprite_codepoints,
             overworld_return_position=(

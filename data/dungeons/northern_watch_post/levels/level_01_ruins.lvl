@@ -1,0 +1,40 @@
+id: level_01_ruins
+name: The Watch Post's Ruins
+
+player_start_tile: scoured_ground
+
+map: |
+  ##########################
+  #,,a@,,,,,,,,,,,,,,,,,,,,#
+  #,,,.,,,,,,,,,,,,,,,,,,,,#
+  #,,,.,,,,j,,,,,,,,####,,,#
+  #,,,.,,,,,,,e,e,,,####,,,#
+  #,,,..........,,,,####,,,#
+  #,,,,,,,,,,#FFF#,,####,,,#
+  #,,,,,,,,,,#FFF#,,,,,,,,,#
+  #,,,,,,,,,,#bcd#,,,fg,,,,#
+  #,,,,,,,,,,#####,,,,,,,,,#
+  #,,,,jj,,,,,,,,,,,,,,,,,,#
+  #,,,,,h,,,,,,,,,k,,,,,,,,#
+  #,,,,,,,,,,,,,,,,,,,i,,,,#
+  #####,,,,,,,,,,,##########
+  #####,,,,,,,,,,,##########
+  ##########################
+
+legend:
+  "#": wall
+  ",": scoured_ground
+  ".": road
+  "@": player_start
+  "F": floor
+  "a": { tile: stairs_up, next_level: null, tile_sprite: town_gate, description: "Back out onto open, wind-scoured ground. The road south is still there. Nobody's left here to watch it.", announce: true }
+  "b": { tile: floor, decoration: rubble }
+  "c": { tile: floor }
+  "d": { tile: floor, decoration: rubble }
+  "e": { tile: scoured_ground }
+  "f": { tile: scoured_ground, decoration: rubble }
+  "g": { tile: scoured_ground, decoration: rubble }
+  "h": { tile: scoured_ground }
+  "i": { tile: scoured_ground }
+  "j": { tile: scoured_ground }
+  "k": { tile: scoured_ground }

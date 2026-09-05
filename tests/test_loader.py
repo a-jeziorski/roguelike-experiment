@@ -1520,6 +1520,22 @@ def test_new_settlement_dungeon_content(dungeon_id):
     assert all(e.ai in ("villager", "town_guard") for e in all_entities)
 
 
+def test_northern_watch_post_ruins_has_no_survivors():
+    """Total loss, by explicit user decision (2026-09-04, see
+    docs/visitor_corruption.md): unlike Wayford's ruins (which keeps two
+    survivors alive for in-character reasons), the Watch Post's razing
+    leaves nobody - to the Visitor, a settlement's people are raw
+    material for more necrocrafts, not collateral damage worth sparing
+    any of. Regression guard against a future edit accidentally
+    reintroducing an entity spawn here."""
+    catalog = load_catalog()
+    dungeon = load_dungeon(DUNGEONS_DIR / "northern_watch_post", catalog)
+
+    assert dungeon.ruined_starting_level == "level_01_ruins"
+    ruins_level = dungeon.levels["level_01_ruins"]
+    assert ruins_level.entity_spawns == []
+
+
 def test_goblin_ambush_uses_open_boundary_instead_of_a_stairway():
     catalog = load_catalog()
     dungeon = load_dungeon(DUNGEONS_DIR / "goblin_ambush", catalog)

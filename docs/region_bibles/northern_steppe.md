@@ -196,13 +196,15 @@ each one.
   through the Frayed Edge and most of the Cinder Marches without ever
   standing on a hazard tile if they're careful, and should expect real
   chip damage crossing deep into the Hollow Reach.
-- **Not a "region corruption swap" mechanic**: `docs/main_story.md`
-  flags a still-undecided future mechanic where an existing region's
-  terrain bulk-transforms when the Visitor arrives or leaves. This
-  region does not build that - it's hand-authored as a single static
-  snapshot of already-corrupted land, since the premise is that the
-  player arrives after the Visitor has already been here for months.
-  That open design question is unaffected by this pass either way.
+- **Update (2026-09-05): the region corruption swap mechanic now exists**,
+  superseding an earlier version of this bullet that called it
+  unbuilt/undecided. This cell's terrain as originally authored is the
+  hand-authored *baseline* the rest of this document still accurately
+  describes, but `data/overworld/cells/northern_steppe.corruption.yaml`
+  now progresses it further in real time as the campaign clock advances -
+  see `docs/visitor_corruption.md` for the full design and
+  `docs/dungeon_bibles/northern_watch_post.md`'s "After: the Razing" for
+  the first real consequence (the Watch Post itself, razed on day 140).
 - **No player_start, no dungeon_entrance tiles**: validated by the
   overworld's whole-world checks (exactly one player_start and at least
   one dungeon_entrance across *all* cells combined) - Heartlands still

@@ -398,6 +398,17 @@ class QuestLog:
     # Engine.talk_to_adjacent (see content.schema.FlagDialogue) - the
     # first, and so far only, thing that reacts to it.
     world_flags: set[str] = field(default_factory=set)
+    # cell_id -> how many of that RegionCorruptionDef's phases have already
+    # applied (see Engine._check_region_corruption,
+    # docs/visitor_corruption.md) - 0 (the implicit default for any cell
+    # not yet a key here) means none have. Only ever counts up, one phase
+    # at a time, never resets - same one-directional shape as
+    # destroyed_dungeon_ids/world_flags above. engine/save.py persists
+    # this so a reloaded save can replay every already-applied phase
+    # against the freshly rebuilt overworld GameMap (apply_corruption_radius
+    # is itself idempotent, so replaying phases 0..n again is safe even
+    # though only the count, not which specific tiles changed, is saved).
+    corruption_phase: dict[str, int] = field(default_factory=dict)
 
     def active_quest(self) -> Quest | None:
         return self.quests.get(self.active_quest_id) if self.active_quest_id else None
